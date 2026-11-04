@@ -103,3 +103,7 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 ## Summary after PR 10 (M2 server track: PRs 8-10)
 
 `apps/server` boots from config, applies module flags, opens SQLite with the 10 section 3.4 PRAGMAs, migrates (refusing a newer database), and serves health, setup and login under the error model of 08 section 7.1. `npm run verify` is green on Node 22.22.0.
+
+## chore-01 — ignore agent worktrees in lint
+
+- Branch `chore-01-eslint-ignore`. Deviation outside the roadmap: agent worktrees live inside the repo folder, so `npm run verify` linted them. Added the agent-worktree folder to the ESLint ignores and `.prettierignore`, and to `.gitignore` (was absent). Config only, 3 lines.

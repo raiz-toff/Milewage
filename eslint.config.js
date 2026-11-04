@@ -25,7 +25,7 @@ const forbiddenModules = [
 ];
 
 export default tseslint.config(
-  { ignores: ['**/node_modules/**', '**/dist/**', '**/generated/**', 'plans/**'] },
+  { ignores: ['**/node_modules/**', '**/dist/**', '**/generated/**', 'plans/**', '.claude/**'] },
   js.configs.recommended,
   {
     files: ['scripts/**/*.mjs'],

@@ -2,3 +2,4 @@ package-lock.json
 plans/
 packages/shared/generated/
 packages/shared/openapi/
+.claude/
