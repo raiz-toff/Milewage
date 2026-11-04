@@ -56,3 +56,31 @@ M0 exit: `npm run verify` passes (typecheck, lint, version check, OpenAPI drift 
 
 - Register a GitLab runner (Docker executor) and give the project path; apply `infra/docs/branch-protection.md`. `.gitlab-ci.yml` is untested.
 - Install Node 22.22 as the default on `coder` (currently extracted from Docker to `~/.local/node22`; default Node is 24.15).
+
+## PR 5 — [M1.1] Engine types, integer helpers, stages 1-2
+
+- Branch `pr-05-engine-types-stages`; squash commit on main `454417b`.
+- Done in `packages/track-engine`: `Fix`, `ShiftInput`, `ShiftResult` (and the `Stop`, `Trip`, `TripEdit`, `Flag` types they reference) per 14 section 3; integer helpers (E7, `roundHalfUp`, `divRound`, decimetre/metre conversion rounded once); `algorithmVersion = 1`; stage 1 `normalize` and stage 2 `qualify`.
+- Tests: 50 passed in total on verify (11 new): shuffle and duplicate invariance (seeded shuffles), empty/single input, window edges (-5 min / +10 min, inclusive), accuracy boundary 50 kept / 51 dropped, input not mutated.
+- Decisions: sort ties beyond `(recordedAt, seq)` are broken by lat, lon, accuracy so any input order gives one output; "first occurrence of a seq" means first in that sorted order. Other types of 14 section 3 not yet needed (trip details) are declared as in 07 section 2.3 and unused until later PRs.
+- Size: about 300 changed lines.
+
+## PR 6 — [M1.2] Stage 3 gate, distance, live accumulator
+
+- Branch `pr-06-gate-distance-accumulator`; squash commit on main `cd9abad`.
+- Done: written-out haversine (R = 6,371,000 m, rounded once to decimetres), `gateStep`/`gate` per 14 section 5.3 (non-positive dt, speed over 420 dm/s, under 200 dm, anchor moves only on accept, integer comparisons), `measureDistance` (stages 1-3 batch), `createLiveAccumulator(startedAt)` running stages 1-3 one fix at a time with the same functions.
+- Tests: 63 passed in total (13 new): straight line, closed square loop, single spike excluded, 20 m gate (19.9 dropped, 20 accepted, creep accumulates), 42 m/s boundary, non-positive dt, empty/single fix, low-accuracy fix never anchors, accumulator equals batch on clean and on messy in-order input, no `Date.now` calls.
+- Decisions: the live accumulator checks only the lower window bound (shift end unknown) and expects fixes in time order; an out-of-order live fix is dropped as non-positive dt, which is why batch (which sorts) is the authority. `processShift` is not built here (later PRs).
+- Size: about 275 changed lines.
+
+## PR 7 — [M1.3] Seeded ride generator, golden fixtures, version-bump guard
+
+- Branch `pr-07-ride-generator-golden`; squash commit on main `5e2c6b8`.
+- Done: test-support generator `test/support/rides.ts` (mulberry32 seeds; straight, grid with turns, closed loop, stop-and-go with 3-minute jittered waits; each with an analytic truth length), `test/fixtures/golden.json` (expected outputs per ride plus an append-only ledger of one output digest per `algorithmVersion`), guard in `test/support/golden.ts`. Regenerate with `UPDATE_FIXTURES=1 npx vitest run golden`; it refuses to rewrite the entry of an existing version.
+- Guard design: a digest ledger instead of comparing with a previous commit, so regenerating fixtures without bumping `algorithmVersion` is refused (a simple "fixtures match code" test would pass after a silent regeneration). Reviewers must still check that the ledger only ever gains lines (no CI diff check yet).
+- Tests: 80 passed in total (17 new): determinism, seeds change noise not truth, engine totals within 2 m + 0.2% of analytic truth, jitter in waits adds nothing, guard fails on a simulated output change and on a simulated threshold change, bumped version demands regeneration, regeneration adds a ledger entry.
+- Deviation: expected JSON is the stage 1-3 part of `ShiftResult` (version, `totals.totalM`, stats counters) because `processShift` does not exist yet; later PRs extend it. Size: about 315 changed lines excluding `golden.json`.
+
+## Summary after PR 7
+
+All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each time. No blockers. Not started: PR 8+ (gaps, stops, trips are out of scope here).
