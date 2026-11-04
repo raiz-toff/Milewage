@@ -9,3 +9,7 @@ export * from './routes/core';
 export * from './auth/authenticator';
 export * from './hooks';
 export * from './version';
+export * from './backup/engine';
+export * from './backup/retention';
+export * from './backup/schedule';
+export * from './backup/service';

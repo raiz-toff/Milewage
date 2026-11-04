@@ -22,6 +22,9 @@ export async function startServer(
       modules: createServerModules({
         db,
         now: Date.now,
+        backupDir: config.backupDir,
+        backupSchedule: true,
+        log: (message, fields) => console.log(JSON.stringify({ msg: message, ...fields })),
         diagnosticsPath: join(config.dataDir, 'diagnostics.db'),
         onDiagnosticsRecreated: (movedTo, reason) =>
           console.warn(JSON.stringify({ msg: 'diagnostics.db recreated', movedTo, reason })),

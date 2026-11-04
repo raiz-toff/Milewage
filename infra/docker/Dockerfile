@@ -21,6 +21,7 @@ WORKDIR /app
 ENV NODE_ENV=production \
     MILEWAGE_PORT=3000 \
     MILEWAGE_DATA_DIR=/app/data \
+    MILEWAGE_BACKUP_DIR=/app/backups \
     MILEWAGE_CONFIG_DIR=/app/config
 COPY --from=native /rt/node_modules ./node_modules
 COPY --from=build /src/dist/server.mjs ./server.mjs

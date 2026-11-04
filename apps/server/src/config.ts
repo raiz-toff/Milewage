@@ -11,6 +11,8 @@ export interface ServerConfig {
   port: number;
   dataDir: string;
   configDir: string;
+  /** `MILEWAGE_BACKUP_DIR`: the `backups` volume. */
+  backupDir: string;
   logLevel: string;
   /** `MILEWAGE_TRUST_PROXY`: comma-separated proxy addresses or CIDRs, or `true`. Empty means no proxy is trusted. */
   trustProxy: boolean | string[];
@@ -30,6 +32,7 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): S
     port,
     dataDir: env.MILEWAGE_DATA_DIR ?? 'data',
     configDir,
+    backupDir: env.MILEWAGE_BACKUP_DIR ?? 'backups',
     logLevel: env.MILEWAGE_LOG_LEVEL ?? 'info',
     trustProxy: parseTrustProxy(env.MILEWAGE_TRUST_PROXY),
     settings: readSettingsFile(join(configDir, 'settings.json')),

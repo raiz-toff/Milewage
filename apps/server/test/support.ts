@@ -28,6 +28,7 @@ export function harness(enabled: Record<string, boolean> = {}, extra: Partial<Ap
     db,
     now: () => clock.t,
     diagnosticsPath: join(dir, 'diagnostics.db'),
+    backupDir: join(dir, 'backups'),
   });
   let app: ReturnType<typeof buildApp>['fastify'];
   try {
@@ -55,6 +56,7 @@ export function harness(enabled: Record<string, boolean> = {}, extra: Partial<Ap
   return {
     app,
     db,
+    dir,
     clock,
     call,
     /** Creates the owner through POST /setup and returns the session cookie. */

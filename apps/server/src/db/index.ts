@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { loadMigrations, migrate, type MigrateOptions } from './migrate';
 import { openDatabase, type Db } from './open';
 
+export * from './backup-repository';
 export * from './migrate';
 export * from './open';
 export * from './repositories';

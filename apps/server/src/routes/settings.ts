@@ -49,7 +49,8 @@ export function moduleFlags(
   return {
     ...flag(['sync', 'devices', 'tracking', 'replay', 'live', 'diagnostics', 'capture']),
     stops: on('stops') && stopsEnabled,
-    backup_download: on('backup'),
+    // The engine is always on; this flag is the `backup.download` toggle and its route (M3.2).
+    backup_download: false,
     exporters: ['csv', 'pdf', 'gpx', 'geojson'].filter((f) => on(`export_${f}`)),
     countries: [...countries],
   };

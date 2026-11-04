@@ -1,31 +1,61 @@
 import { defineModule } from '@milewage/shared';
 import { Authenticator } from './auth/authenticator';
-import { createSessionRepository } from './db';
+import { nightlyBackupJob } from './backup/schedule';
+import { createBackupService, type BackupService } from './backup/service';
+import { createBackupRepository, createSessionRepository, createSettingsRepository } from './db';
+import { openDiagnosticsStore } from './diagnostics/store';
+import { backupRoutes } from './routes/backup';
 import { coreRoutes, type CoreContext } from './routes/core';
 import { devicesRoutes } from './routes/devices';
-import { trackingRoutes } from './routes/tracking';
 import { diagnosticsRoutes } from './routes/diagnostics';
-import { openDiagnosticsStore } from './diagnostics/store';
 import { DEFAULT_COUNTRIES, settingsReader } from './routes/settings';
+import { trackingRoutes } from './routes/tracking';
 
 export const coreModule = defineModule({ name: 'core', dependsOn: [], toggleable: false });
 export const devicesModule = defineModule({ name: 'devices', dependsOn: ['core'] });
-
 export const trackingModule = defineModule({ name: 'tracking', dependsOn: ['core', 'devices'] });
-
 export const diagnosticsModule = defineModule({ name: 'diagnostics', dependsOn: ['core'] });
+/** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */
+export const backupModule = defineModule({
+  name: 'backup',
+  dependsOn: ['core'],
+  toggleable: false,
+});
 
 export const serverModules = [
   coreModule,
   devicesModule,
   trackingModule,
   diagnosticsModule,
+  backupModule,
 ] as const;
 
 export interface ServerContext extends CoreContext {
   /** Path of diagnostics.db (16 section 7.1); `:memory:` when omitted. Opened only if the module is on. */
   diagnosticsPath?: string;
   onDiagnosticsRecreated?: (movedTo: string, reason: string) => void;
+  /** The `backups` volume (`MILEWAGE_BACKUP_DIR`). Nothing is written there until a backup runs. */
+  backupDir?: string;
+  /** Start the nightly 03:30 job (off in tests). */
+  backupSchedule?: boolean;
+  /** Use this service instead of building one, so setup, migration and restore share it. */
+  backup?: BackupService;
+  log?: (message: string, fields?: object) => void;
+}
+
+/** Builds the backup service for a connection; the time zone is the owner's, UTC before setup. */
+export function buildBackupService(ctx: Pick<ServerContext, 'db' | 'now' | 'backupDir'>) {
+  const settings = createSettingsRepository(ctx.db);
+  const owner = createBackupRepository(ctx.db);
+  return createBackupService({
+    db: ctx.db,
+    dir: ctx.backupDir ?? 'backups',
+    now: ctx.now,
+    timeZone: () => {
+      const id = owner.ownerId();
+      return (id === undefined ? undefined : settings.get(id)?.timezone) ?? 'UTC';
+    },
+  });
 }
 
 export function createServerModules(ctx: ServerContext) {
@@ -40,6 +70,7 @@ export function createServerModules(ctx: ServerContext) {
       ctx.now,
       ctx.onDiagnosticsRecreated,
     ));
+  const backup = ctx.backup ?? buildBackupService(ctx);
   return [
     defineModule({ ...coreModule, routes: coreRoutes(ctx, authn) }),
     defineModule({ ...devicesModule, routes: devicesRoutes({ ...ctx, authn, readSettings }) }),
@@ -48,6 +79,11 @@ export function createServerModules(ctx: ServerContext) {
       ...diagnosticsModule,
       routes: diagnosticsRoutes({ ...ctx, authn, store: diagnosticsStore }),
       jobs: [{ name: 'diagnostics-store', start: () => () => store?.close() }],
+    }),
+    defineModule({
+      ...backupModule,
+      routes: backupRoutes({ ...ctx, authn, service: backup }),
+      jobs: ctx.backupSchedule ? [nightlyBackupJob(backup, ctx.now, ctx.log)] : [],
     }),
   ] as const;
 }

@@ -142,3 +142,18 @@ export const telemetryPoints = sqliteTable('telemetry_points', {
   bearingDeg: integer('bearing_deg'),
   altitudeM: integer('altitude_m'),
 });
+
+export const backupRuns = sqliteTable('backup_runs', {
+  id: integer('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
+  createdAt: integer('created_at').notNull(),
+  trigger: text('trigger', {
+    enum: ['nightly', 'shift_end', 'manual', 'pre_migration', 'pre_restore'],
+  }).notNull(),
+  fileName: text('file_name').notNull(),
+  sizeBytes: integer('size_bytes').notNull(),
+  sha256: text('sha256').notNull(),
+  integrityOk: integer('integrity_ok').notNull(),
+});
