@@ -1,10 +1,11 @@
 {
   "ledger": {
-    "1": "fc5702690d832056786b8d4ca4ce6696c37f9df519b394a7b65223f814e31383"
+    "1": "fc5702690d832056786b8d4ca4ce6696c37f9df519b394a7b65223f814e31383",
+    "2": "20ef6d4d56c0f39e65fc339ce57645cd7bb703076da23b033240eb060258b8b6"
   },
   "results": {
     "ride_grid": {
-      "algorithmVersion": 1,
+      "algorithmVersion": 2,
       "inputDigest": "17a1bf7d4accd95b",
       "totals": {
         "totalM": 1600,
@@ -82,7 +83,7 @@
       }
     },
     "ride_loop": {
-      "algorithmVersion": 1,
+      "algorithmVersion": 2,
       "inputDigest": "ef4d8b723b50461a",
       "totals": {
         "totalM": 1884,
@@ -205,7 +206,7 @@
       }
     },
     "ride_stop_and_go": {
-      "algorithmVersion": 1,
+      "algorithmVersion": 2,
       "inputDigest": "37267328573f2b90",
       "totals": {
         "totalM": 2000,
@@ -253,7 +254,7 @@
       }
     },
     "ride_straight": {
-      "algorithmVersion": 1,
+      "algorithmVersion": 2,
       "inputDigest": "91522ec0650a53c9",
       "totals": {
         "totalM": 5000,
@@ -301,7 +302,7 @@
       }
     },
     "scenario_dead_battery": {
-      "algorithmVersion": 1,
+      "algorithmVersion": 2,
       "inputDigest": "6cb84cd3a33ea73c",
       "totals": {
         "totalM": 6000,
@@ -353,8 +354,90 @@
         "gap_m": 0
       }
     },
+    "scenario_delivery_run": {
+      "algorithmVersion": 2,
+      "inputDigest": "93b3cb734276d2d3",
+      "totals": {
+        "totalM": 6300,
+        "activeM": 6300,
+        "deadheadM": 0,
+        "personalM": 0
+      },
+      "trips": [
+        {
+          "tripKey": "scn:1700000000000:active",
+          "kind": "active",
+          "originalKind": "active",
+          "startedAt": 1700000000000,
+          "endedAt": 1700003330000,
+          "startLatE7": 436500000,
+          "startLonE7": -793800000,
+          "endLatE7": 437066573,
+          "endLonE7": -793800000,
+          "distanceM": 6300,
+          "purpose": "Business driving"
+        }
+      ],
+      "stops": [
+        {
+          "stopKey": "scn:1700000200000:stop",
+          "startedAt": 1700000200000,
+          "endedAt": 1700000500000,
+          "dwellS": 300,
+          "latE7": 436679864,
+          "lonE7": -793800000,
+          "confidence": "medium",
+          "estRole": "none",
+          "role": "none"
+        },
+        {
+          "stopKey": "scn:1700000700000:stop",
+          "startedAt": 1700000700000,
+          "endedAt": 1700000940000,
+          "dwellS": 240,
+          "latE7": 436859729,
+          "lonE7": -793800000,
+          "confidence": "medium",
+          "estRole": "none",
+          "role": "none"
+        },
+        {
+          "stopKey": "scn:1700001150000:stop",
+          "startedAt": 1700001150000,
+          "endedAt": 1700003250000,
+          "dwellS": 2100,
+          "latE7": 436994627,
+          "lonE7": -793800000,
+          "confidence": "high",
+          "estRole": "none",
+          "role": "none"
+        }
+      ],
+      "route": [
+        {
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "t": 1700000000000
+        },
+        {
+          "latE7": 437066573,
+          "lonE7": -793800000,
+          "t": 1700003330000
+        }
+      ],
+      "flags": [],
+      "stats": {
+        "fixes_in": 113,
+        "fixes_used": 64,
+        "low_accuracy": 0,
+        "non_positive_dt": 0,
+        "speed_spike": 0,
+        "within_gate": 49,
+        "gap_m": 0
+      }
+    },
     "scenario_gap_spike": {
-      "algorithmVersion": 1,
+      "algorithmVersion": 2,
       "inputDigest": "c0ed8dcc5c69fbbe",
       "totals": {
         "totalM": 2500,
@@ -413,7 +496,7 @@
       }
     },
     "scenario_killed_app": {
-      "algorithmVersion": 1,
+      "algorithmVersion": 2,
       "inputDigest": "282caaa01d3d5003",
       "totals": {
         "totalM": 9800,
@@ -477,7 +560,7 @@
       }
     },
     "scenario_parked_wait": {
-      "algorithmVersion": 1,
+      "algorithmVersion": 2,
       "inputDigest": "9a1538d3b7cfd48d",
       "totals": {
         "totalM": 6000,
@@ -524,8 +607,128 @@
         "gap_m": 0
       }
     },
+    "scenario_queue_creep": {
+      "algorithmVersion": 2,
+      "inputDigest": "a4dcc2b101b9e7e5",
+      "totals": {
+        "totalM": 2027,
+        "activeM": 2027,
+        "deadheadM": 0,
+        "personalM": 0
+      },
+      "trips": [
+        {
+          "tripKey": "scn:1700000000000:active",
+          "kind": "active",
+          "originalKind": "active",
+          "startedAt": 1700000000000,
+          "endedAt": 1700000380000,
+          "startLatE7": 436500000,
+          "startLonE7": -793800000,
+          "endLatE7": 436682292,
+          "endLonE7": -793800000,
+          "distanceM": 2027,
+          "purpose": "Business driving"
+        }
+      ],
+      "stops": [
+        {
+          "stopKey": "scn:1700000100000:stop",
+          "startedAt": 1700000100000,
+          "endedAt": 1700000280000,
+          "dwellS": 180,
+          "latE7": 436589932,
+          "lonE7": -793800000,
+          "confidence": "medium",
+          "estRole": "none",
+          "role": "none"
+        }
+      ],
+      "route": [
+        {
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "t": 1700000000000
+        },
+        {
+          "latE7": 436682292,
+          "lonE7": -793800000,
+          "t": 1700000380000
+        }
+      ],
+      "flags": [],
+      "stats": {
+        "fixes_in": 39,
+        "fixes_used": 22,
+        "low_accuracy": 0,
+        "non_positive_dt": 0,
+        "speed_spike": 0,
+        "within_gate": 17,
+        "gap_m": 0
+      }
+    },
+    "scenario_start_wait": {
+      "algorithmVersion": 2,
+      "inputDigest": "025d032e5229051e",
+      "totals": {
+        "totalM": 2000,
+        "activeM": 2000,
+        "deadheadM": 0,
+        "personalM": 0
+      },
+      "trips": [
+        {
+          "tripKey": "scn:1700000000000:active",
+          "kind": "active",
+          "originalKind": "active",
+          "startedAt": 1700000000000,
+          "endedAt": 1700000450000,
+          "startLatE7": 436500000,
+          "startLonE7": -793800000,
+          "endLatE7": 436679864,
+          "endLonE7": -793800000,
+          "distanceM": 2000,
+          "purpose": "Business driving"
+        }
+      ],
+      "stops": [
+        {
+          "stopKey": "scn:1700000000000:stop",
+          "startedAt": 1700000000000,
+          "endedAt": 1700000250000,
+          "dwellS": 250,
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "confidence": "medium",
+          "estRole": "none",
+          "role": "none"
+        }
+      ],
+      "route": [
+        {
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "t": 1700000000000
+        },
+        {
+          "latE7": 436679864,
+          "lonE7": -793800000,
+          "t": 1700000450000
+        }
+      ],
+      "flags": [],
+      "stats": {
+        "fixes_in": 37,
+        "fixes_used": 21,
+        "low_accuracy": 0,
+        "non_positive_dt": 0,
+        "speed_spike": 0,
+        "within_gate": 16,
+        "gap_m": 0
+      }
+    },
     "scenario_tunnel": {
-      "algorithmVersion": 1,
+      "algorithmVersion": 2,
       "inputDigest": "aa6dbcd2c213ec68",
       "totals": {
         "totalM": 4600,
@@ -576,6 +779,72 @@
         "speed_spike": 0,
         "within_gate": 0,
         "gap_m": 600
+      }
+    },
+    "scenario_wake_up": {
+      "algorithmVersion": 2,
+      "inputDigest": "dac643a028a9dc85",
+      "totals": {
+        "totalM": 3100,
+        "activeM": 3100,
+        "deadheadM": 0,
+        "personalM": 0
+      },
+      "trips": [
+        {
+          "tripKey": "scn:1700000000000:active",
+          "kind": "active",
+          "originalKind": "active",
+          "startedAt": 1700000000000,
+          "endedAt": 1700000900000,
+          "startLatE7": 436500000,
+          "startLonE7": -793800000,
+          "endLatE7": 436778790,
+          "endLonE7": -793800000,
+          "distanceM": 3100,
+          "purpose": "Business driving"
+        }
+      ],
+      "stops": [
+        {
+          "stopKey": "scn:1700000150000:stop",
+          "startedAt": 1700000150000,
+          "endedAt": 1700000750000,
+          "dwellS": 600,
+          "latE7": 436634898,
+          "lonE7": -793800000,
+          "confidence": "high",
+          "estRole": "none",
+          "role": "none"
+        }
+      ],
+      "route": [
+        {
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "t": 1700000000000
+        },
+        {
+          "latE7": 436778790,
+          "lonE7": -793800000,
+          "t": 1700000900000
+        }
+      ],
+      "flags": [
+        {
+          "code": "gap_counted",
+          "at": 1700000150000,
+          "detail": "dt_s=600,chord_m=100"
+        }
+      ],
+      "stats": {
+        "fixes_in": 32,
+        "fixes_used": 32,
+        "low_accuracy": 0,
+        "non_positive_dt": 0,
+        "speed_spike": 0,
+        "within_gate": 0,
+        "gap_m": 100
       }
     }
   }

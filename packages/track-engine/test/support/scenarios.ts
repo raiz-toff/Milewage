@@ -47,6 +47,41 @@ export function shift(
   };
 }
 
+/**
+ * A rider on a straight north-south road, built step by step. Riding is 10 m/s with a fix
+ * every 10 s; `wait` emits jittered fixes (a parked cloud, alternately +3 m and -3 m);
+ * `sleep` is GPS off: nothing for `sec` seconds, then one fix at the same place (the wake-up fix).
+ */
+export class Path {
+  rows: [number, number][] = [[0, 0]];
+  t = 0;
+  y = 0;
+  ride(m: number): this {
+    const steps = Math.max(1, Math.ceil(Math.abs(m) / 100));
+    for (let i = 0; i < steps; i++) {
+      this.t += 10;
+      this.y += m / steps;
+      this.rows.push([this.t, this.y]);
+    }
+    return this;
+  }
+  wait(sec: number): this {
+    for (let i = 1; i <= sec / 10; i++) {
+      this.t += 10;
+      this.rows.push([this.t, this.y + (i % 2 === 0 ? 3 : -3)]);
+    }
+    return this;
+  }
+  sleep(sec: number): this {
+    this.t += sec;
+    this.rows.push([this.t, this.y]);
+    return this;
+  }
+  input(extra: Partial<ShiftInput> = {}, id = 'scn'): ShiftInput {
+    return shift(track(this.rows), this.t, { segmenter: 'stops', ...extra }, id);
+  }
+}
+
 /** Name -> input. Each one is also a golden fixture of processShift. */
 export const SCENARIOS: Record<string, () => ShiftInput> = {
   // 5 minutes of riding, a 3 minute parked wait (GPS asleep: one fix at each end), more riding.
@@ -80,5 +115,42 @@ export const SCENARIOS: Record<string, () => ShiftInput> = {
     const spike: [number, number][] = [[280, 200_000]];
     const b = ride(300, 400, 1500);
     return shift(track([...a, ...spike, ...b]), 400);
+  },
+
+  // Two real stops (pickup after 2 km, dropoff after 4 km), a red light, then a 35 minute break.
+  delivery_run: () =>
+    new Path()
+      .ride(2000)
+      .wait(150)
+      .sleep(150) // pickup: about 5 minutes, GPS asleep for the second half
+      .ride(2000)
+      .wait(100)
+      .sleep(140) // dropoff: 4 minutes
+      .ride(500)
+      .wait(60) // red light, not a stop
+      .ride(1000)
+      .wait(150)
+      .sleep(1950) // break: 35 minutes, long_stop
+      .ride(800)
+      .input(),
+  // Queue creep: 3 minutes of crawling 3 m per 10 s inside 40 m. Looks like a stop: known false positive.
+  queue_creep: () => {
+    const p = new Path().ride(1000);
+    for (let i = 0; i < 18; i++) {
+      p.t += 10;
+      p.y += 1.5;
+      p.rows.push([p.t, p.y]);
+    }
+    return p.ride(1000).input();
+  },
+  // The shift starts with a 4 minute wait at the start location: start guard, no pickup.
+  start_wait: () => new Path().wait(150).sleep(100).ride(2000).input(),
+  // A 10 minute silence, then a wake-up fix 100 m on, then riding: one high-confidence stop.
+  wake_up: () => {
+    const p = new Path().ride(1500);
+    p.t += 600;
+    p.y += 100;
+    p.rows.push([p.t, p.y]);
+    return p.ride(1500).input();
   },
 };

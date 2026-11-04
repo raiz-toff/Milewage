@@ -93,12 +93,17 @@ describe('simplifyRoute (integer RDP)', () => {
 });
 
 describe('processShift', () => {
-  test('whole-shift: one active trip, trips sum to totalM, total = active + deadhead + personal', () => {
+  test('trips sum to totalM and total = active + deadhead + personal, on every fixture', () => {
     for (const name of names) {
       const r = processShift(inputs[name]!);
-      const sum = r.trips.reduce((s, t) => s + t.distanceM, 0);
-      expect(sum).toBe(r.totals.totalM);
+      expect(r.trips.reduce((s, t) => s + t.distanceM, 0)).toBe(r.totals.totalM);
       expect(r.totals.totalM).toBe(r.totals.activeM + r.totals.deadheadM + r.totals.personalM);
+    }
+  });
+
+  test('whole-shift: one active trip named Business driving, no stops', () => {
+    for (const name of names.filter((n) => inputs[n]!.segmenter === 'whole_shift')) {
+      const r = processShift(inputs[name]!);
       expect(r.trips.length).toBeLessThanOrEqual(1);
       if (r.trips[0]) {
         expect(r.trips[0].kind).toBe('active');
@@ -142,12 +147,6 @@ describe('processShift', () => {
     const one = processShift(shift([fixAt(1, 0, 0)], 60));
     expect(one.trips).toEqual([]);
     expect(one.route).toHaveLength(1);
-  });
-
-  test('segmenter "stops" gives the same total as "whole_shift" (stage 5 not built yet)', () => {
-    const a = processShift(inputs.ride_stop_and_go!);
-    const b = processShift({ ...inputs.ride_stop_and_go!, segmenter: 'stops' });
-    expect(b.totals.totalM).toBe(a.totals.totalM);
   });
 });
 

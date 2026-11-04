@@ -7,21 +7,39 @@ import { normalize } from './normalize';
 import { qualify } from './qualify';
 import { simplifyRoute } from './route';
 import { buildTrips, totalsOf, wholeShiftTrips } from './trips';
-import type { Flag, ShiftInput, ShiftResult } from './types';
+import { detectStops } from './stops';
+import type { Flag, ShiftInput, ShiftResult, Stop } from './types';
 import { algorithmVersion } from './version';
 
 /**
  * The authority: batch, deterministic, no clock, no randomness (14 section 3).
- * Stages 1-4, 6 (whole-shift segmenter) and 8 run here. Stage 5 (stops) and the
- * stop-based segmenter arrive with M6; until then `segmenter: 'stops'` behaves as
- * `whole_shift`, which cannot change a total. Stage 7 re-applies the driver's trip edits.
+ * Stages 1-4, 7 and 8 always run. Stage 5 (stops) and the stop-based segmenter run only when
+ * `segmenter` is 'stops' and the shift has a stop that changes the estimate; otherwise the
+ * whole-shift segmenter is used. Neither can change a total, only where trips are cut.
  */
 export function processShift(input: ShiftInput): ShiftResult {
   const normalized = normalize(input.fixes, input.startedAt, input.endedAt); // 1
   const qualified = qualify(normalized); // 2
   const g = gate(qualified); // 3
   const gaps = detectGaps(g); // 4
-  const built = buildTrips(input.shiftClientId, wholeShiftTrips(g.segments)); // 6
+  // 5 and 6: the segmenter slot. Stops are read from the qualified fixes, not the gated ones.
+  let stops: Stop[] = [];
+  const drafts = wholeShiftTrips(g.segments);
+  if (input.segmenter === 'stops') {
+    // M6.1: stops are recorded as facts; roles and the split arrive with M6.2.
+    stops = detectStops(input.shiftClientId, qualified, input.startedAt).map((d) => ({
+      stopKey: d.stopKey,
+      startedAt: d.startedAt,
+      endedAt: d.endedAt,
+      dwellS: d.dwellS,
+      latE7: d.latE7,
+      lonE7: d.lonE7,
+      confidence: d.confidence,
+      estRole: 'none',
+      role: 'none',
+    }));
+  }
+  const built = buildTrips(input.shiftClientId, drafts);
   const edited = applyEdits(built, input.edits); // 7
   const trips = edited.trips;
 
@@ -44,7 +62,7 @@ export function processShift(input: ShiftInput): ShiftResult {
     inputDigest: inputDigest(input, normalized),
     totals: totalsOf(trips),
     trips,
-    stops: [],
+    stops,
     route: simplifyRoute(
       g.accepted.map((f) => ({ latE7: f.latE7, lonE7: f.lonE7, t: f.recordedAt })),
     ), // 8

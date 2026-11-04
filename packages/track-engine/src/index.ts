@@ -35,3 +35,19 @@ export type { TripDraft } from './trips';
 export { canonicalJson } from './canonical';
 export { processShift } from './process';
 export { applyEdits, sortEdits } from './edits';
+export {
+  detectStops,
+  stopConfidence,
+  makeStopKey,
+  STOP_RADIUS_DM,
+  STOP_MIN_DWELL_MS,
+  STOP_MEDIUM_DWELL_MS,
+  STOP_HIGH_DWELL_MS,
+  STOP_WAKE_GAP_MS,
+  STOP_WAKE_RADIUS_DM,
+  STOP_MERGE_RADIUS_DM,
+  STOP_MERGE_RIDE_MS,
+  STOP_START_GUARD_MS,
+  STOP_START_GUARD_RADIUS_DM,
+} from './stops';
+export type { DetectedStop, Confidence } from './stops';
