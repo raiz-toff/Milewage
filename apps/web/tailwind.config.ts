@@ -1,6 +1,6 @@
 import type { Config } from 'tailwindcss';
 import plugin from 'tailwindcss/plugin';
-import { colors, fonts } from '../../packages/shared/src/tokens';
+import { colors, fonts } from '@milewage/shared/src/tokens';
 
 /** CSS variable block for one theme; every colour in the app comes from the shared tokens. */
 const vars = (c: typeof colors.dark) => ({

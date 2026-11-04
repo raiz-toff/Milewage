@@ -3,6 +3,7 @@ import { Link, Route, Routes, useParams } from 'react-router-dom';
 import { describe, unwrap } from '../api/client';
 import type { Schemas, Settings } from '../api/client';
 import { formatDateTime, formatDistance, formatDuration, formatMoney } from '../format';
+import { RouteView } from '../map/RouteView';
 import { useSession, useSettings } from '../session';
 import { SortTable } from '../ui/SortTable';
 import type { Column } from '../ui/SortTable';
@@ -270,6 +271,8 @@ export function ShiftDetail() {
           <p className="text-muted">None.</p>
         )}
       </section>
+
+      {settings.modules.replay ? <RouteView shiftId={shift.id} /> : null}
 
       <section className="max-w-md space-y-2">
         <label className="block text-sm text-muted" htmlFor="notes">
