@@ -11,6 +11,8 @@ import {
   UNKNOWN_SNAPSHOT,
 } from '../src/permissions/ladder';
 import { FakeTracker } from '../src/tracker/fake';
+import { makeServices } from './support/mock';
+import { mockServer } from './support/mock';
 
 jest.mock(
   'react-native-safe-area-context',
@@ -108,7 +110,9 @@ describe('permissions screen', () => {
   it('shows the disclosure first, then prompts and opens battery settings', async () => {
     const permissions = new FakePermissions();
     const tracker = new FakeTracker();
-    render(<App services={{ permissions, tracker }} />);
+    render(
+      <App services={makeServices(mockServer({}).fetch, { permissions, tracker }).services} />,
+    );
     fireEvent.press(await screen.findByRole('button', { name: 'Settings' }));
     fireEvent.press(await screen.findByRole('button', { name: 'Permissions' }));
     expect(await screen.findByText(/including when the app is closed/)).toBeTruthy();
