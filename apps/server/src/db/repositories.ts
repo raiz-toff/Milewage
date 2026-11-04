@@ -2,12 +2,14 @@ import { and, count, eq, ne } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { ProblemError } from '../errors';
 import type { Db } from './open';
-import { instance, settings, users, webSessions } from './schema';
+import { instance, settings, users, vehicles, webSessions } from './schema';
 
 type User = typeof users.$inferSelect;
 type NewUser = typeof users.$inferInsert;
 type NewSettings = Omit<typeof settings.$inferInsert, 'userId' | 'updatedAt'>;
 type Session = typeof webSessions.$inferSelect;
+export type SettingsRow = typeof settings.$inferSelect;
+export type VehicleRow = typeof vehicles.$inferSelect;
 
 // One repository per aggregate; routes never touch tables.
 export function createUserRepository(db: Db) {
@@ -52,6 +54,39 @@ export function createSessionRepository(db: Db) {
         .delete(webSessions)
         .where(and(eq(webSessions.userId, userId), ne(webSessions.idHash, keep)))
         .run(),
+  };
+}
+
+export function createSettingsRepository(db: Db) {
+  const orm = drizzle(db);
+  const mine = (userId: number) => eq(settings.userId, userId);
+  return {
+    get: (userId: number): SettingsRow | undefined =>
+      orm.select().from(settings).where(mine(userId)).get(),
+    update: (userId: number, patch: Partial<SettingsRow>): SettingsRow | undefined =>
+      orm.update(settings).set(patch).where(mine(userId)).returning().get(),
+  };
+}
+
+export function createVehicleRepository(db: Db) {
+  const orm = drizzle(db);
+  const mine = (userId: number, id: number) =>
+    and(eq(vehicles.userId, userId), eq(vehicles.id, id));
+  return {
+    list: (userId: number, includeArchived: boolean): VehicleRow[] =>
+      orm
+        .select()
+        .from(vehicles)
+        .where(eq(vehicles.userId, userId))
+        .orderBy(vehicles.id)
+        .all()
+        .filter((v) => includeArchived || v.archivedAt === null),
+    find: (userId: number, id: number): VehicleRow | undefined =>
+      orm.select().from(vehicles).where(mine(userId, id)).get(),
+    create: (row: typeof vehicles.$inferInsert): VehicleRow =>
+      orm.insert(vehicles).values(row).returning().get(),
+    update: (userId: number, id: number, patch: Partial<VehicleRow>): VehicleRow | undefined =>
+      orm.update(vehicles).set(patch).where(mine(userId, id)).returning().get(),
   };
 }
 

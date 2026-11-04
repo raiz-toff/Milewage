@@ -6,10 +6,15 @@ import { hashPassword, verifyPassword } from '../auth/password';
 import { authenticate, clearCookie, startSession } from '../auth/sessions';
 import { createSessionRepository, createUserRepository, type Db } from '../db';
 import { ProblemError } from '../errors';
+import { DEFAULT_COUNTRIES, settingsRoutes } from './settings';
+import type { AuthFn } from './util';
+import { vehicleRoutes } from './vehicles';
 
 export interface CoreContext {
   db: Db;
   now: () => number;
+  /** Registered country packs (config `countries`); defaults to US, CA, GB. */
+  countries?: readonly string[];
 }
 
 const str = (min: number, max = 1024) => ({ type: 'string', minLength: min, maxLength: max });
@@ -43,13 +48,16 @@ interface SetupBody {
   timezone: string;
 }
 
-export function coreRoutes({ db, now }: CoreContext) {
+export function coreRoutes({ db, now, countries = DEFAULT_COUNTRIES }: CoreContext) {
   return (host: RouteHost) => {
-    const { app } = host as ServerRouteHost;
+    const { app, registry } = host as ServerRouteHost;
     const users = createUserRepository(db);
     const sessions = createSessionRepository(db);
     const limiter = new FailureLimiter(5, 15 * 60 * 1000, now);
     const dummy = hashPassword('no-such-user');
+    const auth: AuthFn = (request) => authenticate(sessions, request, now());
+    settingsRoutes(app, { db, now, auth, registry, countries });
+    vehicleRoutes(app, { db, now, auth });
 
     app.get('/setup/status', async () => ({ state: users.count() ? 'ready' : 'needs_setup' }));
 
@@ -91,19 +99,19 @@ export function coreRoutes({ db, now }: CoreContext) {
     });
 
     app.post('/auth/logout', async (request, reply) => {
-      sessions.delete(authenticate(sessions, request, now()).idHash);
+      sessions.delete(auth(request, 'S').idHash);
       return reply.status(204).header('set-cookie', clearCookie()).send();
     });
 
     app.post('/auth/password', passwordBody, async (request, reply) => {
-      const auth = authenticate(sessions, request, now());
+      const me = auth(request, 'S');
       const b = request.body as { current_password: string; new_password: string };
-      const user = users.findById(auth.userId);
+      const user = users.findById(me.userId);
       if (!user || !(await verifyPassword(b.current_password, user.passwordHash))) {
         throw new ProblemError('invalid_credentials', 'The current password is wrong.');
       }
       users.setPasswordHash(user.id, await hashPassword(b.new_password));
-      sessions.deleteOthers(user.id, auth.idHash);
+      sessions.deleteOthers(user.id, me.idHash);
       return reply.status(204).send();
     });
   };

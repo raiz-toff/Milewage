@@ -33,6 +33,17 @@ export const instance = sqliteTable('instance', {
   restoreGeneration: integer('restore_generation').notNull().default(0),
 });
 
+export const vehicles = sqliteTable('vehicles', {
+  id: integer('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
+  name: text('name').notNull(),
+  kind: text('kind', { enum: ['car', 'motorcycle', 'van', 'bicycle'] }).notNull(),
+  createdAt: integer('created_at').notNull(),
+  archivedAt: integer('archived_at'),
+});
+
 export const webSessions = sqliteTable('web_sessions', {
   idHash: text('id_hash').primaryKey(),
   userId: integer('user_id')

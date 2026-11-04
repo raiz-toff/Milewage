@@ -15,6 +15,7 @@ export const API_PREFIX = '/api/v1';
 /** The host modules see: RouteHost plus the Fastify scope, for routes that need replies, cookies or schemas. */
 export interface ServerRouteHost extends RouteHost {
   readonly app: FastifyInstance;
+  readonly registry: ModuleRegistry;
 }
 
 export interface AppOptions {
@@ -48,6 +49,8 @@ export function buildApp(options: AppOptions): App {
   const fastify = Fastify({
     genReqId: () => newRequestId(),
     bodyLimit: 64 * 1024,
+    // Unknown request fields are rejected with 422, not silently stripped (08 section 1).
+    ajv: { customOptions: { removeAdditional: false } },
     logger: {
       level: options.logLevel ?? 'info',
       redact: { paths: REDACT_PATHS, censor: '[redacted]' },
@@ -75,6 +78,7 @@ export function buildApp(options: AppOptions): App {
     async (api) => {
       const host: ServerRouteHost = {
         app: api,
+        registry,
         route(method, path, handler) {
           api.route({
             method: method as never,
