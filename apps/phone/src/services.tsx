@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 import type { FetchFn } from './api/client';
 import { installCrashHandler, PhoneDiagnostics } from './diagnostics/phoneDiagnostics';
 import { MemoryStore, Pairing, type KeyValueStore } from './pairing/pairing';
-import { notWiredPermissions } from './permissions/fake';
+import { AndroidPermissions, createReactNativePermissionApi } from './permissions/android';
 import type { PermissionsPort } from './permissions/ladder';
 import { ShiftController } from './shift/controller';
 import { PointFeed } from './shift/feed';
@@ -157,16 +157,17 @@ const clean = (v: unknown, fallback: string, re: RegExp) =>
 /**
  * Production wiring. The native tracker loads on first use, so tests never touch it.
  * NOT YET WIRED: the Keystore-backed secure store (the credential, the active shift and the
- * diagnostics ring live in memory only), the camera scanner and the OS permission adapter.
+ * diagnostics ring live in memory only) and the camera scanner.
  */
 export function defaultServices(): Services {
   if (cached) return cached;
   const c = Platform.constants as unknown as Record<string, unknown>;
+  const plain = new MemoryStore();
   const s = createServices({
     tracker: createLazyNativeTracker(),
-    permissions: notWiredPermissions,
+    permissions: new AndroidPermissions({ api: createReactNativePermissionApi(), store: plain }),
     secure: new MemoryStore(),
-    plain: new MemoryStore(),
+    plain,
     fetch: (url, init) => fetch(url, init),
     deviceInfo: {
       make: clean(c.Brand, 'unknown', /[^A-Za-z0-9 ._+-]/g),
