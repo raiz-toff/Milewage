@@ -15,13 +15,19 @@
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "verify": "npm run typecheck && npm run lint && npm run version:check && npm run openapi:check && npm run test",
     "build:server": "node scripts/build-server.mjs",
     "smoke:docker": "bash infra/docker/smoke.sh",
+    "typecheck:phone": "npm run typecheck -w apps/phone",
+    "test:phone": "npm test -w apps/phone",
+    "verify": "npm run typecheck && npm run typecheck:phone && npm run lint && npm run version:check && npm run openapi:check && npm run test && npm run test:phone",
     "version:check": "node scripts/version.mjs check",
     "version:sync": "node scripts/version.mjs sync",
     "openapi:generate": "node scripts/openapi-generate.mjs generate",
     "openapi:check": "node scripts/openapi-generate.mjs check && node scripts/openapi-generate.mjs lint"
+  },
+  "overrides": {
+    "hermes-parser": "0.35.0",
+    "babel-plugin-syntax-hermes-parser": "0.35.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

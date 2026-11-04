@@ -25,7 +25,18 @@ const forbiddenModules = [
 ];
 
 export default tseslint.config(
-  { ignores: ['**/node_modules/**', '**/dist/**', '**/generated/**', 'plans/**', '.claude/**'] },
+  {
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/generated/**',
+      'plans/**',
+      '.claude/**',
+      'apps/phone/*.config.js', // CommonJS configs read by Expo/Metro/Babel
+      'apps/phone/android/**',
+      'apps/phone/ios/**',
+    ],
+  },
   js.configs.recommended,
   {
     files: ['scripts/**/*.mjs'],

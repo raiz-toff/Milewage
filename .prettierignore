@@ -3,3 +3,6 @@ plans/
 packages/shared/generated/
 packages/shared/openapi/
 .claude/
+apps/phone/android/
+apps/phone/ios/
+apps/phone/.expo/
