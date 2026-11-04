@@ -21,6 +21,9 @@ const FORBIDDEN = [
   // Pulled in by expo-secure-store's library manifest; the app never asks for biometrics.
   'USE_BIOMETRIC',
   'USE_FINGERPRINT',
+  // Pulled in by expo-file-system (an Expo dependency); the app reads and writes only its own storage.
+  'READ_EXTERNAL_STORAGE',
+  'WRITE_EXTERNAL_STORAGE',
 ].map((n) => PREFIX + n);
 
 /** Names of the permissions a manifest XML text really requests (`tools:node="remove"` is not a request). */
