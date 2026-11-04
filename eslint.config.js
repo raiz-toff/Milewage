@@ -27,6 +27,10 @@ const forbiddenModules = [
 export default tseslint.config(
   { ignores: ['**/node_modules/**', '**/dist/**', '**/generated/**', 'plans/**'] },
   js.configs.recommended,
+  {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: { globals: { process: 'readonly', console: 'readonly' } },
+  },
   ...tseslint.configs.recommended,
   {
     files: ['packages/track-engine/src/**/*.ts'],

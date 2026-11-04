@@ -1,0 +1,16 @@
+# The contract is `npm run verify`. CI runs exactly that (roadmap 17 T11, T12).
+# Requires a registered GitLab runner with the Docker executor; none is registered yet.
+verify:
+  image: node:22.22.0-bookworm-slim
+  stage: test
+  cache:
+    key:
+      files: [package-lock.json]
+    paths: [.npm/]
+  script:
+    - node -v
+    - npm ci --cache .npm --prefer-offline
+    - npm run verify
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
