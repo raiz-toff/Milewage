@@ -15,6 +15,11 @@ import androidx.core.content.ContextCompat
 class CommaTrackerModule : Module() {
   private val context: Context? get() = appContext.reactContext
   private fun prefs(c: Context) = c.getSharedPreferences("CommaTracker", Context.MODE_PRIVATE)
+  private fun pointMap(p: BufferPoint): Map<String, Any?> = mapOf(
+    "seq" to p.seq, "shiftClientId" to p.shiftClientId, "recordedAt" to p.recordedAt,
+    "latE7" to p.latE7, "lonE7" to p.lonE7, "accuracyM" to p.accuracyM,
+    "speedDmps" to p.speedDmps, "bearingDeg" to p.bearingDeg, "altitudeM" to p.altitudeM,
+  )
 
   override fun definition() = ModuleDefinition {
     Name("CommaTracker")
@@ -93,13 +98,13 @@ class CommaTrackerModule : Module() {
     // Oldest PENDING points first, as plain maps in the wire units of 08 section 5.
     Function("readPending") { limit: Int ->
       val context = context ?: return@Function emptyList<Map<String, Any?>>()
-      AndroidSqlDb.buffer(context).readPending(limit).map {
-        mapOf(
-          "seq" to it.seq, "shiftClientId" to it.shiftClientId, "recordedAt" to it.recordedAt,
-          "latE7" to it.latE7, "lonE7" to it.lonE7, "accuracyM" to it.accuracyM,
-          "speedDmps" to it.speedDmps, "bearingDeg" to it.bearingDeg, "altitudeM" to it.altitudeM,
-        )
-      }
+      AndroidSqlDb.buffer(context).readPending(limit).map(::pointMap)
+    }
+
+    // One shift's rows (PENDING and UPLOADED) after a seq, oldest first; read only.
+    Function("readByShift") { shiftClientId: String, afterSeq: Double, limit: Int ->
+      val context = context ?: return@Function emptyList<Map<String, Any?>>()
+      AndroidSqlDb.buffer(context).readByShift(shiftClientId, afterSeq.toLong(), limit).map(::pointMap)
     }
 
     Function("markUploaded") { seqs: List<Double> ->

@@ -11,6 +11,8 @@ declare class CommaTrackerModule extends NativeModule {
   isTracking(): boolean;
   /** Oldest PENDING points first. */
   readPending(limit: number): NativePoint[];
+  /** One shift's rows (PENDING and UPLOADED) with seq above `afterSeq`, oldest first. Read only. */
+  readByShift(shiftClientId: string, afterSeq: number, limit: number): NativePoint[];
   /** Marks points UPLOADED; returns how many changed. */
   markUploaded(seqs: number[]): number;
   /** Moves permanently refused points to quarantine; returns how many moved. */

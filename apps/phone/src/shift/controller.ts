@@ -76,7 +76,10 @@ export class ShiftController {
   async load(): Promise<ActiveShift | null> {
     const raw = await this.d.store.get(KEY);
     this.active = raw ? (JSON.parse(raw) as ActiveShift) : null;
-    if (this.active && this.active.endedAt === null) this.attach(this.active);
+    if (this.active && this.active.endedAt === null) {
+      this.attach(this.active);
+      this.seed(this.active);
+    }
     return this.active;
   }
 
@@ -270,6 +273,23 @@ export class ShiftController {
     this.unsub = this.d.feed.subscribe((p) => {
       if (p.shiftClientId === shift.clientId) acc.push(toFix(p));
     });
+  }
+
+  /**
+   * After a restart the live distance is rebuilt from every stored row of the shift, PENDING and
+   * UPLOADED alike (the accumulator skips a seq it has seen, so points the feed announces again
+   * are not counted twice). Rows evicted after the retention period are gone; a running shift is
+   * far younger than that.
+   */
+  private seed(shift: ActiveShift) {
+    let after = 0;
+    for (;;) {
+      const page = this.d.tracker.readByShift(shift.clientId, after, PUMP_LIMIT);
+      for (const p of page) this.acc?.push(toFix(p));
+      const last = page[page.length - 1];
+      if (!last || page.length < PUMP_LIMIT) return;
+      after = last.seq;
+    }
   }
 
   private detach() {

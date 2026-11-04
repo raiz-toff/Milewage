@@ -81,4 +81,18 @@ describe('manifest lint (09 section 5.3)', () => {
       expect(forbiddenIn(read(merged))).toEqual([]);
     },
   );
+
+  // Every permission in the merged manifest is one we declared or a known harmless library one.
+  const BENIGN = ['INTERNET', 'VIBRATE'].map((n) => PREFIX + n);
+  (existsSync(merged) ? it : it.skip)(
+    'the merged release manifest requests only known permissions',
+    () => {
+      const wanted = [...ALLOWED.map((n: string) => PREFIX + n), ...BENIGN];
+      const extra = requestedPermissions(read(merged)).filter(
+        (n: string) =>
+          !wanted.includes(n) && !n.endsWith('.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'),
+      );
+      expect(extra).toEqual([]);
+    },
+  );
 });

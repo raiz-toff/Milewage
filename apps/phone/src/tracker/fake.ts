@@ -59,20 +59,31 @@ export class FakeTracker implements Tracker {
   }
 
   readPending(limit: number): TrackerPoint[] {
-    return this.rows
-      .filter((r) => r.status === 'PENDING')
-      .slice(0, Math.max(0, limit))
-      .map((r) => ({
-        seq: r.seq,
-        shiftClientId: r.shiftClientId,
-        recordedAt: r.recordedAt,
-        latE7: r.latE7,
-        lonE7: r.lonE7,
-        accuracyM: r.accuracyM,
-        speedDmps: r.speedDmps,
-        bearingDeg: r.bearingDeg,
-        altitudeM: r.altitudeM,
-      }));
+    return this.project(
+      this.rows.filter((r) => r.status === 'PENDING'),
+      limit,
+    );
+  }
+
+  readByShift(shiftClientId: string, afterSeq: number, limit: number): TrackerPoint[] {
+    return this.project(
+      this.rows.filter((r) => r.shiftClientId === shiftClientId && r.seq > afterSeq),
+      limit,
+    );
+  }
+
+  private project(rows: Row[], limit: number): TrackerPoint[] {
+    return rows.slice(0, Math.max(0, Math.min(limit, 10_000))).map((r) => ({
+      seq: r.seq,
+      shiftClientId: r.shiftClientId,
+      recordedAt: r.recordedAt,
+      latE7: r.latE7,
+      lonE7: r.lonE7,
+      accuracyM: r.accuracyM,
+      speedDmps: r.speedDmps,
+      bearingDeg: r.bearingDeg,
+      altitudeM: r.altitudeM,
+    }));
   }
 
   markUploaded(seqs: number[]): number {

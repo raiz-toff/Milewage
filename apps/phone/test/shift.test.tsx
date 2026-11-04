@@ -173,6 +173,45 @@ describe('ShiftController', () => {
     expect(services.shift.current).toBeNull();
   });
 
+  it('live distance after a restart counts uploaded rows too and equals the uninterrupted figure', async () => {
+    const { services, tracker, plain, clock } = setup();
+    await services.shift.start({ vehicleId: 3 });
+    drive(tracker); // five fixes, four accepted steps
+    const uninterrupted = services.shift.pump();
+    expect(uninterrupted).toBeGreaterThan(400);
+    // Upload acknowledged the first three; two stay pending.
+    const all = tracker.readPending(10);
+    tracker.markUploaded(all.slice(0, 3).map((p) => p.seq));
+    expect(tracker.readPending(10)).toHaveLength(2);
+
+    // New process: the native buffer survives, the controller is new.
+    const again = makeServices(server().fetch, { paired: true, tracker, now: () => clock.t });
+    again.plain.data.set('shift.active', plain.data.get('shift.active')!);
+    await again.services.shift.load();
+    expect(again.services.shift.pump()).toBe(uninterrupted);
+    // Points keep arriving after the restart and are counted once.
+    tracker.emit({ recordedAt: 60_000, latE7: 400_050_000, lonE7: 0 });
+    const more = again.services.shift.pump();
+    expect(more).toBeGreaterThan(uninterrupted);
+    expect(again.services.shift.pump()).toBe(more);
+  });
+
+  it('seeds a long shift from more than one page of stored rows', async () => {
+    const { services, tracker, plain, clock } = setup();
+    await services.shift.start({ vehicleId: 3 });
+    for (let i = 0; i < 10_050; i++) {
+      tracker.emit({ recordedAt: 1_000 + i * 10_000, latE7: 400_000_000 + i * 1_000, lonE7: 0 });
+    }
+    services.shift.pump(); // reads the first 10,000 pending rows
+    tracker.markUploaded(tracker.readPending(10_000).map((p) => p.seq));
+    const first = services.shift.pump(); // the remaining 50: now the exact total
+    expect(first).toBeGreaterThan(100_000);
+    const again = makeServices(server().fetch, { paired: true, tracker, now: () => clock.t });
+    again.plain.data.set('shift.active', plain.data.get('shift.active')!);
+    await again.services.shift.load();
+    expect(again.services.shift.pump()).toBe(first);
+  });
+
   it('ApiError is exported for callers', () => {
     expect(new ApiError(500, 'x', true)).toBeInstanceOf(Error);
   });

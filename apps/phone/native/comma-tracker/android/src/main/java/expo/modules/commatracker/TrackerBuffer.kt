@@ -37,6 +37,7 @@ class TrackerBuffer(private val db: SqlDb) {
         )
         db.update("CREATE INDEX IF NOT EXISTS idx_telemetry_sync ON telemetry_buffer(sync_status, seq)")
         db.update("CREATE INDEX IF NOT EXISTS idx_telemetry_evict ON telemetry_buffer(sync_status, uploaded_at)")
+        db.update("CREATE INDEX IF NOT EXISTS idx_telemetry_shift ON telemetry_buffer(shift_client_id, seq)")
         db.update(
             """CREATE TABLE IF NOT EXISTS telemetry_quarantine (
                 seq INTEGER PRIMARY KEY, shift_client_id TEXT NOT NULL, recorded_at INTEGER NOT NULL,
@@ -56,9 +57,23 @@ class TrackerBuffer(private val db: SqlDb) {
     }
 
     /** Oldest PENDING points first, at most [limit]. */
-    fun readPending(limit: Int): List<BufferPoint> = db.query(
+    fun readPending(limit: Int): List<BufferPoint> = read(
+        "WHERE sync_status = 'PENDING'", emptyList(), limit,
+    )
+
+    /**
+     * Rows of one shift with `seq` above [afterSeq], PENDING and UPLOADED alike, oldest first, at
+     * most [limit]. Quarantined rows are not in the buffer. Used to rebuild the live distance after
+     * a restart; it never changes a row.
+     */
+    fun readByShift(shiftClientId: String, afterSeq: Long, limit: Int): List<BufferPoint> = read(
+        "WHERE shift_client_id = ? AND seq > ?", listOf(shiftClientId, afterSeq), limit,
+    )
+
+    private fun read(where: String, args: List<Any?>, limit: Int): List<BufferPoint> = db.query(
         "SELECT seq, shift_client_id, recorded_at, lat_e7, lon_e7, accuracy_m, speed_dmps, bearing_deg, altitude_m " +
-            "FROM telemetry_buffer WHERE sync_status = 'PENDING' ORDER BY seq LIMIT ${limit.coerceIn(0, 10_000)}"
+            "FROM telemetry_buffer $where ORDER BY seq LIMIT ${limit.coerceIn(0, 10_000)}",
+        args,
     ).map { r ->
         BufferPoint(
             r[0] as Long, r[1] as String, r[2] as Long, r[3] as Long, r[4] as Long, r[5] as Long,

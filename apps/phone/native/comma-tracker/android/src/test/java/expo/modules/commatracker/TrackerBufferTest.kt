@@ -75,6 +75,36 @@ class TrackerBufferTest {
         assertEquals(436_500_000L, buffer.readPending(1)[0].latE7)
     }
 
+    private fun pointOf(shift: String, t: Long) = point(t).copy(shiftClientId = shift)
+
+    @Test
+    fun readByShiftReturnsPendingAndUploadedRowsOfOneShiftInOrder() {
+        val a1 = buffer.insert(pointOf("a", 1))
+        buffer.insert(pointOf("b", 2))
+        val a2 = buffer.insert(pointOf("a", 3))
+        val a3 = buffer.insert(pointOf("a", 4))
+        buffer.markUploaded(listOf(a1, a2), 100)
+        assertEquals(listOf(a1, a2, a3), buffer.readByShift("a", 0, 10).map { it.seq })
+        assertEquals(listOf(a3), buffer.readPending(10).map { it.seq }.filter { it == a3 })
+        assertEquals(listOf(a2, a3), buffer.readByShift("a", a1, 10).map { it.seq })
+        assertEquals(listOf(a1), buffer.readByShift("a", 0, 1).map { it.seq })
+        assertEquals(emptyList<Long>(), buffer.readByShift("none", 0, 10))
+        assertEquals(emptyList<Long>(), buffer.readByShift("a", 0, 0))
+    }
+
+    @Test
+    fun readByShiftLeavesRowsUntouchedAndSkipsQuarantineAndEvictedRows() {
+        val a = buffer.insert(pointOf("a", 1))
+        val b = buffer.insert(pointOf("a", 2))
+        val c = buffer.insert(pointOf("a", 3))
+        buffer.markUploaded(listOf(a), 100)
+        buffer.markRejected(listOf(b), "bad", 5)
+        buffer.evictUploaded(1_000)
+        assertEquals(listOf(c), buffer.readByShift("a", 0, 10).map { it.seq })
+        assertEquals(listOf(c), buffer.readByShift("a", 0, 10).map { it.seq }) // reading changes nothing
+        assertEquals(listOf(c), buffer.readPending(10).map { it.seq })
+    }
+
     @Test
     fun everyFixIsStoredUnfilteredWithNullableFields() {
         buffer.insert(point(1, speed = 12))

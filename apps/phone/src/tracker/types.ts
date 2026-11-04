@@ -30,6 +30,12 @@ export interface Tracker {
   isTracking(): boolean;
   /** Oldest PENDING points first, at most `limit`. */
   readPending(limit: number): TrackerPoint[];
+  /**
+   * Rows of one shift with `seq` above `afterSeq`, PENDING and UPLOADED alike (quarantined rows
+   * are not in the buffer), oldest first, at most `limit`. Read only; lets the live distance be
+   * rebuilt exactly after an app restart.
+   */
+  readByShift(shiftClientId: string, afterSeq: number, limit: number): TrackerPoint[];
   /** PENDING to UPLOADED. Rows stay until `evictUploaded`. Returns how many changed. */
   markUploaded(seqs: number[]): number;
   /** Permanently refused PENDING points go to quarantine. Returns how many moved. */

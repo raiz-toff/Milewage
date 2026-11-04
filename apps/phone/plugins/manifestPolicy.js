@@ -18,6 +18,9 @@ const FORBIDDEN = [
   'SCHEDULE_EXACT_ALARM',
   'RECORD_AUDIO',
   'REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
+  // Pulled in by expo-secure-store's library manifest; the app never asks for biometrics.
+  'USE_BIOMETRIC',
+  'USE_FINGERPRINT',
 ].map((n) => PREFIX + n);
 
 /** Names of the permissions a manifest XML text really requests (`tools:node="remove"` is not a request). */

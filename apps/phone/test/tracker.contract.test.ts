@@ -46,6 +46,25 @@ export function trackerContract(
       expect(t.readPending(10).map((p) => p.seq)).toEqual([b]);
     });
 
+    it('readByShift returns pending and uploaded rows of one shift after a seq', () => {
+      const t = make();
+      t.start('one');
+      const [a, b] = [emit(t, 1), emit(t, 2)] as [number, number];
+      t.stop();
+      t.start('two');
+      emit(t, 3);
+      t.start('one');
+      const c = emit(t, 4);
+      t.markUploaded([a, b]);
+      expect(t.readByShift('one', 0, 10).map((p) => p.seq)).toEqual([a, b, c]);
+      expect(t.readByShift('one', a, 10).map((p) => p.seq)).toEqual([b, c]);
+      expect(t.readByShift('one', 0, 2).map((p) => p.seq)).toEqual([a, b]);
+      expect(t.readByShift('nope', 0, 10)).toEqual([]);
+      expect(t.readByShift('one', 0, 0)).toEqual([]);
+      // reading changes nothing
+      expect(t.readPending(10).map((p) => p.seq)).toContain(c);
+    });
+
     it('markRejected removes pending points and never reuses their seq', () => {
       const t = make();
       t.start('s');
