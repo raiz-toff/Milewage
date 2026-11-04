@@ -29,14 +29,22 @@ export function harness(enabled: Record<string, boolean> = {}, extra: Partial<Ap
     now: () => clock.t,
     diagnosticsPath: join(dir, 'diagnostics.db'),
   });
-  const app = buildApp({
-    modules,
-    enabled: { core: true, ...enabled },
-    logLevel: 'silent',
-    now: () => clock.t,
-    identity: createInstanceReader(db),
-    ...extra,
-  }).fastify;
+  let app: ReturnType<typeof buildApp>['fastify'];
+  try {
+    app = buildApp({
+      modules,
+      enabled: { core: true, ...enabled },
+      logLevel: 'silent',
+      now: () => clock.t,
+      identity: createInstanceReader(db),
+      ...extra,
+    }).fastify;
+  } catch (e) {
+    // An invalid module configuration is refused at start; do not leak the throwaway files.
+    db.close();
+    rmSync(dir, { recursive: true, force: true });
+    throw e;
+  }
   const call = (method: string, url: string, payload?: object, headers: object = {}) =>
     app.inject({
       method: method as 'GET',
