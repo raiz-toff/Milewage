@@ -3,14 +3,17 @@ import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './navigation';
+import { ServicesProvider, type Services } from './services';
 
-export function App() {
+export function App({ services }: { services?: Services }) {
   const light = useColorScheme() === 'light';
   return (
     <SafeAreaProvider>
-      <NavigationContainer theme={light ? DefaultTheme : DarkTheme}>
-        <RootNavigator />
-      </NavigationContainer>
+      <ServicesProvider value={services}>
+        <NavigationContainer theme={light ? DefaultTheme : DarkTheme}>
+          <RootNavigator />
+        </NavigationContainer>
+      </ServicesProvider>
       <StatusBar style={light ? 'dark' : 'light'} />
     </SafeAreaProvider>
   );
