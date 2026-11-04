@@ -90,6 +90,12 @@ export function createVehicleRepository(db: Db) {
   };
 }
 
+/** The one `instance` row (install id and restore generation); undefined before setup. */
+export function createInstanceReader(db: Db) {
+  const orm = drizzle(db);
+  return () => orm.select().from(instance).get();
+}
+
 export type DeviceRow = typeof devices.$inferSelect;
 
 export function createDeviceRepository(db: Db) {

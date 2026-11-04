@@ -12,6 +12,8 @@ export interface ServerConfig {
   dataDir: string;
   configDir: string;
   logLevel: string;
+  /** `MILEWAGE_TRUST_PROXY`: comma-separated proxy addresses or CIDRs, or `true`. Empty means no proxy is trusted. */
+  trustProxy: boolean | string[];
   settings: ModuleSettings;
 }
 
@@ -29,6 +31,7 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): S
     dataDir: env.MILEWAGE_DATA_DIR ?? 'data',
     configDir,
     logLevel: env.MILEWAGE_LOG_LEVEL ?? 'info',
+    trustProxy: parseTrustProxy(env.MILEWAGE_TRUST_PROXY),
     settings: readSettingsFile(join(configDir, 'settings.json')),
   };
 }
@@ -50,4 +53,12 @@ function readSettingsFile(path: string): ModuleSettings {
   } catch {
     throw new ConfigError(`${path} is not valid JSON (expected an object).`);
   }
+}
+
+function parseTrustProxy(value: string | undefined): boolean | string[] {
+  const list = (value ?? '')
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean);
+  return list.length === 1 && list[0] === 'true' ? true : list;
 }

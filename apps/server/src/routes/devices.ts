@@ -18,13 +18,14 @@ const redeemSchema = strictObject(
 const renameSchema = strictObject({ name: str(1, 64) }, ['name']);
 const first = (v: string | string[] | undefined) =>
   Array.isArray(v) ? v[0] : v?.split(',')[0]?.trim();
-const view = (d: DeviceRow) => ({
+const view = (d: DeviceRow, skew?: number) => ({
   id: d.id,
   name: d.name,
   platform: d.platform,
   created_at: d.createdAt,
   last_seen_at: d.lastSeenAt,
   revoked_at: d.revokedAt,
+  clock_skew_ms: skew ?? null,
 });
 
 export interface DevicesContext {
@@ -45,11 +46,14 @@ export function devicesRoutes({ db, now, authn, readSettings }: DevicesContext) 
     const limiter = new FailureLimiter(10, 15 * 60 * 1000, now);
     const settings = readSettings(host);
 
-    authn.useDeviceBranch((tokenHash) => {
+    const skews = new Map<number, number>(); // device id -> last phone-minus-server clock difference, in memory only
+    authn.useDeviceBranch((tokenHash, request) => {
       const d = repo.findByTokenHash(tokenHash);
       if (!d) throw new ProblemError('auth_required', 'Unknown credential.');
       if (d.revokedAt !== null) throw new ProblemError('device_revoked', 'This phone was revoked.');
       const t = now();
+      const sent = Number(request.headers['x-client-time']);
+      if (Number.isSafeInteger(sent) && sent > 0) skews.set(d.id, sent - t);
       if (d.lastSeenAt === null || t - d.lastSeenAt >= 60_000) repo.seen(d.id, t); // at most once a minute
       return { kind: 'device', userId: d.userId, deviceId: d.id };
     });
@@ -99,13 +103,15 @@ export function devicesRoutes({ db, now, authn, readSettings }: DevicesContext) 
       },
     );
 
-    app.get('/devices', async (req) => repo.list(auth(req, 'S').userId).map(view));
+    app.get('/devices', async (req) =>
+      repo.list(auth(req, 'S').userId).map((d) => view(d, skews.get(d.id))),
+    );
 
     app.patch('/devices/:id', { schema: { params: idParams, body: renameSchema } }, async (req) => {
       const { id } = req.params as { id: number };
       const row = repo.rename(auth(req, 'S').userId, id, (req.body as { name: string }).name);
       if (!row) throw new ProblemError('not_found', 'No such device.');
-      return view(row);
+      return view(row, skews.get(row.id));
     });
 
     app.delete('/devices/:id', { schema: { params: idParams } }, async (req, reply) => {

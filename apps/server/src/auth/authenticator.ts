@@ -9,7 +9,7 @@ export const hashToken = (token: string) => createHash('sha256').update(token).d
 /** `mwd_` / `mwp_` plus 43 base64url characters (256 random bits), so secret scanners can find one. */
 export const newToken = (prefix: 'mwd_' | 'mwp_') => prefix + randomBytes(32).toString('base64url');
 
-export type DeviceBranch = (tokenHash: string) => Principal;
+export type DeviceBranch = (tokenHash: string, request: FastifyRequest) => Principal;
 
 /**
  * `authenticate(request) -> Principal` (08 section 16.5): the one place a credential is read.
@@ -40,7 +40,7 @@ export class Authenticator {
     if (!this.devices || !/^mwd_[A-Za-z0-9_-]{43}$/.test(bearer)) {
       throw new ProblemError('auth_required', 'Sign in to continue.');
     }
-    const principal = this.devices(hashToken(bearer));
+    const principal = this.devices(hashToken(bearer), request);
     if (allow === 'S') throw new ProblemError('scope_forbidden', 'A device cannot do this.');
     return principal;
   }) as AuthFn;

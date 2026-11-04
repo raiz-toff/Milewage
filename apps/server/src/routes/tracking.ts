@@ -59,7 +59,11 @@ export function trackingRoutes({
 
     app.post(
       '/telemetry/batch',
-      { bodyLimit: 1024 * 1024, config: { maxEncoded: 256 * 1024 }, schema: { body: batch } },
+      {
+        bodyLimit: 1024 * 1024,
+        config: { maxEncoded: 256 * 1024, rateLimit: 'telemetry' },
+        schema: { body: batch },
+      },
       async (req) => {
         const device = authn.authenticate(req, 'D');
         const b = req.body as { shift_client_id: string; points: Point[] };

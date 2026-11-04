@@ -9,6 +9,8 @@ import {
   type RouteHost,
 } from '@milewage/shared';
 import { gunzipRequest } from './gzip';
+import { installHooks, type InstanceIdentity } from './hooks';
+import { SERVER_VERSION } from './version';
 import { newRequestId, ProblemError, sendProblem, toProblem } from './errors';
 
 export const API_PREFIX = '/api/v1';
@@ -26,6 +28,12 @@ export interface AppOptions {
   logStream?: { write(line: string): void };
   /** GET /healthz probe; the database check is added with the DB layer. */
   isHealthy?: () => boolean;
+  /** The `instance` row, sent as `X-MileWage-Instance` and `-Restore-Gen`. */
+  identity?: () => InstanceIdentity | undefined;
+  /** Clock for rate limits and `X-Server-Time`. */
+  now?: () => number;
+  /** Addresses (or CIDRs) of the reverse proxy whose `X-Forwarded-For` is believed; off by default. */
+  trustProxy?: boolean | string[];
 }
 
 export interface App {
@@ -50,6 +58,7 @@ export function buildApp(options: AppOptions): App {
   const fastify = Fastify({
     genReqId: () => newRequestId(),
     bodyLimit: 64 * 1024,
+    trustProxy: options.trustProxy ?? false,
     // Unknown request fields are rejected with 422, not silently stripped (08 section 1).
     ajv: { customOptions: { removeAdditional: false } },
     logger: {
@@ -60,6 +69,12 @@ export function buildApp(options: AppOptions): App {
   });
   const bus = createEventBus();
 
+  installHooks(fastify, {
+    apiPrefix: API_PREFIX,
+    now: options.now ?? Date.now,
+    version: SERVER_VERSION,
+    identity: options.identity,
+  });
   fastify.addHook('preParsing', gunzipRequest);
   fastify.setErrorHandler((error, request, reply) => {
     const problem = toProblem(error as never);

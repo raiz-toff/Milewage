@@ -1,7 +1,13 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildApp, createServerModules, openAndMigrate } from '../src/index';
+import {
+  buildApp,
+  createInstanceReader,
+  createServerModules,
+  openAndMigrate,
+  type AppOptions,
+} from '../src/index';
 
 export const owner = {
   username: 'sam',
@@ -14,7 +20,7 @@ export const owner = {
 const site = { host: 'mw.test', origin: 'http://mw.test' };
 
 /** A server on a throwaway database with an injectable clock. Call `close()` in afterEach. */
-export function harness(enabled: Record<string, boolean> = {}) {
+export function harness(enabled: Record<string, boolean> = {}, extra: Partial<AppOptions> = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'mw-test-'));
   const db = openAndMigrate(join(dir, 'milewage.db'));
   const clock = { t: 1_800_000_000_000 };
@@ -23,6 +29,9 @@ export function harness(enabled: Record<string, boolean> = {}) {
     modules,
     enabled: { core: true, ...enabled },
     logLevel: 'silent',
+    now: () => clock.t,
+    identity: createInstanceReader(db),
+    ...extra,
   }).fastify;
   const call = (method: string, url: string, payload?: object, headers: object = {}) =>
     app.inject({

@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { resolveModuleConfig } from '@milewage/shared';
 import { buildApp, type App } from './app';
 import { loadConfig } from './config';
-import { openAndMigrate, type Db } from './db';
+import { createInstanceReader, openAndMigrate, type Db } from './db';
 import { createServerModules, serverModules } from './modules';
 
 export interface RunningServer extends App {
@@ -22,6 +22,8 @@ export async function startServer(
       modules: createServerModules({ db, now: Date.now }),
       enabled,
       logLevel: config.logLevel,
+      trustProxy: config.trustProxy,
+      identity: createInstanceReader(db),
       isHealthy: () => db.prepare('SELECT 1').pluck().get() === 1,
     });
     app.fastify.addHook('onClose', () => void db.close());

@@ -7,3 +7,5 @@ export * from './start';
 export * from './db';
 export * from './routes/core';
 export * from './auth/authenticator';
+export * from './hooks';
+export * from './version';
