@@ -44,6 +44,14 @@ Running log for the Gate 4 build (roadmap `17`). Updated and pushed after each P
 
 M0 exit: `npm run verify` passes (typecheck, lint, version check, OpenAPI drift + module lint, tests); the module registry refuses to start with a missing dependency (PR 3 tests); the OpenAPI file generates types and a drift check detects edits (PR 4 tests). CI exit is unproven until a GitLab runner exists.
 
+## PR 8 — [M2.1] Server skeleton
+
+- Branch `pr-08-server-skeleton`; squash commit on main `a14b77b`.
+- Done in `apps/server`: `buildApp` (Fastify 5, module registry wired in, routes registered under `/api/v1`, disabled modules register nothing so they 404), `GET /healthz` outside `/api/v1` (`{"ok":true}`, or 503 `{"ok":false}` when the injected probe fails), RFC 9457 error model of 08 section 7.1 (full code catalog, `request_id` as a ULID, 422 `errors`, 400/413/415 mapped, unexpected errors become a generic `internal_error` with no internals), structured JSON logging with redaction (authorization, cookie, set-cookie, password fields, recovery key), `loadConfig` (`MILEWAGE_PORT/HOST/DATA_DIR/CONFIG_DIR/LOG_LEVEL`, optional `config/settings.json`), a `core` module (not toggleable, no routes yet).
+- Tests: 92 passed in total on rebased main (new server tests: health, error shapes, redaction, module matrix with stub modules proving own-route-200 / other-route-404 / broken config refuses). Size 400 changed lines excluding lockfile.
+- Decisions: modules receive `ServerRouteHost` (`RouteHost` plus `app`, the Fastify scope), because the tiny `RouteHost` handler cannot set cookies or status; `bodyLimit` is 64 KiB (the default JSON limit of 08 section 7.3); 503 health body is `{"ok":false}`.
+- Trimmed to fit 400 lines: no `startServer` entry point yet (added when the DB layer needs a startup sequence); no `X-MileWage-*` response headers yet (need the instance row from PR 9/10).
+
 ## Needs the owner
 
 - Register a GitLab runner (Docker executor) and give the project path; apply `infra/docs/branch-protection.md`. `.gitlab-ci.yml` is untested.
