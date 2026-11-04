@@ -4,6 +4,7 @@ import { notWiredPermissions } from './permissions/fake';
 import type { PermissionsPort } from './permissions/ladder';
 import { PointFeed } from './shift/feed';
 import { ShiftController } from './shift/controller';
+import { UploadWorker } from './upload/worker';
 import { createLazyNativeTracker } from './tracker/native';
 import type { Tracker } from './tracker/types';
 import type { FetchFn } from './api/client';
@@ -21,6 +22,9 @@ export interface Services {
   pairing: Pairing;
   feed: PointFeed;
   shift: ShiftController;
+  uploader: UploadWorker;
+  /** Start the upload loop when the home screen opens. Default on; tests turn it off. */
+  autoUpload?: boolean;
   scanner?: QrScanner;
   /** How often the running distance is re-read, ms. */
   refreshMs?: number;
@@ -36,26 +40,45 @@ export interface Parts {
   newId?: () => string;
   scanner?: QrScanner;
   refreshMs?: number;
+  rand?: () => number;
+  autoUpload?: boolean;
 }
 
 /** Builds the object graph from its native/network edges. */
 export function createServices(p: Parts): Services {
   const pairing = new Pairing({ secure: p.secure, plain: p.plain, fetch: p.fetch, now: p.now });
   const feed = new PointFeed(p.tracker);
+  const session = () => pairing.session();
+  // The worker and the shift controller need each other: the worker asks whether a shift is
+  // created and to flush the outbox; the controller waits for the worker before it sends `end`.
+  const late: { uploader?: UploadWorker } = {};
   const shift = new ShiftController({
     tracker: p.tracker,
     feed,
     store: p.plain,
-    session: () => pairing.session(),
+    session,
     now: p.now,
     newId: p.newId,
+    beforeEnd: (id) => late.uploader!.drainShift(id),
   });
+  const uploader = new UploadWorker({
+    tracker: p.tracker,
+    feed,
+    session,
+    shiftReady: (id) => shift.isCreated(id),
+    flushOutbox: () => shift.sync(),
+    now: p.now,
+    rand: p.rand,
+  });
+  late.uploader = uploader;
   return {
     tracker: p.tracker,
     permissions: p.permissions,
     pairing,
     feed,
     shift,
+    uploader,
+    autoUpload: p.autoUpload,
     scanner: p.scanner,
     refreshMs: p.refreshMs,
   };

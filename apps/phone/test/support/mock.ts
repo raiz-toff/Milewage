@@ -1,3 +1,4 @@
+import { gunzipSync, strFromU8 } from 'fflate';
 import { MemoryStore, type CachedSettings } from '../../src/pairing/pairing';
 import { FakePermissions } from '../../src/permissions/fake';
 import { createServices, type Parts, type Services } from '../../src/services';
@@ -30,6 +31,7 @@ export function mockServer(routes: Record<string, Handler>) {
     const raw = init.body;
     let body: unknown = raw;
     if (typeof raw === 'string') body = JSON.parse(raw);
+    else if (raw instanceof Uint8Array) body = JSON.parse(strFromU8(gunzipSync(raw)));
     const req: Recorded = {
       method: String(init.method),
       url,
@@ -89,6 +91,7 @@ export function makeServices(
     secure,
     plain,
     fetch: fetchFn,
+    autoUpload: false,
     ...rest,
   });
   return { services, secure, plain, tracker };

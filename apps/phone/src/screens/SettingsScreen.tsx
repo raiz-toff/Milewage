@@ -15,7 +15,7 @@ const PROBLEMS: Record<string, string> = {
 
 export function SettingsScreen({ navigation }: ScreenProps<'Settings'>) {
   const theme = useTheme();
-  const { pairing, scanner: Scanner } = useServices();
+  const { pairing, uploader, scanner: Scanner } = useServices();
   const [state, setState] = useState<PairedState | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [text, setText] = useState('');
@@ -43,6 +43,7 @@ export function SettingsScreen({ navigation }: ScreenProps<'Settings'>) {
     setError(null);
     try {
       setState(await pairing.redeem(payload));
+      uploader.resume();
       setText('');
     } catch (e) {
       const code = e instanceof ApiError ? e.code : 'unknown';

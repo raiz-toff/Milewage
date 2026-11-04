@@ -21,7 +21,14 @@ const MESSAGES: Record<string, string> = {
 
 export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   const theme = useTheme();
-  const { shift: controller, pairing, permissions, refreshMs = 5000 } = useServices();
+  const {
+    shift: controller,
+    uploader,
+    autoUpload = true,
+    pairing,
+    permissions,
+    refreshMs = 5000,
+  } = useServices();
   const [shift, setShift] = useState<ActiveShift | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [unit, setUnit] = useState<'km' | 'mi'>('km');
@@ -30,12 +37,15 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   const [message, setMessage] = useState<string | null>(null);
   const [conflict, setConflict] = useState<ServerShift | null>(null);
   const [ready, setReady] = useState(false);
+  const [paired, setPaired] = useState(false);
+  const [uploadState, setUploadState] = useState(uploader.lastState);
 
   useEffect(() => {
     void (async () => {
       const state = await pairing.load();
       setUnit(deriveFlags(state?.settings ?? null).distanceUnit);
       setShift(await controller.load());
+      setPaired(!!state);
       if (state) {
         try {
           setVehicles(await controller.vehicles());
@@ -54,6 +64,16 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
     const timer = setInterval(() => setMeters(controller.pump()), refreshMs);
     return () => clearInterval(timer);
   }, [controller, shift, refreshMs]);
+
+  useEffect(() => {
+    if (!paired || !autoUpload) return;
+    uploader.start();
+    const timer = setInterval(() => setUploadState(uploader.lastState), refreshMs);
+    return () => {
+      uploader.stop();
+      clearInterval(timer);
+    };
+  }, [paired, autoUpload, uploader, refreshMs]);
 
   const toMeters = (text: string) => {
     const n = Number(text.replace(',', '.'));
@@ -182,6 +202,13 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
             <Text style={{ color: theme.accent }}>Continue that shift</Text>
           </Pressable>
         </>
+      )}
+      {(uploadState === 'repair' || uploadState === 'auth_problem') && (
+        <Text accessibilityRole="alert" style={{ color: theme.text, marginTop: 12 }}>
+          {uploadState === 'repair'
+            ? 'The server no longer accepts this phone. Pair it again in Settings. Recorded points are kept.'
+            : 'Sign-in problem with the server. Recorded points are kept.'}
+        </Text>
       )}
       {message && (
         <Text accessibilityRole="alert" style={{ color: theme.text, marginTop: 12 }}>

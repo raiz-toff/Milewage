@@ -46,6 +46,11 @@ export interface ShiftDeps {
   session: () => Promise<{ client: ApiClient; flags: Flags } | null>;
   now?: () => number;
   newId?: () => string;
+  /**
+   * `shift.end` is not sent until every point of the shift is uploaded or quarantined
+   * (08 section 4.2 rule 9). Resolves true when it is safe. Omitted: always safe.
+   */
+  beforeEnd?: (clientId: string) => Promise<boolean>;
 }
 
 const KEY = 'shift.active';
@@ -73,6 +78,11 @@ export class ShiftController {
     this.active = raw ? (JSON.parse(raw) as ActiveShift) : null;
     if (this.active && this.active.endedAt === null) this.attach(this.active);
     return this.active;
+  }
+
+  /** False only for the local shift whose create the server has not acknowledged yet. */
+  isCreated(clientId: string): boolean {
+    return !(this.active?.clientId === clientId && !this.active.created);
   }
 
   async vehicles(): Promise<Vehicle[]> {
@@ -186,6 +196,7 @@ export class ShiftController {
     await this.sendOdometer(s.client, shift);
     shift = this.active!;
     if (shift.endedAt === null) return shift.odometerSent;
+    if (this.d.beforeEnd && !(await this.d.beforeEnd(shift.clientId))) return false;
     try {
       await s.client.request('POST', `/shifts/${shift.clientId}/end`, { ended_at: shift.endedAt });
     } catch (e) {

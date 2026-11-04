@@ -11,6 +11,14 @@ export function server(over: Record<string, Handler> = {}) {
     [`PUT /shifts/${ID}/odometer/shift_start`]: () => json(200, {}),
     [`PUT /shifts/${ID}/odometer/shift_end`]: () => json(200, {}),
     [`POST /shifts/${ID}/end`]: () => json(200, {}),
+    'POST /telemetry/batch': (r) =>
+      json(200, {
+        inserted: (r.body as { points: unknown[] }).points.length,
+        duplicates: 0,
+        rejected: [],
+        server_time: 1,
+        upload_hint_s: 60,
+      }),
     ...over,
   });
 }

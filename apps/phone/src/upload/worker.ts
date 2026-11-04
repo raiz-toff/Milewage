@@ -1,0 +1,316 @@
+import { gzipSync, strToU8 } from 'fflate';
+import { ApiError } from '../api/client';
+import type { ApiClient } from '../api/client';
+import type { Flags } from '../pairing/pairing';
+import { PUMP_LIMIT, type PointFeed } from '../shift/feed';
+import type { Tracker, TrackerPoint } from '../tracker/types';
+
+/** 08 section 4.2 rules 5 and 7, section 5. */
+export const LIVE_BATCH = 100;
+export const BACKLOG_BATCH = 500;
+/** The server's hard maximum; no request ever carries more. */
+export const MAX_BATCH = 500;
+export const BACKOFF_S = [2, 4, 8, 16, 32, 60] as const;
+export const DEFAULT_INTERVAL_S = 60;
+const LOCAL_RAW_DAYS = 14;
+const NOT_FOUND_ATTEMPTS = 3;
+
+export type UploadState =
+  | 'idle'
+  | 'backoff'
+  | 'waiting_create'
+  | 'parked'
+  | 'repair'
+  | 'auth_problem'
+  | 'not_paired'
+  | 'tracking_off';
+
+export interface DrainResult {
+  state: UploadState;
+  uploaded: number;
+  rejected: number;
+  /** When to call `drain` again; null when nothing is pending or the worker is halted. */
+  retryInMs: number | null;
+}
+
+/** Counters for the `upload.window` diagnostics event (16 section 3.2); read and reset by M4.9. */
+export interface UploadStats {
+  attempts: number;
+  ok: number;
+  fail_net: number;
+  fail_4xx: number;
+  fail_5xx: number;
+  fail_429: number;
+  fail_507: number;
+  bytes_gz: number;
+  durations_ms: number[];
+}
+
+const emptyStats = (): UploadStats => ({
+  attempts: 0,
+  ok: 0,
+  fail_net: 0,
+  fail_4xx: 0,
+  fail_5xx: 0,
+  fail_429: 0,
+  fail_507: 0,
+  bytes_gz: 0,
+  durations_ms: [],
+});
+
+/** 2, 4, 8, 16, 32, then 60 s, each with +-20% jitter; a success resets it. */
+export class Backoff {
+  private step = 0;
+  constructor(private readonly rand: () => number = Math.random) {}
+  next(retryAfterS: number | null = null): number {
+    if (retryAfterS !== null) {
+      this.step = Math.min(this.step + 1, BACKOFF_S.length);
+      return retryAfterS * 1000;
+    }
+    const base = BACKOFF_S[Math.min(this.step, BACKOFF_S.length - 1)]! * 1000;
+    this.step = Math.min(this.step + 1, BACKOFF_S.length);
+    return Math.round(base * (0.8 + 0.4 * this.rand()));
+  }
+  reset(): void {
+    this.step = 0;
+  }
+}
+
+export interface WorkerDeps {
+  tracker: Tracker;
+  feed: PointFeed;
+  session: () => Promise<{ client: ApiClient; flags: Flags } | null>;
+  /** Has `POST /shifts` for this shift been acknowledged (08 section 4.2 rule 2)? */
+  shiftReady: (clientId: string) => boolean;
+  /** Drain the outbox (shift create, odometer, end); called on 404 `shift_not_found`. */
+  flushOutbox: () => Promise<unknown>;
+  now?: () => number;
+  rand?: () => number;
+}
+
+interface WireBatch {
+  inserted: number;
+  duplicates: number;
+  rejected: { seq: number; code: string }[];
+  upload_hint_s?: number;
+}
+
+const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+
+export class UploadWorker {
+  private readonly now: () => number;
+  private readonly backoff: Backoff;
+  private halted: 'repair' | 'auth_problem' | null = null;
+  private notFound = new Map<string, number>();
+  private parked = new Set<string>();
+  private busy = false;
+  private timer: ReturnType<typeof setTimeout> | null = null;
+  private hintS = DEFAULT_INTERVAL_S;
+  private stats = emptyStats();
+  lastState: UploadState = 'idle';
+  lastSuccessAt: number | null = null;
+
+  constructor(private readonly d: WorkerDeps) {
+    this.now = d.now ?? Date.now;
+    this.backoff = new Backoff(d.rand);
+  }
+
+  /** Seconds between uploads while a shift is running: 60, or the server's hint clamped to 10-300. */
+  get intervalMs(): number {
+    return this.hintS * 1000;
+  }
+
+  takeStats(): UploadStats {
+    const s = this.stats;
+    this.stats = emptyStats();
+    return s;
+  }
+
+  /** After re-pairing (or fixing the credential) uploads may resume. */
+  resume(): void {
+    this.halted = null;
+    this.parked.clear();
+    this.notFound.clear();
+    this.backoff.reset();
+  }
+
+  /** Uploads everything pending, oldest shift first, until empty, halted or a retryable failure. */
+  async drain(): Promise<DrainResult> {
+    if (this.busy) return { state: this.lastState, uploaded: 0, rejected: 0, retryInMs: null };
+    this.busy = true;
+    try {
+      return await this.run();
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  /** True when no PENDING point of this shift is left (what `shift.end` waits for, 08 4.2 rule 9). */
+  async drainShift(clientId: string): Promise<boolean> {
+    const r = await this.drain();
+    if (r.state === 'not_paired' || r.state === 'tracking_off') return true;
+    return !this.d.feed.readPending(PUMP_LIMIT).some((p) => p.shiftClientId === clientId);
+  }
+
+  /** Runs `drain` now and then on the interval (or the retry delay) until `stop`. */
+  start(): void {
+    if (this.timer !== null) return;
+    const tick = async () => {
+      const r = await this.drain();
+      this.timer = setTimeout(() => void tick(), r.retryInMs ?? this.intervalMs);
+    };
+    this.timer = setTimeout(() => void tick(), 0);
+  }
+
+  stop(): void {
+    if (this.timer !== null) clearTimeout(this.timer);
+    this.timer = null;
+  }
+
+  private done(state: UploadState, uploaded: number, rejected: number, retryInMs: number | null) {
+    this.lastState = state;
+    return { state, uploaded, rejected, retryInMs };
+  }
+
+  private async run(): Promise<DrainResult> {
+    let uploaded = 0;
+    let rejected = 0;
+    let size = LIVE_BATCH;
+    for (;;) {
+      const session = await this.d.session();
+      if (!session) return this.done('not_paired', uploaded, rejected, null);
+      if (!session.flags.tracking) return this.done('tracking_off', uploaded, rejected, null);
+      if (this.halted) return this.done(this.halted, uploaded, rejected, null);
+
+      const pending = this.d.feed
+        .readPending(PUMP_LIMIT)
+        .filter((p) => !this.parked.has(p.shiftClientId));
+      if (pending.length === 0) {
+        this.d.tracker.evictUploaded(this.now() - LOCAL_RAW_DAYS * 86_400_000);
+        const parked = this.parked.size > 0;
+        return this.done(parked ? 'parked' : 'idle', uploaded, rejected, null);
+      }
+      const shiftId = pending[0]!.shiftClientId;
+      if (!this.d.shiftReady(shiftId)) {
+        await this.d.flushOutbox();
+        if (!this.d.shiftReady(shiftId)) {
+          return this.done('waiting_create', uploaded, rejected, this.backoff.next());
+        }
+      }
+      const mine = pending.filter((p) => p.shiftClientId === shiftId);
+      if (size === LIVE_BATCH && mine.length > BACKLOG_BATCH) size = BACKLOG_BATCH;
+      const batch = mine.slice(0, clamp(size, 1, MAX_BATCH));
+
+      try {
+        const res = await this.send(session.client, shiftId, batch);
+        const bad = new Set(res.rejected.map((r) => r.seq));
+        const good = batch.filter((p) => !bad.has(p.seq)).map((p) => p.seq);
+        this.d.tracker.markUploaded(good);
+        if (bad.size > 0) this.d.tracker.markRejected([...bad]);
+        uploaded += good.length;
+        rejected += bad.size;
+        this.backoff.reset();
+        this.notFound.delete(shiftId);
+        this.lastSuccessAt = this.now();
+        this.hintS = clamp(res.upload_hint_s ?? DEFAULT_INTERVAL_S, 10, 300);
+      } catch (e) {
+        if (!(e instanceof ApiError)) throw e;
+        const out = await this.onError(e, shiftId, batch);
+        if (out.kind === 'halve') {
+          size = Math.max(1, Math.floor(batch.length / 2));
+        } else if (out.kind === 'retry') {
+          return this.done('backoff', uploaded, rejected, out.delayMs);
+        } else if (out.kind === 'halt') {
+          return this.done(this.halted!, uploaded, rejected, null);
+        } else {
+          rejected += out.rejected;
+        }
+      }
+    }
+  }
+
+  private async send(
+    client: ApiClient,
+    shiftId: string,
+    batch: TrackerPoint[],
+  ): Promise<WireBatch> {
+    const body = {
+      shift_client_id: shiftId,
+      points: batch.map((p) => ({
+        seq: p.seq,
+        recorded_at: p.recordedAt,
+        lat_e7: p.latE7,
+        lon_e7: p.lonE7,
+        accuracy_m: p.accuracyM,
+        speed_dmps: p.speedDmps,
+        bearing_deg: p.bearingDeg,
+        altitude_m: p.altitudeM,
+      })),
+    };
+    const gz = gzipSync(strToU8(JSON.stringify(body)));
+    this.stats.attempts++;
+    this.stats.bytes_gz += gz.length;
+    const t0 = this.now();
+    try {
+      const res = await client.request<WireBatch>(
+        'POST',
+        '/telemetry/batch',
+        undefined,
+        { 'Content-Encoding': 'gzip' },
+        gz,
+      );
+      this.stats.ok++;
+      this.stats.durations_ms.push(this.now() - t0);
+      return res.data;
+    } catch (e) {
+      this.stats.durations_ms.push(this.now() - t0);
+      if (e instanceof ApiError) this.count(e);
+      throw e;
+    }
+  }
+
+  private count(e: ApiError): void {
+    if (e.status === 0) this.stats.fail_net++;
+    else if (e.status === 429) this.stats.fail_429++;
+    else if (e.status === 507) this.stats.fail_507++;
+    else if (e.status >= 500) this.stats.fail_5xx++;
+    else this.stats.fail_4xx++;
+  }
+
+  /** 08 section 4.3, row by row. */
+  private async onError(
+    e: ApiError,
+    shiftId: string,
+    batch: TrackerPoint[],
+  ): Promise<
+    | { kind: 'halve' }
+    | { kind: 'retry'; delayMs: number }
+    | { kind: 'halt' }
+    | { kind: 'rejected'; rejected: number }
+  > {
+    const seqs = batch.map((p) => p.seq);
+    if (e.status === 401 || e.status === 403) {
+      this.halted = e.code === 'device_revoked' ? 'repair' : 'auth_problem';
+      return { kind: 'halt' };
+    }
+    if (e.status === 404 && e.code === 'shift_not_found') {
+      const n = (this.notFound.get(shiftId) ?? 0) + 1;
+      this.notFound.set(shiftId, n);
+      await this.d.flushOutbox();
+      if (n >= NOT_FOUND_ATTEMPTS && this.d.shiftReady(shiftId)) {
+        this.parked.add(shiftId); // the server still does not know it: park, never drop
+        return { kind: 'rejected', rejected: 0 };
+      }
+      return { kind: 'retry', delayMs: this.backoff.next() };
+    }
+    if (e.status === 409 && e.code === 'shift_finalized') {
+      return { kind: 'rejected', rejected: this.d.tracker.markRejected(seqs) };
+    }
+    if (e.status === 413 && batch.length > 1) return { kind: 'halve' };
+    if (e.status === 422) {
+      if (batch.length > 1) return { kind: 'halve' };
+      return { kind: 'rejected', rejected: this.d.tracker.markRejected(seqs) };
+    }
+    return { kind: 'retry', delayMs: this.backoff.next(e.retryAfterS) };
+  }
+}
