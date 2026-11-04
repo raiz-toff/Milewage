@@ -1,0 +1,92 @@
+import Fastify, { type FastifyInstance } from 'fastify';
+import {
+  buildRegistry,
+  createEventBus,
+  type EnabledMap,
+  type EventBus,
+  type ModuleDefinition,
+  type ModuleRegistry,
+  type RouteHost,
+} from '@milewage/shared';
+import { newRequestId, ProblemError, sendProblem, toProblem } from './errors';
+
+export const API_PREFIX = '/api/v1';
+
+/** The host modules see: RouteHost plus the Fastify scope, for routes that need replies, cookies or schemas. */
+export interface ServerRouteHost extends RouteHost {
+  readonly app: FastifyInstance;
+}
+
+export interface AppOptions {
+  modules: readonly ModuleDefinition[];
+  enabled: EnabledMap;
+  logLevel?: string;
+  logStream?: { write(line: string): void };
+  /** GET /healthz probe; the database check is added with the DB layer. */
+  isHealthy?: () => boolean;
+}
+
+export interface App {
+  fastify: FastifyInstance;
+  registry: ModuleRegistry;
+  bus: EventBus;
+}
+
+export const REDACT_PATHS = [
+  'req.headers.authorization',
+  'req.headers.cookie',
+  'res.headers["set-cookie"]',
+  '*.password',
+  '*.current_password',
+  '*.new_password',
+  '*.recovery_key',
+];
+
+/** Builds the Fastify app. Throws ModuleConfigError for an invalid module configuration. */
+export function buildApp(options: AppOptions): App {
+  const registry = buildRegistry(options.modules, options.enabled);
+  const fastify = Fastify({
+    genReqId: () => newRequestId(),
+    bodyLimit: 64 * 1024,
+    logger: {
+      level: options.logLevel ?? 'info',
+      redact: { paths: REDACT_PATHS, censor: '[redacted]' },
+      ...(options.logStream ? { stream: options.logStream } : {}),
+    },
+  });
+  const bus = createEventBus();
+
+  fastify.setErrorHandler((error, request, reply) => {
+    const problem = toProblem(error as never);
+    if (problem.status >= 500) request.log.error({ err: error }, 'request failed');
+    return sendProblem(reply, request, problem);
+  });
+  fastify.setNotFoundHandler((request, reply) =>
+    sendProblem(reply, request, new ProblemError('not_found', 'No such route.')),
+  );
+
+  fastify.get('/healthz', async (_request, reply) => {
+    const ok = options.isHealthy?.() ?? true;
+    return ok ? { ok: true } : reply.status(503).send({ ok: false });
+  });
+
+  // Module routes live under /api/v1; a disabled module registers nothing, so its paths 404.
+  void fastify.register(
+    async (api) => {
+      const host: ServerRouteHost = {
+        app: api,
+        route(method, path, handler) {
+          api.route({
+            method: method as never,
+            url: path,
+            handler: async (request) => handler(request),
+          });
+        },
+      };
+      registry.registerRoutes(host);
+    },
+    { prefix: API_PREFIX },
+  );
+  registry.attachSubscriptions(bus);
+  return { fastify, registry, bus };
+}
