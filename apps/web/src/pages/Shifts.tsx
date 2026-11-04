@@ -34,6 +34,7 @@ function columns(settings: Settings): Column<Shift>[] {
       key: 'date',
       label: 'Date',
       sortValue: (s) => s.started_at,
+      text: (s) => s.local_date,
       render: (s) => (
         <Link className="text-accent hover:underline" to={`/shifts/${s.id}`}>
           {s.local_date}
@@ -44,6 +45,7 @@ function columns(settings: Settings): Column<Shift>[] {
       key: 'duration',
       label: 'Duration',
       sortValue: (s) => (s.ended_at === null ? null : s.ended_at - s.started_at),
+      text: (s) => formatDuration(s.started_at, s.ended_at),
       render: (s) => formatDuration(s.started_at, s.ended_at),
     },
     {
@@ -51,6 +53,7 @@ function columns(settings: Settings): Column<Shift>[] {
       label: 'Total',
       numeric: true,
       sortValue: (s) => s.total_m,
+      text: dist((s) => s.total_m, false),
       render: dist((s) => s.total_m, false),
     },
   ];
@@ -61,6 +64,7 @@ function columns(settings: Settings): Column<Shift>[] {
         label: 'Active*',
         numeric: true,
         sortValue: (s) => (showsSplit(s, settings) ? s.active_m : null),
+        text: dist((s) => s.active_m, true),
         render: dist((s) => s.active_m, true),
       },
       {
@@ -68,6 +72,7 @@ function columns(settings: Settings): Column<Shift>[] {
         label: 'Deadhead*',
         numeric: true,
         sortValue: (s) => (showsSplit(s, settings) ? s.deadhead_m : null),
+        text: dist((s) => s.deadhead_m, true),
         render: dist((s) => s.deadhead_m, true),
       },
     );
