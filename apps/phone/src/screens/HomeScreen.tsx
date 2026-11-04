@@ -9,6 +9,7 @@ import type { ActiveShift, ServerShift, Vehicle } from '../shift/controller';
 import { useTheme } from '../theme/theme';
 import { Screen } from './Screen';
 
+const DIAG_WINDOW_MS = 10 * 60 * 1000;
 const M_PER_UNIT = { km: 1000, mi: 1609.344 } as const;
 
 const MESSAGES: Record<string, string> = {
@@ -24,6 +25,8 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   const {
     shift: controller,
     uploader,
+    startDiagnostics,
+    diagnosticsWindow,
     autoUpload = true,
     pairing,
     permissions,
@@ -68,12 +71,15 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   useEffect(() => {
     if (!paired || !autoUpload) return;
     uploader.start();
+    void startDiagnostics();
+    const diagTimer = setInterval(() => void diagnosticsWindow(), DIAG_WINDOW_MS);
     const timer = setInterval(() => setUploadState(uploader.lastState), refreshMs);
     return () => {
       uploader.stop();
+      clearInterval(diagTimer);
       clearInterval(timer);
     };
-  }, [paired, autoUpload, uploader, refreshMs]);
+  }, [paired, autoUpload, uploader, refreshMs, startDiagnostics, diagnosticsWindow]);
 
   const toMeters = (text: string) => {
     const n = Number(text.replace(',', '.'));

@@ -15,7 +15,7 @@ const PROBLEMS: Record<string, string> = {
 
 export function SettingsScreen({ navigation }: ScreenProps<'Settings'>) {
   const theme = useTheme();
-  const { pairing, uploader, scanner: Scanner } = useServices();
+  const { pairing, uploader, diagnostics, scanner: Scanner } = useServices();
   const [state, setState] = useState<PairedState | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [text, setText] = useState('');
@@ -66,6 +66,10 @@ export function SettingsScreen({ navigation }: ScreenProps<'Settings'>) {
             </Text>
           )}
           {flags.stops && <Text style={muted}>Stops and the estimated split are on.</Text>}
+          <Text style={muted}>
+            Diagnostics: {state.settings ? diagnostics.effectiveLevel : 'unknown'} (set on the web),{' '}
+            {diagnostics.size} waiting to send.
+          </Text>
           <Pressable
             accessibilityRole="button"
             onPress={async () => {

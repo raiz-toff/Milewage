@@ -107,6 +107,8 @@ export interface PairingDeps {
   now?: () => number;
   deviceName?: string;
   appVersion?: string;
+  /** Called with the settings whenever they are stored or loaded (feeds diagnostics level). */
+  onSettings?: (s: CachedSettings) => void;
 }
 
 export class Pairing {
@@ -141,6 +143,7 @@ export class Pairing {
     };
     await this.d.secure.set(K_CRED, JSON.stringify(credential));
     await this.d.plain.set(K_SETTINGS, JSON.stringify(settings));
+    this.d.onSettings?.(settings);
     return { credential, settings };
   }
 
@@ -170,6 +173,7 @@ export class Pairing {
     try {
       const res = await client.request<CachedSettings>('GET', '/settings');
       await this.d.plain.set(K_SETTINGS, JSON.stringify(res.data));
+      this.d.onSettings?.(res.data);
       return { state: { ...state, settings: res.data }, error: null };
     } catch (e) {
       if (e instanceof ApiError) return { state, error: e };
