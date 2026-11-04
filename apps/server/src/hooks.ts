@@ -17,6 +17,8 @@ export interface HookOptions {
   state?: ServerState;
 }
 
+const SAFE = new Set(['GET', 'HEAD', 'OPTIONS']);
+
 /** Per-minute rate and burst for each limit class (08 section 7.4). Keys are in memory; one instance. */
 export const RATE_CLASSES = {
   general: { perMinute: 300, burst: 300 },
@@ -68,6 +70,15 @@ export function installHooks(fastify: FastifyInstance, o: HookOptions) {
     if (o.state?.mode === 'restoring' && !request.url.startsWith(`${o.apiPrefix}/setup/status`)) {
       const headers = { 'Retry-After': '5' };
       throw new ProblemError('restoring', 'A restore is in progress.', undefined, headers);
+    }
+    // Read-only (08 section 4.2): every write is 503. After a blocked or failed upgrade the code and
+    // the old schema disagree, so reads are refused too; only the status route stays open.
+    const schemaOld = ['blocked', 'failed'].includes(o.state?.migration.status ?? '');
+    const statusRoute = request.url.split('?')[0] === `${o.apiPrefix}/system/status`;
+    if (o.state?.mode === 'read_only' && !statusRoute && (schemaOld || !SAFE.has(request.method))) {
+      const headers = { 'Retry-After': '30' };
+      const detail = o.state.reason ?? 'The server is in read-only mode.';
+      throw new ProblemError('read_only_mode', detail, undefined, headers);
     }
     const config = request.routeOptions.config as { rateLimit?: RateClass };
     const cls = config.rateLimit ?? 'general';

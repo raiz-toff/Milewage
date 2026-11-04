@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { createBackupRepository, type BackupRunRow, type Db } from '../db';
 import {
   createBackupEngine,
+  type BackupArtifact,
   type BackupEngine,
   type BackupEngineOptions,
   type BackupTrigger,
@@ -46,23 +47,28 @@ export function createBackupService(o: BackupServiceOptions) {
     }
   }
 
+  /** Writes the `backup_runs` row of a verified artifact, then prunes. */
+  function record(trigger: BackupTrigger, userId: number, a: BackupArtifact): BackupRunRow {
+    const row = repo.insert({
+      userId,
+      createdAt: a.createdAt,
+      trigger,
+      fileName: a.fileName,
+      sizeBytes: a.sizeBytes,
+      sha256: a.sha256,
+      integrityOk: 1,
+    });
+    prune(trigger);
+    return row;
+  }
+
   async function execute(trigger: BackupTrigger): Promise<BackupRunRow | undefined> {
     const userId = repo.ownerId();
     if (userId === undefined) return undefined; // nothing to protect before the owner exists
     if ((trigger === 'nightly' || trigger === 'shift_end') && o.ready?.() === false)
       return undefined;
     try {
-      const a = await engine.run(trigger);
-      const row = repo.insert({
-        userId,
-        createdAt: a.createdAt,
-        trigger,
-        fileName: a.fileName,
-        sizeBytes: a.sizeBytes,
-        sha256: a.sha256,
-        integrityOk: 1,
-      });
-      prune(trigger);
+      const row = record(trigger, userId, await engine.run(trigger));
       lastFailure = undefined;
       return row;
     } catch (e) {
@@ -73,6 +79,14 @@ export function createBackupService(o: BackupServiceOptions) {
 
   return {
     engine,
+    /**
+     * For the upgrade flow: the file is written before `backup_runs` may exist (old schema), so the
+     * row is added afterwards with `record`.
+     */
+    record: (trigger: BackupTrigger, artifact: BackupArtifact) => {
+      const userId = repo.ownerId();
+      return userId === undefined ? undefined : record(trigger, userId, artifact);
+    },
     timeZone: o.timeZone,
     cleanTemp: () => engine.cleanTemp(),
     /** Undefined when there is no owner yet. Rejects with BackupError; older backups are never deleted then. */

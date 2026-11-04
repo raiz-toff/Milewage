@@ -9,6 +9,7 @@ export * from './repositories';
 export * from './schema';
 export * from './shift-repository';
 export * from './telemetry-repository';
+export * from './upgrade';
 
 export const MIGRATIONS_DIR = fileURLToPath(new URL('./migrations', import.meta.url));
 
