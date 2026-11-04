@@ -19,6 +19,14 @@ export interface ActiveShift {
   odometerSent: boolean;
   /** Set when the driver ends the shift; the end call is retried with this same time. */
   endedAt: number | null;
+  /**
+   * Set when a retried create got 409 `shift_already_active`: the server holds another active
+   * shift. The local shift keeps recording and is not dropped; the driver decides (see
+   * `useServerShift`).
+   */
+  conflict?: ServerShift | null;
+  /** The driver chose to keep the local shift; the prompt is not shown again for this shift. */
+  conflictDismissed?: boolean;
 }
 
 export interface ServerShift {
@@ -55,6 +63,7 @@ export interface ShiftDeps {
 }
 
 const KEY = 'shift.active';
+const K_VEHICLE = 'shift.lastVehicle';
 
 /** Start / end shift (09 section 5, 08 section 4.2, 02). Record first, tell the server second. */
 export class ShiftController {
@@ -117,6 +126,7 @@ export class ShiftController {
     this.active = shift;
     this.attach(shift);
     await this.save();
+    await this.d.store.set(K_VEHICLE, String(opts.vehicleId));
     const create = await this.create(s.client, shift);
     if (create === 'ok' || create === 'pending') {
       if (create === 'ok') await this.sendOdometer(s.client, this.active!);
@@ -126,6 +136,36 @@ export class ShiftController {
     return create.kind === 'conflict'
       ? { ok: false, reason: 'server_has_active', active: create.active }
       : { ok: false, reason: 'rejected' };
+  }
+
+  /** The vehicle used for the previous shift, to preselect it; null if none. */
+  async lastVehicleId(): Promise<number | null> {
+    const n = Number(await this.d.store.get(K_VEHICLE));
+    return Number.isInteger(n) && n > 0 ? n : null;
+  }
+
+  /** The server shift that blocks this phone's unacknowledged local shift, if any. */
+  get conflict(): ServerShift | null {
+    return this.active?.conflict ?? null;
+  }
+
+  /**
+   * The driver chose the server's shift over the local unsent one: the local recording is stopped
+   * and forgotten (its stored points stay in the buffer, but the server has no such shift, so
+   * they will be parked by the upload worker), then the server's shift is continued.
+   */
+  async useServerShift(): Promise<StartResult> {
+    const conflict = this.conflict;
+    if (!conflict) return { ok: false, reason: 'rejected' };
+    await this.discard();
+    return this.adopt(conflict);
+  }
+
+  /** The driver chose to keep the local shift and try again later; the prompt is dismissed. */
+  async keepLocalShift(): Promise<void> {
+    if (!this.active?.conflict) return;
+    this.active = { ...this.active, conflict: null, conflictDismissed: true };
+    await this.save();
   }
 
   /** The driver chose to continue the server's active shift (409 `shift_already_active`). */
@@ -192,7 +232,16 @@ export class ShiftController {
     if (!shift.created) {
       const r = await this.create(s.client, shift);
       if (r !== 'ok') {
-        if (r !== 'pending') await this.discard();
+        if (r === 'pending') return false;
+        if (typeof r === 'object' && r.kind === 'conflict') {
+          // Keep recording; ask the driver instead of dropping miles silently.
+          if (this.active && !this.active.conflictDismissed) {
+            this.active = { ...this.active, conflict: this.active.conflict ?? r.active };
+            await this.save();
+          }
+          return false;
+        }
+        await this.discard();
         return false;
       }
       shift = this.active!;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { touchTarget } from '@milewage/shared';
 import type { ScreenProps } from '../navigation';
 import { deriveFlags } from '../pairing/pairing';
@@ -34,6 +34,8 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   } = useServices();
   const [shift, setShift] = useState<ActiveShift | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vehicleId, setVehicleId] = useState<number | null>(null);
+  const [localConflict, setLocalConflict] = useState<ServerShift | null>(null);
   const [unit, setUnit] = useState<'km' | 'mi'>('km');
   const [meters, setMeters] = useState(0);
   const [odometer, setOdometer] = useState('');
@@ -48,14 +50,18 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
       const state = await pairing.load();
       setUnit(deriveFlags(state?.settings ?? null).distanceUnit);
       setShift(await controller.load());
+      setLocalConflict(controller.conflict);
       setPaired(!!state);
       if (state) {
         try {
-          setVehicles(await controller.vehicles());
+          const list = await controller.vehicles();
+          setVehicles(list);
+          const last = await controller.lastVehicleId();
+          setVehicleId(list.find((v) => v.id === last)?.id ?? list[0]?.id ?? null);
         } catch {
           setMessage('Cannot reach the server. A shift can still be started later.');
         }
-        void controller.sync();
+        void controller.sync().then(() => setLocalConflict(controller.conflict));
       }
       setReady(true);
     })();
@@ -92,7 +98,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
     setMessage(null);
     const snap = await permissions.snapshot();
     if (!canStartShift(initialLadder(snap))) return setMessage(MESSAGES.no_permission!);
-    const vehicle = vehicles[0];
+    const vehicle = vehicles.find((v) => v.id === vehicleId);
     if (!vehicle) return setMessage('Add a vehicle on the web first.');
     const result = await controller.start({
       vehicleId: vehicle.id,
@@ -106,7 +112,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
     } else {
       setMessage(MESSAGES[result.reason] ?? 'Could not start the shift.');
     }
-  }, [controller, permissions, vehicles, odometer, unit]);
+  }, [controller, permissions, vehicles, vehicleId, odometer, unit]);
 
   const adopt = async () => {
     if (!conflict) return;
@@ -114,6 +120,17 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
     setConflict(null);
     if (result.ok) setShift(result.shift);
     else setMessage(MESSAGES[result.reason] ?? 'Could not resume the shift.');
+  };
+
+  const resolveConflict = async (useServer: boolean) => {
+    if (useServer) {
+      const result = await controller.useServerShift();
+      if (result.ok) setShift(result.shift);
+      else setMessage(MESSAGES[result.reason] ?? 'Could not continue the server shift.');
+    } else {
+      await controller.keepLocalShift();
+    }
+    setLocalConflict(null);
   };
 
   const end = async () => {
@@ -157,6 +174,35 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
         <Text style={{ color: theme.textMuted }}>
           {shift ? 'Shift ended; waiting to send.' : 'No shift running.'}
         </Text>
+      )}
+      {ready && !running && vehicles.length > 1 && (
+        <View accessibilityRole="radiogroup">
+          <Text style={{ color: theme.textMuted, marginTop: 12 }}>Vehicle</Text>
+          {vehicles.map((v) => (
+            <Pressable
+              key={v.id}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: v.id === vehicleId }}
+              accessibilityLabel={v.name}
+              onPress={() => setVehicleId(v.id)}
+              style={[
+                styles.button,
+                {
+                  borderColor: v.id === vehicleId ? theme.accent : theme.border,
+                  backgroundColor: theme.card,
+                  marginTop: 8,
+                },
+              ]}
+            >
+              <Text style={{ color: v.id === vehicleId ? theme.accent : theme.text }}>
+                {v.name}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+      {ready && !running && vehicles.length === 1 && (
+        <Text style={{ color: theme.textMuted, marginTop: 12 }}>Vehicle: {vehicles[0]!.name}</Text>
       )}
       {ready && (
         <TextInput
@@ -207,6 +253,31 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
           <Pressable accessibilityRole="button" onPress={adopt} style={button}>
             <Text style={{ color: theme.accent }}>Continue that shift</Text>
           </Pressable>
+        </>
+      )}
+      {localConflict && (
+        <>
+          <Text accessibilityRole="alert" style={{ color: theme.text, marginTop: 12 }}>
+            Another shift is already running on the server, so this phone's shift could not be sent.
+            Its miles are still being recorded here.
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => resolveConflict(false)}
+            style={button}
+          >
+            <Text style={{ color: theme.accent }}>Keep this shift and try later</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => resolveConflict(true)}
+            style={button}
+          >
+            <Text style={{ color: theme.accent }}>Continue the server shift instead</Text>
+          </Pressable>
+          <Text style={{ color: theme.textMuted }}>
+            Continuing the server shift drops the miles recorded in this phone's own shift.
+          </Text>
         </>
       )}
       {(uploadState === 'repair' || uploadState === 'auth_problem') && (

@@ -50,4 +50,55 @@ describe('home screen', () => {
     expect(await screen.findByText('Shift running')).toBeTruthy();
     expect(tracker.isTracking()).toBe(true);
   });
+
+  it('shows a vehicle picker when there are several and starts with the chosen one', async () => {
+    const routes = server({
+      'GET /vehicles': () =>
+        json(200, [
+          { id: 3, name: 'Civic' },
+          { id: 4, name: 'Van' },
+        ]),
+    });
+    const permissions = new FakePermissions({ foregroundLocation: 'granted' });
+    const { services } = setup(routes, { paired: true, permissions });
+    render(<App services={services} />);
+    fireEvent.press(await screen.findByRole('radio', { name: 'Van' }));
+    expect(screen.getByRole('radio', { name: 'Van' }).props.accessibilityState.selected).toBe(true);
+    fireEvent.press(screen.getByRole('button', { name: 'Start shift' }));
+    await screen.findByText('Shift running');
+    const post = routes.calls.find((c) => c.method === 'POST' && c.path === '/shifts')!;
+    expect((post.body as { vehicle_id: number }).vehicle_id).toBe(4);
+    // the next launch preselects it
+    expect(await services.shift.lastVehicleId()).toBe(4);
+  });
+
+  it('a single vehicle is shown, not offered as a choice', async () => {
+    const { services } = setup();
+    render(<App services={services} />);
+    expect(await screen.findByText('Vehicle: Civic')).toBeTruthy();
+    expect(screen.queryByRole('radio')).toBeNull();
+  });
+
+  it('asks what to do when a retried create hits 409, and continues the server shift on request', async () => {
+    let offline = true;
+    const routes = server({
+      'POST /shifts': () =>
+        offline
+          ? json(503, { code: 'x', retryable: true })
+          : json(409, {
+              code: 'shift_already_active',
+              retryable: false,
+              active_shift: { ...SHIFT, client_id: 'other' },
+            }),
+    });
+    const permissions = new FakePermissions({ foregroundLocation: 'granted' });
+    const { services } = setup(routes, { paired: true, permissions });
+    await services.shift.start({ vehicleId: 3 });
+    offline = false;
+    render(<App services={services} />);
+    expect(await screen.findByText(/Another shift is already running on the server/)).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: 'Continue the server shift instead' }));
+    await waitFor(() => expect(services.shift.current?.clientId).toBe('other'));
+    expect(screen.queryByText(/Another shift is already running/)).toBeNull();
+  });
 });

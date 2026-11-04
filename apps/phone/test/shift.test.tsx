@@ -215,6 +215,76 @@ describe('ShiftController', () => {
     expect(again.services.shift.pump()).toBe(first);
   });
 
+  describe('409 on a retried create', () => {
+    const conflictRoutes = () => {
+      let offline = true;
+      const routes = server({
+        'POST /shifts': () =>
+          offline
+            ? problem(503, 'x', true)
+            : json(409, {
+                code: 'shift_already_active',
+                retryable: false,
+                active_shift: { ...SHIFT, client_id: 'other', vehicle_id: 4 },
+              }),
+      });
+      return { routes, online: () => (offline = false) };
+    };
+
+    it('keeps the local shift and its points, persists the conflict, and does not drop silently', async () => {
+      const { routes, online } = conflictRoutes();
+      const { services, tracker, plain } = setup(routes);
+      expect((await services.shift.start({ vehicleId: 3 })).ok).toBe(true);
+      drive(tracker);
+      online();
+      expect(await services.shift.sync()).toBe(false);
+      expect(services.shift.current?.clientId).toBe(ID);
+      expect(services.shift.conflict).toMatchObject({ client_id: 'other' });
+      expect(tracker.isTracking()).toBe(true);
+      expect(tracker.readPending(10)).toHaveLength(5);
+      // survives a restart
+      const again = makeServices(routes.fetch, { paired: true });
+      again.plain.data.set('shift.active', plain.data.get('shift.active')!);
+      await again.services.shift.load();
+      expect(again.services.shift.conflict).toMatchObject({ client_id: 'other' });
+    });
+
+    it('"keep" dismisses the prompt for this shift; later syncs do not raise it again', async () => {
+      const { routes, online } = conflictRoutes();
+      const { services } = setup(routes);
+      await services.shift.start({ vehicleId: 3 });
+      online();
+      await services.shift.sync();
+      await services.shift.keepLocalShift();
+      expect(services.shift.conflict).toBeNull();
+      await services.shift.sync();
+      expect(services.shift.conflict).toBeNull();
+      expect(services.shift.current?.clientId).toBe(ID);
+    });
+
+    it('"use the server shift" drops the local one and continues the server shift', async () => {
+      const { routes, online } = conflictRoutes();
+      const { services, tracker } = setup(routes);
+      await services.shift.start({ vehicleId: 3 });
+      online();
+      await services.shift.sync();
+      const r = await services.shift.useServerShift();
+      expect(r).toMatchObject({
+        ok: true,
+        shift: { clientId: 'other', vehicleId: 4, created: true },
+      });
+      expect(services.shift.conflict).toBeNull();
+      expect(tracker.isTracking()).toBe(true);
+    });
+  });
+
+  it('remembers the vehicle of the previous shift', async () => {
+    const { services } = setup();
+    expect(await services.shift.lastVehicleId()).toBeNull();
+    await services.shift.start({ vehicleId: 3 });
+    expect(await services.shift.lastVehicleId()).toBe(3);
+  });
+
   describe('shift.end extras (manifest and phone_result)', () => {
     const endBody = (routes: ReturnType<typeof server>) =>
       routes.calls.filter((c) => c.path.endsWith('/end')).map((c) => c.body as Record<string, any>);
