@@ -30,3 +30,21 @@ Running log for the Gate 4 build (roadmap `17`). Updated and pushed after each P
 - Tests: 33 passed in total (17 new). Disabled module: routes 404, no jobs, no subscriptions; events reach subscribers. Size 398 changed lines (trimmed to fit 400).
 - Decisions where the spec was silent (smallest consistent choice): event payloads are minimal ids (`shiftId`, `deviceId`, ...), to be refined when emitters exist; a throwing event handler is isolated so it cannot break the publisher; `RouteHost` is a tiny interface (`route(method, path, handler)`) that the server will adapt to Fastify later; modules may set `toggleable: false` (for core) and `defaultEnabled`; module names are lowercase snake_case so env names map to `MILEWAGE_MODULE_EXPORT_CSV`.
 - Not done (per PR text): the `stops` runtime guard, real modules, hot toggling, plugin loader.
+
+## PR 4 — [M0.4] OpenAPI as source of truth
+
+- Branch `pr-04-openapi`; squash commit on main `b87da35`.
+- Done: 08 section 13 copied verbatim to `packages/shared/openapi/openapi.yaml` (excluded from Prettier to keep it a verbatim copy); `scripts/openapi-generate.mjs` (`generate`, `check`, `lint`) writes `packages/shared/generated/api-types.ts` and `schemas.json`; `npm run openapi:check` (drift check + `x-modules` lint) is part of `verify`.
+- Tool choice (made in this PR as required): `openapi-typescript` v7 for types (maintained, OpenAPI 3.1, pure types, no runtime). JSON Schemas need no tool: 3.1 schemas are already JSON Schema 2020-12, so the script moves `components.schemas` to `$defs` and rewrites the refs. Parsing uses `yaml`.
+- Tests: 39 passed in total (7 new): committed files match fresh generation; editing a generated file fails; editing the spec without regenerating fails; the real spec maps all 61 operations to exactly one module; unmapped / doubly mapped / unknown operations fail the lint.
+- Size: about 185 changed lines excluding the verbatim spec copy, generated files and lockfile (the YAML copy is itself ~1,965 lines; treated as a verbatim copy of 08 section 13, not authored code).
+- Deviation/open point: the `stops` module is mapped in `x-modules` as written in 08; `putTripOverride` sits in `tracking` there although 08 section 16.2's table lists it under none; kept as the spec's YAML says.
+
+## Summary after PR 4 (M0 complete)
+
+M0 exit: `npm run verify` passes (typecheck, lint, version check, OpenAPI drift + module lint, tests); the module registry refuses to start with a missing dependency (PR 3 tests); the OpenAPI file generates types and a drift check detects edits (PR 4 tests). CI exit is unproven until a GitLab runner exists.
+
+## Needs the owner
+
+- Register a GitLab runner (Docker executor) and give the project path; apply `infra/docs/branch-protection.md`. `.gitlab-ci.yml` is untested.
+- Install Node 22.22 as the default on `coder` (currently extracted from Docker to `~/.local/node22`; default Node is 24.15).
