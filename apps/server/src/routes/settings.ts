@@ -70,18 +70,19 @@ const patchSchema = strictObject(
 );
 type Patch = Partial<Record<string, string | number | boolean>>;
 
-export function settingsRoutes(
-  app: FastifyInstance,
-  ctx: {
-    db: Db;
-    now: () => number;
-    auth: AuthFn;
-    registry: ModuleRegistry;
-    countries: readonly string[];
-  },
-) {
+type ReaderContext = {
+  db: Db;
+  now: () => number;
+  registry: ModuleRegistry;
+  countries: readonly string[];
+};
+
+/** The `Settings` response for a user. Also returned to a phone when it pairs. */
+export function settingsReader(ctx: ReaderContext) {
   const repo = createSettingsRepository(ctx.db);
-  const view = (row: SettingsRow) => {
+  return (userId: number) => {
+    const row = repo.get(userId);
+    if (!row) throw new ProblemError('not_found', 'No settings for this user.');
     const verbose = row.diagnosticsLevel === 'verbose';
     const expired = verbose && (row.diagnosticsVerboseUntil ?? 0) <= ctx.now();
     return {
@@ -100,12 +101,13 @@ export function settingsRoutes(
       },
     };
   };
-  const row = (r: SettingsRow | undefined) => {
-    if (!r) throw new ProblemError('not_found', 'No settings for this user.');
-    return view(r);
-  };
+}
 
-  app.get('/settings', async (req) => row(repo.get(ctx.auth(req, 'SD').userId)));
+export function settingsRoutes(app: FastifyInstance, ctx: ReaderContext & { auth: AuthFn }) {
+  const repo = createSettingsRepository(ctx.db);
+  const read = settingsReader(ctx);
+
+  app.get('/settings', async (req) => read(ctx.auth(req, 'SD').userId));
 
   app.patch('/settings', { schema: { body: patchSchema } }, async (req) => {
     const { userId } = ctx.auth(req, 'S');
@@ -123,6 +125,7 @@ export function settingsRoutes(
       patch.diagnosticsLevel = b.diagnostics_level as SettingsRow['diagnosticsLevel'];
       patch.diagnosticsVerboseUntil = b.diagnostics_level === 'verbose' ? now + VERBOSE_MS : null;
     }
-    return row(repo.update(userId, patch));
+    repo.update(userId, patch);
+    return read(userId);
   });
 }

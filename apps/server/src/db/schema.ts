@@ -44,6 +44,30 @@ export const vehicles = sqliteTable('vehicles', {
   archivedAt: integer('archived_at'),
 });
 
+export const devices = sqliteTable('devices', {
+  id: integer('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
+  name: text('name').notNull(),
+  platform: text('platform', { enum: ['android', 'ios'] }).notNull(),
+  tokenHash: text('token_hash').notNull().unique(),
+  createdAt: integer('created_at').notNull(),
+  lastSeenAt: integer('last_seen_at'),
+  revokedAt: integer('revoked_at'),
+});
+
+export const pairingTokens = sqliteTable('pairing_tokens', {
+  id: integer('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
+  tokenHash: text('token_hash').notNull().unique(),
+  createdAt: integer('created_at').notNull(),
+  expiresAt: integer('expires_at').notNull(),
+  usedAt: integer('used_at'),
+});
+
 export const webSessions = sqliteTable('web_sessions', {
   idHash: text('id_hash').primaryKey(),
   userId: integer('user_id')

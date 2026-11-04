@@ -3,11 +3,11 @@ import type { RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import { FailureLimiter } from '../auth/limiter';
 import { hashPassword, verifyPassword } from '../auth/password';
-import { authenticate, clearCookie, startSession } from '../auth/sessions';
+import type { Authenticator } from '../auth/authenticator';
+import { clearCookie, startSession } from '../auth/sessions';
 import { createSessionRepository, createUserRepository, type Db } from '../db';
 import { ProblemError } from '../errors';
 import { DEFAULT_COUNTRIES, settingsRoutes } from './settings';
-import type { AuthFn } from './util';
 import { vehicleRoutes } from './vehicles';
 
 export interface CoreContext {
@@ -48,14 +48,17 @@ interface SetupBody {
   timezone: string;
 }
 
-export function coreRoutes({ db, now, countries = DEFAULT_COUNTRIES }: CoreContext) {
+export function coreRoutes(
+  { db, now, countries = DEFAULT_COUNTRIES }: CoreContext,
+  authn: Authenticator,
+) {
   return (host: RouteHost) => {
     const { app, registry } = host as ServerRouteHost;
     const users = createUserRepository(db);
     const sessions = createSessionRepository(db);
     const limiter = new FailureLimiter(5, 15 * 60 * 1000, now);
     const dummy = hashPassword('no-such-user');
-    const auth: AuthFn = (request) => authenticate(sessions, request, now());
+    const auth = authn.authenticate;
     settingsRoutes(app, { db, now, auth, registry, countries });
     vehicleRoutes(app, { db, now, auth });
 

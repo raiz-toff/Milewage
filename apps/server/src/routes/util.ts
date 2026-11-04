@@ -1,10 +1,16 @@
 import type { FastifyRequest } from 'fastify';
 
+export interface SessionPrincipal {
+  kind: 'session';
+  userId: number;
+  idHash: string;
+}
+export type Principal = SessionPrincipal | { kind: 'device'; userId: number; deviceId: number };
 /** `S`: web session only. `SD`: session or device (08 section 3). */
-export type AuthFn = (
-  request: FastifyRequest,
-  allow: 'S' | 'SD',
-) => { userId: number; idHash: string };
+export interface AuthFn {
+  (request: FastifyRequest, allow: 'S'): SessionPrincipal;
+  (request: FastifyRequest, allow: 'SD'): Principal;
+}
 
 export const str = (min: number, max = 1024) => ({
   type: 'string',

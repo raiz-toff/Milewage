@@ -2,7 +2,7 @@ import { and, count, eq, ne } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { ProblemError } from '../errors';
 import type { Db } from './open';
-import { instance, settings, users, vehicles, webSessions } from './schema';
+import { devices, instance, pairingTokens, settings, users, vehicles, webSessions } from './schema';
 
 type User = typeof users.$inferSelect;
 type NewUser = typeof users.$inferInsert;
@@ -87,6 +87,50 @@ export function createVehicleRepository(db: Db) {
       orm.insert(vehicles).values(row).returning().get(),
     update: (userId: number, id: number, patch: Partial<VehicleRow>): VehicleRow | undefined =>
       orm.update(vehicles).set(patch).where(mine(userId, id)).returning().get(),
+  };
+}
+
+export type DeviceRow = typeof devices.$inferSelect;
+
+export function createDeviceRepository(db: Db) {
+  const orm = drizzle(db);
+  const mine = (userId: number, id: number) => and(eq(devices.userId, userId), eq(devices.id, id));
+  const patch = (userId: number, id: number, set: Partial<DeviceRow>) =>
+    orm.update(devices).set(set).where(mine(userId, id)).returning().get();
+  return {
+    addPairingToken: (row: typeof pairingTokens.$inferInsert) =>
+      void orm.insert(pairingTokens).values(row).run(),
+    /** The token is consumed and the device created in one transaction, or neither. */
+    redeem(
+      tokenHash: string,
+      now: number,
+      device: Pick<DeviceRow, 'name' | 'platform' | 'tokenHash'>,
+    ) {
+      return orm.transaction((tx) => {
+        const t = tx
+          .select()
+          .from(pairingTokens)
+          .where(eq(pairingTokens.tokenHash, tokenHash))
+          .get();
+        if (!t || t.usedAt !== null || t.expiresAt <= now) return undefined;
+        tx.update(pairingTokens).set({ usedAt: now }).where(eq(pairingTokens.id, t.id)).run();
+        return tx
+          .insert(devices)
+          .values({ ...device, userId: t.userId, createdAt: now })
+          .returning()
+          .get();
+      });
+    },
+    findByTokenHash: (hash: string): DeviceRow | undefined =>
+      orm.select().from(devices).where(eq(devices.tokenHash, hash)).get(),
+    list: (userId: number): DeviceRow[] =>
+      orm.select().from(devices).where(eq(devices.userId, userId)).orderBy(devices.id).all(),
+    find: (userId: number, id: number): DeviceRow | undefined =>
+      orm.select().from(devices).where(mine(userId, id)).get(),
+    rename: (userId: number, id: number, name: string) => patch(userId, id, { name }),
+    revoke: (userId: number, id: number, at: number) => patch(userId, id, { revokedAt: at }),
+    seen: (id: number, at: number) =>
+      void orm.update(devices).set({ lastSeenAt: at }).where(eq(devices.id, id)).run(),
   };
 }
 
