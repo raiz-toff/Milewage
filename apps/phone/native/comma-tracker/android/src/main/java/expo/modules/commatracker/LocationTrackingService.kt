@@ -14,13 +14,10 @@ import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
-import android.content.ContentValues
-import android.database.sqlite.SQLiteDatabase
 
 class LocationTrackingService : Service() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
-    private var lastInsertedLocation: android.location.Location? = null
     private var isLocationUpdateActive = false
     private var activityPendingIntent: PendingIntent? = null
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -29,8 +26,6 @@ class LocationTrackingService : Service() {
         Log.d(TAG, "Still for ${cadence.stillTimeoutMs}ms — pausing GPS to save battery.")
         stopLocationUpdates()
     }
-
-    private var activeDistanceMeters = 0.0
 
     companion object {
         // v2: changed channel importance from DEFAULT→LOW so the ongoing tracking
@@ -41,6 +36,9 @@ class LocationTrackingService : Service() {
         private const val PREFS_NAME = "CommaTracker"
         private const val KEY_TRACKING_ACTIVE = "tracking_active"
         const val CADENCE_PREFS_PREFIX = "cadence_"
+        const val KEY_SHIFT_CLIENT_ID = "shift_client_id"
+        const val KEY_GNSS_OFFSET = "gnss_offset_ms"
+        const val KEY_GNSS_OFFSET_AT = "gnss_offset_at"
         private const val RESTART_DELAY_MS = 2000L
         // Commands delivered by ActivityTransitionReceiver when movement state changes.
         const val ACTION_MOVEMENT = "expo.modules.commatracker.ACTION_MOVEMENT"
@@ -202,7 +200,7 @@ class LocationTrackingService : Service() {
                         // Do not log raw coordinates — precise location is PII and Log.d is not
                         // stripped from release builds (readable via adb logcat).
                         Log.d(TAG, "Anchor point saved (age=${ageMs}ms)")
-                        saveLocationToDatabase(loc)
+                        saveToBuffer(loc)
                     } else {
                         Log.d(TAG, "Last known location too stale (${ageMs}ms), skipping anchor.")
                     }
@@ -283,57 +281,34 @@ class LocationTrackingService : Service() {
         activityPendingIntent = null
     }
 
-    private fun processLocation(loc: android.location.Location) {
-        val lastLoc = lastInsertedLocation
-        if (lastLoc != null) {
-            val distance = haversineDistance(lastLoc.latitude, lastLoc.longitude, loc.latitude, loc.longitude)
-            val timeDeltaMs = loc.time - lastLoc.time
-            val speed = if (timeDeltaMs > 0) distance / (timeDeltaMs / 1000.0) else 0.0
+    /** Every fix the provider delivers is stored, unfiltered (09 section 5.1 item 4). */
+    private fun processLocation(loc: android.location.Location) = saveToBuffer(loc)
 
-            // Discard GPS jitter (>150 km/h implied speed) or sub-20m movements
-            if (speed > 42.0 || distance < 20.0) {
-                Log.d(TAG, "Location filtered: speed=$speed m/s, distance=$distance m")
-                return
-            }
-            activeDistanceMeters += distance
-            // Write running total to SharedPreferences so JS can poll it via getActiveDistanceMeters()
-            getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit().putFloat("active_distance_meters", activeDistanceMeters.toFloat()).apply()
-        }
-        saveLocationToDatabase(loc)
-    }
-
-    private fun saveLocationToDatabase(loc: android.location.Location) {
-        var db: SQLiteDatabase? = null
+    private fun saveToBuffer(loc: android.location.Location) {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val shiftId = prefs.getString(KEY_SHIFT_CLIENT_ID, null) ?: return
         try {
-            val dbFile = java.io.File(filesDir, "SQLite/comma.db")
-            db = SQLiteDatabase.openDatabase(dbFile.absolutePath, null, SQLiteDatabase.OPEN_READWRITE)
-            val values = ContentValues().apply {
-                put("lat", loc.latitude)
-                put("lon", loc.longitude)
-                put("timestamp", loc.time)
-            }
-            db.insert("temp_native_points", null, values)
-            lastInsertedLocation = loc
-            // Do not log raw coordinates (PII; survives into release logcat).
-            Log.d(TAG, "Saved coordinate")
+            AndroidSqlDb.buffer(this).insert(
+                PointMapper.toPoint(
+                    shiftId,
+                    loc.time,
+                    loc.latitude,
+                    loc.longitude,
+                    if (loc.hasAccuracy()) loc.accuracy else null,
+                    if (loc.hasSpeed()) loc.speed else null,
+                    if (loc.hasBearing()) loc.bearing else null,
+                    if (loc.hasAltitude()) loc.altitude else null,
+                )
+            )
+            // Latest GNSS offset for event times (15 section 10).
+            prefs.edit()
+                .putLong(KEY_GNSS_OFFSET, PointMapper.gnssOffsetMs(loc.time, System.currentTimeMillis()))
+                .putLong(KEY_GNSS_OFFSET_AT, System.currentTimeMillis())
+                .apply()
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to save location to SQLite", e)
-        } finally {
-            db?.close()
+            // Never log coordinates (PII; survives into release logcat).
+            Log.e(TAG, "Failed to save fix to the buffer", e)
         }
-    }
-
-    private fun haversineDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
-        val R = 6371e3
-        val phi1 = Math.toRadians(lat1)
-        val phi2 = Math.toRadians(lat2)
-        val deltaPhi = Math.toRadians(lat2 - lat1)
-        val deltaLambda = Math.toRadians(lon2 - lon1)
-        val a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
-                Math.cos(phi1) * Math.cos(phi2) *
-                Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2)
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
     }
 
     private fun createNotification(): Notification {

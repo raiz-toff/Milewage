@@ -3,6 +3,7 @@ package expo.modules.commatracker
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -10,22 +11,27 @@ import android.provider.Settings
 import android.util.Log
 import androidx.core.content.ContextCompat
 
+/** JS-facing tracker interface (09 section 5.1 item 5). Points are identified by their `seq`. */
 class CommaTrackerModule : Module() {
+  private val context: Context? get() = appContext.reactContext
+  private fun prefs(c: Context) = c.getSharedPreferences("CommaTracker", Context.MODE_PRIVATE)
+
   override fun definition() = ModuleDefinition {
     Name("CommaTracker")
 
     // cadence: optional config object from JS (CadenceConfig); missing keys take defaults.
-    Function("startTracking") { cadence: Map<String, Any?>? ->
-      val context = appContext.reactContext
+    Function("start") { shiftClientId: String, cadence: Map<String, Any?>? ->
+      val context = context
         ?: run {
-          Log.e("CommaTrackerModule", "startTracking: no reactContext")
+          Log.e("CommaTrackerModule", "start: no reactContext")
           return@Function false
         }
+      if (shiftClientId.isBlank()) return@Function false
 
       val config = try {
         CadenceConfig.fromMap(cadence)
       } catch (e: IllegalArgumentException) {
-        Log.e("CommaTrackerModule", "startTracking: invalid cadence config: ${e.message}")
+        Log.e("CommaTrackerModule", "start: invalid cadence config: ${e.message}")
         return@Function false
       }
 
@@ -36,17 +42,16 @@ class CommaTrackerModule : Module() {
         context, Manifest.permission.ACCESS_FINE_LOCATION
       ) == PackageManager.PERMISSION_GRANTED
       if (!granted) {
-        Log.e("CommaTrackerModule", "startTracking: ACCESS_FINE_LOCATION not granted; aborting.")
+        Log.e("CommaTrackerModule", "start: ACCESS_FINE_LOCATION not granted; aborting.")
         return@Function false
       }
 
-      Log.d("CommaTrackerModule", "startTracking called, launching foreground service")
-      // Write flag and cadence BEFORE starting the service so onStartCommand sees them.
-      val prefs = context.getSharedPreferences("CommaTracker", android.content.Context.MODE_PRIVATE)
+      // Write flag, shift id and cadence BEFORE starting the service so onStartCommand sees them.
+      val prefs = prefs(context)
       val editor = prefs.edit()
         .putBoolean("tracking_active", true)
         .putLong("tracking_started_at", System.currentTimeMillis())
-        .putFloat("active_distance_meters", 0f)
+        .putString(LocationTrackingService.KEY_SHIFT_CLIENT_ID, shiftClientId)
       for ((key, value) in config.toMap()) {
         val prefKey = LocationTrackingService.CADENCE_PREFS_PREFIX + key
         if (value is Float) editor.putFloat(prefKey, value) else editor.putLong(prefKey, value.toLong())
@@ -62,31 +67,69 @@ class CommaTrackerModule : Module() {
         true
       } catch (e: Exception) {
         // ForegroundServiceStartNotAllowedException (API 31+) when started from background.
-        Log.e("CommaTrackerModule", "startTracking: failed to start foreground service", e)
+        Log.e("CommaTrackerModule", "start: failed to start foreground service", e)
         prefs.edit().putBoolean("tracking_active", false).apply()
         false
       }
     }
 
-    Function("stopTracking") {
-      val context = appContext.reactContext
+    Function("stop") {
+      val context = context
       if (context != null) {
-        Log.d("CommaTrackerModule", "stopTracking called, stopping service")
-        // Clear flag BEFORE stopping so onDestroy does not schedule a restart
-        val prefs = context.getSharedPreferences("CommaTracker", android.content.Context.MODE_PRIVATE)
-        prefs.edit()
+        // Clear the flag BEFORE stopping so onDestroy does not schedule a restart.
+        prefs(context).edit()
           .putBoolean("tracking_active", false)
-          .putFloat("active_distance_meters", 0f)
+          .remove(LocationTrackingService.KEY_SHIFT_CLIENT_ID)
           .apply()
-        val intent = Intent(context, LocationTrackingService::class.java)
-        context.stopService(intent)
+        context.stopService(Intent(context, LocationTrackingService::class.java))
       }
+    }
+
+    Function("isTracking") {
+      val context = context ?: return@Function false
+      prefs(context).getBoolean("tracking_active", false)
+    }
+
+    // Oldest PENDING points first, as plain maps in the wire units of 08 section 5.
+    Function("readPending") { limit: Int ->
+      val context = context ?: return@Function emptyList<Map<String, Any?>>()
+      AndroidSqlDb.buffer(context).readPending(limit).map {
+        mapOf(
+          "seq" to it.seq, "shiftClientId" to it.shiftClientId, "recordedAt" to it.recordedAt,
+          "latE7" to it.latE7, "lonE7" to it.lonE7, "accuracyM" to it.accuracyM,
+          "speedDmps" to it.speedDmps, "bearingDeg" to it.bearingDeg, "altitudeM" to it.altitudeM,
+        )
+      }
+    }
+
+    Function("markUploaded") { seqs: List<Double> ->
+      val context = context ?: return@Function 0
+      AndroidSqlDb.buffer(context).markUploaded(seqs.map { it.toLong() }, System.currentTimeMillis())
+    }
+
+    Function("markRejected") { seqs: List<Double> ->
+      val context = context ?: return@Function 0
+      AndroidSqlDb.buffer(context).markRejected(seqs.map { it.toLong() }, "server_rejected", System.currentTimeMillis())
+    }
+
+    Function("evictUploaded") { olderThanMs: Double ->
+      val context = context ?: return@Function 0
+      AndroidSqlDb.buffer(context).evictUploaded(olderThanMs.toLong())
+    }
+
+    // Latest `fix_time − now`; null when no fix arrived in the last 10 minutes (15 section 10).
+    Function("gnssOffsetMs") {
+      val context = context ?: return@Function null
+      val prefs = prefs(context)
+      val at = prefs.getLong(LocationTrackingService.KEY_GNSS_OFFSET_AT, 0L)
+      if (at == 0L || System.currentTimeMillis() - at > 600_000L) null
+      else prefs.getLong(LocationTrackingService.KEY_GNSS_OFFSET, 0L).toDouble()
     }
 
     // Opens the system battery-optimization settings list (no exemption permission is declared,
     // 09 section 5.3). The app walks the driver through the OEM steps from there.
     Function("requestBatteryOptimizationSettings") {
-      val context = appContext.reactContext ?: return@Function false
+      val context = context ?: return@Function false
       val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       try {
@@ -96,14 +139,6 @@ class CommaTrackerModule : Module() {
         Log.e("CommaTrackerModule", "Failed to open battery settings", e)
         false
       }
-    }
-
-    // Returns the total GPS distance accumulated by the tracking service this session, in metres.
-    // Dropped in M4.4: the live number comes from the engine's accumulator (09 section 5.1 item 4).
-    Function("getActiveDistanceMeters") {
-      val context = appContext.reactContext ?: return@Function 0.0
-      val prefs = context.getSharedPreferences("CommaTracker", android.content.Context.MODE_PRIVATE)
-      prefs.getFloat("active_distance_meters", 0f).toDouble()
     }
   }
 }

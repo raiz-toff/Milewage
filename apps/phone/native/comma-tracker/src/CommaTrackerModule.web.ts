@@ -1,15 +1,30 @@
 import { registerWebModule, NativeModule } from 'expo';
 
 class CommaTrackerModule extends NativeModule {
-  startTracking() {
+  start() {
     return false;
   }
-  stopTracking() {}
+  stop() {}
+  isTracking() {
+    return false;
+  }
+  readPending() {
+    return [];
+  }
+  markUploaded() {
+    return 0;
+  }
+  markRejected() {
+    return 0;
+  }
+  evictUploaded() {
+    return 0;
+  }
+  gnssOffsetMs() {
+    return null;
+  }
   requestBatteryOptimizationSettings() {
     return false;
-  }
-  getActiveDistanceMeters() {
-    return 0;
   }
 }
 

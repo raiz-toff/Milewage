@@ -30,6 +30,7 @@ Not copied: Gradle caches and build output that Comma tracks in git by mistake (
 
 ## Changes since the copy
 
+- M4.4 (09 section 5.1): the service writes every fix, unfiltered, to its own `tracker.db` (`TrackerBuffer.kt`, `AndroidSqlDb.kt`, `PointMapper.kt`); the Comma `comma.db` writer, the 20 m / 42 m/s filter and the running distance total are gone; module API is now `start`, `stop`, `isTracking`, `readPending`, `markUploaded`, `markRejected`, `evictUploaded`, `gnssOffsetMs`, `requestBatteryOptimizationSettings`.
 - M4.3 (09 section 5.2): deleted `BootReceiver.kt` and `ShiftOverlay.kt`; removed the overlay, boot restart and battery-exemption request; cadence now comes from JS (`CadenceConfig.kt`, JUnit test); manifest declares no permissions (the list is in `apps/phone/app.json`, policy in `apps/phone/plugins/manifestPolicy.js`).
 
 ## Notes
