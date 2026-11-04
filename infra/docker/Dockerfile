@@ -8,6 +8,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 make g+
 COPY . .
 RUN npm ci && npm run build:server
 
+# The web client, served by Caddy (the `caddy` target below).
+FROM build AS web
+RUN npm run build:web
+
+# Caddy plus the built client. The server image stays the LAST stage, so a plain `docker build`
+# (and the api service in compose) still produces the server.
+FROM caddy:2.8.4-alpine AS caddy
+COPY --from=web /src/apps/web/dist /srv/web
+
 # Runtime dependencies: only the native module stays external to the bundle.
 FROM node:22.22.0-bookworm-slim AS native
 WORKDIR /rt

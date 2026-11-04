@@ -24,6 +24,7 @@ base="http://127.0.0.1:${MILEWAGE_HOST_PORT}"
 body="$(curl -fsS "$base/healthz")" || fail "/healthz unreachable through Caddy"
 [ "$body" = '{"ok":true}' ] || fail "/healthz returned: $body"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$base/nope")" = "404" ] || fail "unknown path is not 404"
+curl -fsS "$base/shifts" | grep -q '<div id="root">' || fail "the web client is not served at /shifts"
 curl -fsS "$base/api/v1/setup/status" >/dev/null || fail "/api/v1/setup/status unreachable"
 
 published="$(docker port "${project}-caddy-1" 8080/tcp)"

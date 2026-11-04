@@ -13,7 +13,7 @@
 		-Server
 	}
 
-	# The static web client and tiles are added by later PRs. The API container publishes no port.
+	# The API container publishes no port. Tiles are added by a later PR.
 	# Body limits are set per handler, because a site-level limit would also cap the restore route.
 	# Restore uploads a whole backup (08 section 7.3: 512 MiB on this route only); the rest keep 2 MiB.
 	@restore path /api/v1/setup/restore
@@ -30,6 +30,21 @@
 			max_size 2MB
 		}
 		reverse_proxy api:3000
+	}
+	# The web client (apps/web, built into /srv/web by the caddy image target). Only its own
+	# screens fall back to index.html, so any other unknown path is still a 404.
+	# Keep this list in step with apps/web/src/screens.tsx.
+	@spa path / /shifts /shifts/* /devices /settings
+	handle @spa {
+		root * /srv/web
+		rewrite * /index.html
+		header Cache-Control "no-cache"
+		file_server
+	}
+	handle /assets/* {
+		root * /srv/web
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
 	}
 	handle {
 		respond "Not found" 404
