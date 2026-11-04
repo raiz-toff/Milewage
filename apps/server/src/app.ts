@@ -109,5 +109,7 @@ export function buildApp(options: AppOptions): App {
     { prefix: API_PREFIX },
   );
   registry.attachSubscriptions(bus);
+  const stopJobs = registry.startJobs();
+  fastify.addHook('onClose', () => stopJobs());
   return { fastify, registry, bus };
 }

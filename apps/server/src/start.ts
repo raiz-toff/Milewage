@@ -19,7 +19,13 @@ export async function startServer(
   const db = openAndMigrate(join(config.dataDir, 'milewage.db'));
   try {
     const app = buildApp({
-      modules: createServerModules({ db, now: Date.now }),
+      modules: createServerModules({
+        db,
+        now: Date.now,
+        diagnosticsPath: join(config.dataDir, 'diagnostics.db'),
+        onDiagnosticsRecreated: (movedTo, reason) =>
+          console.warn(JSON.stringify({ msg: 'diagnostics.db recreated', movedTo, reason })),
+      }),
       enabled,
       logLevel: config.logLevel,
       trustProxy: config.trustProxy,

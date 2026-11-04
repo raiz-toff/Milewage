@@ -18,6 +18,7 @@ export interface HookOptions {
 export const RATE_CLASSES = {
   general: { perMinute: 300, burst: 300 },
   telemetry: { perMinute: 60, burst: 30 },
+  diagnostics: { perMinute: 30, burst: 15 },
 } as const;
 export type RateClass = keyof typeof RATE_CLASSES;
 

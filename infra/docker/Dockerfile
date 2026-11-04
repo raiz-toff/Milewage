@@ -25,6 +25,7 @@ ENV NODE_ENV=production \
 COPY --from=native /rt/node_modules ./node_modules
 COPY --from=build /src/dist/server.mjs ./server.mjs
 COPY --from=build /src/dist/migrations ./migrations
+COPY --from=build /src/dist/diagnostics-migrations ./diagnostics-migrations
 RUN mkdir -p /app/data /app/backups /app/config && chown -R node:node /app
 USER node
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

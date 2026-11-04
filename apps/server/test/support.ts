@@ -24,7 +24,11 @@ export function harness(enabled: Record<string, boolean> = {}, extra: Partial<Ap
   const dir = mkdtempSync(join(tmpdir(), 'mw-test-'));
   const db = openAndMigrate(join(dir, 'milewage.db'));
   const clock = { t: 1_800_000_000_000 };
-  const modules = createServerModules({ db, now: () => clock.t });
+  const modules = createServerModules({
+    db,
+    now: () => clock.t,
+    diagnosticsPath: join(dir, 'diagnostics.db'),
+  });
   const app = buildApp({
     modules,
     enabled: { core: true, ...enabled },

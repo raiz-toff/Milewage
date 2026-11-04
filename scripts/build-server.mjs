@@ -37,6 +37,12 @@ export async function buildServer(outDir = join(root, 'dist')) {
   cpSync(join(root, 'apps/server/src/db/migrations'), join(outDir, 'migrations'), {
     recursive: true,
   });
+  rmSync(join(outDir, 'diagnostics-migrations'), { recursive: true, force: true });
+  cpSync(
+    join(root, 'apps/server/src/diagnostics/diagnostics-migrations'),
+    join(outDir, 'diagnostics-migrations'),
+    { recursive: true },
+  );
   const lock = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8'));
   const dependencies = Object.fromEntries(NATIVE.map((n) => [n, lockedVersion(lock, n)]));
   writeFileSync(
