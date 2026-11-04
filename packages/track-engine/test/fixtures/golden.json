@@ -1,0 +1,63 @@
+{
+  "ledger": {
+    "1": "ae22b735d5b789f26df98d47bb9c849cd05f7fa571452fd21bfa0e75ce7c913a"
+  },
+  "rides": {
+    "straight": {
+      "algorithmVersion": 1,
+      "totals": {
+        "totalM": 5000
+      },
+      "stats": {
+        "fixes_in": 51,
+        "fixes_used": 51,
+        "low_accuracy": 0,
+        "non_positive_dt": 0,
+        "speed_spike": 0,
+        "within_gate": 0
+      }
+    },
+    "grid": {
+      "algorithmVersion": 1,
+      "totals": {
+        "totalM": 1600
+      },
+      "stats": {
+        "fixes_in": 17,
+        "fixes_used": 17,
+        "low_accuracy": 0,
+        "non_positive_dt": 0,
+        "speed_spike": 0,
+        "within_gate": 0
+      }
+    },
+    "loop": {
+      "algorithmVersion": 1,
+      "totals": {
+        "totalM": 1884
+      },
+      "stats": {
+        "fixes_in": 41,
+        "fixes_used": 41,
+        "low_accuracy": 0,
+        "non_positive_dt": 0,
+        "speed_spike": 0,
+        "within_gate": 0
+      }
+    },
+    "stop_and_go": {
+      "algorithmVersion": 1,
+      "totals": {
+        "totalM": 2000
+      },
+      "stats": {
+        "fixes_in": 93,
+        "fixes_used": 21,
+        "low_accuracy": 0,
+        "non_positive_dt": 0,
+        "speed_spike": 0,
+        "within_gate": 72
+      }
+    }
+  }
+}
