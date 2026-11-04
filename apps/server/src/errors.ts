@@ -44,6 +44,8 @@ export class ProblemError extends Error {
     readonly detail?: string,
     readonly errors?: FieldError[],
     readonly headers: Record<string, string> = {},
+    /** Extra problem members, e.g. `active_shift` on 409 shift_already_active. */
+    readonly extra: Record<string, unknown> = {},
   ) {
     super(detail ?? CATALOG[code][1]);
     [this.status, this.title, this.retryable] = CATALOG[code];
@@ -67,6 +69,7 @@ export function sendProblem(reply: FastifyReply, request: FastifyRequest, error:
     detail: error.detail ?? error.title,
     retryable: error.retryable,
     request_id: request.id,
+    ...error.extra,
   };
   if (error.status === 422 && error.errors) body.errors = error.errors;
   return reply

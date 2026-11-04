@@ -8,6 +8,7 @@ import { clearCookie, startSession } from '../auth/sessions';
 import { createSessionRepository, createUserRepository, type Db } from '../db';
 import { ProblemError } from '../errors';
 import { DEFAULT_COUNTRIES, settingsRoutes } from './settings';
+import { shiftRoutes } from './shifts';
 import { vehicleRoutes } from './vehicles';
 
 export interface CoreContext {
@@ -61,6 +62,7 @@ export function coreRoutes(
     const auth = authn.authenticate;
     settingsRoutes(app, { db, now, auth, registry, countries });
     vehicleRoutes(app, { db, now, auth });
+    shiftRoutes(app, { db, now, auth });
 
     app.get('/setup/status', async () => ({ state: users.count() ? 'ready' : 'needs_setup' }));
 

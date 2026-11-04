@@ -77,3 +77,39 @@ export const webSessions = sqliteTable('web_sessions', {
   expiresAt: integer('expires_at').notNull(),
   lastSeenAt: integer('last_seen_at').notNull(),
 });
+
+const userRef = () =>
+  integer('user_id')
+    .notNull()
+    .references(() => users.id);
+const vehicleRef = () =>
+  integer('vehicle_id')
+    .notNull()
+    .references(() => vehicles.id);
+
+export const shifts = sqliteTable('shifts', {
+  id: integer('id').primaryKey(),
+  userId: userRef(),
+  clientId: text('client_id').notNull(),
+  vehicleId: vehicleRef(),
+  status: text('status', { enum: ['active', 'ended', 'finalized'] }).notNull(),
+  startedAt: integer('started_at').notNull(),
+  endedAt: integer('ended_at'),
+  localDate: text('local_date').notNull(),
+  totalM: integer('total_m'),
+  activeM: integer('active_m'),
+  deadheadM: integer('deadhead_m'),
+  personalM: integer('personal_m'),
+  segmenter: text('segmenter', { enum: ['stops', 'whole_shift'] }).notNull(),
+  calcVersion: integer('calc_version'),
+  calculatedAt: integer('calculated_at'),
+  notes: text('notes'),
+  updatedAt: integer('updated_at').notNull(),
+  reconStatus: text('recon_status', { enum: ['pending', 'match', 'differs', 'phone_missing'] })
+    .notNull()
+    .default('pending'),
+  reconReasons: text('recon_reasons'),
+  calcMismatch: integer('calc_mismatch').notNull().default(0),
+  deviceTouchedAt: integer('device_touched_at'),
+  overlapsShiftId: integer('overlaps_shift_id'),
+});

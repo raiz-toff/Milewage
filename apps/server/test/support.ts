@@ -41,6 +41,17 @@ export function harness(enabled: Record<string, boolean> = {}) {
       const res = await call('POST', '/setup', owner);
       return { cookie: String(res.headers['set-cookie']).split(';')[0] as string };
     },
+    /** Pairs a phone through the real endpoints; returns its id and Authorization header. */
+    async pair(cookie: string) {
+      const token = (await call('POST', '/pairing-tokens', undefined, { cookie })).json().token;
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/pairing/redeem',
+        payload: { token, device_name: 'Pixel', platform: 'android' },
+      });
+      const { device_id: id, device_token: secret } = res.json();
+      return { id: id as number, auth: { authorization: `Bearer ${secret}` } };
+    },
     async close() {
       await app.close();
       db.close();

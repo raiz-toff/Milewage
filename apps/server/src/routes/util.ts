@@ -27,3 +27,11 @@ export const strictObject = (properties: object, required: string[], extra = {})
   ...extra,
 });
 export const idParams = strictObject({ id: { type: 'integer', minimum: 1 } }, ['id']);
+
+/** A DB row as an API object: camelCase to snake_case, minus the columns that never leave the server. */
+export const snakeKeys = (row: object, ...hide: string[]) =>
+  Object.fromEntries(
+    Object.entries(row)
+      .filter(([k]) => !hide.includes(k))
+      .map(([k, v]) => [k.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`), v]),
+  );
