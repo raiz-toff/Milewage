@@ -1,0 +1,43 @@
+/**
+ * The location source seen by the rest of the app (09 section 5.1 item 5, README 1.3 rule 4).
+ * The Android module implements it; an iOS module or the fake can replace it without touching
+ * callers. Points are identified by their device-assigned `seq`.
+ */
+export interface CadenceConfig {
+  intervalMs?: number;
+  minDisplacementM?: number;
+  maxUpdateDelayMs?: number;
+  stillTimeoutMs?: number;
+}
+
+/** A buffered fix in the wire units of 08 section 5 (e7 degrees, metres, dm/s). */
+export interface TrackerPoint {
+  seq: number;
+  shiftClientId: string;
+  recordedAt: number;
+  latE7: number;
+  lonE7: number;
+  accuracyM: number;
+  speedDmps: number | null;
+  bearingDeg: number | null;
+  altitudeM: number | null;
+}
+
+export interface Tracker {
+  /** False when the service could not start (blank shift id, bad cadence, no permission). */
+  start(shiftClientId: string, cadence?: CadenceConfig): boolean;
+  stop(): void;
+  isTracking(): boolean;
+  /** Oldest PENDING points first, at most `limit`. */
+  readPending(limit: number): TrackerPoint[];
+  /** PENDING to UPLOADED. Rows stay until `evictUploaded`. Returns how many changed. */
+  markUploaded(seqs: number[]): number;
+  /** Permanently refused PENDING points go to quarantine. Returns how many moved. */
+  markRejected(seqs: number[]): number;
+  /** Deletes UPLOADED rows acknowledged before the cutoff; never a PENDING row. */
+  evictUploaded(olderThanMs: number): number;
+  /** Latest `fix_time - now` in ms, or null when no fix in the last 10 minutes. */
+  gnssOffsetMs(): number | null;
+  /** Opens the system battery settings; false if it cannot. */
+  requestBatteryOptimizationSettings(): boolean;
+}
