@@ -10,7 +10,7 @@ describe('auth shell', () => {
   it('shows the signed-in shell with navigation once settings load', async () => {
     renderApp(signedIn());
     expect(await screen.findByRole('navigation', { name: 'Main' })).toBeTruthy();
-    expect(screen.getByText('Home')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Shifts' })).toBeTruthy();
   });
 
   it('a 401 on settings means signed out', async () => {

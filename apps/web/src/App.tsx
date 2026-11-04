@@ -21,8 +21,7 @@ function Shell({ settings }: { settings: Settings }) {
           {list.map((s) => (
             <NavLink
               key={s.path}
-              to={s.path}
-              end={s.path === '/'}
+              to={s.path.replace(/\/\*$/, '')}
               className={({ isActive }) => (isActive ? 'text-accent' : 'text-muted hover:text-ink')}
             >
               {s.label}
@@ -38,7 +37,10 @@ function Shell({ settings }: { settings: Settings }) {
           {list.map((s) => (
             <Route key={s.path} path={s.path} element={s.element} />
           ))}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route
+            path="*"
+            element={<Navigate to={list[0]?.path.replace(/\/\*$/, '') ?? '/'} replace />}
+          />
         </Routes>
       </main>
     </div>
