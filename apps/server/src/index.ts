@@ -5,3 +5,4 @@ export * from './errors';
 export * from './modules';
 export * from './start';
 export * from './db';
+export * from './routes/core';

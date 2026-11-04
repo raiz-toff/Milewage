@@ -58,13 +58,15 @@ describe('migration runner', () => {
     const db = open();
     const seen: string[][] = [];
     const beforeMigrate = (p: readonly string[]) => void seen.push([...p]);
-    expect(migrate(db, real, { beforeMigrate })).toEqual(['core/0001_identity']);
+    expect(migrate(db, real, { beforeMigrate })).toEqual(real.map((m) => `${m.module}/${m.id}`));
     expect(migrate(db, real, { beforeMigrate })).toEqual([]);
-    expect(seen).toEqual([['core/0001_identity']]);
+    expect(seen).toEqual([real.map((m) => `${m.module}/${m.id}`)]);
     expect(tables(db)).toEqual(
       expect.arrayContaining(['users', 'settings', 'instance', 'schema_migrations']),
     );
-    expect(db.prepare('SELECT count(*) AS n FROM schema_migrations').pluck().get()).toBe(1);
+    expect(db.prepare('SELECT count(*) AS n FROM schema_migrations').pluck().get()).toBe(
+      real.length,
+    );
   });
 
   test('a failing migration leaves the old schema intact', () => {
@@ -78,7 +80,9 @@ describe('migration runner', () => {
     ];
     expect(() => migrate(db, bad)).toThrow(MigrationError);
     expect(tables(db)).not.toContain('extra');
-    expect(db.prepare('SELECT count(*) AS n FROM schema_migrations').pluck().get()).toBe(1);
+    expect(db.prepare('SELECT count(*) AS n FROM schema_migrations').pluck().get()).toBe(
+      real.length,
+    );
   });
 
   test('refuses a database newer than the code', () => {

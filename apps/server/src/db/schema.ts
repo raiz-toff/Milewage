@@ -32,3 +32,13 @@ export const instance = sqliteTable('instance', {
   instanceId: text('instance_id').notNull(),
   restoreGeneration: integer('restore_generation').notNull().default(0),
 });
+
+export const webSessions = sqliteTable('web_sessions', {
+  idHash: text('id_hash').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
+  createdAt: integer('created_at').notNull(),
+  expiresAt: integer('expires_at').notNull(),
+  lastSeenAt: integer('last_seen_at').notNull(),
+});

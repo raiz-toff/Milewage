@@ -4,7 +4,7 @@ import { resolveModuleConfig } from '@milewage/shared';
 import { buildApp, type App } from './app';
 import { loadConfig } from './config';
 import { openAndMigrate, type Db } from './db';
-import { serverModules } from './modules';
+import { createServerModules, serverModules } from './modules';
 
 export interface RunningServer extends App {
   db: Db;
@@ -19,7 +19,7 @@ export async function startServer(
   const db = openAndMigrate(join(config.dataDir, 'milewage.db'));
   try {
     const app = buildApp({
-      modules: serverModules,
+      modules: createServerModules({ db, now: Date.now }),
       enabled,
       logLevel: config.logLevel,
       isHealthy: () => db.prepare('SELECT 1').pluck().get() === 1,

@@ -43,6 +43,7 @@ export class ProblemError extends Error {
     readonly code: ErrorCode,
     readonly detail?: string,
     readonly errors?: FieldError[],
+    readonly headers: Record<string, string> = {},
   ) {
     super(detail ?? CATALOG[code][1]);
     [this.status, this.title, this.retryable] = CATALOG[code];
@@ -68,7 +69,11 @@ export function sendProblem(reply: FastifyReply, request: FastifyRequest, error:
     request_id: request.id,
   };
   if (error.status === 422 && error.errors) body.errors = error.errors;
-  return reply.status(error.status).type('application/problem+json').send(body);
+  return reply
+    .status(error.status)
+    .headers(error.headers)
+    .type('application/problem+json')
+    .send(body);
 }
 
 /** Maps any thrown error to a problem; unexpected errors reveal nothing to the client. */
