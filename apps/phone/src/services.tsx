@@ -6,6 +6,7 @@ import { installCrashHandler, PhoneDiagnostics } from './diagnostics/phoneDiagno
 import { MemoryStore, Pairing, type KeyValueStore } from './pairing/pairing';
 import { AndroidPermissions, createReactNativePermissionApi } from './permissions/android';
 import type { PermissionsPort } from './permissions/ladder';
+import { createExpoSecureBackend, SecureKeyValueStore } from './storage/secureStore';
 import { ShiftController } from './shift/controller';
 import { PointFeed } from './shift/feed';
 import { createLazyNativeTracker } from './tracker/native';
@@ -156,8 +157,8 @@ const clean = (v: unknown, fallback: string, re: RegExp) =>
 
 /**
  * Production wiring. The native tracker loads on first use, so tests never touch it.
- * NOT YET WIRED: the Keystore-backed secure store (the credential, the active shift and the
- * diagnostics ring live in memory only) and the camera scanner.
+ * NOT YET WIRED: durable plain storage (the active shift and the diagnostics ring live in
+ * memory only) and the camera scanner. The pairing credential is in the Keystore-backed store.
  */
 export function defaultServices(): Services {
   if (cached) return cached;
@@ -166,7 +167,7 @@ export function defaultServices(): Services {
   const s = createServices({
     tracker: createLazyNativeTracker(),
     permissions: new AndroidPermissions({ api: createReactNativePermissionApi(), store: plain }),
-    secure: new MemoryStore(),
+    secure: new SecureKeyValueStore(createExpoSecureBackend()),
     plain,
     fetch: (url, init) => fetch(url, init),
     deviceInfo: {
