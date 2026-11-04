@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import {
   buildApp,
   createInstanceReader,
+  createDiskMonitor,
   createServerState,
   createServerModules,
   openAndMigrate,
@@ -30,8 +31,23 @@ export function harness(
   const db = openAndMigrate(join(dir, 'milewage.db'));
   const clock = { t: 1_800_000_000_000 };
   const state = createServerState();
+  // A pretend volume with lots of room; tests lower `volume.free` to walk through the disk rules.
+  const volume = {
+    free: 100 * 1024 ** 3,
+    total: 500 * 1024 ** 3,
+    db: undefined as number | undefined,
+  };
+  const disk = createDiskMonitor({
+    dir,
+    dbPath: join(dir, 'milewage.db'),
+    now: () => clock.t,
+    ttlMs: 0,
+    statfs: () => ({ free: volume.free, total: volume.total }),
+    dbBytes: () => volume.db ?? 1024 * 1024,
+  });
   const modules = createServerModules({
     state,
+    disk,
     restoreVerify: extra.restoreVerify,
     db,
     now: () => clock.t,
@@ -48,6 +64,7 @@ export function harness(
       now: () => clock.t,
       identity: createInstanceReader(db),
       state,
+      disk: () => disk.state(),
       ...extra,
     }).fastify;
   } catch (e) {
@@ -68,6 +85,7 @@ export function harness(
     db,
     dir,
     state,
+    volume,
     clock,
     call,
     /** POST /setup only: the recovery key is shown but not yet confirmed. */

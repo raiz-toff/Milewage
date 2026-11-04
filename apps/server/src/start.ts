@@ -11,6 +11,7 @@ import {
   upgradeDatabase,
   type Db,
 } from './db';
+import { createDiskMonitor } from './disk';
 import { buildBackupService, createServerModules, serverModules } from './modules';
 import { createServerState } from './state';
 
@@ -27,13 +28,16 @@ export async function startServer(
   const state = createServerState();
   const log = (message: string, fields?: object) =>
     console.log(JSON.stringify({ msg: message, ...fields }));
-  const db = openDatabase(join(config.dataDir, 'milewage.db'));
+  const dbPath = join(config.dataDir, 'milewage.db');
+  const disk = createDiskMonitor({ dir: config.dataDir, dbPath, now: Date.now });
+  const db = openDatabase(dbPath);
   try {
     const backup = buildBackupService({
       db,
       now: Date.now,
       backupDir: config.backupDir,
       configDir: config.configDir,
+      disk,
     });
     // A newer database is refused here (the process exits); a backup or migration failure leaves the
     // old schema in place and the server up in read-only mode (10 section 10).
@@ -44,6 +48,7 @@ export async function startServer(
         db,
         now: Date.now,
         backup,
+        disk,
         backupDir: config.backupDir,
         configDir: config.configDir,
         state,
@@ -57,6 +62,7 @@ export async function startServer(
       logLevel: config.logLevel,
       trustProxy: config.trustProxy,
       state,
+      disk: () => disk.state(),
       // The old schema may lack columns the current code selects; skip the headers until it is upgraded.
       identity: () => (state.mode === 'normal' ? identity() : undefined),
       isHealthy: () => db.prepare('SELECT 1').pluck().get() === 1,

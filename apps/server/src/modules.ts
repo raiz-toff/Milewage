@@ -11,6 +11,7 @@ import {
   createSessionRepository,
   createSettingsRepository,
 } from './db';
+import type { DiskMonitor } from './disk';
 import { openDiagnosticsStore } from './diagnostics/store';
 import { backupRoutes } from './routes/backup';
 import { restoreRoutes } from './routes/restore';
@@ -54,6 +55,8 @@ export interface ServerContext extends CoreContext {
   backupSchedule?: boolean;
   /** Use this service instead of building one, so setup, migration and restore share it. */
   backup?: BackupService;
+  /** Free-space rules (10 section 11.3); omitted means plenty of room. */
+  disk?: DiskMonitor;
   /** Server mode shared with `buildApp`; a restore in progress answers 503 to everything else. */
   state?: ServerState;
   /** Test seam passed to the restore service (forces a revert). */
@@ -63,7 +66,7 @@ export interface ServerContext extends CoreContext {
 
 /** Builds the backup service for a connection; the time zone is the owner's, UTC before setup. */
 export function buildBackupService(
-  ctx: Pick<ServerContext, 'db' | 'now' | 'backupDir' | 'configDir' | 'secrets'>,
+  ctx: Pick<ServerContext, 'db' | 'now' | 'backupDir' | 'configDir' | 'secrets' | 'disk'>,
 ) {
   const settings = createSettingsRepository(ctx.db);
   const owner = createBackupRepository(ctx.db);
@@ -72,6 +75,7 @@ export function buildBackupService(
     db: ctx.db,
     dir: ctx.backupDir ?? 'backups',
     now: ctx.now,
+    disk: ctx.disk,
     codec: secretsCodec(ctx.secrets ?? fileSecrets(ctx.configDir ?? 'config')),
     // Scheduled backups wait for the recovery key to be confirmed (08 section 2.3).
     ready: () => instance()?.setupConfirmedAt != null,
@@ -106,12 +110,36 @@ export function createServerModules(ctx: ServerContext) {
   });
   const uploadDir = join(dirname(ctx.db.name), '.restore-upload');
   return [
-    defineModule({ ...coreModule, routes: coreRoutes({ ...ctx, secrets }, authn) }),
+    defineModule({
+      ...coreModule,
+      routes: coreRoutes(
+        {
+          ...ctx,
+          secrets,
+          status: {
+            state: ctx.state,
+            disk: ctx.disk,
+            lastBackup: () => backup.list()[0],
+            diagnostics: (userId) => ({
+              level: createSettingsRepository(ctx.db).get(userId)?.diagnosticsLevel ?? 'basic',
+              db_bytes: diagnosticsStore().bytes(),
+              event_count: diagnosticsStore().count(),
+            }),
+          },
+        },
+        authn,
+      ),
+    }),
     defineModule({ ...devicesModule, routes: devicesRoutes({ ...ctx, authn, readSettings }) }),
     defineModule({ ...trackingModule, routes: trackingRoutes({ ...ctx, authn }) }),
     defineModule({
       ...diagnosticsModule,
-      routes: diagnosticsRoutes({ ...ctx, authn, store: diagnosticsStore }),
+      routes: diagnosticsRoutes({
+        ...ctx,
+        authn,
+        store: diagnosticsStore,
+        disk: ctx.disk && (() => ctx.disk!.state()),
+      }),
       jobs: [{ name: 'diagnostics-store', start: () => () => store?.close() }],
     }),
     defineModule({

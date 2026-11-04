@@ -20,6 +20,7 @@ export interface BackupServiceOptions {
   ready?: () => boolean;
   /** See BackupEngineOptions.codec. */
   codec: BackupEngineOptions['codec'];
+  disk?: BackupEngineOptions['disk'];
 }
 
 /**

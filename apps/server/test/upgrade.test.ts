@@ -124,6 +124,7 @@ describe('upgrade flow (10 section 10)', () => {
   });
 
   test('read-only after a blocked upgrade: writes are 503 with the reason, status route stays open', async () => {
+    const { cookie } = await h.signUp();
     h.state.migration = {
       status: 'blocked',
       pending: ['core/x'],
@@ -134,7 +135,8 @@ describe('upgrade flow (10 section 10)', () => {
     const write = await h.call('POST', '/auth/login', { username: 'a', password: 'b' });
     expect([write.statusCode, write.json().code]).toEqual([503, 'read_only_mode']);
     expect(write.json().detail).toBe('Upgrade paused. disk full');
-    expect((await h.call('GET', '/system/status')).statusCode).toBe(404); // not built yet (M3.5), but not 503
+    const status = await h.call('GET', '/system/status', undefined, { cookie });
+    expect([status.statusCode, status.json().mode]).toEqual([200, 'read_only']);
   });
 
   test('a database from a newer MileWage is refused before anything is written', async () => {

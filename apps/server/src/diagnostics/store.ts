@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { existsSync, renameSync } from 'node:fs';
+import { existsSync, renameSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { DiagEvent } from '@milewage/shared';
 import { loadMigrations, migrate, type Db } from '../db';
@@ -19,6 +19,8 @@ export interface DiagnosticsStore {
   /** Inserts one event; returns false for a duplicate `(device, src, seq)`. */
   insert(e: StoredEvent): boolean;
   count(): number;
+  /** Size of diagnostics.db plus its WAL. */
+  bytes(): number;
   close(): void;
 }
 
@@ -26,6 +28,14 @@ export interface DiagnosticsStore {
 export function expiresAt(event: Pick<DiagEvent, 'kind' | 'level'>, receivedAt: number): number {
   if (event.kind === 'crash') return receivedAt + 365 * DAY;
   return receivedAt + (event.level === 'verbose' ? 14 : 90) * DAY;
+}
+
+function fileSize(path: string): number {
+  try {
+    return statSync(path).size;
+  } catch {
+    return 0;
+  }
 }
 
 function openAndMigrate(path: string): Db {
@@ -87,6 +97,7 @@ export function openDiagnosticsStore(
         expiresAt: expiresAt(e, receivedAt),
       }).changes === 1,
     count: () => db.prepare('SELECT count(*) FROM diag_events').pluck().get() as number,
+    bytes: () => [path, `${path}-wal`].reduce((n, f) => n + fileSize(f), 0),
     close: () => void db.close(),
   };
 }

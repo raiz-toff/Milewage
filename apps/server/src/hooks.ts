@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { ProblemError } from './errors';
+import type { DiskState } from './disk';
 import type { ServerState } from './state';
 
 export interface InstanceIdentity {
@@ -15,6 +16,8 @@ export interface HookOptions {
   identity?: () => InstanceIdentity | undefined;
   /** Server mode; a restore in progress answers 503 `restoring` (10 section 7 step 2). */
   state?: ServerState;
+  /** Disk state; below 200 MB every write is 507 (10 section 11.3). */
+  disk?: () => DiskState;
 }
 
 const SAFE = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -67,18 +70,39 @@ export function installHooks(fastify: FastifyInstance, o: HookOptions) {
 
   fastify.addHook('onRequest', async (request, reply) => {
     if (!isApi(request.url)) return;
-    if (o.state?.mode === 'restoring' && !request.url.startsWith(`${o.apiPrefix}/setup/status`)) {
+    const path = request.url.split('?')[0];
+    const open = [`${o.apiPrefix}/setup/status`, `${o.apiPrefix}/system/status`];
+    if (o.state?.mode === 'restoring' && !open.includes(path!)) {
       const headers = { 'Retry-After': '5' };
       throw new ProblemError('restoring', 'A restore is in progress.', undefined, headers);
     }
     // Read-only (08 section 4.2): every write is 503. After a blocked or failed upgrade the code and
     // the old schema disagree, so reads are refused too; only the status route stays open.
     const schemaOld = ['blocked', 'failed'].includes(o.state?.migration.status ?? '');
-    const statusRoute = request.url.split('?')[0] === `${o.apiPrefix}/system/status`;
+    const statusRoute = path === `${o.apiPrefix}/system/status`;
     if (o.state?.mode === 'read_only' && !statusRoute && (schemaOld || !SAFE.has(request.method))) {
       const headers = { 'Retry-After': '30' };
       const detail = o.state.reason ?? 'The server is in read-only mode.';
       throw new ProblemError('read_only_mode', detail, undefined, headers);
+    }
+    // Enforced once, here, so it holds with any module on or off. Sign-in and sign-out stay open,
+    // and so do reads, exports and backup download (all GET). Without a credential the request goes
+    // on to be refused as unauthenticated, so an anonymous caller cannot learn the disk state.
+    const sent = request.headers.authorization ?? request.headers.cookie;
+    if (
+      o.disk &&
+      sent &&
+      !SAFE.has(request.method) &&
+      !['/auth/login', '/auth/logout'].some((p) => request.url.split('?')[0] === o.apiPrefix + p) &&
+      o.disk() === 'writes_blocked'
+    ) {
+      const headers = { 'Retry-After': '60' };
+      throw new ProblemError(
+        'insufficient_storage',
+        'The server is almost out of disk space.',
+        undefined,
+        headers,
+      );
     }
     const config = request.routeOptions.config as { rateLimit?: RateClass };
     const cls = config.rateLimit ?? 'general';

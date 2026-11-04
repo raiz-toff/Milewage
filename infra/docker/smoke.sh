@@ -49,6 +49,16 @@ status="$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'content-type: multi
 rm -f "$body"
 [ "$status" = "422" ] || fail "a 3 MB restore upload through Caddy returned $status, want 422 from the API"
 
+[ "$(curl -s -o /dev/null -w '%{http_code}' "$base/api/v1/system/status")" = "401" ] \
+  || fail "/api/v1/system/status is not an authenticated route"
+for svc in caddy api; do
+  logcfg="$(docker inspect -f '{{.HostConfig.LogConfig.Type}} {{.HostConfig.LogConfig.Config}}' "${project}-${svc}-1")"
+  case "$logcfg" in
+    "json-file "*max-size:10m*max-file:3* | "json-file "*max-file:3*max-size:10m*) ;;
+    *) fail "$svc log rotation is not json-file 10m x 3: $logcfg" ;;
+  esac
+done
+
 # Trusted proxy (08 section 7.4): the API trusts X-Forwarded-For only from the compose network (a /24).
 subnet="${MILEWAGE_PROXY_SUBNET:-172.29.88.0/24}"
 prefix="${subnet%.*/24}."

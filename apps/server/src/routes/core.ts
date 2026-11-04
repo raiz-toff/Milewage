@@ -16,6 +16,7 @@ import {
 } from '../db';
 import { ProblemError } from '../errors';
 import { DEFAULT_COUNTRIES, settingsRoutes } from './settings';
+import { statusRoute, type StatusContext } from './status';
 import { shiftRoutes } from './shifts';
 import { vehicleRoutes } from './vehicles';
 
@@ -26,6 +27,8 @@ export interface CoreContext {
   countries?: readonly string[];
   /** `config/secrets.json`; defaults to the `config` directory. */
   secrets?: SecretsStore;
+  /** Inputs of `GET /system/status`; each is optional so a bare core still serves it. */
+  status?: Pick<StatusContext, 'state' | 'disk' | 'lastBackup' | 'diagnostics'>;
 }
 
 const str = (min: number, max = 1024) => ({ type: 'string', minLength: min, maxLength: max });
@@ -61,7 +64,7 @@ interface SetupBody {
 }
 
 export function coreRoutes(
-  { db, now, countries = DEFAULT_COUNTRIES, secrets = fileSecrets('config') }: CoreContext,
+  { db, now, countries = DEFAULT_COUNTRIES, secrets = fileSecrets('config'), status }: CoreContext,
   authn: Authenticator,
 ) {
   return (host: RouteHost) => {
@@ -73,6 +76,7 @@ export function coreRoutes(
     const auth = authn.authenticate;
     settingsRoutes(app, { db, now, auth, registry, countries });
     vehicleRoutes(app, { db, now, auth });
+    statusRoute(app, { db, now, auth, registry, ...status });
     shiftRoutes(app, { db, now, auth });
 
     const instanceRow = createInstanceReader(db);

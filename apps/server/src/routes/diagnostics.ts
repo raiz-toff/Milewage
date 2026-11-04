@@ -3,6 +3,7 @@ import { validateEvent } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import { createSettingsRepository, type Db } from '../db';
+import type { DiskState } from '../disk';
 import type { DiagnosticsStore } from '../diagnostics/store';
 import { strictObject } from './util';
 
@@ -29,11 +30,13 @@ export function diagnosticsRoutes({
   now,
   authn,
   store,
+  disk,
 }: {
   db: Db;
   now: () => number;
   authn: Authenticator;
   store: () => DiagnosticsStore;
+  disk?: () => DiskState;
 }) {
   return (host: RouteHost) => {
     const { app } = host as ServerRouteHost;
@@ -71,8 +74,10 @@ export function diagnosticsRoutes({
             : e.src === 'web';
           if (!allowed) return reject('scope');
           if (device && e.seq === undefined) return reject('seq_required');
-          // `off` records nothing; `verbose` events are kept only while the level is verbose.
-          if (level === 'off' || (e.level === 'verbose' && level !== 'verbose')) {
+          // `off` records nothing; `verbose` events are kept only while the level is verbose and the
+          // disk is not low (accepted and discarded, 16 section 7.2).
+          const lowDisk = e.level === 'verbose' && disk !== undefined && disk() !== 'ok';
+          if (level === 'off' || lowDisk || (e.level === 'verbose' && level !== 'verbose')) {
             return void result.discarded++;
           }
           const stored = store().insert({

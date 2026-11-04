@@ -55,6 +55,9 @@ export function backupRoutes({
         const row = await service.run('manual');
         return reply.status(201).send(toBackup(row!));
       } catch (e) {
+        if (e instanceof BackupError && e.reason === 'disk') {
+          throw new ProblemError('insufficient_storage', e.message);
+        }
         if (e instanceof BackupError) {
           req.log.error({ reason: e.reason }, 'backup failed');
           throw new ProblemError(

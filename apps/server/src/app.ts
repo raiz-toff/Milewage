@@ -11,6 +11,7 @@ import {
 import { gunzipRequest } from './gzip';
 import { installHooks, type InstanceIdentity } from './hooks';
 import { SERVER_VERSION } from './version';
+import type { DiskState } from './disk';
 import type { ServerState } from './state';
 import { newRequestId, ProblemError, sendProblem, toProblem } from './errors';
 
@@ -37,6 +38,8 @@ export interface AppOptions {
   trustProxy?: boolean | string[];
   /** Mode of the server; defaults to always normal. */
   state?: ServerState;
+  /** Free-space rules; omitted means plenty of room. */
+  disk?: () => DiskState;
 }
 
 export interface App {
@@ -78,6 +81,7 @@ export function buildApp(options: AppOptions): App {
     version: SERVER_VERSION,
     identity: options.identity,
     state: options.state,
+    disk: options.disk,
   });
   fastify.addHook('preParsing', gunzipRequest);
   fastify.setErrorHandler((error, request, reply) => {

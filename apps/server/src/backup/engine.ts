@@ -14,13 +14,14 @@ import { PassThrough, Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { createGzip } from 'node:zlib';
 import type { Db } from '../db';
+import type { DiskMonitor } from '../disk';
 
 export type BackupTrigger = 'nightly' | 'shift_end' | 'manual' | 'pre_migration' | 'pre_restore';
 
 export class BackupError extends Error {
   override name = 'BackupError';
   constructor(
-    readonly reason: 'integrity' | 'foreign_keys' | 'counts' | 'io' | 'no_key',
+    readonly reason: 'integrity' | 'foreign_keys' | 'counts' | 'io' | 'no_key' | 'disk',
     message: string,
   ) {
     super(message);
@@ -53,6 +54,8 @@ export interface BackupEngineOptions {
   now: () => number;
   /** Chosen per run, so a key added or removed later is honoured. Throws when no key is configured. */
   codec: () => BackupCodec | Promise<BackupCodec>;
+  /** A backup is skipped when free space is below twice the database size (10 section 11.3). */
+  disk?: DiskMonitor;
 }
 
 // Tables compared live-vs-copy (10 section 3.1 step 3); telemetry differs by writes during the copy.
@@ -85,7 +88,13 @@ function counts(db: Db): Record<string, number> {
  * writing connection would restart `db.backup()` (S0 finding, B5b). Recording in `backup_runs`
  * and retention are the service's job, not the engine's.
  */
-export function createBackupEngine({ db, dir, now, codec: chooseCodec }: BackupEngineOptions) {
+export function createBackupEngine({
+  db,
+  dir,
+  now,
+  codec: chooseCodec,
+  disk,
+}: BackupEngineOptions) {
   const tmpDir = join(dir, '.tmp');
   const cleanTemp = () => {
     rmSync(tmpDir, { recursive: true, force: true });
@@ -123,6 +132,13 @@ export function createBackupEngine({ db, dir, now, codec: chooseCodec }: BackupE
     cleanTemp,
 
     async run(trigger: BackupTrigger): Promise<BackupArtifact> {
+      const space = disk?.snapshot();
+      if (space && (space.state === 'backup_skipped' || space.state === 'writes_blocked')) {
+        throw new BackupError(
+          'disk',
+          'Not enough free disk space for a backup (it needs twice the database size). Older backups are kept.',
+        );
+      }
       const createdAt = now();
       const codec = await chooseCodec();
       const base = `milewage-${stamp(createdAt)}`;

@@ -17,3 +17,4 @@ export * from './backup/age';
 export * from './backup/secrets';
 export * from './backup/restore';
 export * from './state';
+export * from './disk';

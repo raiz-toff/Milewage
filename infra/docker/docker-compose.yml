@@ -1,10 +1,17 @@
 # Home-lab stack (03 section 3, 10 sections 2 and 8). Caddy is published on loopback only;
 # the host's Tailscale terminates HTTPS. Tags are pinned, never :latest (10 section 12).
 name: milewage
+# Container logs rotate (10 section 11.2): 3 files of 10 MB per service.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '3'
 services:
   caddy:
     image: caddy:2.8.4-alpine
     restart: unless-stopped
+    logging: *logging
     ports:
       - '127.0.0.1:${MILEWAGE_HOST_PORT:-8080}:8080'
     volumes:
@@ -23,6 +30,7 @@ services:
       dockerfile: infra/docker/Dockerfile
     image: milewage-server:0.1.0
     restart: unless-stopped
+    logging: *logging
     environment:
       - NODE_ENV=production
       - MILEWAGE_MODE=home-lab
