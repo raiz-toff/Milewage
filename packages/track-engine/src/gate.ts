@@ -30,8 +30,27 @@ export function gateStep(anchor: Fix | null, f: Fix): GateStep {
   return { kind: 'accept', distanceDm: dDm };
 }
 
+/** One accepted step between consecutive accepted fixes. */
+export interface Segment {
+  from: Fix;
+  to: Fix;
+  distanceDm: number;
+  /** Time from the previous plausible fix (accepted or inside the 20 m gate) to `to`. */
+  silenceMs: number;
+}
+
+/** A fix dropped as a speed spike, with the anchor it was measured against. */
+export interface Spike {
+  fix: Fix;
+  anchor: Fix;
+  distanceDm: number;
+  silenceMs: number;
+}
+
 export interface GateResult {
   accepted: Fix[];
+  segments: Segment[];
+  spikes: Spike[];
   distanceDm: number;
   distanceM: number;
   stats: { non_positive_dt: number; speed_spike: number; within_gate: number };
@@ -40,20 +59,41 @@ export interface GateResult {
 /** Stage 3 over already normalized and qualified fixes. */
 export function gate(fixes: readonly Fix[]): GateResult {
   const accepted: Fix[] = [];
+  const segments: Segment[] = [];
+  const spikes: Spike[] = [];
   const stats = { non_positive_dt: 0, speed_spike: 0, within_gate: 0 };
   let anchor: Fix | null = null;
+  let prevAt = 0; // time of the previous plausible fix; glitches do not count as signal
   let distanceDm = 0;
   for (const f of fixes) {
     const step = gateStep(anchor, f);
     if (step.kind === 'drop') {
       stats[step.reason]++;
+      if (step.reason === 'within_gate') prevAt = f.recordedAt;
+      if (step.reason === 'speed_spike' && anchor !== null) {
+        spikes.push({
+          fix: f,
+          anchor,
+          distanceDm: haversineDm(anchor.latE7, anchor.lonE7, f.latE7, f.lonE7),
+          silenceMs: f.recordedAt - prevAt,
+        });
+      }
       continue;
     }
-    if (step.kind === 'accept') distanceDm += step.distanceDm;
+    if (step.kind === 'accept' && anchor !== null) {
+      distanceDm += step.distanceDm;
+      segments.push({
+        from: anchor,
+        to: f,
+        distanceDm: step.distanceDm,
+        silenceMs: f.recordedAt - prevAt,
+      });
+    }
     anchor = f;
+    prevAt = f.recordedAt;
     accepted.push(f);
   }
-  return { accepted, distanceDm, distanceM: dmToM(distanceDm), stats };
+  return { accepted, segments, spikes, distanceDm, distanceM: dmToM(distanceDm), stats };
 }
 
 /** Stages 1-3 in batch: the distance part of the engine. */

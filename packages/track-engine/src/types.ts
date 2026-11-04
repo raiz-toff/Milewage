@@ -82,6 +82,10 @@ export interface ShiftInput {
   stopLabels?: StopLabelInput[];
   interruptions?: { fromMs: number; toMs: number }[];
   edits?: TripEdit[];
+  /** True when the app ended an unfinished shift at its last fix (14 section 7.4). */
+  autoClosed?: boolean;
+  /** Median phone-clock minus GNSS time in ms, measured by the app on live fixes (14 section 15). */
+  clockSkewMs?: number;
 }
 
 export interface ShiftResult {

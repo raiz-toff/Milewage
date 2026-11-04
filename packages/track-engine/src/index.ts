@@ -9,3 +9,21 @@ export { gate, gateStep, measureDistance, MAX_SPEED_DMPS, MIN_MOVE_DM } from './
 export type { DropReason, GateStep, GateResult } from './gate';
 export { createLiveAccumulator } from './live';
 export type { LiveAccumulator } from './live';
+export type { Segment, Spike } from './gate';
+export {
+  detectGaps,
+  interruptionFlags,
+  clockSkewFlag,
+  qualityFlags,
+  sortFlags,
+  medianMs,
+  lastFixEnd,
+  isGap,
+  GAP_MIN_DT_MS,
+  GAP_MIN_CHORD_DM,
+  GAP_LARGE_CHORD_DM,
+  GAP_LARGE_DT_MS,
+  POOR_ACCURACY_SHARE_PCT,
+  LOW_FIX_DENSITY_MS,
+  CLOCK_SKEW_LIMIT_MS,
+} from './gaps';
