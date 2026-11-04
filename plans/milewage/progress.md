@@ -84,3 +84,10 @@ M0 exit: `npm run verify` passes (typecheck, lint, version check, OpenAPI drift 
 ## Summary after PR 7
 
 All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each time. No blockers. Not started: PR 8+ (gaps, stops, trips are out of scope here).
+
+## PR 9 — [M2.2] DB layer and migration runner
+
+- Branch `pr-09-db-migrations`; squash commit on main `99d5701`.
+- Done in `apps/server/src/db`: `openDatabase` (better-sqlite3 single write connection; PRAGMAs of 10 section 3.4 applied and read back on every open, failing if SQLite ignores one), forward-only `migrate` (`schema_migrations(module, id)`, one transaction for all pending so a failure rolls everything back, lock file `<db>.migrate.lock`, `beforeMigrate(pending)` no-op hook for the M3.4 pre-migration backup, refusal of a database that records an unknown migration), per-module SQL folders (`migrations/core/0001_identity.sql`: `users`, `settings`, `instance` exactly as in 07 section 2.1), Drizzle schema, `createUserRepository` (count, findByUsername, create) as the example repository, and `startServer` (config, module flags, open + migrate, then listen; a newer database refuses to start before the port is bound; `/healthz` now reads the database).
+- Tests: 99 passed in total on rebased main (new: PRAGMAs, idempotent migrations and hook, failing migration leaves old schema, newer database refused by runner and by `startServer`, held lock blocks a second runner, repository).
+- Deviations: migration SQL is hand-written to match 07 (Drizzle Kit generation is not wired; `drizzle-kit` is not installed, only `drizzle-orm`), so the SQL is the source of truth and `schema.ts` mirrors it; the 3.3 SQLite-version startup assertion is not in this PR text and is not done (bundled SQLite is 3.53.4 on this install); size is 404 changed lines counting `package.json`.
