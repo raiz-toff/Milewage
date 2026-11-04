@@ -1,9 +1,11 @@
 import { and, desc, eq, gte, lt, lte, or, type SQL } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import type { Db } from './open';
-import { shifts } from './schema';
+import { odometerReadings, shifts } from './schema';
 
 export type ShiftRow = typeof shifts.$inferSelect;
+export type OdometerRow = typeof odometerReadings.$inferSelect;
+export type OdometerKind = OdometerRow['kind'];
 
 export interface ShiftFilter {
   status?: ShiftRow['status'];
@@ -67,6 +69,30 @@ export function createShiftRepository(db: Db) {
         .orderBy(desc(shifts.startedAt), desc(shifts.id))
         .limit(f.limit + 1)
         .all();
+    },
+  };
+}
+
+export function createOdometerRepository(db: Db) {
+  const orm = drizzle(db);
+  const find = (shiftId: number, kind: OdometerKind) =>
+    orm
+      .select()
+      .from(odometerReadings)
+      .where(and(eq(odometerReadings.shiftId, shiftId), eq(odometerReadings.kind, kind)))
+      .get();
+  return {
+    find,
+    /** Upsert on (shift, kind). */
+    set(row: typeof odometerReadings.$inferInsert & { shiftId: number }): OdometerRow {
+      const old = find(row.shiftId, row.kind);
+      if (!old) return orm.insert(odometerReadings).values(row).returning().get();
+      return orm
+        .update(odometerReadings)
+        .set({ readingM: row.readingM, recordedAt: row.recordedAt })
+        .where(eq(odometerReadings.id, old.id))
+        .returning()
+        .get() as OdometerRow;
     },
   };
 }

@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import {
+  createOdometerRepository as odometerRepo,
   createSettingsRepository as settingsRepo,
   createShiftRepository as shiftRepo,
   createVehicleRepository as vehicleRepo,
@@ -16,6 +17,10 @@ const ms = { type: 'integer', minimum: 0 };
 const date = { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' };
 const status = { enum: ['active', 'ended', 'finalized'] };
 const refParams = strictObject({ ref }, ['ref']);
+const kindParams = strictObject({ ref, kind: { enum: ['shift_start', 'shift_end'] } }, [
+  'ref',
+  'kind',
+]);
 
 const start = strictObject(
   {
@@ -27,6 +32,26 @@ const start = strictObject(
   },
   ['client_id', 'vehicle_id', 'started_at'],
 );
+const patch = strictObject(
+  {
+    notes: { type: ['string', 'null'], maxLength: 2000 },
+    vehicle_id: { type: 'integer', minimum: 1 },
+    updated_at: ms,
+  },
+  [],
+  { minProperties: 1 },
+);
+// manifest, phone_result and interruptions are accepted and ignored until the engine lands (M5.3).
+const end = strictObject(
+  {
+    ended_at: ms,
+    manifest: { type: 'object' },
+    phone_result: { type: 'object' },
+    interruptions: { type: 'array', maxItems: 200 },
+  },
+  ['ended_at'],
+);
+const reading = strictObject({ reading_m: ms, recorded_at: ms }, ['reading_m', 'recorded_at']);
 const list = strictObject(
   {
     status,
@@ -56,12 +81,13 @@ const localDate = (at: number, timeZone: string) =>
 const invalid = (path: string, message: string) =>
   new ProblemError('validation_failed', 'The request is not valid.', [{ path, message }]);
 
-/** The logbook's shift routes: start, read and list. Edits, odometer and the minimal end follow. */
+/** The logbook's shift routes: start, read, list, edit notes or vehicle, odometer, a minimal end. */
 export function shiftRoutes(
   app: FastifyInstance,
   { db, now, auth }: { db: Db; now: () => number; auth: AuthFn },
 ) {
   const shifts = shiftRepo(db);
+  const odometer = odometerRepo(db);
   const vehicles = vehicleRepo(db);
   const device = (p: Principal) => p.kind === 'device';
   const touch = (p: Principal): Partial<ShiftRow> => (device(p) ? { deviceTouchedAt: now() } : {});
@@ -160,5 +186,66 @@ export function shiftRoutes(
 
   app.get('/shifts/:ref', { schema: { params: refParams } }, async (req) =>
     shiftView(load(auth(req, 'SD'), refOf(req), false)),
+  );
+
+  app.patch('/shifts/:ref', { schema: { params: refParams, body: patch } }, async (req, reply) => {
+    const p = auth(req, 'SD');
+    const row = load(p, refOf(req));
+    const b = req.body as { notes?: string | null; vehicle_id?: number; updated_at?: number };
+    if (b.updated_at !== undefined) notFuture('/updated_at', b.updated_at);
+    // Last writer wins on the client's edit time; ties go to the server (08 section 4.4).
+    if (b.updated_at !== undefined && b.updated_at <= row.updatedAt) {
+      return reply.header('X-MileWage-Applied', 'false').send(shiftView(row));
+    }
+    if (b.vehicle_id !== undefined) checkVehicle(p.userId, b.vehicle_id);
+    const set: Partial<ShiftRow> = { updatedAt: b.updated_at ?? now(), ...touch(p) };
+    if (b.notes !== undefined) set.notes = b.notes;
+    if (b.vehicle_id !== undefined) set.vehicleId = b.vehicle_id;
+    return reply
+      .header('X-MileWage-Applied', 'true')
+      .send(shiftView(shifts.update(row.id, set) ?? row));
+  });
+
+  // Minimal end: status and time only. Trips, totals and reconciliation arrive with the engine (M5.3).
+  app.post('/shifts/:ref/end', { schema: { params: refParams, body: end } }, async (req) => {
+    const p = auth(req, 'SD');
+    const row = load(p, refOf(req), false);
+    if (row.status !== 'active') return shiftView(row); // idempotent
+    const { ended_at: endedAt } = req.body as { ended_at: number };
+    notFuture('/ended_at', endedAt);
+    if (endedAt < row.startedAt) throw invalid('/ended_at', 'must not be before the shift started');
+    const saved = shifts.update(row.id, {
+      status: 'ended',
+      endedAt,
+      updatedAt: endedAt,
+      ...touch(p),
+    });
+    return shiftView(saved ?? row);
+  });
+
+  app.put(
+    '/shifts/:ref/odometer/:kind',
+    { schema: { params: kindParams, body: reading } },
+    async (req, reply) => {
+      const p = auth(req, 'SD');
+      const { kind } = req.params as { kind: 'shift_start' | 'shift_end' };
+      const row = load(p, refOf(req));
+      const b = req.body as { reading_m: number; recorded_at: number };
+      notFuture('/recorded_at', b.recorded_at);
+      const view = (r: object) => snakeKeys(r, 'userId');
+      const old = odometer.find(row.id, kind);
+      if (old && b.recorded_at <= old.recordedAt)
+        return reply.header('X-MileWage-Applied', 'false').send(view(old));
+      const saved = odometer.set({
+        userId: p.userId,
+        vehicleId: row.vehicleId,
+        shiftId: row.id,
+        kind,
+        readingM: b.reading_m,
+        recordedAt: b.recorded_at,
+      });
+      if (device(p)) shifts.update(row.id, touch(p));
+      return reply.header('X-MileWage-Applied', 'true').send(view(saved));
+    },
   );
 }

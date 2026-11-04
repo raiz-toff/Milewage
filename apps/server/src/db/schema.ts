@@ -113,3 +113,13 @@ export const shifts = sqliteTable('shifts', {
   deviceTouchedAt: integer('device_touched_at'),
   overlapsShiftId: integer('overlaps_shift_id'),
 });
+
+export const odometerReadings = sqliteTable('odometer_readings', {
+  id: integer('id').primaryKey(),
+  userId: userRef(),
+  vehicleId: vehicleRef(),
+  shiftId: integer('shift_id').references(() => shifts.id),
+  kind: text('kind', { enum: ['shift_start', 'shift_end', 'year_start', 'year_end'] }).notNull(),
+  readingM: integer('reading_m').notNull(),
+  recordedAt: integer('recorded_at').notNull(),
+});
