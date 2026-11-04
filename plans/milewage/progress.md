@@ -22,3 +22,11 @@ Running log for the Gate 4 build (roadmap `17`). Updated and pushed after each P
 - Tests: 16 passed (4 new for version.mjs: match, mismatch fails, malformed VERSION, sync). `verify` green on Node 22.22.0.
 - **Blocker/owner action: no GitLab runner is registered yet and the GitLab project URL/path is not known; the pipeline is untested.** `origin` is a git server on the LAN (push works). Branch protection (`infra/docs/branch-protection.md`) must be applied by the owner; until then the `verify`-before-merge rule is enforced manually.
 - Small additions beyond the PR text: ESLint node globals for `scripts/*.mjs`; root `package.json` now carries `version`.
+
+## PR 3 — [M0.3] Module registry, dependency graph, event bus
+
+- Branch `pr-03-module-registry`; squash commit on main `2577247`.
+- Done in `packages/shared`: `defineModule`, `buildRegistry` (cycle, unknown/duplicate module, non-toggleable-off and missing-dependency refusal with plain messages; dependency-ordered start), `resolveModuleConfig` (default, `config/settings.json` `modules`, then `MILEWAGE_MODULE_<NAME>=0|1`), typed `createEventBus` with the nine event names of 08 section 16.4, `moduleMatrix` test helper (all-on, only-X-with-dependencies, missing-dependency).
+- Tests: 33 passed in total (17 new). Disabled module: routes 404, no jobs, no subscriptions; events reach subscribers. Size 398 changed lines (trimmed to fit 400).
+- Decisions where the spec was silent (smallest consistent choice): event payloads are minimal ids (`shiftId`, `deviceId`, ...), to be refined when emitters exist; a throwing event handler is isolated so it cannot break the publisher; `RouteHost` is a tiny interface (`route(method, path, handler)`) that the server will adapt to Fastify later; modules may set `toggleable: false` (for core) and `defaultEnabled`; module names are lowercase snake_case so env names map to `MILEWAGE_MODULE_EXPORT_CSV`.
+- Not done (per PR text): the `stops` runtime guard, real modules, hot toggling, plugin loader.
