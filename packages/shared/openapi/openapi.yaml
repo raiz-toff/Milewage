@@ -1,0 +1,1965 @@
+openapi: 3.1.0
+info:
+  title: MileWage API
+  version: 1.0.0
+  summary: Self-hosted mileage tracking server for gig riders and drivers (single driver per instance).
+  description: >
+    Contract between the MileWage server, the Android app and the web client.
+    Units: timestamps are UTC epoch milliseconds, distances are integer metres,
+    money is integer cents, coordinates are integer degrees x 10^7.
+    Errors are RFC 9457 problem+json. See plans/milewage/08-api-spec.md for the rules
+    that OpenAPI cannot express (offline upload contract, WebSocket protocol, scopes).
+servers:
+  - url: /api/v1
+security:
+  - sessionCookie: []
+  - deviceBearer: []
+tags:
+  - { name: setup }
+  - { name: auth }
+  - { name: devices }
+  - { name: settings }
+  - { name: vehicles }
+  - { name: shifts }
+  - { name: stops }
+  - { name: trips }
+  - { name: telemetry }
+  - { name: exports }
+  - { name: backups }
+  - { name: sync }
+  - { name: diagnostics }
+  - { name: system }
+
+x-modules:
+  core:
+    toggle: never
+    operations: [getHealth, getSetupStatus, createOwner, confirmRecoveryKey, login, logout, changePassword, getSettings, updateSettings, listVehicles, createVehicle, updateVehicle, getSystemStatus, getSummary, listShifts, startShift, getShift, updateShift, purgeShift, endShift, finalizeShift, recalculateShift, setShiftOdometer, listOdometerReadings, createYearOdometerReading, deleteOdometerReading, listShiftTrips, putManualTrip, updateTrip, deleteManualTrip]
+  devices:
+    toggle: modules.devices
+    default: true
+    dependsOn: [core]
+    operations: [createPairingToken, redeemPairingToken, listDevices, renameDevice, revokeDevice]
+  tracking:
+    toggle: modules.tracking
+    default: true
+    dependsOn: [core, devices]
+    operations: [uploadTelemetryBatch, putTripOverride]
+  sync:
+    toggle: modules.sync
+    default: true
+    dependsOn: [core, devices]
+    operations: [pullChanges]
+  # local_export (v1.1): toggle modules.local_export, default false. Its restore route is not part of the v1 contract (15 section 9.1).
+  replay:
+    toggle: modules.replay
+    default: true
+    dependsOn: [tracking]
+    operations: [getShiftRoute]
+  live:
+    toggle: modules.live
+    default: true
+    dependsOn: [core]
+    operations: [connectLive]
+  stops:
+    toggle: settings.stops_enabled   # the one runtime toggle: a driver-facing setting, not a restart-time config switch (section 16.1)
+    default: true
+    dependsOn: [core, tracking]
+    operations: [listShiftStops, putStopLabel, deleteStopLabel]
+  exporters:
+    toggle: modules.export_<format>
+    default: true
+    dependsOn: [core]
+    operations: [exportData]
+    registry: { csv: [core], pdf: [core], gpx: [core, tracking], geojson: [core, tracking] }
+  backup:
+    toggle: engine is not toggleable; backup.on_shift_end, backup.download
+    default: true
+    dependsOn: [core]
+    operations: [listBackups, runBackup, downloadBackup, setOffsiteAck, restoreOnFreshInstance]
+  diagnostics:
+    toggle: modules.diagnostics   # plus settings.diagnostics_level (off, basic, verbose); 16 section 5
+    default: true
+    dependsOn: [core]
+    operations: [ingestDiagnosticEvents, listDiagnosticEvents, getDiagnosticsHealth, downloadDebugBundle]
+  capture:
+    toggle: modules.capture
+    default: false
+    dependsOn: [diagnostics, tracking, devices]
+    operations: [createCaptureSession, listCaptureSessions, updateCaptureSession, deleteCaptureSession, downloadCaptureReplay, uploadCaptureFixes, putCaptureAnnotation, deleteCaptureAnnotation]
+
+paths:
+  /healthz:
+    servers: [{ url: / }]
+    get:
+      tags: [system]
+      operationId: getHealth
+      summary: Liveness check (unauthenticated, reveals nothing else)
+      security: []
+      responses:
+        '200':
+          description: Database answers a trivial read.
+          content:
+            application/json:
+              schema: { type: object, required: [ok], properties: { ok: { const: true } } }
+        '503': { description: Not healthy. }
+
+  /setup/status:
+    get:
+      tags: [setup]
+      operationId: getSetupStatus
+      security: []
+      responses:
+        '200':
+          description: Instance state.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [state]
+                properties:
+                  state: { enum: [needs_setup, needs_confirmation, ready] }
+  /setup:
+    post:
+      tags: [setup]
+      operationId: createOwner
+      summary: Create the owner account. Works only while no users exist.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetupRequest' }
+      responses:
+        '201':
+          description: Account created; session cookie set. The recovery key is shown once.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [recovery_key, state]
+                properties:
+                  recovery_key: { type: string, description: age private key; never stored on the server. }
+                  state: { const: needs_confirmation }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /setup/confirm:
+    post:
+      tags: [setup]
+      operationId: confirmRecoveryKey
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [last6]
+              additionalProperties: false
+              properties:
+                last6: { type: string, minLength: 6, maxLength: 6 }
+      responses:
+        '200':
+          description: Setup complete; backups start.
+          content:
+            application/json:
+              schema: { type: object, required: [state], properties: { state: { const: ready } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /setup/restore:
+    post:
+      tags: [setup]
+      operationId: restoreOnFreshInstance
+      summary: Restore a backup onto a fresh instance. Refused if any user exists (use milewage-cli restore).
+      security: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, recovery_key]
+              properties:
+                file: { type: string, contentMediaType: application/octet-stream, description: "The .db.gz.age backup file (up to 512 MiB on this route only)." }
+                recovery_key: { type: string }
+      responses:
+        '200':
+          description: Restored. Verification output as in 10-backup-restore-and-ops-spec §7.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RestoreVerification' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '413': { $ref: '#/components/responses/TooLarge' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              additionalProperties: false
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        '204':
+          description: Session cookie mw_session set.
+          headers:
+            Set-Cookie: { schema: { type: string } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Session ended. }
+  /auth/password:
+    post:
+      tags: [auth]
+      operationId: changePassword
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              additionalProperties: false
+              properties:
+                current_password: { type: string }
+                new_password: { type: string, minLength: 10 }
+      responses:
+        '204': { description: Changed; all other sessions invalidated. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /pairing-tokens:
+    post:
+      tags: [devices]
+      operationId: createPairingToken
+      security: [{ sessionCookie: [] }]
+      responses:
+        '201':
+          description: One-time token, valid 10 minutes.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, expires_at, qr_payload]
+                properties:
+                  token: { type: string, pattern: '^mwp_[A-Za-z0-9_-]{43}$' }
+                  expires_at: { $ref: '#/components/schemas/EpochMs' }
+                  qr_payload: { type: string, description: "milewage://pair?v=1&u=<server url>&t=<token>" }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /pairing/redeem:
+    post:
+      tags: [devices]
+      operationId: redeemPairingToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, device_name, platform]
+              additionalProperties: false
+              properties:
+                token: { type: string }
+                device_name: { type: string, maxLength: 64 }
+                platform: { enum: [android, ios] }
+                app_version: { type: string, maxLength: 32 }
+      responses:
+        '201':
+          description: Device created. The credential is returned once and never again.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [device_id, device_token, settings]
+                properties:
+                  device_id: { type: integer }
+                  device_token: { type: string, pattern: '^mwd_[A-Za-z0-9_-]{43}$' }
+                  settings: { $ref: '#/components/schemas/Settings' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /devices:
+    get:
+      tags: [devices]
+      operationId: listDevices
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: All paired devices, including revoked ones.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Device' } }
+  /devices/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [devices]
+      operationId: renameDevice
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              additionalProperties: false
+              properties: { name: { type: string, maxLength: 64 } }
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Device' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [devices]
+      operationId: revokeDevice
+      summary: Revoke a device. Its next request returns 401 device_revoked.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Revoked (idempotent). }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /settings:
+    get:
+      tags: [settings]
+      operationId: getSettings
+      responses:
+        '200':
+          description: Current settings.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Settings' }
+    patch:
+      tags: [settings]
+      operationId: updateSettings
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SettingsPatch' }
+      responses:
+        '200':
+          description: Updated. A timezone change affects only shifts started afterwards.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Settings' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /vehicles:
+    get:
+      tags: [vehicles]
+      operationId: listVehicles
+      parameters:
+        - { name: include_archived, in: query, schema: { type: boolean, default: false } }
+      responses:
+        '200':
+          description: Vehicles.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Vehicle' } }
+    post:
+      tags: [vehicles]
+      operationId: createVehicle
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VehicleCreate' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Vehicle' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /vehicles/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [vehicles]
+      operationId: updateVehicle
+      summary: Rename or archive/unarchive. Vehicles are never deleted.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              properties:
+                name: { type: string, maxLength: 64 }
+                kind: { $ref: '#/components/schemas/VehicleKind' }
+                archived: { type: boolean }
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Vehicle' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /odometer:
+    get:
+      tags: [vehicles]
+      operationId: listOdometerReadings
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: vehicle_id, in: query, schema: { type: integer } }
+        - { name: kind, in: query, schema: { $ref: '#/components/schemas/OdometerKind' } }
+        - { $ref: '#/components/parameters/From' }
+        - { $ref: '#/components/parameters/To' }
+      responses:
+        '200':
+          description: Readings, newest first (at most 500).
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/OdometerReading' } }
+    post:
+      tags: [vehicles]
+      operationId: createYearOdometerReading
+      summary: Record a fiscal-year start or end reading (CRA). Shift readings use the PUT route.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vehicle_id, kind, reading_m, recorded_at]
+              additionalProperties: false
+              properties:
+                vehicle_id: { type: integer }
+                kind: { enum: [year_start, year_end] }
+                reading_m: { type: integer, minimum: 0 }
+                recorded_at: { $ref: '#/components/schemas/EpochMs' }
+      responses:
+        '201':
+          description: Recorded.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OdometerReading' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /odometer/{id}:
+    delete:
+      tags: [vehicles]
+      operationId: deleteOdometerReading
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '204': { description: Deleted. }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /shifts:
+    get:
+      tags: [shifts]
+      operationId: listShifts
+      summary: List shifts. A device sees only shifts started in the last 14 days.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/ShiftStatus' } }
+        - { name: vehicle_id, in: query, schema: { type: integer } }
+        - { $ref: '#/components/parameters/From' }
+        - { $ref: '#/components/parameters/To' }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: A page of shifts, newest first.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShiftPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [shifts]
+      operationId: startShift
+      summary: Start a shift. Idempotent on client_id.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ShiftStart' }
+      responses:
+        '200':
+          description: A shift with this client_id already exists; returned unchanged.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        '201':
+          description: Started.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        '409':
+          description: Another shift is already active. Body includes it as active_shift.
+          content:
+            application/problem+json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/Problem' }
+                  - type: object
+                    properties:
+                      active_shift: { $ref: '#/components/schemas/Shift' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        '507': { $ref: '#/components/responses/InsufficientStorage' }
+  /shifts/{ref}:
+    parameters:
+      - { $ref: '#/components/parameters/Ref' }
+    get:
+      tags: [shifts]
+      operationId: getShift
+      responses:
+        '200':
+          description: The shift.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [shifts]
+      operationId: updateShift
+      summary: Edit notes or vehicle. Start/end times are not editable (they define which points count).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              properties:
+                notes: { type: [string, 'null'], maxLength: 2000 }
+                vehicle_id: { type: integer }
+                updated_at: { $ref: '#/components/schemas/EpochMs' }
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    delete:
+      tags: [shifts]
+      operationId: purgeShift
+      summary: Permanently delete a shift and everything under it (web only).
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - name: confirm_recent
+          in: query
+          description: Required as true when the shift is under 7 years old (07 section 4.2).
+          schema: { type: boolean, default: false }
+      responses:
+        '204': { description: Deleted. }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /shifts/{ref}/end:
+    post:
+      tags: [shifts]
+      operationId: endShift
+      summary: End a shift and compute trips and totals. Idempotent.
+      parameters:
+        - { $ref: '#/components/parameters/Ref' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ended_at]
+              additionalProperties: false
+              properties:
+                ended_at: { $ref: '#/components/schemas/EpochMs' }
+                manifest: { $ref: '#/components/schemas/PointManifest' }
+                phone_result: { $ref: '#/components/schemas/PhoneResult' }
+                interruptions: { type: array, maxItems: 200, items: { $ref: '#/components/schemas/Interruption' } }
+      responses:
+        '200':
+          description: Ended (or already ended; returned unchanged). Totals are null only if the server could not yet compute them; `recon` is present when the request carried a `phone_result`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EndShiftResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        '507': { $ref: '#/components/responses/InsufficientStorage' }
+  /shifts/{ref}/finalize:
+    post:
+      tags: [shifts]
+      operationId: finalizeShift
+      summary: Mark the shift as reviewed. Makes it eligible for raw-point archiving; further points are refused.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Ref' }
+      responses:
+        '200':
+          description: Finalized.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /shifts/{ref}/recalculate:
+    post:
+      tags: [shifts]
+      operationId: recalculateShift
+      summary: Recompute trips and totals with the current algorithm (bumps calc_version). A finalized shift returns 409 shift_finalized; the dry-run comparison report is CLI only (14 section 11).
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Ref' }
+      responses:
+        '200':
+          description: Recomputed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /shifts/{ref}/odometer/{kind}:
+    put:
+      tags: [shifts]
+      operationId: setShiftOdometer
+      summary: Set the shift's start or end odometer reading. Idempotent on (shift, kind).
+      parameters:
+        - { $ref: '#/components/parameters/Ref' }
+        - { name: kind, in: path, required: true, schema: { enum: [shift_start, shift_end] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reading_m, recorded_at]
+              additionalProperties: false
+              properties:
+                reading_m: { type: integer, minimum: 0 }
+                recorded_at: { $ref: '#/components/schemas/EpochMs' }
+      responses:
+        '200':
+          description: Stored.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OdometerReading' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /shifts/{ref}/route:
+    get:
+      tags: [shifts]
+      operationId: getShiftRoute
+      summary: Compact columnar route for the map and replay scrubber (raw points, or the archive after retention).
+      parameters:
+        - { $ref: '#/components/parameters/Ref' }
+      responses:
+        '200':
+          description: Route arrays of equal length.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Route' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /shifts/{ref}/trips:
+    parameters:
+      - { $ref: '#/components/parameters/Ref' }
+    get:
+      tags: [trips]
+      operationId: listShiftTrips
+      responses:
+        '200':
+          description: Trips of the shift in time order.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Trip' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /trips/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [trips]
+      operationId: updateTrip
+      summary: Change kind or purpose. Distance of an auto trip cannot be changed (07 D14).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              properties:
+                kind: { enum: [active, deadhead, personal] }
+                purpose: { type: string, minLength: 1, maxLength: 200 }
+      responses:
+        '200':
+          description: Updated; shift totals recomputed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TripEditResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    delete:
+      tags: [trips]
+      operationId: deleteManualTrip
+      summary: Delete a manual trip only (auto trips return 409 trip_not_editable).
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Deleted. }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /shifts/{ref}/trips/{client_id}:
+    parameters:
+      - { $ref: '#/components/parameters/Ref' }
+      - { name: client_id, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      tags: [trips]
+      operationId: putManualTrip
+      summary: Add or edit a trip the phone failed to record (source = manual). Distance is typed in. Idempotent on client_id; last-writer-wins on edited_at; X-MileWage-Applied says whether it applied.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ManualTripPut' }
+      responses:
+        '200':
+          description: Stored or unchanged; the current server row is returned.
+          headers:
+            X-MileWage-Applied: { schema: { type: boolean } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TripEditResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /shifts/{ref}/trip-overrides/{trip_key}:
+    parameters:
+      - { $ref: '#/components/parameters/Ref' }
+      - { name: trip_key, in: path, required: true, schema: { type: string }, description: 'URL-encoded; format <shift client_id>:<segment start epoch ms>:<original_kind> (14 section 6.4).' }
+    put:
+      tags: [trips]
+      operationId: putTripOverride
+      summary: Idempotent reclassification or re-description of an auto trip, stored apart from the derived trip so a recompute cannot erase it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TripOverridePut' }
+      responses:
+        '200':
+          description: Stored or unchanged; shift totals recomputed. If no trip has this key the override is kept and reported as override_orphaned.
+          headers:
+            X-MileWage-Applied: { schema: { type: boolean } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TripEditResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /sync/changes:
+    get:
+      tags: [sync]
+      operationId: pullChanges
+      summary: Changes since a cursor within the caller's read window (web edits, recalculations, deletes).
+      parameters:
+        - { name: after, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 200 } }
+      responses:
+        '200':
+          description: A page of changes.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SyncChanges' }
+        '410':
+          description: cursor_expired. The server pruned its change log or was restored; do a full window pull.
+          content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+  /shifts/{ref}/stops:
+    parameters:
+      - { $ref: '#/components/parameters/Ref' }
+    get:
+      tags: [stops]
+      operationId: listShiftStops
+      summary: The shift's auto-detected stops (14 section 6), each with confidence, estimated role and any web label. Web only. 404 when the stops setting is off.
+      responses:
+        '200':
+          description: Stops in time order.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Stop' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /shifts/{ref}/stop-labels/{stop_key}:
+    parameters:
+      - { $ref: '#/components/parameters/Ref' }
+      - { name: stop_key, in: path, required: true, schema: { type: string }, description: 'URL-encoded; format <shift client_id>:<anchor fix epoch ms>:stop (14 section 6.2).' }
+    put:
+      tags: [stops]
+      operationId: putStopLabel
+      summary: Optional, web only. Label a detected stop; idempotent, last-writer-wins on edited_at. Recomputes the shift (the estimate may change; total business distance never does).
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StopLabelPut' }
+      responses:
+        '200':
+          description: Stored or unchanged; the stop and the recomputed shift are returned. If no stop has this key the label is kept and reported as label_orphaned.
+          headers:
+            X-MileWage-Applied: { schema: { type: boolean } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StopLabelResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        '507': { $ref: '#/components/responses/InsufficientStorage' }
+    delete:
+      tags: [stops]
+      operationId: deleteStopLabel
+      summary: Clear a stop's label; the engine's estimate applies again.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Cleared; the stop and the recomputed shift are returned.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StopLabelResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /telemetry/batch:
+    post:
+      tags: [telemetry]
+      operationId: uploadTelemetryBatch
+      summary: Upload up to 200 breadcrumb points for one shift. Safe to retry (idempotent on device_id + seq).
+      security: [{ deviceBearer: [] }]
+      parameters:
+        - { name: Content-Encoding, in: header, schema: { enum: [gzip, identity] } }
+        - { name: X-Client-Time, in: header, schema: { type: integer }, description: Phone clock, epoch ms. }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TelemetryBatch' }
+      responses:
+        '200':
+          description: Every point not listed in rejected is durably stored.
+          headers:
+            X-Server-Time: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TelemetryBatchResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '413': { $ref: '#/components/responses/TooLarge' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        '507': { $ref: '#/components/responses/InsufficientStorage' }
+
+  /live:
+    get:
+      tags: [telemetry]
+      operationId: connectLive
+      summary: WebSocket upgrade for the live map. Message schemas are in components/schemas/Ws*.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '101': { description: Switching protocols. Server sends hello, position, shift, stops, device and ping messages. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /summary:
+    get:
+      tags: [system]
+      operationId: getSummary
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/From' }
+        - { $ref: '#/components/parameters/To' }
+      responses:
+        '200':
+          description: Totals for the period.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Summary' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /exports/{format}:
+    get:
+      tags: [exports]
+      operationId: exportData
+      summary: Download a file from a registered exporter (v1 ships csv, pdf, gpx, geojson). A disabled or unknown format returns 404.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: format, in: path, required: true, schema: { enum: [csv, pdf, gpx, geojson] }, description: Only formats whose exporter is registered and enabled exist. }
+        - { $ref: '#/components/parameters/From' }
+        - { $ref: '#/components/parameters/To' }
+        - { name: shift_id, in: query, schema: { type: integer }, description: Alternative to from/to. }
+        - { name: vehicle_id, in: query, schema: { type: integer } }
+        - { name: level, in: query, description: "CSV only.", schema: { enum: [trip, shift], default: trip } }
+      responses:
+        '200':
+          description: The file, streamed.
+          headers:
+            Content-Disposition: { schema: { type: string } }
+          content:
+            text/csv: { schema: { type: string } }
+            application/pdf: { schema: { type: string, contentMediaType: application/pdf } }
+            application/gpx+xml: { schema: { type: string } }
+            application/geo+json: { schema: { type: object } }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /backups:
+    get:
+      tags: [backups]
+      operationId: listBackups
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Backups on disk with the result of their verification.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Backup' } }
+    post:
+      tags: [backups]
+      operationId: runBackup
+      summary: Run a verified backup now (rate-limited to once per 15 minutes).
+      security: [{ sessionCookie: [] }]
+      responses:
+        '201':
+          description: Backup written and verified.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Backup' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '507': { $ref: '#/components/responses/InsufficientStorage' }
+  /backups/{id}/download:
+    get:
+      tags: [backups]
+      operationId: downloadBackup
+      summary: Download the encrypted backup file. Also resets the 30-day off-site reminder.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: The .db.gz.age file.
+          content:
+            application/octet-stream: { schema: { type: string, contentMediaType: application/octet-stream } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /backups/offsite-ack:
+    put:
+      tags: [backups]
+      operationId: setOffsiteAck
+      summary: "Set the 'my backup folder is synced elsewhere' flag (re-asked every 90 days)."
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [synced_elsewhere]
+              additionalProperties: false
+              properties:
+                synced_elsewhere: { type: boolean }
+      responses:
+        '200':
+          description: Stored.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OffsiteState' }
+
+  /system/status:
+    get:
+      tags: [system]
+      operationId: getSystemStatus
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Operational status.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SystemStatus' }
+  /diagnostics/events:
+    post:
+      tags: [diagnostics]
+      operationId: ingestDiagnosticEvents
+      summary: Upload diagnostics events (16). A device sends phone sources; a web session sends web errors only. Idempotent on (device, src, seq). Every event is validated against the allowlist schema; rejects are listed and never fail the batch.
+      security: [{ sessionCookie: [] }, { deviceBearer: [] }]
+      parameters:
+        - { name: Content-Encoding, in: header, schema: { enum: [gzip, identity] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DiagIngestRequest' }
+      responses:
+        '200':
+          description: Accepted events are stored; duplicates, discarded and rejected events are counted. Verbose events are accepted and discarded while disk is low.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiagIngestResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '413': { $ref: '#/components/responses/TooLarge' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        '507': { $ref: '#/components/responses/InsufficientStorage' }
+    get:
+      tags: [diagnostics]
+      operationId: listDiagnosticEvents
+      summary: Filtered, cursor-paginated diagnostics events. Web only.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: from_at, in: query, schema: { $ref: '#/components/schemas/EpochMs' } }
+        - { name: to_at, in: query, schema: { $ref: '#/components/schemas/EpochMs' } }
+        - { name: kind, in: query, schema: { type: array, items: { type: string } }, style: form, explode: true }
+        - { name: src, in: query, schema: { enum: [phone_native, phone_js, server, web] } }
+        - { name: device_id, in: query, schema: { type: integer } }
+        - { name: shift, in: query, description: Shift client_id., schema: { type: string, format: uuid } }
+        - { name: level, in: query, schema: { enum: [basic, verbose] } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: A page of events, newest first.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiagEventPage' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /diagnostics/health:
+    get:
+      tags: [diagnostics]
+      operationId: getDiagnosticsHealth
+      summary: Tracking-health checks and score per paired device (last 7 shifts) and the server checks (16 section 10.1). Computed on read.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Health result.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiagnosticsHealth' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /diagnostics/bundle:
+    get:
+      tags: [diagnostics]
+      operationId: downloadDebugBundle
+      summary: Redacted debug bundle (16 section 10.2) - versions, health, per-shift summaries and re-validated events with relative times and pseudonymous ids. Capture data only when include_capture is given, and then anonymized.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/From' }
+        - { $ref: '#/components/parameters/To' }
+        - { name: shift, in: query, description: Shift client_id., schema: { type: string, format: uuid } }
+        - { name: include_capture, in: query, description: Capture session id to include (anonymized)., schema: { type: integer } }
+      responses:
+        '200':
+          description: The gzipped JSON bundle.
+          content:
+            application/gzip: { schema: { type: string, contentMediaType: application/gzip } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /diagnostics/capture-sessions:
+    post:
+      tags: [diagnostics]
+      operationId: createCaptureSession
+      summary: Start a time-boxed capture session for one device (16 section 8). Web only; refused when disk is low or the capture cap is reached.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CaptureSessionCreate' }
+      responses:
+        '201':
+          description: Session created; the device learns it from GET /settings.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CaptureSession' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '507': { $ref: '#/components/responses/InsufficientStorage' }
+    get:
+      tags: [diagnostics]
+      operationId: listCaptureSessions
+      summary: List capture sessions with their sizes and states.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Sessions, newest first.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/CaptureSession' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /diagnostics/capture-sessions/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [diagnostics]
+      operationId: updateCaptureSession
+      summary: End a session now. The recorded data is kept until it is deleted or purged.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CaptureSessionPatch' }
+      responses:
+        '200':
+          description: Session ended.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CaptureSession' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    delete:
+      tags: [diagnostics]
+      operationId: deleteCaptureSession
+      summary: Delete a session with its fixes and annotations.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Deleted. }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /diagnostics/capture-sessions/{id}/replay:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [diagnostics]
+      operationId: downloadCaptureReplay
+      summary: NDJSON replay for the test harness (16 section 8.4). anonymized (default) converts to metres from the first fix at latitude 0, longitude 0 with relative times; exact returns real coordinates for the owner's own harness.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: mode, in: query, schema: { enum: [anonymized, exact], default: anonymized } }
+      responses:
+        '200':
+          description: One JSON object per line - meta, fix, annotation and shift lines.
+          content:
+            application/x-ndjson: { schema: { type: string } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /diagnostics/capture-sessions/{id}/fixes:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [diagnostics]
+      operationId: uploadCaptureFixes
+      summary: Upload dense capture fixes for the device's own active session. Idempotent on (capture, seq).
+      security: [{ deviceBearer: [] }]
+      parameters:
+        - { name: Content-Encoding, in: header, schema: { enum: [gzip, identity] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CaptureFixBatch' }
+      responses:
+        '200':
+          description: Every fix is stored or was already stored.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CaptureFixResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '413': { $ref: '#/components/responses/TooLarge' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        '507': { $ref: '#/components/responses/InsufficientStorage' }
+  /diagnostics/capture-sessions/{id}/annotations/{client_id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+      - { name: client_id, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      tags: [diagnostics]
+      operationId: putCaptureAnnotation
+      summary: Web only. Mark a detected stop real, false or missed, or add a note, for tuning (E9 to E12). Idempotent.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CaptureAnnotationPut' }
+      responses:
+        '200':
+          description: Stored.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CaptureAnnotation' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    delete:
+      tags: [diagnostics]
+      operationId: deleteCaptureAnnotation
+      summary: Delete an annotation.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Deleted. }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+components:
+  securitySchemes:
+    sessionCookie: { type: apiKey, in: cookie, name: mw_session }
+    deviceBearer: { type: http, scheme: bearer, bearerFormat: "mwd_ opaque token" }
+
+  parameters:
+    Ref:
+      name: ref
+      in: path
+      required: true
+      description: Integer id or UUID client_id.
+      schema: { type: string, pattern: '^([0-9]+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$' }
+    From:
+      name: from
+      in: query
+      description: Local date YYYY-MM-DD in the instance timezone, inclusive.
+      schema: { type: string, format: date }
+    To:
+      name: to
+      in: query
+      schema: { type: string, format: date }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+
+  responses:
+    BadRequest: { description: Malformed request., content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+    Unauthorized: { description: Missing, invalid or revoked credential., content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+    Forbidden: { description: Scope, origin or setup state forbids this., content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+    NotFound: { description: No such row for this user., content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+    Conflict: { description: State conflict (see code)., content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+    TooLarge: { description: Body too large., content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+    Unprocessable: { description: Validation failed., content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+    RateLimited:
+      description: Too many requests.
+      headers:
+        Retry-After: { schema: { type: integer } }
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    Unavailable: { description: Read-only mode or restoring; retryable., content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+    InsufficientStorage: { description: Free disk below 200 MB; retryable., content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+
+  schemas:
+    EpochMs: { type: integer, minimum: 0, description: UTC milliseconds since the Unix epoch. }
+    Problem:
+      type: object
+      required: [type, title, status, code, retryable]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        code: { type: string }
+        detail: { type: string }
+        retryable: { type: boolean }
+        request_id: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            required: [path, message]
+            properties:
+              path: { type: string, description: JSON Pointer into the request body. }
+              message: { type: string }
+
+    SetupRequest:
+      type: object
+      required: [username, password, country, distance_unit, currency, timezone]
+      additionalProperties: false
+      properties:
+        username: { type: string, minLength: 3, maxLength: 64 }
+        password: { type: string, minLength: 10 }
+        country: { type: string, minLength: 2, maxLength: 2 }
+        distance_unit: { enum: [km, mi] }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        timezone: { type: string, description: IANA name }
+    Modules:
+      type: object
+      description: Read-only module flags so clients can hide screens and buttons of absent modules.
+      required: [devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
+      properties:
+        sync: { type: boolean }
+        local_export: { type: boolean, description: Reserved for v1.1; false in v1. }
+        devices: { type: boolean }
+        tracking: { type: boolean }
+        replay: { type: boolean }
+        live: { type: boolean }
+        stops: { type: boolean, description: 'Effective flag: the stops module is registered AND settings.stops_enabled is true. When false the phone and the web hide every stop and estimated-split element.' }
+        diagnostics: { type: boolean, description: 'Diagnostics module registered (16). When false the phone behaves as level off and the web hides the Diagnostics screens.' }
+        capture: { type: boolean, description: 'Capture module registered (16 section 8); false by default.' }
+        backup_download: { type: boolean }
+        exporters: { type: array, items: { enum: [csv, pdf, gpx, geojson] } }
+        countries: { type: array, items: { type: string, minLength: 2, maxLength: 2 } }
+    Settings:
+      type: object
+      required: [country, distance_unit, currency, timezone, raw_retention_days, stops_enabled, engine_version, diagnostics, modules]
+      properties:
+        modules: { $ref: '#/components/schemas/Modules' }
+        engine_version: { type: integer, description: The server's track-engine algorithmVersion (14 section 11). A phone with a lower number still shows its own result until sync. }
+        country: { type: string }
+        distance_unit: { enum: [km, mi] }
+        currency: { type: string }
+        timezone: { type: string }
+        raw_retention_days: { type: integer, minimum: 7 }
+        stops_enabled: { type: boolean, description: 'Driver-facing toggle for auto-detected stops, the estimated active/deadhead split and web labelling (decision 1.5b). Default true. Captured per shift at shift start (Shift.segmenter), so changing it never alters an existing shift.' }
+        diagnostics: { $ref: '#/components/schemas/DiagnosticsSettings' }
+    SettingsPatch:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        country: { type: string, minLength: 2, maxLength: 2 }
+        distance_unit: { enum: [km, mi] }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        timezone: { type: string }
+        raw_retention_days: { type: integer, minimum: 7 }
+        stops_enabled: { type: boolean }
+        diagnostics_level: { enum: [off, basic, verbose], description: 'verbose reverts to basic after 7 days (16 section 5).' }
+    Device:
+      type: object
+      required: [id, name, platform, created_at, last_seen_at, revoked_at]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        platform: { enum: [android, ios] }
+        created_at: { $ref: '#/components/schemas/EpochMs' }
+        last_seen_at: { type: [integer, 'null'] }
+        revoked_at: { type: [integer, 'null'] }
+        online: { type: boolean }
+        clock_skew_ms: { type: [integer, 'null'], description: Last observed phone-minus-server clock difference; in memory only. }
+
+    VehicleKind: { enum: [car, motorcycle, van, bicycle] }
+    VehicleCreate:
+      type: object
+      required: [name, kind]
+      additionalProperties: false
+      properties:
+        name: { type: string, maxLength: 64 }
+        kind: { $ref: '#/components/schemas/VehicleKind' }
+    Vehicle:
+      type: object
+      required: [id, name, kind, created_at, archived_at]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        kind: { $ref: '#/components/schemas/VehicleKind' }
+        created_at: { $ref: '#/components/schemas/EpochMs' }
+        archived_at: { type: [integer, 'null'] }
+
+    OdometerKind: { enum: [shift_start, shift_end, year_start, year_end] }
+    OdometerReading:
+      type: object
+      required: [id, vehicle_id, shift_id, kind, reading_m, recorded_at]
+      properties:
+        id: { type: integer }
+        vehicle_id: { type: integer }
+        shift_id: { type: [integer, 'null'] }
+        kind: { $ref: '#/components/schemas/OdometerKind' }
+        reading_m: { type: integer, minimum: 0 }
+        recorded_at: { $ref: '#/components/schemas/EpochMs' }
+
+    ShiftStatus: { enum: [active, ended, finalized] }
+    ShiftStart:
+      type: object
+      required: [client_id, vehicle_id, started_at]
+      additionalProperties: false
+      properties:
+        client_id: { type: string, format: uuid }
+        vehicle_id: { type: integer }
+        started_at: { $ref: '#/components/schemas/EpochMs' }
+        segmenter: { $ref: '#/components/schemas/Segmenter', description: 'The phone sends the value it read from its cached settings (stops_enabled). Omitted (an older phone): the server uses the current setting at receipt.' }
+        notes: { type: string, maxLength: 2000 }
+    Segmenter: { enum: [stops, whole_shift] }
+    Shift:
+      type: object
+      required: [id, client_id, vehicle_id, status, segmenter, started_at, ended_at, local_date, total_m, active_m, deadhead_m, personal_m, calc_version, calculated_at, notes, deduction_cents]
+      properties:
+        id: { type: integer }
+        client_id: { type: string, format: uuid }
+        vehicle_id: { type: integer }
+        status: { $ref: '#/components/schemas/ShiftStatus' }
+        started_at: { $ref: '#/components/schemas/EpochMs' }
+        ended_at: { type: [integer, 'null'] }
+        local_date: { type: string, format: date }
+        segmenter: { $ref: '#/components/schemas/Segmenter', description: 'stops = active_m and deadhead_m are ESTIMATES from detected stops (clients label them so); whole_shift = one active segment. total_m is the same either way.' }
+        total_m: { type: [integer, 'null'] }
+        active_m: { type: [integer, 'null'], description: Estimated when segmenter is stops. }
+        deadhead_m: { type: [integer, 'null'], description: Estimated when segmenter is stops. }
+        personal_m: { type: [integer, 'null'] }
+        calc_version: { type: [integer, 'null'] }
+        calculated_at: { type: [integer, 'null'] }
+        notes: { type: [string, 'null'] }
+        deduction_cents: { type: [integer, 'null'], description: Computed at read time from the country registry; never stored. }
+        updated_at: { $ref: '#/components/schemas/EpochMs' }
+        recon_status: { enum: [pending, match, differs, phone_missing] }
+        recon_reasons: { type: array, items: { type: string } }
+        calc_mismatch: { type: boolean }
+        flags: { type: array, items: { $ref: '#/components/schemas/ShiftFlag' } }
+        overlaps_shift_id: { type: [integer, 'null'], description: Set when a late upload made this shift overlap another (15 section 9.2). }
+    ShiftFlag:
+      type: object
+      required: [code, severity]
+      properties:
+        code: { type: string, description: 'One of the flags in 14 section 8.' }
+        severity: { enum: [info, review] }
+        detail: { type: [object, 'null'] }
+    PointManifest:
+      type: object
+      required: [first_seq, last_seq, point_count]
+      additionalProperties: false
+      properties:
+        first_seq: { type: integer, minimum: 1 }
+        last_seq: { type: integer, minimum: 1 }
+        point_count: { type: integer, minimum: 0 }
+    PhoneResult:
+      type: object
+      required: [calc_version, segmenter, input_digest, total_m, active_m, deadhead_m, personal_m, trips_count]
+      additionalProperties: false
+      properties:
+        calc_version: { type: integer }
+        segmenter: { $ref: '#/components/schemas/Segmenter' }
+        input_digest: { type: string, pattern: '^[0-9a-f]{16}$' }
+        total_m: { type: integer, minimum: 0 }
+        active_m: { type: integer, minimum: 0 }
+        deadhead_m: { type: integer, minimum: 0 }
+        personal_m: { type: integer, minimum: 0 }
+        trips_count: { type: integer, minimum: 0 }
+    Interruption:
+      type: object
+      required: [from_ms, to_ms]
+      additionalProperties: false
+      properties:
+        from_ms: { $ref: '#/components/schemas/EpochMs' }
+        to_ms: { $ref: '#/components/schemas/EpochMs' }
+    Recon:
+      type: object
+      required: [status, reasons]
+      properties:
+        status: { enum: [match, differs, phone_missing] }
+        server_total_m: { type: integer }
+        diff_m: { type: integer, description: Server total minus phone total. }
+        reasons: { type: array, items: { enum: [points_missing, calc_version, edited_on_web, late_points, engine_disagreement, unknown] } }
+    EndShiftResult:
+      allOf:
+        - { $ref: '#/components/schemas/Shift' }
+        - type: object
+          properties:
+            recon: { $ref: '#/components/schemas/Recon' }
+    ManualTripPut:
+      allOf:
+        - { $ref: '#/components/schemas/TripCreate' }
+        - type: object
+          required: [edited_at]
+          properties:
+            edited_at: { $ref: '#/components/schemas/EpochMs' }
+    TripOverridePut:
+      type: object
+      required: [kind, purpose, edited_at]
+      additionalProperties: false
+      properties:
+        kind: { $ref: '#/components/schemas/TripKind' }
+        purpose: { type: string, minLength: 1, maxLength: 200 }
+        edited_at: { $ref: '#/components/schemas/EpochMs' }
+    ChangeEntry:
+      type: object
+      required: [seq, entity, op, key]
+      properties:
+        seq: { type: integer }
+        entity: { enum: [shift, trip, odometer, vehicle, settings, override] }
+        op: { enum: [upsert, delete, orphaned_override] }
+        key: { type: string }
+        data: { type: [object, 'null'], description: The entity in its API shape; null for delete. }
+    SyncChanges:
+      type: object
+      required: [changes, next_cursor, has_more]
+      properties:
+        changes: { type: array, items: { $ref: '#/components/schemas/ChangeEntry' } }
+        next_cursor: { type: integer }
+        has_more: { type: boolean }
+    ShiftPage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Shift' } }
+        next_cursor: { type: [string, 'null'] }
+
+    Route:
+      type: object
+      required: [source, t, lat_e7, lon_e7]
+      description: Parallel arrays of equal length. speed_dmps is null-filled for archived routes.
+      properties:
+        source: { enum: [raw, archive] }
+        t: { type: array, items: { type: integer }, description: recorded_at in epoch ms. }
+        lat_e7: { type: array, items: { type: integer } }
+        lon_e7: { type: array, items: { type: integer } }
+        speed_dmps: { type: array, items: { type: [integer, 'null'] } }
+
+    TripKind: { enum: [active, deadhead, personal] }
+    Trip:
+      type: object
+      required: [id, shift_id, kind, original_kind, source, started_at, ended_at, distance_m, purpose, edited_at]
+      properties:
+        id: { type: integer }
+        shift_id: { type: integer }
+        trip_key: { type: string }
+        kind: { $ref: '#/components/schemas/TripKind' }
+        original_kind: { enum: [active, deadhead] }
+        source: { enum: [auto, manual] }
+        started_at: { $ref: '#/components/schemas/EpochMs' }
+        ended_at: { $ref: '#/components/schemas/EpochMs' }
+        start_lat_e7: { type: [integer, 'null'] }
+        start_lon_e7: { type: [integer, 'null'] }
+        end_lat_e7: { type: [integer, 'null'] }
+        end_lon_e7: { type: [integer, 'null'] }
+        distance_m: { type: integer, minimum: 0 }
+        purpose: { type: string }
+        edited_at: { type: [integer, 'null'] }
+    TripCreate:
+      type: object
+      required: [kind, started_at, ended_at, distance_m, purpose]
+      additionalProperties: false
+      properties:
+        kind: { $ref: '#/components/schemas/TripKind' }
+        started_at: { $ref: '#/components/schemas/EpochMs' }
+        ended_at: { $ref: '#/components/schemas/EpochMs' }
+        distance_m: { type: integer, minimum: 1 }
+        purpose: { type: string, minLength: 1, maxLength: 200 }
+    TripEditResult:
+      type: object
+      required: [trip, shift]
+      properties:
+        trip: { $ref: '#/components/schemas/Trip' }
+        shift: { $ref: '#/components/schemas/Shift' }
+
+    StopRole: { enum: [pickup, dropoff, other] }
+    StopConfidence: { enum: [low, medium, high] }
+    StopLabelPut:
+      type: object
+      required: [role, edited_at]
+      additionalProperties: false
+      properties:
+        role: { $ref: '#/components/schemas/StopRole' }
+        platform: { type: [string, 'null'], pattern: '^[a-z0-9_]{1,32}$' }
+        place: { type: [string, 'null'], maxLength: 120 }
+        payout_cents: { type: integer, minimum: 0, default: 0 }
+        tip_cents: { type: integer, minimum: 0, default: 0 }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+        edited_at: { $ref: '#/components/schemas/EpochMs' }
+    StopLabel:
+      allOf:
+        - { $ref: '#/components/schemas/StopLabelPut' }
+        - type: object
+          required: [stop_key, shift_id]
+          properties:
+            stop_key: { type: string }
+            shift_id: { type: integer }
+    Stop:
+      type: object
+      required: [stop_key, shift_id, started_at, ended_at, dwell_s, lat_e7, lon_e7, confidence, est_role, role, label]
+      description: A derived stop (14 section 6). Never written by a client.
+      properties:
+        stop_key: { type: string }
+        shift_id: { type: integer }
+        started_at: { $ref: '#/components/schemas/EpochMs' }
+        ended_at: { $ref: '#/components/schemas/EpochMs' }
+        dwell_s: { type: integer, minimum: 0 }
+        lat_e7: { type: integer }
+        lon_e7: { type: integer }
+        confidence: { $ref: '#/components/schemas/StopConfidence' }
+        est_role: { enum: [pickup, dropoff, none], description: The engine's estimate; none = recorded but does not change the estimate. }
+        role: { enum: [pickup, dropoff, other, none], description: The role used, the driver's label if any else est_role. }
+        label: { oneOf: [{ $ref: '#/components/schemas/StopLabel' }, { type: 'null' }] }
+    StopLabelResult:
+      type: object
+      required: [stop, shift]
+      properties:
+        stop: { $ref: '#/components/schemas/Stop' }
+        shift: { $ref: '#/components/schemas/Shift' }
+
+    TelemetryPoint:
+      type: object
+      required: [seq, recorded_at, lat_e7, lon_e7, accuracy_m]
+      additionalProperties: false
+      properties:
+        seq: { type: integer, minimum: 1 }
+        recorded_at: { $ref: '#/components/schemas/EpochMs' }
+        lat_e7: { type: integer, minimum: -900000000, maximum: 900000000 }
+        lon_e7: { type: integer, minimum: -1800000000, maximum: 1800000000 }
+        accuracy_m: { type: integer, minimum: 0 }
+        speed_dmps: { type: [integer, 'null'], minimum: 0 }
+        bearing_deg: { type: [integer, 'null'], minimum: 0, maximum: 359 }
+        altitude_m: { type: [integer, 'null'] }
+    TelemetryBatch:
+      type: object
+      required: [shift_client_id, points]
+      additionalProperties: false
+      properties:
+        shift_client_id: { type: string, format: uuid }
+        points: { type: array, minItems: 1, maxItems: 500, items: { $ref: '#/components/schemas/TelemetryPoint' } }
+    TelemetryBatchResult:
+      type: object
+      required: [inserted, duplicates, rejected, server_time, upload_hint_s]
+      properties:
+        inserted: { type: integer, minimum: 0 }
+        duplicates: { type: integer, minimum: 0 }
+        rejected:
+          type: array
+          description: Permanently refused points. Everything not listed here is stored.
+          items:
+            type: object
+            required: [seq, code]
+            properties:
+              seq: { type: integer }
+              code: { enum: [invalid_coordinate, future_timestamp, outside_shift_window] }
+        server_time: { $ref: '#/components/schemas/EpochMs' }
+        upload_hint_s: { type: integer, minimum: 10, maximum: 300, description: Suggested seconds until the next upload (15 while a web client is watching, else 60). }
+
+    WsHello:
+      type: object
+      required: [type, server_time, active_shift]
+      properties:
+        type: { const: hello }
+        server_time: { $ref: '#/components/schemas/EpochMs' }
+        active_shift: { oneOf: [{ $ref: '#/components/schemas/Shift' }, { type: 'null' }] }
+    WsPosition:
+      type: object
+      required: [type, shift_id, seq, recorded_at, lat_e7, lon_e7]
+      properties:
+        type: { const: position }
+        shift_id: { type: integer }
+        seq: { type: integer }
+        recorded_at: { $ref: '#/components/schemas/EpochMs' }
+        lat_e7: { type: integer }
+        lon_e7: { type: integer }
+        speed_dmps: { type: [integer, 'null'] }
+        bearing_deg: { type: [integer, 'null'] }
+        accuracy_m: { type: integer }
+    WsShift:
+      type: object
+      required: [type, event, shift]
+      properties:
+        type: { const: shift }
+        event: { enum: [started, ended, updated, finalized] }
+        shift: { $ref: '#/components/schemas/Shift' }
+    WsStops:
+      type: object
+      required: [type, shift_id, stops]
+      properties:
+        type: { const: stops }
+        shift_id: { type: integer }
+        stops: { type: array, items: { $ref: '#/components/schemas/Stop' } }
+    WsDevice:
+      type: object
+      required: [type, device_id, state, last_seen_at]
+      properties:
+        type: { const: device }
+        device_id: { type: integer }
+        state: { enum: [online, offline] }
+        last_seen_at: { type: [integer, 'null'] }
+        clock_skew_ms: { type: [integer, 'null'] }
+    WsPing:
+      type: object
+      required: [type, server_time]
+      properties:
+        type: { const: ping }
+        server_time: { $ref: '#/components/schemas/EpochMs' }
+    WsServerMessage:
+      description: Any frame sent by the server. The client replies to ping with {"type":"pong"}.
+      oneOf:
+        - { $ref: '#/components/schemas/WsHello' }
+        - { $ref: '#/components/schemas/WsPosition' }
+        - { $ref: '#/components/schemas/WsShift' }
+        - { $ref: '#/components/schemas/WsStops' }
+        - { $ref: '#/components/schemas/WsDevice' }
+        - { $ref: '#/components/schemas/WsPing' }
+      discriminator: { propertyName: type }
+
+    Summary:
+      type: object
+      required: [from, to, shift_count, hours, earnings_cents, tips_cents, active_m, deadhead_m, personal_m, total_m, deduction_cents, hourly_earnings_cents]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        shift_count: { type: integer }
+        hours: { type: number }
+        earnings_cents: { type: [integer, 'null'], description: Sum of payout plus tips over the driver's web stop labels; null when the stops setting is off or nothing was labelled. }
+        tips_cents: { type: [integer, 'null'] }
+        active_m: { type: integer }
+        deadhead_m: { type: integer }
+        personal_m: { type: integer }
+        total_m: { type: integer }
+        deduction_cents: { type: [integer, 'null'], description: null when the selected country has no registered pack. }
+        hourly_earnings_cents: { type: [integer, 'null'], description: earnings_cents divided by hours; null when hours is 0. }
+
+    Backup:
+      type: object
+      required: [id, created_at, size_bytes, sha256, integrity_ok, trigger]
+      properties:
+        id: { type: integer }
+        created_at: { $ref: '#/components/schemas/EpochMs' }
+        size_bytes: { type: integer }
+        sha256: { type: string }
+        integrity_ok: { type: boolean }
+        trigger: { enum: [nightly, shift_end, manual, pre_migration, pre_restore] }
+    OffsiteState:
+      type: object
+      required: [last_download_at, synced_elsewhere_at, reminder_due]
+      properties:
+        last_download_at: { type: [integer, 'null'] }
+        synced_elsewhere_at: { type: [integer, 'null'] }
+        reminder_due: { type: boolean }
+    RestoreVerification:
+      type: object
+      required: [integrity_ok, schema_version, shift_count, stop_label_count, point_count]
+      properties:
+        integrity_ok: { type: boolean }
+        schema_version: { type: integer }
+        shift_count: { type: integer }
+        stop_label_count: { type: integer }
+        point_count: { type: integer }
+        first_shift_at: { type: [integer, 'null'] }
+        last_shift_at: { type: [integer, 'null'] }
+        latest_shift_total_m: { type: [integer, 'null'] }
+    SystemStatus:
+      type: object
+      required: [app_version, schema_version, sqlite_version, db_bytes, wal_bytes, disk_free_bytes, disk_state, last_backup, offsite, paired_device_count, mode]
+      properties:
+        app_version: { type: string }
+        schema_version: { type: integer }
+        sqlite_version: { type: string }
+        db_bytes: { type: integer }
+        wal_bytes: { type: integer }
+        disk_free_bytes: { type: integer }
+        disk_state: { enum: [ok, warning, backup_skipped, writes_blocked] }
+        last_backup: { oneOf: [{ $ref: '#/components/schemas/Backup' }, { type: 'null' }] }
+        offsite: { $ref: '#/components/schemas/OffsiteState' }
+        paired_device_count: { type: integer }
+        mode: { enum: [normal, read_only, restoring] }
+        diagnostics:
+          type: object
+          description: Present when the diagnostics module is on (16 section 7.2).
+          properties:
+            level: { enum: [off, basic, verbose] }
+            db_bytes: { type: integer }
+            event_count: { type: integer }
+    DiagnosticsSettings:
+      type: object
+      required: [level, verbose_until, capture]
+      properties:
+        level: { enum: [off, basic, verbose] }
+        verbose_until: { type: [integer, 'null'], description: Epoch ms; verbose reverts to basic then. }
+        capture:
+          oneOf:
+            - { $ref: '#/components/schemas/CaptureAssignment' }
+            - { type: 'null' }
+          description: For a device, its own active capture session; always null for a web session.
+    CaptureAssignment:
+      type: object
+      required: [id, profile, expires_at, max_shifts, shifts_done]
+      properties:
+        id: { type: integer }
+        profile: { enum: [dense] }
+        expires_at: { $ref: '#/components/schemas/EpochMs' }
+        max_shifts: { type: integer }
+        shifts_done: { type: integer }
+    DiagEventIn:
+      type: object
+      required: [kind, at, level, src, v, data]
+      additionalProperties: false
+      properties:
+        kind: { type: string, maxLength: 40, pattern: '^[a-z_]+\.[a-z_]+$' }
+        at: { $ref: '#/components/schemas/EpochMs' }
+        level: { enum: [basic, verbose] }
+        src: { enum: [phone_native, phone_js, server, web] }
+        seq: { type: integer, minimum: 1, description: Required for phone sources; strictly increasing per (device, src). }
+        shift: { type: string, format: uuid, description: Shift client_id. }
+        cap: { type: integer, description: Capture session id. }
+        v: { type: string, maxLength: 40, pattern: '^[0-9A-Za-z._+-]{1,40}$' }
+        data: { type: object, description: 'Typed fields defined per kind in the shared package registry (16 section 3.2). Unknown fields are rejected. Never a coordinate, address, payout, label or free text (16 section 4).' }
+    DiagIngestRequest:
+      type: object
+      required: [events]
+      additionalProperties: false
+      properties:
+        events: { type: array, minItems: 1, maxItems: 200, items: { $ref: '#/components/schemas/DiagEventIn' } }
+    DiagIngestResult:
+      type: object
+      required: [accepted, duplicates, discarded, rejected]
+      properties:
+        accepted: { type: integer }
+        duplicates: { type: integer }
+        discarded: { type: integer, description: Verbose events accepted but not stored because disk is low. }
+        rejected:
+          type: array
+          items:
+            type: object
+            required: [index, reason]
+            properties:
+              index: { type: integer }
+              reason: { enum: [unknown_kind, schema, pattern, level, scope, seq_required] }
+    DiagEvent:
+      type: object
+      required: [id, src, at, received_at, level, kind, data]
+      properties:
+        id: { type: integer }
+        src: { enum: [phone_native, phone_js, server, web] }
+        device_id: { type: [integer, 'null'] }
+        seq: { type: [integer, 'null'] }
+        at: { $ref: '#/components/schemas/EpochMs' }
+        received_at: { $ref: '#/components/schemas/EpochMs' }
+        level: { enum: [basic, verbose] }
+        kind: { type: string }
+        shift: { type: [string, 'null'] }
+        cap: { type: [integer, 'null'] }
+        v: { type: [string, 'null'] }
+        data: { type: object }
+    DiagEventPage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/DiagEvent' } }
+        next_cursor: { type: [string, 'null'] }
+    HealthCheck:
+      type: object
+      required: [id, label, state]
+      properties:
+        id: { type: string, description: 'H1 to H7 (device checks) or S1 to S5 (server checks), 16 section 10.1.' }
+        label: { type: string }
+        weight: { type: integer, description: Points toward the 0 to 100 score; absent for server checks. }
+        value: { type: [number, 'null'] }
+        unit: { type: string }
+        state: { enum: [green, amber, red, na] }
+    DeviceHealth:
+      type: object
+      required: [device_id, name, shifts_considered, score, state, checks]
+      properties:
+        device_id: { type: integer }
+        name: { type: string }
+        shifts_considered: { type: integer }
+        score: { type: integer, minimum: 0, maximum: 100 }
+        state: { enum: [green, amber, red, na] }
+        checks: { type: array, items: { $ref: '#/components/schemas/HealthCheck' } }
+    ServerHealth:
+      type: object
+      required: [state, checks]
+      properties:
+        state: { enum: [green, amber, red, na] }
+        checks: { type: array, items: { $ref: '#/components/schemas/HealthCheck' } }
+    DiagnosticsHealth:
+      type: object
+      required: [generated_at, devices, server]
+      properties:
+        generated_at: { $ref: '#/components/schemas/EpochMs' }
+        devices: { type: array, items: { $ref: '#/components/schemas/DeviceHealth' } }
+        server: { $ref: '#/components/schemas/ServerHealth' }
+    CaptureSessionCreate:
+      type: object
+      required: [device_id]
+      additionalProperties: false
+      properties:
+        device_id: { type: integer }
+        profile: { enum: [dense], default: dense }
+        hours: { type: integer, minimum: 1, maximum: 168, default: 48 }
+        max_shifts: { type: integer, minimum: 1, maximum: 5, default: 3 }
+    CaptureSessionPatch:
+      type: object
+      required: [state]
+      additionalProperties: false
+      properties:
+        state: { const: ended }
+    CaptureSession:
+      type: object
+      required: [id, device_id, profile, created_at, expires_at, ended_at, max_shifts, shifts_done, fix_count, bytes, state]
+      properties:
+        id: { type: integer }
+        device_id: { type: integer }
+        profile: { enum: [dense] }
+        created_at: { $ref: '#/components/schemas/EpochMs' }
+        expires_at: { $ref: '#/components/schemas/EpochMs' }
+        ended_at: { type: [integer, 'null'] }
+        max_shifts: { type: integer }
+        shifts_done: { type: integer }
+        fix_count: { type: integer }
+        bytes: { type: integer }
+        state: { enum: [active, ended, expired] }
+    CaptureFix:
+      type: object
+      required: [seq, recorded_at, lat_e7, lon_e7, accuracy_m]
+      additionalProperties: false
+      properties:
+        seq: { type: integer, minimum: 1 }
+        recorded_at: { $ref: '#/components/schemas/EpochMs' }
+        lat_e7: { type: integer, minimum: -900000000, maximum: 900000000 }
+        lon_e7: { type: integer, minimum: -1800000000, maximum: 1800000000 }
+        accuracy_m: { type: integer, minimum: 0 }
+        speed_dmps: { type: [integer, 'null'] }
+        bearing_deg: { type: [integer, 'null'] }
+        altitude_m: { type: [integer, 'null'] }
+    CaptureFixBatch:
+      type: object
+      required: [shift, fixes]
+      additionalProperties: false
+      properties:
+        shift: { type: string, format: uuid, description: Shift client_id the fixes belong to. }
+        fixes: { type: array, minItems: 1, maxItems: 500, items: { $ref: '#/components/schemas/CaptureFix' } }
+    CaptureFixResult:
+      type: object
+      required: [accepted, duplicates]
+      properties:
+        accepted: { type: integer }
+        duplicates: { type: integer }
+    CaptureAnnotationPut:
+      type: object
+      required: [at, kind]
+      additionalProperties: false
+      properties:
+        at: { $ref: '#/components/schemas/EpochMs' }
+        kind: { enum: [real_stop, false_stop, missed_stop, event, note] }
+        shift: { type: string, format: uuid }
+        stop_key: { type: string }
+        text: { type: string, maxLength: 500, description: Free text; capture data is not diagnostics and may contain it (16 section 8.2). }
+    CaptureAnnotation:
+      type: object
+      required: [client_id, at, kind]
+      properties:
+        client_id: { type: string, format: uuid }
+        at: { $ref: '#/components/schemas/EpochMs' }
+        kind: { enum: [real_stop, false_stop, missed_stop, event, note] }
+        shift: { type: [string, 'null'] }
+        stop_key: { type: [string, 'null'] }
+        text: { type: [string, 'null'] }

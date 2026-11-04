@@ -15,17 +15,21 @@
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "verify": "npm run typecheck && npm run lint && npm run version:check && npm run test",
+    "verify": "npm run typecheck && npm run lint && npm run version:check && npm run openapi:check && npm run test",
     "version:check": "node scripts/version.mjs check",
-    "version:sync": "node scripts/version.mjs sync"
+    "version:sync": "node scripts/version.mjs sync",
+    "openapi:generate": "node scripts/openapi-generate.mjs generate",
+    "openapi:check": "node scripts/openapi-generate.mjs check && node scripts/openapi-generate.mjs lint"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
     "@types/node": "^22.20.5",
     "eslint": "^9.39.0",
+    "openapi-typescript": "^7.13.0",
     "prettier": "^3.6.0",
     "typescript": "^5.9.0",
     "typescript-eslint": "^8.46.0",
-    "vitest": "^3.2.0"
+    "vitest": "^3.2.0",
+    "yaml": "^2.9.1"
   }
 }

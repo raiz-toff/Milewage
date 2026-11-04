@@ -1,0 +1,2520 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "EpochMs": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "UTC milliseconds since the Unix epoch."
+    },
+    "Problem": {
+      "type": "object",
+      "required": [
+        "type",
+        "title",
+        "status",
+        "code",
+        "retryable"
+      ],
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "code": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "path",
+              "message"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "JSON Pointer into the request body."
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "SetupRequest": {
+      "type": "object",
+      "required": [
+        "username",
+        "password",
+        "country",
+        "distance_unit",
+        "currency",
+        "timezone"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "username": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 64
+        },
+        "password": {
+          "type": "string",
+          "minLength": 10
+        },
+        "country": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 2
+        },
+        "distance_unit": {
+          "enum": [
+            "km",
+            "mi"
+          ]
+        },
+        "currency": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 3
+        },
+        "timezone": {
+          "type": "string",
+          "description": "IANA name"
+        }
+      }
+    },
+    "Modules": {
+      "type": "object",
+      "description": "Read-only module flags so clients can hide screens and buttons of absent modules.",
+      "required": [
+        "devices",
+        "tracking",
+        "replay",
+        "live",
+        "stops",
+        "sync",
+        "diagnostics",
+        "capture",
+        "backup_download",
+        "exporters",
+        "countries"
+      ],
+      "properties": {
+        "sync": {
+          "type": "boolean"
+        },
+        "local_export": {
+          "type": "boolean",
+          "description": "Reserved for v1.1; false in v1."
+        },
+        "devices": {
+          "type": "boolean"
+        },
+        "tracking": {
+          "type": "boolean"
+        },
+        "replay": {
+          "type": "boolean"
+        },
+        "live": {
+          "type": "boolean"
+        },
+        "stops": {
+          "type": "boolean",
+          "description": "Effective flag: the stops module is registered AND settings.stops_enabled is true. When false the phone and the web hide every stop and estimated-split element."
+        },
+        "diagnostics": {
+          "type": "boolean",
+          "description": "Diagnostics module registered (16). When false the phone behaves as level off and the web hides the Diagnostics screens."
+        },
+        "capture": {
+          "type": "boolean",
+          "description": "Capture module registered (16 section 8); false by default."
+        },
+        "backup_download": {
+          "type": "boolean"
+        },
+        "exporters": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "csv",
+              "pdf",
+              "gpx",
+              "geojson"
+            ]
+          }
+        },
+        "countries": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 2
+          }
+        }
+      }
+    },
+    "Settings": {
+      "type": "object",
+      "required": [
+        "country",
+        "distance_unit",
+        "currency",
+        "timezone",
+        "raw_retention_days",
+        "stops_enabled",
+        "engine_version",
+        "diagnostics",
+        "modules"
+      ],
+      "properties": {
+        "modules": {
+          "$ref": "#/$defs/Modules"
+        },
+        "engine_version": {
+          "type": "integer",
+          "description": "The server's track-engine algorithmVersion (14 section 11). A phone with a lower number still shows its own result until sync."
+        },
+        "country": {
+          "type": "string"
+        },
+        "distance_unit": {
+          "enum": [
+            "km",
+            "mi"
+          ]
+        },
+        "currency": {
+          "type": "string"
+        },
+        "timezone": {
+          "type": "string"
+        },
+        "raw_retention_days": {
+          "type": "integer",
+          "minimum": 7
+        },
+        "stops_enabled": {
+          "type": "boolean",
+          "description": "Driver-facing toggle for auto-detected stops, the estimated active/deadhead split and web labelling (decision 1.5b). Default true. Captured per shift at shift start (Shift.segmenter), so changing it never alters an existing shift."
+        },
+        "diagnostics": {
+          "$ref": "#/$defs/DiagnosticsSettings"
+        }
+      }
+    },
+    "SettingsPatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "country": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 2
+        },
+        "distance_unit": {
+          "enum": [
+            "km",
+            "mi"
+          ]
+        },
+        "currency": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 3
+        },
+        "timezone": {
+          "type": "string"
+        },
+        "raw_retention_days": {
+          "type": "integer",
+          "minimum": 7
+        },
+        "stops_enabled": {
+          "type": "boolean"
+        },
+        "diagnostics_level": {
+          "enum": [
+            "off",
+            "basic",
+            "verbose"
+          ],
+          "description": "verbose reverts to basic after 7 days (16 section 5)."
+        }
+      }
+    },
+    "Device": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "platform",
+        "created_at",
+        "last_seen_at",
+        "revoked_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "platform": {
+          "enum": [
+            "android",
+            "ios"
+          ]
+        },
+        "created_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "last_seen_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "revoked_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "online": {
+          "type": "boolean"
+        },
+        "clock_skew_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Last observed phone-minus-server clock difference; in memory only."
+        }
+      }
+    },
+    "VehicleKind": {
+      "enum": [
+        "car",
+        "motorcycle",
+        "van",
+        "bicycle"
+      ]
+    },
+    "VehicleCreate": {
+      "type": "object",
+      "required": [
+        "name",
+        "kind"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "kind": {
+          "$ref": "#/$defs/VehicleKind"
+        }
+      }
+    },
+    "Vehicle": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "created_at",
+        "archived_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/VehicleKind"
+        },
+        "created_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "archived_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "OdometerKind": {
+      "enum": [
+        "shift_start",
+        "shift_end",
+        "year_start",
+        "year_end"
+      ]
+    },
+    "OdometerReading": {
+      "type": "object",
+      "required": [
+        "id",
+        "vehicle_id",
+        "shift_id",
+        "kind",
+        "reading_m",
+        "recorded_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "vehicle_id": {
+          "type": "integer"
+        },
+        "shift_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "kind": {
+          "$ref": "#/$defs/OdometerKind"
+        },
+        "reading_m": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "recorded_at": {
+          "$ref": "#/$defs/EpochMs"
+        }
+      }
+    },
+    "ShiftStatus": {
+      "enum": [
+        "active",
+        "ended",
+        "finalized"
+      ]
+    },
+    "ShiftStart": {
+      "type": "object",
+      "required": [
+        "client_id",
+        "vehicle_id",
+        "started_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "client_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "vehicle_id": {
+          "type": "integer"
+        },
+        "started_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "segmenter": {
+          "$ref": "#/$defs/Segmenter",
+          "description": "The phone sends the value it read from its cached settings (stops_enabled). Omitted (an older phone): the server uses the current setting at receipt."
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 2000
+        }
+      }
+    },
+    "Segmenter": {
+      "enum": [
+        "stops",
+        "whole_shift"
+      ]
+    },
+    "Shift": {
+      "type": "object",
+      "required": [
+        "id",
+        "client_id",
+        "vehicle_id",
+        "status",
+        "segmenter",
+        "started_at",
+        "ended_at",
+        "local_date",
+        "total_m",
+        "active_m",
+        "deadhead_m",
+        "personal_m",
+        "calc_version",
+        "calculated_at",
+        "notes",
+        "deduction_cents"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "client_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "vehicle_id": {
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/ShiftStatus"
+        },
+        "started_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "ended_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "local_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "segmenter": {
+          "$ref": "#/$defs/Segmenter",
+          "description": "stops = active_m and deadhead_m are ESTIMATES from detected stops (clients label them so); whole_shift = one active segment. total_m is the same either way."
+        },
+        "total_m": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "active_m": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Estimated when segmenter is stops."
+        },
+        "deadhead_m": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Estimated when segmenter is stops."
+        },
+        "personal_m": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "calc_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "calculated_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "deduction_cents": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Computed at read time from the country registry; never stored."
+        },
+        "updated_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "recon_status": {
+          "enum": [
+            "pending",
+            "match",
+            "differs",
+            "phone_missing"
+          ]
+        },
+        "recon_reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "calc_mismatch": {
+          "type": "boolean"
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ShiftFlag"
+          }
+        },
+        "overlaps_shift_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Set when a late upload made this shift overlap another (15 section 9.2)."
+        }
+      }
+    },
+    "ShiftFlag": {
+      "type": "object",
+      "required": [
+        "code",
+        "severity"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "One of the flags in 14 section 8."
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "review"
+          ]
+        },
+        "detail": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      }
+    },
+    "PointManifest": {
+      "type": "object",
+      "required": [
+        "first_seq",
+        "last_seq",
+        "point_count"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "first_seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "last_seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "point_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "PhoneResult": {
+      "type": "object",
+      "required": [
+        "calc_version",
+        "segmenter",
+        "input_digest",
+        "total_m",
+        "active_m",
+        "deadhead_m",
+        "personal_m",
+        "trips_count"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "calc_version": {
+          "type": "integer"
+        },
+        "segmenter": {
+          "$ref": "#/$defs/Segmenter"
+        },
+        "input_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$"
+        },
+        "total_m": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "active_m": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "deadhead_m": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "personal_m": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "trips_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "Interruption": {
+      "type": "object",
+      "required": [
+        "from_ms",
+        "to_ms"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "from_ms": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "to_ms": {
+          "$ref": "#/$defs/EpochMs"
+        }
+      }
+    },
+    "Recon": {
+      "type": "object",
+      "required": [
+        "status",
+        "reasons"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "match",
+            "differs",
+            "phone_missing"
+          ]
+        },
+        "server_total_m": {
+          "type": "integer"
+        },
+        "diff_m": {
+          "type": "integer",
+          "description": "Server total minus phone total."
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "points_missing",
+              "calc_version",
+              "edited_on_web",
+              "late_points",
+              "engine_disagreement",
+              "unknown"
+            ]
+          }
+        }
+      }
+    },
+    "EndShiftResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/Shift"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "recon": {
+              "$ref": "#/$defs/Recon"
+            }
+          }
+        }
+      ]
+    },
+    "ManualTripPut": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/TripCreate"
+        },
+        {
+          "type": "object",
+          "required": [
+            "edited_at"
+          ],
+          "properties": {
+            "edited_at": {
+              "$ref": "#/$defs/EpochMs"
+            }
+          }
+        }
+      ]
+    },
+    "TripOverridePut": {
+      "type": "object",
+      "required": [
+        "kind",
+        "purpose",
+        "edited_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/TripKind"
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "edited_at": {
+          "$ref": "#/$defs/EpochMs"
+        }
+      }
+    },
+    "ChangeEntry": {
+      "type": "object",
+      "required": [
+        "seq",
+        "entity",
+        "op",
+        "key"
+      ],
+      "properties": {
+        "seq": {
+          "type": "integer"
+        },
+        "entity": {
+          "enum": [
+            "shift",
+            "trip",
+            "odometer",
+            "vehicle",
+            "settings",
+            "override"
+          ]
+        },
+        "op": {
+          "enum": [
+            "upsert",
+            "delete",
+            "orphaned_override"
+          ]
+        },
+        "key": {
+          "type": "string"
+        },
+        "data": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "The entity in its API shape; null for delete."
+        }
+      }
+    },
+    "SyncChanges": {
+      "type": "object",
+      "required": [
+        "changes",
+        "next_cursor",
+        "has_more"
+      ],
+      "properties": {
+        "changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChangeEntry"
+          }
+        },
+        "next_cursor": {
+          "type": "integer"
+        },
+        "has_more": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ShiftPage": {
+      "type": "object",
+      "required": [
+        "items",
+        "next_cursor"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Shift"
+          }
+        },
+        "next_cursor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "Route": {
+      "type": "object",
+      "required": [
+        "source",
+        "t",
+        "lat_e7",
+        "lon_e7"
+      ],
+      "description": "Parallel arrays of equal length. speed_dmps is null-filled for archived routes.",
+      "properties": {
+        "source": {
+          "enum": [
+            "raw",
+            "archive"
+          ]
+        },
+        "t": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "description": "recorded_at in epoch ms."
+        },
+        "lat_e7": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "lon_e7": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "speed_dmps": {
+          "type": "array",
+          "items": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "TripKind": {
+      "enum": [
+        "active",
+        "deadhead",
+        "personal"
+      ]
+    },
+    "Trip": {
+      "type": "object",
+      "required": [
+        "id",
+        "shift_id",
+        "kind",
+        "original_kind",
+        "source",
+        "started_at",
+        "ended_at",
+        "distance_m",
+        "purpose",
+        "edited_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "shift_id": {
+          "type": "integer"
+        },
+        "trip_key": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/TripKind"
+        },
+        "original_kind": {
+          "enum": [
+            "active",
+            "deadhead"
+          ]
+        },
+        "source": {
+          "enum": [
+            "auto",
+            "manual"
+          ]
+        },
+        "started_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "ended_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "start_lat_e7": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "start_lon_e7": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "end_lat_e7": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "end_lon_e7": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "distance_m": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "edited_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "TripCreate": {
+      "type": "object",
+      "required": [
+        "kind",
+        "started_at",
+        "ended_at",
+        "distance_m",
+        "purpose"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/TripKind"
+        },
+        "started_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "ended_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "distance_m": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "TripEditResult": {
+      "type": "object",
+      "required": [
+        "trip",
+        "shift"
+      ],
+      "properties": {
+        "trip": {
+          "$ref": "#/$defs/Trip"
+        },
+        "shift": {
+          "$ref": "#/$defs/Shift"
+        }
+      }
+    },
+    "StopRole": {
+      "enum": [
+        "pickup",
+        "dropoff",
+        "other"
+      ]
+    },
+    "StopConfidence": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "StopLabelPut": {
+      "type": "object",
+      "required": [
+        "role",
+        "edited_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "$ref": "#/$defs/StopRole"
+        },
+        "platform": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-z0-9_]{1,32}$"
+        },
+        "place": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 120
+        },
+        "payout_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "tip_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        },
+        "edited_at": {
+          "$ref": "#/$defs/EpochMs"
+        }
+      }
+    },
+    "StopLabel": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/StopLabelPut"
+        },
+        {
+          "type": "object",
+          "required": [
+            "stop_key",
+            "shift_id"
+          ],
+          "properties": {
+            "stop_key": {
+              "type": "string"
+            },
+            "shift_id": {
+              "type": "integer"
+            }
+          }
+        }
+      ]
+    },
+    "Stop": {
+      "type": "object",
+      "required": [
+        "stop_key",
+        "shift_id",
+        "started_at",
+        "ended_at",
+        "dwell_s",
+        "lat_e7",
+        "lon_e7",
+        "confidence",
+        "est_role",
+        "role",
+        "label"
+      ],
+      "description": "A derived stop (14 section 6). Never written by a client.",
+      "properties": {
+        "stop_key": {
+          "type": "string"
+        },
+        "shift_id": {
+          "type": "integer"
+        },
+        "started_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "ended_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "dwell_s": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lat_e7": {
+          "type": "integer"
+        },
+        "lon_e7": {
+          "type": "integer"
+        },
+        "confidence": {
+          "$ref": "#/$defs/StopConfidence"
+        },
+        "est_role": {
+          "enum": [
+            "pickup",
+            "dropoff",
+            "none"
+          ],
+          "description": "The engine's estimate; none = recorded but does not change the estimate."
+        },
+        "role": {
+          "enum": [
+            "pickup",
+            "dropoff",
+            "other",
+            "none"
+          ],
+          "description": "The role used",
+          "the driver's label if any else est_role.": null
+        },
+        "label": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/StopLabel"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "StopLabelResult": {
+      "type": "object",
+      "required": [
+        "stop",
+        "shift"
+      ],
+      "properties": {
+        "stop": {
+          "$ref": "#/$defs/Stop"
+        },
+        "shift": {
+          "$ref": "#/$defs/Shift"
+        }
+      }
+    },
+    "TelemetryPoint": {
+      "type": "object",
+      "required": [
+        "seq",
+        "recorded_at",
+        "lat_e7",
+        "lon_e7",
+        "accuracy_m"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "recorded_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "lat_e7": {
+          "type": "integer",
+          "minimum": -900000000,
+          "maximum": 900000000
+        },
+        "lon_e7": {
+          "type": "integer",
+          "minimum": -1800000000,
+          "maximum": 1800000000
+        },
+        "accuracy_m": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "speed_dmps": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "bearing_deg": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 359
+        },
+        "altitude_m": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "TelemetryBatch": {
+      "type": "object",
+      "required": [
+        "shift_client_id",
+        "points"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "shift_client_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "points": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/$defs/TelemetryPoint"
+          }
+        }
+      }
+    },
+    "TelemetryBatchResult": {
+      "type": "object",
+      "required": [
+        "inserted",
+        "duplicates",
+        "rejected",
+        "server_time",
+        "upload_hint_s"
+      ],
+      "properties": {
+        "inserted": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duplicates": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rejected": {
+          "type": "array",
+          "description": "Permanently refused points. Everything not listed here is stored.",
+          "items": {
+            "type": "object",
+            "required": [
+              "seq",
+              "code"
+            ],
+            "properties": {
+              "seq": {
+                "type": "integer"
+              },
+              "code": {
+                "enum": [
+                  "invalid_coordinate",
+                  "future_timestamp",
+                  "outside_shift_window"
+                ]
+              }
+            }
+          }
+        },
+        "server_time": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "upload_hint_s": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 300,
+          "description": "Suggested seconds until the next upload (15 while a web client is watching",
+          "else 60).": null
+        }
+      }
+    },
+    "WsHello": {
+      "type": "object",
+      "required": [
+        "type",
+        "server_time",
+        "active_shift"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "WsHello"
+          ],
+          "description": "discriminator enum property added by openapi-typescript"
+        },
+        "server_time": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "active_shift": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Shift"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "WsPosition": {
+      "type": "object",
+      "required": [
+        "type",
+        "shift_id",
+        "seq",
+        "recorded_at",
+        "lat_e7",
+        "lon_e7"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "WsPosition"
+          ],
+          "description": "discriminator enum property added by openapi-typescript"
+        },
+        "shift_id": {
+          "type": "integer"
+        },
+        "seq": {
+          "type": "integer"
+        },
+        "recorded_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "lat_e7": {
+          "type": "integer"
+        },
+        "lon_e7": {
+          "type": "integer"
+        },
+        "speed_dmps": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "bearing_deg": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "accuracy_m": {
+          "type": "integer"
+        }
+      }
+    },
+    "WsShift": {
+      "type": "object",
+      "required": [
+        "type",
+        "event",
+        "shift"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "WsShift"
+          ],
+          "description": "discriminator enum property added by openapi-typescript"
+        },
+        "event": {
+          "enum": [
+            "started",
+            "ended",
+            "updated",
+            "finalized"
+          ]
+        },
+        "shift": {
+          "$ref": "#/$defs/Shift"
+        }
+      }
+    },
+    "WsStops": {
+      "type": "object",
+      "required": [
+        "type",
+        "shift_id",
+        "stops"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "WsStops"
+          ],
+          "description": "discriminator enum property added by openapi-typescript"
+        },
+        "shift_id": {
+          "type": "integer"
+        },
+        "stops": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Stop"
+          }
+        }
+      }
+    },
+    "WsDevice": {
+      "type": "object",
+      "required": [
+        "type",
+        "device_id",
+        "state",
+        "last_seen_at"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "WsDevice"
+          ],
+          "description": "discriminator enum property added by openapi-typescript"
+        },
+        "device_id": {
+          "type": "integer"
+        },
+        "state": {
+          "enum": [
+            "online",
+            "offline"
+          ]
+        },
+        "last_seen_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "clock_skew_ms": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "WsPing": {
+      "type": "object",
+      "required": [
+        "type",
+        "server_time"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "WsPing"
+          ],
+          "description": "discriminator enum property added by openapi-typescript"
+        },
+        "server_time": {
+          "$ref": "#/$defs/EpochMs"
+        }
+      }
+    },
+    "WsServerMessage": {
+      "description": "Any frame sent by the server. The client replies to ping with {\"type\":\"pong\"}.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/WsHello"
+        },
+        {
+          "$ref": "#/$defs/WsPosition"
+        },
+        {
+          "$ref": "#/$defs/WsShift"
+        },
+        {
+          "$ref": "#/$defs/WsStops"
+        },
+        {
+          "$ref": "#/$defs/WsDevice"
+        },
+        {
+          "$ref": "#/$defs/WsPing"
+        }
+      ],
+      "discriminator": {
+        "propertyName": "type"
+      }
+    },
+    "Summary": {
+      "type": "object",
+      "required": [
+        "from",
+        "to",
+        "shift_count",
+        "hours",
+        "earnings_cents",
+        "tips_cents",
+        "active_m",
+        "deadhead_m",
+        "personal_m",
+        "total_m",
+        "deduction_cents",
+        "hourly_earnings_cents"
+      ],
+      "properties": {
+        "from": {
+          "type": "string",
+          "format": "date"
+        },
+        "to": {
+          "type": "string",
+          "format": "date"
+        },
+        "shift_count": {
+          "type": "integer"
+        },
+        "hours": {
+          "type": "number"
+        },
+        "earnings_cents": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Sum of payout plus tips over the driver's web stop labels; null when the stops setting is off or nothing was labelled."
+        },
+        "tips_cents": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "active_m": {
+          "type": "integer"
+        },
+        "deadhead_m": {
+          "type": "integer"
+        },
+        "personal_m": {
+          "type": "integer"
+        },
+        "total_m": {
+          "type": "integer"
+        },
+        "deduction_cents": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "null when the selected country has no registered pack."
+        },
+        "hourly_earnings_cents": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "earnings_cents divided by hours; null when hours is 0."
+        }
+      }
+    },
+    "Backup": {
+      "type": "object",
+      "required": [
+        "id",
+        "created_at",
+        "size_bytes",
+        "sha256",
+        "integrity_ok",
+        "trigger"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "created_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "size_bytes": {
+          "type": "integer"
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "integrity_ok": {
+          "type": "boolean"
+        },
+        "trigger": {
+          "enum": [
+            "nightly",
+            "shift_end",
+            "manual",
+            "pre_migration",
+            "pre_restore"
+          ]
+        }
+      }
+    },
+    "OffsiteState": {
+      "type": "object",
+      "required": [
+        "last_download_at",
+        "synced_elsewhere_at",
+        "reminder_due"
+      ],
+      "properties": {
+        "last_download_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "synced_elsewhere_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "reminder_due": {
+          "type": "boolean"
+        }
+      }
+    },
+    "RestoreVerification": {
+      "type": "object",
+      "required": [
+        "integrity_ok",
+        "schema_version",
+        "shift_count",
+        "stop_label_count",
+        "point_count"
+      ],
+      "properties": {
+        "integrity_ok": {
+          "type": "boolean"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "shift_count": {
+          "type": "integer"
+        },
+        "stop_label_count": {
+          "type": "integer"
+        },
+        "point_count": {
+          "type": "integer"
+        },
+        "first_shift_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "last_shift_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "latest_shift_total_m": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "SystemStatus": {
+      "type": "object",
+      "required": [
+        "app_version",
+        "schema_version",
+        "sqlite_version",
+        "db_bytes",
+        "wal_bytes",
+        "disk_free_bytes",
+        "disk_state",
+        "last_backup",
+        "offsite",
+        "paired_device_count",
+        "mode"
+      ],
+      "properties": {
+        "app_version": {
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "sqlite_version": {
+          "type": "string"
+        },
+        "db_bytes": {
+          "type": "integer"
+        },
+        "wal_bytes": {
+          "type": "integer"
+        },
+        "disk_free_bytes": {
+          "type": "integer"
+        },
+        "disk_state": {
+          "enum": [
+            "ok",
+            "warning",
+            "backup_skipped",
+            "writes_blocked"
+          ]
+        },
+        "last_backup": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Backup"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "offsite": {
+          "$ref": "#/$defs/OffsiteState"
+        },
+        "paired_device_count": {
+          "type": "integer"
+        },
+        "mode": {
+          "enum": [
+            "normal",
+            "read_only",
+            "restoring"
+          ]
+        },
+        "diagnostics": {
+          "type": "object",
+          "description": "Present when the diagnostics module is on (16 section 7.2).",
+          "properties": {
+            "level": {
+              "enum": [
+                "off",
+                "basic",
+                "verbose"
+              ]
+            },
+            "db_bytes": {
+              "type": "integer"
+            },
+            "event_count": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "DiagnosticsSettings": {
+      "type": "object",
+      "required": [
+        "level",
+        "verbose_until",
+        "capture"
+      ],
+      "properties": {
+        "level": {
+          "enum": [
+            "off",
+            "basic",
+            "verbose"
+          ]
+        },
+        "verbose_until": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Epoch ms; verbose reverts to basic then."
+        },
+        "capture": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/CaptureAssignment"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "For a device, its own active capture session; always null for a web session."
+        }
+      }
+    },
+    "CaptureAssignment": {
+      "type": "object",
+      "required": [
+        "id",
+        "profile",
+        "expires_at",
+        "max_shifts",
+        "shifts_done"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "profile": {
+          "enum": [
+            "dense"
+          ]
+        },
+        "expires_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "max_shifts": {
+          "type": "integer"
+        },
+        "shifts_done": {
+          "type": "integer"
+        }
+      }
+    },
+    "DiagEventIn": {
+      "type": "object",
+      "required": [
+        "kind",
+        "at",
+        "level",
+        "src",
+        "v",
+        "data"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "maxLength": 40,
+          "pattern": "^[a-z_]+\\.[a-z_]+$"
+        },
+        "at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "level": {
+          "enum": [
+            "basic",
+            "verbose"
+          ]
+        },
+        "src": {
+          "enum": [
+            "phone_native",
+            "phone_js",
+            "server",
+            "web"
+          ]
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Required for phone sources; strictly increasing per (device",
+          "src).": null
+        },
+        "shift": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Shift client_id."
+        },
+        "cap": {
+          "type": "integer",
+          "description": "Capture session id."
+        },
+        "v": {
+          "type": "string",
+          "maxLength": 40,
+          "pattern": "^[0-9A-Za-z._+-]{1,40}$"
+        },
+        "data": {
+          "type": "object",
+          "description": "Typed fields defined per kind in the shared package registry (16 section 3.2). Unknown fields are rejected. Never a coordinate, address, payout, label or free text (16 section 4)."
+        }
+      }
+    },
+    "DiagIngestRequest": {
+      "type": "object",
+      "required": [
+        "events"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "events": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/$defs/DiagEventIn"
+          }
+        }
+      }
+    },
+    "DiagIngestResult": {
+      "type": "object",
+      "required": [
+        "accepted",
+        "duplicates",
+        "discarded",
+        "rejected"
+      ],
+      "properties": {
+        "accepted": {
+          "type": "integer"
+        },
+        "duplicates": {
+          "type": "integer"
+        },
+        "discarded": {
+          "type": "integer",
+          "description": "Verbose events accepted but not stored because disk is low."
+        },
+        "rejected": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "index",
+              "reason"
+            ],
+            "properties": {
+              "index": {
+                "type": "integer"
+              },
+              "reason": {
+                "enum": [
+                  "unknown_kind",
+                  "schema",
+                  "pattern",
+                  "level",
+                  "scope",
+                  "seq_required"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "DiagEvent": {
+      "type": "object",
+      "required": [
+        "id",
+        "src",
+        "at",
+        "received_at",
+        "level",
+        "kind",
+        "data"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "src": {
+          "enum": [
+            "phone_native",
+            "phone_js",
+            "server",
+            "web"
+          ]
+        },
+        "device_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "seq": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "received_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "level": {
+          "enum": [
+            "basic",
+            "verbose"
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "shift": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cap": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "v": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "data": {
+          "type": "object"
+        }
+      }
+    },
+    "DiagEventPage": {
+      "type": "object",
+      "required": [
+        "items",
+        "next_cursor"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DiagEvent"
+          }
+        },
+        "next_cursor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "HealthCheck": {
+      "type": "object",
+      "required": [
+        "id",
+        "label",
+        "state"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "H1 to H7 (device checks) or S1 to S5 (server checks), 16 section 10.1."
+        },
+        "label": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "integer",
+          "description": "Points toward the 0 to 100 score; absent for server checks."
+        },
+        "value": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "unit": {
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "green",
+            "amber",
+            "red",
+            "na"
+          ]
+        }
+      }
+    },
+    "DeviceHealth": {
+      "type": "object",
+      "required": [
+        "device_id",
+        "name",
+        "shifts_considered",
+        "score",
+        "state",
+        "checks"
+      ],
+      "properties": {
+        "device_id": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "shifts_considered": {
+          "type": "integer"
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "state": {
+          "enum": [
+            "green",
+            "amber",
+            "red",
+            "na"
+          ]
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HealthCheck"
+          }
+        }
+      }
+    },
+    "ServerHealth": {
+      "type": "object",
+      "required": [
+        "state",
+        "checks"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "green",
+            "amber",
+            "red",
+            "na"
+          ]
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HealthCheck"
+          }
+        }
+      }
+    },
+    "DiagnosticsHealth": {
+      "type": "object",
+      "required": [
+        "generated_at",
+        "devices",
+        "server"
+      ],
+      "properties": {
+        "generated_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "devices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DeviceHealth"
+          }
+        },
+        "server": {
+          "$ref": "#/$defs/ServerHealth"
+        }
+      }
+    },
+    "CaptureSessionCreate": {
+      "type": "object",
+      "required": [
+        "device_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "device_id": {
+          "type": "integer"
+        },
+        "profile": {
+          "enum": [
+            "dense"
+          ],
+          "default": "dense"
+        },
+        "hours": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 168,
+          "default": 48
+        },
+        "max_shifts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "default": 3
+        }
+      }
+    },
+    "CaptureSessionPatch": {
+      "type": "object",
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "const": "ended"
+        }
+      }
+    },
+    "CaptureSession": {
+      "type": "object",
+      "required": [
+        "id",
+        "device_id",
+        "profile",
+        "created_at",
+        "expires_at",
+        "ended_at",
+        "max_shifts",
+        "shifts_done",
+        "fix_count",
+        "bytes",
+        "state"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "device_id": {
+          "type": "integer"
+        },
+        "profile": {
+          "enum": [
+            "dense"
+          ]
+        },
+        "created_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "expires_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "ended_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "max_shifts": {
+          "type": "integer"
+        },
+        "shifts_done": {
+          "type": "integer"
+        },
+        "fix_count": {
+          "type": "integer"
+        },
+        "bytes": {
+          "type": "integer"
+        },
+        "state": {
+          "enum": [
+            "active",
+            "ended",
+            "expired"
+          ]
+        }
+      }
+    },
+    "CaptureFix": {
+      "type": "object",
+      "required": [
+        "seq",
+        "recorded_at",
+        "lat_e7",
+        "lon_e7",
+        "accuracy_m"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "recorded_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "lat_e7": {
+          "type": "integer",
+          "minimum": -900000000,
+          "maximum": 900000000
+        },
+        "lon_e7": {
+          "type": "integer",
+          "minimum": -1800000000,
+          "maximum": 1800000000
+        },
+        "accuracy_m": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "speed_dmps": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "bearing_deg": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "altitude_m": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "CaptureFixBatch": {
+      "type": "object",
+      "required": [
+        "shift",
+        "fixes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "shift": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Shift client_id the fixes belong to."
+        },
+        "fixes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/$defs/CaptureFix"
+          }
+        }
+      }
+    },
+    "CaptureFixResult": {
+      "type": "object",
+      "required": [
+        "accepted",
+        "duplicates"
+      ],
+      "properties": {
+        "accepted": {
+          "type": "integer"
+        },
+        "duplicates": {
+          "type": "integer"
+        }
+      }
+    },
+    "CaptureAnnotationPut": {
+      "type": "object",
+      "required": [
+        "at",
+        "kind"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "kind": {
+          "enum": [
+            "real_stop",
+            "false_stop",
+            "missed_stop",
+            "event",
+            "note"
+          ]
+        },
+        "shift": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "stop_key": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Free text; capture data is not diagnostics and may contain it (16 section 8.2)."
+        }
+      }
+    },
+    "CaptureAnnotation": {
+      "type": "object",
+      "required": [
+        "client_id",
+        "at",
+        "kind"
+      ],
+      "properties": {
+        "client_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "kind": {
+          "enum": [
+            "real_stop",
+            "false_stop",
+            "missed_stop",
+            "event",
+            "note"
+          ]
+        },
+        "shift": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "stop_key": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "text": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}
