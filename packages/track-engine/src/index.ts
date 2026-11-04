@@ -4,3 +4,8 @@ export * from './ints';
 export { algorithmVersion } from './version';
 export { normalize, compareFixes, inWindow, WINDOW_BEFORE_MS, WINDOW_AFTER_MS } from './normalize';
 export { qualify, isQualified, MAX_ACCURACY_M } from './qualify';
+export { haversineDm, EARTH_RADIUS_M } from './haversine';
+export { gate, gateStep, measureDistance, MAX_SPEED_DMPS, MIN_MOVE_DM } from './gate';
+export type { DropReason, GateStep, GateResult } from './gate';
+export { createLiveAccumulator } from './live';
+export type { LiveAccumulator } from './live';
