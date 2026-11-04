@@ -11,7 +11,8 @@
   "scripts": {
     "start": "expo start",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "jest"
+    "test": "jest",
+    "conformance:fixtures": "esbuild scripts/gen-conformance-fixtures.ts --bundle --platform=node --format=esm --outfile=scripts/.gen.mjs --log-level=warning && node scripts/.gen.mjs && rm scripts/.gen.mjs && prettier --write src/conformance/fixtures.json"
   },
   "jest": {
     "preset": "jest-expo",

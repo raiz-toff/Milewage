@@ -113,6 +113,9 @@ export function SettingsScreen({ navigation }: ScreenProps<'Settings'>) {
       <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Permissions')}>
         <Text style={{ color: theme.accent, marginTop: 16 }}>Permissions</Text>
       </Pressable>
+      <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Conformance')}>
+        <Text style={{ color: theme.textMuted, marginTop: 16 }}>Engine check</Text>
+      </Pressable>
     </Screen>
   );
 }

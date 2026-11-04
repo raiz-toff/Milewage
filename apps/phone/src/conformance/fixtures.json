@@ -1,0 +1,5210 @@
+{
+  "algorithmVersion": 3,
+  "inputs": {
+    "ride_straight": {
+      "shiftClientId": "synthetic-straight",
+      "startedAt": 1700000000000,
+      "endedAt": 1700000500000,
+      "fixes": [
+        {
+          "seq": 1,
+          "recordedAt": 1700000000000,
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "accuracyM": 4
+        },
+        {
+          "seq": 2,
+          "recordedAt": 1700000010000,
+          "latE7": 436508993,
+          "lonE7": -793800000,
+          "accuracyM": 10
+        },
+        {
+          "seq": 3,
+          "recordedAt": 1700000020000,
+          "latE7": 436517986,
+          "lonE7": -793800000,
+          "accuracyM": 8
+        },
+        {
+          "seq": 4,
+          "recordedAt": 1700000030000,
+          "latE7": 436526980,
+          "lonE7": -793800000,
+          "accuracyM": 9
+        },
+        {
+          "seq": 5,
+          "recordedAt": 1700000040000,
+          "latE7": 436535973,
+          "lonE7": -793800000,
+          "accuracyM": 6
+        },
+        {
+          "seq": 6,
+          "recordedAt": 1700000050000,
+          "latE7": 436544966,
+          "lonE7": -793800000,
+          "accuracyM": 9
+        },
+        {
+          "seq": 7,
+          "recordedAt": 1700000060000,
+          "latE7": 436553959,
+          "lonE7": -793800000,
+          "accuracyM": 8
+        },
+        {
+          "seq": 8,
+          "recordedAt": 1700000070000,
+          "latE7": 436562953,
+          "lonE7": -793800000,
+          "accuracyM": 12
+        },
+        {
+          "seq": 9,
+          "recordedAt": 1700000080000,
+          "latE7": 436571946,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 10,
+          "recordedAt": 1700000090000,
+          "latE7": 436580939,
+          "lonE7": -793800000,
+          "accuracyM": 3
+        },
+        {
+          "seq": 11,
+          "recordedAt": 1700000100000,
+          "latE7": 436589932,
+          "lonE7": -793800000,
+          "accuracyM": 6
+        },
+        {
+          "seq": 12,
+          "recordedAt": 1700000110000,
+          "latE7": 436598925,
+          "lonE7": -793800000,
+          "accuracyM": 10
+        },
+        {
+          "seq": 13,
+          "recordedAt": 1700000120000,
+          "latE7": 436607919,
+          "lonE7": -793800000,
+          "accuracyM": 6
+        },
+        {
+          "seq": 14,
+          "recordedAt": 1700000130000,
+          "latE7": 436616912,
+          "lonE7": -793800000,
+          "accuracyM": 11
+        },
+        {
+          "seq": 15,
+          "recordedAt": 1700000140000,
+          "latE7": 436625905,
+          "lonE7": -793800000,
+          "accuracyM": 7
+        },
+        {
+          "seq": 16,
+          "recordedAt": 1700000150000,
+          "latE7": 436634898,
+          "lonE7": -793800000,
+          "accuracyM": 4
+        },
+        {
+          "seq": 17,
+          "recordedAt": 1700000160000,
+          "latE7": 436643891,
+          "lonE7": -793800000,
+          "accuracyM": 3
+        },
+        {
+          "seq": 18,
+          "recordedAt": 1700000170000,
+          "latE7": 436652885,
+          "lonE7": -793800000,
+          "accuracyM": 7
+        },
+        {
+          "seq": 19,
+          "recordedAt": 1700000180000,
+          "latE7": 436661878,
+          "lonE7": -793800000,
+          "accuracyM": 3
+        },
+        {
+          "seq": 20,
+          "recordedAt": 1700000190000,
+          "latE7": 436670871,
+          "lonE7": -793800000,
+          "accuracyM": 4
+        },
+        {
+          "seq": 21,
+          "recordedAt": 1700000200000,
+          "latE7": 436679864,
+          "lonE7": -793800000,
+          "accuracyM": 10
+        },
+        {
+          "seq": 22,
+          "recordedAt": 1700000210000,
+          "latE7": 436688858,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 23,
+          "recordedAt": 1700000220000,
+          "latE7": 436697851,
+          "lonE7": -793800000,
+          "accuracyM": 3
+        },
+        {
+          "seq": 24,
+          "recordedAt": 1700000230000,
+          "latE7": 436706844,
+          "lonE7": -793800000,
+          "accuracyM": 9
+        },
+        {
+          "seq": 25,
+          "recordedAt": 1700000240000,
+          "latE7": 436715837,
+          "lonE7": -793800000,
+          "accuracyM": 3
+        },
+        {
+          "seq": 26,
+          "recordedAt": 1700000250000,
+          "latE7": 436724830,
+          "lonE7": -793800000,
+          "accuracyM": 8
+        },
+        {
+          "seq": 27,
+          "recordedAt": 1700000260000,
+          "latE7": 436733824,
+          "lonE7": -793800000,
+          "accuracyM": 3
+        },
+        {
+          "seq": 28,
+          "recordedAt": 1700000270000,
+          "latE7": 436742817,
+          "lonE7": -793800000,
+          "accuracyM": 7
+        },
+        {
+          "seq": 29,
+          "recordedAt": 1700000280000,
+          "latE7": 436751810,
+          "lonE7": -793800000,
+          "accuracyM": 11
+        },
+        {
+          "seq": 30,
+          "recordedAt": 1700000290000,
+          "latE7": 436760803,
+          "lonE7": -793800000,
+          "accuracyM": 7
+        },
+        {
+          "seq": 31,
+          "recordedAt": 1700000300000,
+          "latE7": 436769796,
+          "lonE7": -793800000,
+          "accuracyM": 10
+        },
+        {
+          "seq": 32,
+          "recordedAt": 1700000310000,
+          "latE7": 436778790,
+          "lonE7": -793800000,
+          "accuracyM": 12
+        },
+        {
+          "seq": 33,
+          "recordedAt": 1700000320000,
+          "latE7": 436787783,
+          "lonE7": -793800000,
+          "accuracyM": 9
+        },
+        {
+          "seq": 34,
+          "recordedAt": 1700000330000,
+          "latE7": 436796776,
+          "lonE7": -793800000,
+          "accuracyM": 3
+        },
+        {
+          "seq": 35,
+          "recordedAt": 1700000340000,
+          "latE7": 436805769,
+          "lonE7": -793800000,
+          "accuracyM": 4
+        },
+        {
+          "seq": 36,
+          "recordedAt": 1700000350000,
+          "latE7": 436814763,
+          "lonE7": -793800000,
+          "accuracyM": 4
+        },
+        {
+          "seq": 37,
+          "recordedAt": 1700000360000,
+          "latE7": 436823756,
+          "lonE7": -793800000,
+          "accuracyM": 8
+        },
+        {
+          "seq": 38,
+          "recordedAt": 1700000370000,
+          "latE7": 436832749,
+          "lonE7": -793800000,
+          "accuracyM": 3
+        },
+        {
+          "seq": 39,
+          "recordedAt": 1700000380000,
+          "latE7": 436841742,
+          "lonE7": -793800000,
+          "accuracyM": 9
+        },
+        {
+          "seq": 40,
+          "recordedAt": 1700000390000,
+          "latE7": 436850735,
+          "lonE7": -793800000,
+          "accuracyM": 4
+        },
+        {
+          "seq": 41,
+          "recordedAt": 1700000400000,
+          "latE7": 436859729,
+          "lonE7": -793800000,
+          "accuracyM": 4
+        },
+        {
+          "seq": 42,
+          "recordedAt": 1700000410000,
+          "latE7": 436868722,
+          "lonE7": -793800000,
+          "accuracyM": 3
+        },
+        {
+          "seq": 43,
+          "recordedAt": 1700000420000,
+          "latE7": 436877715,
+          "lonE7": -793800000,
+          "accuracyM": 12
+        },
+        {
+          "seq": 44,
+          "recordedAt": 1700000430000,
+          "latE7": 436886708,
+          "lonE7": -793800000,
+          "accuracyM": 7
+        },
+        {
+          "seq": 45,
+          "recordedAt": 1700000440000,
+          "latE7": 436895702,
+          "lonE7": -793800000,
+          "accuracyM": 4
+        },
+        {
+          "seq": 46,
+          "recordedAt": 1700000450000,
+          "latE7": 436904695,
+          "lonE7": -793800000,
+          "accuracyM": 10
+        },
+        {
+          "seq": 47,
+          "recordedAt": 1700000460000,
+          "latE7": 436913688,
+          "lonE7": -793800000,
+          "accuracyM": 6
+        },
+        {
+          "seq": 48,
+          "recordedAt": 1700000470000,
+          "latE7": 436922681,
+          "lonE7": -793800000,
+          "accuracyM": 10
+        },
+        {
+          "seq": 49,
+          "recordedAt": 1700000480000,
+          "latE7": 436931674,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 50,
+          "recordedAt": 1700000490000,
+          "latE7": 436940668,
+          "lonE7": -793800000,
+          "accuracyM": 7
+        },
+        {
+          "seq": 51,
+          "recordedAt": 1700000500000,
+          "latE7": 436949661,
+          "lonE7": -793800000,
+          "accuracyM": 12
+        }
+      ],
+      "segmenter": "whole_shift"
+    },
+    "ride_grid": {
+      "shiftClientId": "synthetic-grid",
+      "startedAt": 1700000000000,
+      "endedAt": 1700000160000,
+      "fixes": [
+        {
+          "seq": 1,
+          "recordedAt": 1700000000000,
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "accuracyM": 4
+        },
+        {
+          "seq": 2,
+          "recordedAt": 1700000010000,
+          "latE7": 436508993,
+          "lonE7": -793800000,
+          "accuracyM": 12
+        },
+        {
+          "seq": 3,
+          "recordedAt": 1700000020000,
+          "latE7": 436517986,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 4,
+          "recordedAt": 1700000030000,
+          "latE7": 436517986,
+          "lonE7": -793787571,
+          "accuracyM": 7
+        },
+        {
+          "seq": 5,
+          "recordedAt": 1700000040000,
+          "latE7": 436517986,
+          "lonE7": -793775142,
+          "accuracyM": 6
+        },
+        {
+          "seq": 6,
+          "recordedAt": 1700000050000,
+          "latE7": 436526980,
+          "lonE7": -793775142,
+          "accuracyM": 5
+        },
+        {
+          "seq": 7,
+          "recordedAt": 1700000060000,
+          "latE7": 436535973,
+          "lonE7": -793775142,
+          "accuracyM": 7
+        },
+        {
+          "seq": 8,
+          "recordedAt": 1700000070000,
+          "latE7": 436535973,
+          "lonE7": -793762713,
+          "accuracyM": 6
+        },
+        {
+          "seq": 9,
+          "recordedAt": 1700000080000,
+          "latE7": 436535973,
+          "lonE7": -793750284,
+          "accuracyM": 5
+        },
+        {
+          "seq": 10,
+          "recordedAt": 1700000090000,
+          "latE7": 436526980,
+          "lonE7": -793750284,
+          "accuracyM": 4
+        },
+        {
+          "seq": 11,
+          "recordedAt": 1700000100000,
+          "latE7": 436517986,
+          "lonE7": -793750284,
+          "accuracyM": 4
+        },
+        {
+          "seq": 12,
+          "recordedAt": 1700000110000,
+          "latE7": 436517986,
+          "lonE7": -793737855,
+          "accuracyM": 9
+        },
+        {
+          "seq": 13,
+          "recordedAt": 1700000120000,
+          "latE7": 436517986,
+          "lonE7": -793725426,
+          "accuracyM": 9
+        },
+        {
+          "seq": 14,
+          "recordedAt": 1700000130000,
+          "latE7": 436526980,
+          "lonE7": -793725426,
+          "accuracyM": 9
+        },
+        {
+          "seq": 15,
+          "recordedAt": 1700000140000,
+          "latE7": 436535973,
+          "lonE7": -793725426,
+          "accuracyM": 5
+        },
+        {
+          "seq": 16,
+          "recordedAt": 1700000150000,
+          "latE7": 436544966,
+          "lonE7": -793725426,
+          "accuracyM": 8
+        },
+        {
+          "seq": 17,
+          "recordedAt": 1700000160000,
+          "latE7": 436553959,
+          "lonE7": -793725426,
+          "accuracyM": 4
+        }
+      ],
+      "segmenter": "whole_shift"
+    },
+    "ride_loop": {
+      "shiftClientId": "synthetic-loop",
+      "startedAt": 1700000000000,
+      "endedAt": 1700000188320,
+      "fixes": [
+        {
+          "seq": 1,
+          "recordedAt": 1700000000000,
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "accuracyM": 12
+        },
+        {
+          "seq": 2,
+          "recordedAt": 1700000004708,
+          "latE7": 436500332,
+          "lonE7": -793794167,
+          "accuracyM": 11
+        },
+        {
+          "seq": 3,
+          "recordedAt": 1700000009416,
+          "latE7": 436501320,
+          "lonE7": -793788478,
+          "accuracyM": 6
+        },
+        {
+          "seq": 4,
+          "recordedAt": 1700000014124,
+          "latE7": 436502941,
+          "lonE7": -793783072,
+          "accuracyM": 8
+        },
+        {
+          "seq": 5,
+          "recordedAt": 1700000018832,
+          "latE7": 436505153,
+          "lonE7": -793778083,
+          "accuracyM": 6
+        },
+        {
+          "seq": 6,
+          "recordedAt": 1700000023540,
+          "latE7": 436507902,
+          "lonE7": -793773634,
+          "accuracyM": 9
+        },
+        {
+          "seq": 7,
+          "recordedAt": 1700000028248,
+          "latE7": 436511121,
+          "lonE7": -793769834,
+          "accuracyM": 6
+        },
+        {
+          "seq": 8,
+          "recordedAt": 1700000032956,
+          "latE7": 436514731,
+          "lonE7": -793766777,
+          "accuracyM": 6
+        },
+        {
+          "seq": 9,
+          "recordedAt": 1700000037664,
+          "latE7": 436518642,
+          "lonE7": -793764538,
+          "accuracyM": 4
+        },
+        {
+          "seq": 10,
+          "recordedAt": 1700000042372,
+          "latE7": 436522759,
+          "lonE7": -793763172,
+          "accuracyM": 7
+        },
+        {
+          "seq": 11,
+          "recordedAt": 1700000047080,
+          "latE7": 436526980,
+          "lonE7": -793762713,
+          "accuracyM": 8
+        },
+        {
+          "seq": 12,
+          "recordedAt": 1700000051788,
+          "latE7": 436531200,
+          "lonE7": -793763172,
+          "accuracyM": 7
+        },
+        {
+          "seq": 13,
+          "recordedAt": 1700000056496,
+          "latE7": 436535317,
+          "lonE7": -793764538,
+          "accuracyM": 9
+        },
+        {
+          "seq": 14,
+          "recordedAt": 1700000061204,
+          "latE7": 436539228,
+          "lonE7": -793766777,
+          "accuracyM": 7
+        },
+        {
+          "seq": 15,
+          "recordedAt": 1700000065912,
+          "latE7": 436542838,
+          "lonE7": -793769834,
+          "accuracyM": 5
+        },
+        {
+          "seq": 16,
+          "recordedAt": 1700000070620,
+          "latE7": 436546057,
+          "lonE7": -793773634,
+          "accuracyM": 12
+        },
+        {
+          "seq": 17,
+          "recordedAt": 1700000075328,
+          "latE7": 436548807,
+          "lonE7": -793778083,
+          "accuracyM": 3
+        },
+        {
+          "seq": 18,
+          "recordedAt": 1700000080036,
+          "latE7": 436551019,
+          "lonE7": -793783072,
+          "accuracyM": 8
+        },
+        {
+          "seq": 19,
+          "recordedAt": 1700000084744,
+          "latE7": 436552639,
+          "lonE7": -793788478,
+          "accuracyM": 8
+        },
+        {
+          "seq": 20,
+          "recordedAt": 1700000089452,
+          "latE7": 436553627,
+          "lonE7": -793794167,
+          "accuracyM": 7
+        },
+        {
+          "seq": 21,
+          "recordedAt": 1700000094160,
+          "latE7": 436553959,
+          "lonE7": -793800000,
+          "accuracyM": 6
+        },
+        {
+          "seq": 22,
+          "recordedAt": 1700000098868,
+          "latE7": 436553627,
+          "lonE7": -793805833,
+          "accuracyM": 10
+        },
+        {
+          "seq": 23,
+          "recordedAt": 1700000103576,
+          "latE7": 436552639,
+          "lonE7": -793811522,
+          "accuracyM": 7
+        },
+        {
+          "seq": 24,
+          "recordedAt": 1700000108284,
+          "latE7": 436551019,
+          "lonE7": -793816928,
+          "accuracyM": 12
+        },
+        {
+          "seq": 25,
+          "recordedAt": 1700000112992,
+          "latE7": 436548807,
+          "lonE7": -793821917,
+          "accuracyM": 5
+        },
+        {
+          "seq": 26,
+          "recordedAt": 1700000117700,
+          "latE7": 436546057,
+          "lonE7": -793826366,
+          "accuracyM": 5
+        },
+        {
+          "seq": 27,
+          "recordedAt": 1700000122408,
+          "latE7": 436542838,
+          "lonE7": -793830166,
+          "accuracyM": 10
+        },
+        {
+          "seq": 28,
+          "recordedAt": 1700000127116,
+          "latE7": 436539228,
+          "lonE7": -793833223,
+          "accuracyM": 7
+        },
+        {
+          "seq": 29,
+          "recordedAt": 1700000131824,
+          "latE7": 436535317,
+          "lonE7": -793835462,
+          "accuracyM": 3
+        },
+        {
+          "seq": 30,
+          "recordedAt": 1700000136532,
+          "latE7": 436531200,
+          "lonE7": -793836828,
+          "accuracyM": 3
+        },
+        {
+          "seq": 31,
+          "recordedAt": 1700000141240,
+          "latE7": 436526980,
+          "lonE7": -793837287,
+          "accuracyM": 8
+        },
+        {
+          "seq": 32,
+          "recordedAt": 1700000145948,
+          "latE7": 436522759,
+          "lonE7": -793836828,
+          "accuracyM": 10
+        },
+        {
+          "seq": 33,
+          "recordedAt": 1700000150656,
+          "latE7": 436518642,
+          "lonE7": -793835462,
+          "accuracyM": 10
+        },
+        {
+          "seq": 34,
+          "recordedAt": 1700000155364,
+          "latE7": 436514731,
+          "lonE7": -793833223,
+          "accuracyM": 12
+        },
+        {
+          "seq": 35,
+          "recordedAt": 1700000160072,
+          "latE7": 436511121,
+          "lonE7": -793830166,
+          "accuracyM": 9
+        },
+        {
+          "seq": 36,
+          "recordedAt": 1700000164780,
+          "latE7": 436507902,
+          "lonE7": -793826366,
+          "accuracyM": 7
+        },
+        {
+          "seq": 37,
+          "recordedAt": 1700000169488,
+          "latE7": 436505153,
+          "lonE7": -793821917,
+          "accuracyM": 5
+        },
+        {
+          "seq": 38,
+          "recordedAt": 1700000174196,
+          "latE7": 436502941,
+          "lonE7": -793816928,
+          "accuracyM": 7
+        },
+        {
+          "seq": 39,
+          "recordedAt": 1700000178904,
+          "latE7": 436501320,
+          "lonE7": -793811522,
+          "accuracyM": 12
+        },
+        {
+          "seq": 40,
+          "recordedAt": 1700000183612,
+          "latE7": 436500332,
+          "lonE7": -793805833,
+          "accuracyM": 11
+        },
+        {
+          "seq": 41,
+          "recordedAt": 1700000188320,
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "accuracyM": 4
+        }
+      ],
+      "segmenter": "whole_shift"
+    },
+    "ride_stop_and_go": {
+      "shiftClientId": "synthetic-stop_and_go",
+      "startedAt": 1700000000000,
+      "endedAt": 1700000920000,
+      "fixes": [
+        {
+          "seq": 1,
+          "recordedAt": 1700000000000,
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "accuracyM": 6
+        },
+        {
+          "seq": 2,
+          "recordedAt": 1700000010000,
+          "latE7": 436508993,
+          "lonE7": -793800000,
+          "accuracyM": 11
+        },
+        {
+          "seq": 3,
+          "recordedAt": 1700000020000,
+          "latE7": 436517986,
+          "lonE7": -793800000,
+          "accuracyM": 4
+        },
+        {
+          "seq": 4,
+          "recordedAt": 1700000030000,
+          "latE7": 436526980,
+          "lonE7": -793800000,
+          "accuracyM": 4
+        },
+        {
+          "seq": 5,
+          "recordedAt": 1700000040000,
+          "latE7": 436535973,
+          "lonE7": -793800000,
+          "accuracyM": 7
+        },
+        {
+          "seq": 6,
+          "recordedAt": 1700000050000,
+          "latE7": 436544966,
+          "lonE7": -793800000,
+          "accuracyM": 9
+        },
+        {
+          "seq": 7,
+          "recordedAt": 1700000060000,
+          "latE7": 436544857,
+          "lonE7": -793799777,
+          "accuracyM": 5
+        },
+        {
+          "seq": 8,
+          "recordedAt": 1700000070000,
+          "latE7": 436545298,
+          "lonE7": -793800213,
+          "accuracyM": 3
+        },
+        {
+          "seq": 9,
+          "recordedAt": 1700000080000,
+          "latE7": 436544812,
+          "lonE7": -793799685,
+          "accuracyM": 7
+        },
+        {
+          "seq": 10,
+          "recordedAt": 1700000090000,
+          "latE7": 436545135,
+          "lonE7": -793799731,
+          "accuracyM": 8
+        },
+        {
+          "seq": 11,
+          "recordedAt": 1700000100000,
+          "latE7": 436545140,
+          "lonE7": -793799854,
+          "accuracyM": 6
+        },
+        {
+          "seq": 12,
+          "recordedAt": 1700000110000,
+          "latE7": 436545023,
+          "lonE7": -793800042,
+          "accuracyM": 6
+        },
+        {
+          "seq": 13,
+          "recordedAt": 1700000120000,
+          "latE7": 436544947,
+          "lonE7": -793800218,
+          "accuracyM": 11
+        },
+        {
+          "seq": 14,
+          "recordedAt": 1700000130000,
+          "latE7": 436544686,
+          "lonE7": -793799750,
+          "accuracyM": 11
+        },
+        {
+          "seq": 15,
+          "recordedAt": 1700000140000,
+          "latE7": 436544893,
+          "lonE7": -793800247,
+          "accuracyM": 9
+        },
+        {
+          "seq": 16,
+          "recordedAt": 1700000150000,
+          "latE7": 436545115,
+          "lonE7": -793800360,
+          "accuracyM": 11
+        },
+        {
+          "seq": 17,
+          "recordedAt": 1700000160000,
+          "latE7": 436545310,
+          "lonE7": -793800166,
+          "accuracyM": 10
+        },
+        {
+          "seq": 18,
+          "recordedAt": 1700000170000,
+          "latE7": 436544893,
+          "lonE7": -793800079,
+          "accuracyM": 10
+        },
+        {
+          "seq": 19,
+          "recordedAt": 1700000180000,
+          "latE7": 436545133,
+          "lonE7": -793799529,
+          "accuracyM": 9
+        },
+        {
+          "seq": 20,
+          "recordedAt": 1700000190000,
+          "latE7": 436544939,
+          "lonE7": -793800325,
+          "accuracyM": 11
+        },
+        {
+          "seq": 21,
+          "recordedAt": 1700000200000,
+          "latE7": 436545011,
+          "lonE7": -793799715,
+          "accuracyM": 8
+        },
+        {
+          "seq": 22,
+          "recordedAt": 1700000210000,
+          "latE7": 436544917,
+          "lonE7": -793800432,
+          "accuracyM": 7
+        },
+        {
+          "seq": 23,
+          "recordedAt": 1700000220000,
+          "latE7": 436544911,
+          "lonE7": -793799591,
+          "accuracyM": 5
+        },
+        {
+          "seq": 24,
+          "recordedAt": 1700000230000,
+          "latE7": 436544966,
+          "lonE7": -793800000,
+          "accuracyM": 6
+        },
+        {
+          "seq": 25,
+          "recordedAt": 1700000240000,
+          "latE7": 436553959,
+          "lonE7": -793800000,
+          "accuracyM": 12
+        },
+        {
+          "seq": 26,
+          "recordedAt": 1700000250000,
+          "latE7": 436562953,
+          "lonE7": -793800000,
+          "accuracyM": 11
+        },
+        {
+          "seq": 27,
+          "recordedAt": 1700000260000,
+          "latE7": 436571946,
+          "lonE7": -793800000,
+          "accuracyM": 10
+        },
+        {
+          "seq": 28,
+          "recordedAt": 1700000270000,
+          "latE7": 436580939,
+          "lonE7": -793800000,
+          "accuracyM": 10
+        },
+        {
+          "seq": 29,
+          "recordedAt": 1700000280000,
+          "latE7": 436589932,
+          "lonE7": -793800000,
+          "accuracyM": 9
+        },
+        {
+          "seq": 30,
+          "recordedAt": 1700000290000,
+          "latE7": 436589681,
+          "lonE7": -793799961,
+          "accuracyM": 3
+        },
+        {
+          "seq": 31,
+          "recordedAt": 1700000300000,
+          "latE7": 436590266,
+          "lonE7": -793800129,
+          "accuracyM": 7
+        },
+        {
+          "seq": 32,
+          "recordedAt": 1700000310000,
+          "latE7": 436590059,
+          "lonE7": -793800424,
+          "accuracyM": 4
+        },
+        {
+          "seq": 33,
+          "recordedAt": 1700000320000,
+          "latE7": 436589972,
+          "lonE7": -793800395,
+          "accuracyM": 6
+        },
+        {
+          "seq": 34,
+          "recordedAt": 1700000330000,
+          "latE7": 436589635,
+          "lonE7": -793799610,
+          "accuracyM": 3
+        },
+        {
+          "seq": 35,
+          "recordedAt": 1700000340000,
+          "latE7": 436589947,
+          "lonE7": -793799525,
+          "accuracyM": 5
+        },
+        {
+          "seq": 36,
+          "recordedAt": 1700000350000,
+          "latE7": 436589967,
+          "lonE7": -793800092,
+          "accuracyM": 11
+        },
+        {
+          "seq": 37,
+          "recordedAt": 1700000360000,
+          "latE7": 436590201,
+          "lonE7": -793800428,
+          "accuracyM": 9
+        },
+        {
+          "seq": 38,
+          "recordedAt": 1700000370000,
+          "latE7": 436590086,
+          "lonE7": -793799516,
+          "accuracyM": 10
+        },
+        {
+          "seq": 39,
+          "recordedAt": 1700000380000,
+          "latE7": 436589654,
+          "lonE7": -793800377,
+          "accuracyM": 6
+        },
+        {
+          "seq": 40,
+          "recordedAt": 1700000390000,
+          "latE7": 436589608,
+          "lonE7": -793800383,
+          "accuracyM": 12
+        },
+        {
+          "seq": 41,
+          "recordedAt": 1700000400000,
+          "latE7": 436589675,
+          "lonE7": -793800482,
+          "accuracyM": 8
+        },
+        {
+          "seq": 42,
+          "recordedAt": 1700000410000,
+          "latE7": 436589814,
+          "lonE7": -793799814,
+          "accuracyM": 6
+        },
+        {
+          "seq": 43,
+          "recordedAt": 1700000420000,
+          "latE7": 436590029,
+          "lonE7": -793800460,
+          "accuracyM": 4
+        },
+        {
+          "seq": 44,
+          "recordedAt": 1700000430000,
+          "latE7": 436589659,
+          "lonE7": -793800010,
+          "accuracyM": 6
+        },
+        {
+          "seq": 45,
+          "recordedAt": 1700000440000,
+          "latE7": 436589687,
+          "lonE7": -793799722,
+          "accuracyM": 12
+        },
+        {
+          "seq": 46,
+          "recordedAt": 1700000450000,
+          "latE7": 436589837,
+          "lonE7": -793799789,
+          "accuracyM": 8
+        },
+        {
+          "seq": 47,
+          "recordedAt": 1700000460000,
+          "latE7": 436589932,
+          "lonE7": -793800000,
+          "accuracyM": 11
+        },
+        {
+          "seq": 48,
+          "recordedAt": 1700000470000,
+          "latE7": 436598925,
+          "lonE7": -793800000,
+          "accuracyM": 12
+        },
+        {
+          "seq": 49,
+          "recordedAt": 1700000480000,
+          "latE7": 436607919,
+          "lonE7": -793800000,
+          "accuracyM": 12
+        },
+        {
+          "seq": 50,
+          "recordedAt": 1700000490000,
+          "latE7": 436616912,
+          "lonE7": -793800000,
+          "accuracyM": 10
+        },
+        {
+          "seq": 51,
+          "recordedAt": 1700000500000,
+          "latE7": 436625905,
+          "lonE7": -793800000,
+          "accuracyM": 6
+        },
+        {
+          "seq": 52,
+          "recordedAt": 1700000510000,
+          "latE7": 436634898,
+          "lonE7": -793800000,
+          "accuracyM": 11
+        },
+        {
+          "seq": 53,
+          "recordedAt": 1700000520000,
+          "latE7": 436635189,
+          "lonE7": -793800026,
+          "accuracyM": 4
+        },
+        {
+          "seq": 54,
+          "recordedAt": 1700000530000,
+          "latE7": 436634546,
+          "lonE7": -793800418,
+          "accuracyM": 7
+        },
+        {
+          "seq": 55,
+          "recordedAt": 1700000540000,
+          "latE7": 436634886,
+          "lonE7": -793799632,
+          "accuracyM": 12
+        },
+        {
+          "seq": 56,
+          "recordedAt": 1700000550000,
+          "latE7": 436634724,
+          "lonE7": -793800111,
+          "accuracyM": 8
+        },
+        {
+          "seq": 57,
+          "recordedAt": 1700000560000,
+          "latE7": 436635022,
+          "lonE7": -793799706,
+          "accuracyM": 10
+        },
+        {
+          "seq": 58,
+          "recordedAt": 1700000570000,
+          "latE7": 436634550,
+          "lonE7": -793800354,
+          "accuracyM": 8
+        },
+        {
+          "seq": 59,
+          "recordedAt": 1700000580000,
+          "latE7": 436634951,
+          "lonE7": -793800072,
+          "accuracyM": 5
+        },
+        {
+          "seq": 60,
+          "recordedAt": 1700000590000,
+          "latE7": 436635125,
+          "lonE7": -793799746,
+          "accuracyM": 10
+        },
+        {
+          "seq": 61,
+          "recordedAt": 1700000600000,
+          "latE7": 436634721,
+          "lonE7": -793799831,
+          "accuracyM": 8
+        },
+        {
+          "seq": 62,
+          "recordedAt": 1700000610000,
+          "latE7": 436634896,
+          "lonE7": -793799554,
+          "accuracyM": 4
+        },
+        {
+          "seq": 63,
+          "recordedAt": 1700000620000,
+          "latE7": 436635254,
+          "lonE7": -793800054,
+          "accuracyM": 9
+        },
+        {
+          "seq": 64,
+          "recordedAt": 1700000630000,
+          "latE7": 436635106,
+          "lonE7": -793799618,
+          "accuracyM": 3
+        },
+        {
+          "seq": 65,
+          "recordedAt": 1700000640000,
+          "latE7": 436635163,
+          "lonE7": -793799569,
+          "accuracyM": 9
+        },
+        {
+          "seq": 66,
+          "recordedAt": 1700000650000,
+          "latE7": 436634877,
+          "lonE7": -793800086,
+          "accuracyM": 3
+        },
+        {
+          "seq": 67,
+          "recordedAt": 1700000660000,
+          "latE7": 436634983,
+          "lonE7": -793799835,
+          "accuracyM": 9
+        },
+        {
+          "seq": 68,
+          "recordedAt": 1700000670000,
+          "latE7": 436634642,
+          "lonE7": -793800162,
+          "accuracyM": 4
+        },
+        {
+          "seq": 69,
+          "recordedAt": 1700000680000,
+          "latE7": 436634904,
+          "lonE7": -793799916,
+          "accuracyM": 12
+        },
+        {
+          "seq": 70,
+          "recordedAt": 1700000690000,
+          "latE7": 436634898,
+          "lonE7": -793800000,
+          "accuracyM": 11
+        },
+        {
+          "seq": 71,
+          "recordedAt": 1700000700000,
+          "latE7": 436643891,
+          "lonE7": -793800000,
+          "accuracyM": 11
+        },
+        {
+          "seq": 72,
+          "recordedAt": 1700000710000,
+          "latE7": 436652885,
+          "lonE7": -793800000,
+          "accuracyM": 11
+        },
+        {
+          "seq": 73,
+          "recordedAt": 1700000720000,
+          "latE7": 436661878,
+          "lonE7": -793800000,
+          "accuracyM": 12
+        },
+        {
+          "seq": 74,
+          "recordedAt": 1700000730000,
+          "latE7": 436670871,
+          "lonE7": -793800000,
+          "accuracyM": 11
+        },
+        {
+          "seq": 75,
+          "recordedAt": 1700000740000,
+          "latE7": 436679864,
+          "lonE7": -793800000,
+          "accuracyM": 6
+        },
+        {
+          "seq": 76,
+          "recordedAt": 1700000750000,
+          "latE7": 436679765,
+          "lonE7": -793799750,
+          "accuracyM": 3
+        },
+        {
+          "seq": 77,
+          "recordedAt": 1700000760000,
+          "latE7": 436680182,
+          "lonE7": -793799590,
+          "accuracyM": 9
+        },
+        {
+          "seq": 78,
+          "recordedAt": 1700000770000,
+          "latE7": 436680090,
+          "lonE7": -793799573,
+          "accuracyM": 7
+        },
+        {
+          "seq": 79,
+          "recordedAt": 1700000780000,
+          "latE7": 436679994,
+          "lonE7": -793800127,
+          "accuracyM": 9
+        },
+        {
+          "seq": 80,
+          "recordedAt": 1700000790000,
+          "latE7": 436680163,
+          "lonE7": -793799860,
+          "accuracyM": 10
+        },
+        {
+          "seq": 81,
+          "recordedAt": 1700000800000,
+          "latE7": 436679856,
+          "lonE7": -793800054,
+          "accuracyM": 8
+        },
+        {
+          "seq": 82,
+          "recordedAt": 1700000810000,
+          "latE7": 436679855,
+          "lonE7": -793800035,
+          "accuracyM": 6
+        },
+        {
+          "seq": 83,
+          "recordedAt": 1700000820000,
+          "latE7": 436679811,
+          "lonE7": -793800206,
+          "accuracyM": 11
+        },
+        {
+          "seq": 84,
+          "recordedAt": 1700000830000,
+          "latE7": 436680104,
+          "lonE7": -793799887,
+          "accuracyM": 6
+        },
+        {
+          "seq": 85,
+          "recordedAt": 1700000840000,
+          "latE7": 436680053,
+          "lonE7": -793799606,
+          "accuracyM": 8
+        },
+        {
+          "seq": 86,
+          "recordedAt": 1700000850000,
+          "latE7": 436679918,
+          "lonE7": -793799787,
+          "accuracyM": 4
+        },
+        {
+          "seq": 87,
+          "recordedAt": 1700000860000,
+          "latE7": 436679755,
+          "lonE7": -793799600,
+          "accuracyM": 6
+        },
+        {
+          "seq": 88,
+          "recordedAt": 1700000870000,
+          "latE7": 436679836,
+          "lonE7": -793800488,
+          "accuracyM": 4
+        },
+        {
+          "seq": 89,
+          "recordedAt": 1700000880000,
+          "latE7": 436679599,
+          "lonE7": -793799578,
+          "accuracyM": 12
+        },
+        {
+          "seq": 90,
+          "recordedAt": 1700000890000,
+          "latE7": 436679761,
+          "lonE7": -793799961,
+          "accuracyM": 10
+        },
+        {
+          "seq": 91,
+          "recordedAt": 1700000900000,
+          "latE7": 436679666,
+          "lonE7": -793799690,
+          "accuracyM": 6
+        },
+        {
+          "seq": 92,
+          "recordedAt": 1700000910000,
+          "latE7": 436679556,
+          "lonE7": -793800026,
+          "accuracyM": 12
+        },
+        {
+          "seq": 93,
+          "recordedAt": 1700000920000,
+          "latE7": 436679864,
+          "lonE7": -793800000,
+          "accuracyM": 4
+        }
+      ],
+      "segmenter": "whole_shift"
+    },
+    "scenario_parked_wait": {
+      "shiftClientId": "scn",
+      "startedAt": 1700000000000,
+      "endedAt": 1700000780000,
+      "fixes": [
+        {
+          "seq": 1,
+          "recordedAt": 1700000000000,
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 2,
+          "recordedAt": 1700000010000,
+          "latE7": 436508993,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 3,
+          "recordedAt": 1700000020000,
+          "latE7": 436517986,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 4,
+          "recordedAt": 1700000030000,
+          "latE7": 436526980,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 5,
+          "recordedAt": 1700000040000,
+          "latE7": 436535973,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 6,
+          "recordedAt": 1700000050000,
+          "latE7": 436544966,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 7,
+          "recordedAt": 1700000060000,
+          "latE7": 436553959,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 8,
+          "recordedAt": 1700000070000,
+          "latE7": 436562953,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 9,
+          "recordedAt": 1700000080000,
+          "latE7": 436571946,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 10,
+          "recordedAt": 1700000090000,
+          "latE7": 436580939,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 11,
+          "recordedAt": 1700000100000,
+          "latE7": 436589932,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 12,
+          "recordedAt": 1700000110000,
+          "latE7": 436598925,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 13,
+          "recordedAt": 1700000120000,
+          "latE7": 436607919,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 14,
+          "recordedAt": 1700000130000,
+          "latE7": 436616912,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 15,
+          "recordedAt": 1700000140000,
+          "latE7": 436625905,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 16,
+          "recordedAt": 1700000150000,
+          "latE7": 436634898,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 17,
+          "recordedAt": 1700000160000,
+          "latE7": 436643891,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 18,
+          "recordedAt": 1700000170000,
+          "latE7": 436652885,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 19,
+          "recordedAt": 1700000180000,
+          "latE7": 436661878,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 20,
+          "recordedAt": 1700000190000,
+          "latE7": 436670871,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 21,
+          "recordedAt": 1700000200000,
+          "latE7": 436679864,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 22,
+          "recordedAt": 1700000210000,
+          "latE7": 436688858,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 23,
+          "recordedAt": 1700000220000,
+          "latE7": 436697851,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 24,
+          "recordedAt": 1700000230000,
+          "latE7": 436706844,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 25,
+          "recordedAt": 1700000240000,
+          "latE7": 436715837,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 26,
+          "recordedAt": 1700000250000,
+          "latE7": 436724830,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 27,
+          "recordedAt": 1700000260000,
+          "latE7": 436733824,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 28,
+          "recordedAt": 1700000270000,
+          "latE7": 436742817,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 29,
+          "recordedAt": 1700000280000,
+          "latE7": 436751810,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 30,
+          "recordedAt": 1700000290000,
+          "latE7": 436760803,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 31,
+          "recordedAt": 1700000300000,
+          "latE7": 436769796,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 32,
+          "recordedAt": 1700000480000,
+          "latE7": 436769796,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 33,
+          "recordedAt": 1700000490000,
+          "latE7": 436778790,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 34,
+          "recordedAt": 1700000500000,
+          "latE7": 436787783,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 35,
+          "recordedAt": 1700000510000,
+          "latE7": 436796776,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 36,
+          "recordedAt": 1700000520000,
+          "latE7": 436805769,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 37,
+          "recordedAt": 1700000530000,
+          "latE7": 436814763,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 38,
+          "recordedAt": 1700000540000,
+          "latE7": 436823756,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 39,
+          "recordedAt": 1700000550000,
+          "latE7": 436832749,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 40,
+          "recordedAt": 1700000560000,
+          "latE7": 436841742,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 41,
+          "recordedAt": 1700000570000,
+          "latE7": 436850735,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 42,
+          "recordedAt": 1700000580000,
+          "latE7": 436859729,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 43,
+          "recordedAt": 1700000590000,
+          "latE7": 436868722,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 44,
+          "recordedAt": 1700000600000,
+          "latE7": 436877715,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 45,
+          "recordedAt": 1700000610000,
+          "latE7": 436886708,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 46,
+          "recordedAt": 1700000620000,
+          "latE7": 436895702,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 47,
+          "recordedAt": 1700000630000,
+          "latE7": 436904695,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 48,
+          "recordedAt": 1700000640000,
+          "latE7": 436913688,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 49,
+          "recordedAt": 1700000650000,
+          "latE7": 436922681,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 50,
+          "recordedAt": 1700000660000,
+          "latE7": 436931674,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 51,
+          "recordedAt": 1700000670000,
+          "latE7": 436940668,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 52,
+          "recordedAt": 1700000680000,
+          "latE7": 436949661,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 53,
+          "recordedAt": 1700000690000,
+          "latE7": 436958654,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 54,
+          "recordedAt": 1700000700000,
+          "latE7": 436967647,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 55,
+          "recordedAt": 1700000710000,
+          "latE7": 436976640,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 56,
+          "recordedAt": 1700000720000,
+          "latE7": 436985634,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 57,
+          "recordedAt": 1700000730000,
+          "latE7": 436994627,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 58,
+          "recordedAt": 1700000740000,
+          "latE7": 437003620,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 59,
+          "recordedAt": 1700000750000,
+          "latE7": 437012613,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 60,
+          "recordedAt": 1700000760000,
+          "latE7": 437021607,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 61,
+          "recordedAt": 1700000770000,
+          "latE7": 437030600,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 62,
+          "recordedAt": 1700000780000,
+          "latE7": 437039593,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        }
+      ],
+      "segmenter": "whole_shift"
+    },
+    "scenario_tunnel": {
+      "shiftClientId": "scn",
+      "startedAt": 1700000000000,
+      "endedAt": 1700000500000,
+      "fixes": [
+        {
+          "seq": 1,
+          "recordedAt": 1700000000000,
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 2,
+          "recordedAt": 1700000010000,
+          "latE7": 436508993,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 3,
+          "recordedAt": 1700000020000,
+          "latE7": 436517986,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 4,
+          "recordedAt": 1700000030000,
+          "latE7": 436526980,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 5,
+          "recordedAt": 1700000040000,
+          "latE7": 436535973,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 6,
+          "recordedAt": 1700000050000,
+          "latE7": 436544966,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 7,
+          "recordedAt": 1700000060000,
+          "latE7": 436553959,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 8,
+          "recordedAt": 1700000070000,
+          "latE7": 436562953,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 9,
+          "recordedAt": 1700000080000,
+          "latE7": 436571946,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 10,
+          "recordedAt": 1700000090000,
+          "latE7": 436580939,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 11,
+          "recordedAt": 1700000100000,
+          "latE7": 436589932,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 12,
+          "recordedAt": 1700000110000,
+          "latE7": 436598925,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 13,
+          "recordedAt": 1700000120000,
+          "latE7": 436607919,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 14,
+          "recordedAt": 1700000130000,
+          "latE7": 436616912,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 15,
+          "recordedAt": 1700000140000,
+          "latE7": 436625905,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 16,
+          "recordedAt": 1700000150000,
+          "latE7": 436634898,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 17,
+          "recordedAt": 1700000160000,
+          "latE7": 436643891,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 18,
+          "recordedAt": 1700000170000,
+          "latE7": 436652885,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 19,
+          "recordedAt": 1700000180000,
+          "latE7": 436661878,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 20,
+          "recordedAt": 1700000190000,
+          "latE7": 436670871,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 21,
+          "recordedAt": 1700000200000,
+          "latE7": 436679864,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 22,
+          "recordedAt": 1700000300000,
+          "latE7": 436733824,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 23,
+          "recordedAt": 1700000310000,
+          "latE7": 436742817,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 24,
+          "recordedAt": 1700000320000,
+          "latE7": 436751810,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 25,
+          "recordedAt": 1700000330000,
+          "latE7": 436760803,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 26,
+          "recordedAt": 1700000340000,
+          "latE7": 436769796,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 27,
+          "recordedAt": 1700000350000,
+          "latE7": 436778790,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 28,
+          "recordedAt": 1700000360000,
+          "latE7": 436787783,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 29,
+          "recordedAt": 1700000370000,
+          "latE7": 436796776,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 30,
+          "recordedAt": 1700000380000,
+          "latE7": 436805769,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 31,
+          "recordedAt": 1700000390000,
+          "latE7": 436814763,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 32,
+          "recordedAt": 1700000400000,
+          "latE7": 436823756,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 33,
+          "recordedAt": 1700000410000,
+          "latE7": 436832749,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 34,
+          "recordedAt": 1700000420000,
+          "latE7": 436841742,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 35,
+          "recordedAt": 1700000430000,
+          "latE7": 436850735,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 36,
+          "recordedAt": 1700000440000,
+          "latE7": 436859729,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 37,
+          "recordedAt": 1700000450000,
+          "latE7": 436868722,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 38,
+          "recordedAt": 1700000460000,
+          "latE7": 436877715,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 39,
+          "recordedAt": 1700000470000,
+          "latE7": 436886708,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 40,
+          "recordedAt": 1700000480000,
+          "latE7": 436895702,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 41,
+          "recordedAt": 1700000490000,
+          "latE7": 436904695,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 42,
+          "recordedAt": 1700000500000,
+          "latE7": 436913688,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        }
+      ],
+      "segmenter": "whole_shift"
+    },
+    "scenario_killed_app": {
+      "shiftClientId": "scn",
+      "startedAt": 1700000000000,
+      "endedAt": 1700001100000,
+      "fixes": [
+        {
+          "seq": 1,
+          "recordedAt": 1700000000000,
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 2,
+          "recordedAt": 1700000010000,
+          "latE7": 436508993,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 3,
+          "recordedAt": 1700000020000,
+          "latE7": 436517986,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 4,
+          "recordedAt": 1700000030000,
+          "latE7": 436526980,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 5,
+          "recordedAt": 1700000040000,
+          "latE7": 436535973,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 6,
+          "recordedAt": 1700000050000,
+          "latE7": 436544966,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 7,
+          "recordedAt": 1700000060000,
+          "latE7": 436553959,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 8,
+          "recordedAt": 1700000070000,
+          "latE7": 436562953,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 9,
+          "recordedAt": 1700000080000,
+          "latE7": 436571946,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 10,
+          "recordedAt": 1700000090000,
+          "latE7": 436580939,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 11,
+          "recordedAt": 1700000100000,
+          "latE7": 436589932,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 12,
+          "recordedAt": 1700000110000,
+          "latE7": 436598925,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 13,
+          "recordedAt": 1700000120000,
+          "latE7": 436607919,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 14,
+          "recordedAt": 1700000130000,
+          "latE7": 436616912,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 15,
+          "recordedAt": 1700000140000,
+          "latE7": 436625905,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 16,
+          "recordedAt": 1700000150000,
+          "latE7": 436634898,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 17,
+          "recordedAt": 1700000160000,
+          "latE7": 436643891,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 18,
+          "recordedAt": 1700000170000,
+          "latE7": 436652885,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 19,
+          "recordedAt": 1700000180000,
+          "latE7": 436661878,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 20,
+          "recordedAt": 1700000190000,
+          "latE7": 436670871,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 21,
+          "recordedAt": 1700000200000,
+          "latE7": 436679864,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 22,
+          "recordedAt": 1700000920000,
+          "latE7": 437219457,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 23,
+          "recordedAt": 1700000930000,
+          "latE7": 437228451,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 24,
+          "recordedAt": 1700000940000,
+          "latE7": 437237444,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 25,
+          "recordedAt": 1700000950000,
+          "latE7": 437246437,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 26,
+          "recordedAt": 1700000960000,
+          "latE7": 437255430,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 27,
+          "recordedAt": 1700000970000,
+          "latE7": 437264423,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 28,
+          "recordedAt": 1700000980000,
+          "latE7": 437273417,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 29,
+          "recordedAt": 1700000990000,
+          "latE7": 437282410,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 30,
+          "recordedAt": 1700001000000,
+          "latE7": 437291403,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 31,
+          "recordedAt": 1700001010000,
+          "latE7": 437300396,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 32,
+          "recordedAt": 1700001020000,
+          "latE7": 437309389,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 33,
+          "recordedAt": 1700001030000,
+          "latE7": 437318383,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 34,
+          "recordedAt": 1700001040000,
+          "latE7": 437327376,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 35,
+          "recordedAt": 1700001050000,
+          "latE7": 437336369,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 36,
+          "recordedAt": 1700001060000,
+          "latE7": 437345362,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 37,
+          "recordedAt": 1700001070000,
+          "latE7": 437354356,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 38,
+          "recordedAt": 1700001080000,
+          "latE7": 437363349,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 39,
+          "recordedAt": 1700001090000,
+          "latE7": 437372342,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 40,
+          "recordedAt": 1700001100000,
+          "latE7": 437381335,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        }
+      ],
+      "segmenter": "whole_shift",
+      "interruptions": [{ "fromMs": 1700000200000, "toMs": 1700000900000 }]
+    },
+    "scenario_dead_battery": {
+      "shiftClientId": "scn",
+      "startedAt": 1700000000000,
+      "endedAt": 1700000600000,
+      "fixes": [
+        {
+          "seq": 1,
+          "recordedAt": 1700000000000,
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 2,
+          "recordedAt": 1700000010000,
+          "latE7": 436508993,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 3,
+          "recordedAt": 1700000020000,
+          "latE7": 436517986,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 4,
+          "recordedAt": 1700000030000,
+          "latE7": 436526980,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 5,
+          "recordedAt": 1700000040000,
+          "latE7": 436535973,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 6,
+          "recordedAt": 1700000050000,
+          "latE7": 436544966,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 7,
+          "recordedAt": 1700000060000,
+          "latE7": 436553959,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 8,
+          "recordedAt": 1700000070000,
+          "latE7": 436562953,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 9,
+          "recordedAt": 1700000080000,
+          "latE7": 436571946,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 10,
+          "recordedAt": 1700000090000,
+          "latE7": 436580939,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 11,
+          "recordedAt": 1700000100000,
+          "latE7": 436589932,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 12,
+          "recordedAt": 1700000110000,
+          "latE7": 436598925,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 13,
+          "recordedAt": 1700000120000,
+          "latE7": 436607919,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 14,
+          "recordedAt": 1700000130000,
+          "latE7": 436616912,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 15,
+          "recordedAt": 1700000140000,
+          "latE7": 436625905,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 16,
+          "recordedAt": 1700000150000,
+          "latE7": 436634898,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 17,
+          "recordedAt": 1700000160000,
+          "latE7": 436643891,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 18,
+          "recordedAt": 1700000170000,
+          "latE7": 436652885,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 19,
+          "recordedAt": 1700000180000,
+          "latE7": 436661878,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 20,
+          "recordedAt": 1700000190000,
+          "latE7": 436670871,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 21,
+          "recordedAt": 1700000200000,
+          "latE7": 436679864,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 22,
+          "recordedAt": 1700000210000,
+          "latE7": 436688858,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 23,
+          "recordedAt": 1700000220000,
+          "latE7": 436697851,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 24,
+          "recordedAt": 1700000230000,
+          "latE7": 436706844,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 25,
+          "recordedAt": 1700000240000,
+          "latE7": 436715837,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 26,
+          "recordedAt": 1700000250000,
+          "latE7": 436724830,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 27,
+          "recordedAt": 1700000260000,
+          "latE7": 436733824,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 28,
+          "recordedAt": 1700000270000,
+          "latE7": 436742817,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 29,
+          "recordedAt": 1700000280000,
+          "latE7": 436751810,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 30,
+          "recordedAt": 1700000290000,
+          "latE7": 436760803,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 31,
+          "recordedAt": 1700000300000,
+          "latE7": 436769796,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 32,
+          "recordedAt": 1700000310000,
+          "latE7": 436778790,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 33,
+          "recordedAt": 1700000320000,
+          "latE7": 436787783,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 34,
+          "recordedAt": 1700000330000,
+          "latE7": 436796776,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 35,
+          "recordedAt": 1700000340000,
+          "latE7": 436805769,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 36,
+          "recordedAt": 1700000350000,
+          "latE7": 436814763,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 37,
+          "recordedAt": 1700000360000,
+          "latE7": 436823756,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 38,
+          "recordedAt": 1700000370000,
+          "latE7": 436832749,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 39,
+          "recordedAt": 1700000380000,
+          "latE7": 436841742,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 40,
+          "recordedAt": 1700000390000,
+          "latE7": 436850735,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 41,
+          "recordedAt": 1700000400000,
+          "latE7": 436859729,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 42,
+          "recordedAt": 1700000410000,
+          "latE7": 436868722,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 43,
+          "recordedAt": 1700000420000,
+          "latE7": 436877715,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 44,
+          "recordedAt": 1700000430000,
+          "latE7": 436886708,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 45,
+          "recordedAt": 1700000440000,
+          "latE7": 436895702,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 46,
+          "recordedAt": 1700000450000,
+          "latE7": 436904695,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 47,
+          "recordedAt": 1700000460000,
+          "latE7": 436913688,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 48,
+          "recordedAt": 1700000470000,
+          "latE7": 436922681,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 49,
+          "recordedAt": 1700000480000,
+          "latE7": 436931674,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 50,
+          "recordedAt": 1700000490000,
+          "latE7": 436940668,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 51,
+          "recordedAt": 1700000500000,
+          "latE7": 436949661,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 52,
+          "recordedAt": 1700000510000,
+          "latE7": 436958654,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 53,
+          "recordedAt": 1700000520000,
+          "latE7": 436967647,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 54,
+          "recordedAt": 1700000530000,
+          "latE7": 436976640,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 55,
+          "recordedAt": 1700000540000,
+          "latE7": 436985634,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 56,
+          "recordedAt": 1700000550000,
+          "latE7": 436994627,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 57,
+          "recordedAt": 1700000560000,
+          "latE7": 437003620,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 58,
+          "recordedAt": 1700000570000,
+          "latE7": 437012613,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 59,
+          "recordedAt": 1700000580000,
+          "latE7": 437021607,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 60,
+          "recordedAt": 1700000590000,
+          "latE7": 437030600,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 61,
+          "recordedAt": 1700000600000,
+          "latE7": 437039593,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        }
+      ],
+      "segmenter": "whole_shift",
+      "autoClosed": true
+    },
+    "scenario_gap_spike": {
+      "shiftClientId": "scn",
+      "startedAt": 1700000000000,
+      "endedAt": 1700000400000,
+      "fixes": [
+        {
+          "seq": 1,
+          "recordedAt": 1700000000000,
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 2,
+          "recordedAt": 1700000010000,
+          "latE7": 436508993,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 3,
+          "recordedAt": 1700000020000,
+          "latE7": 436517986,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 4,
+          "recordedAt": 1700000030000,
+          "latE7": 436526980,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 5,
+          "recordedAt": 1700000040000,
+          "latE7": 436535973,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 6,
+          "recordedAt": 1700000050000,
+          "latE7": 436544966,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 7,
+          "recordedAt": 1700000060000,
+          "latE7": 436553959,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 8,
+          "recordedAt": 1700000070000,
+          "latE7": 436562953,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 9,
+          "recordedAt": 1700000080000,
+          "latE7": 436571946,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 10,
+          "recordedAt": 1700000090000,
+          "latE7": 436580939,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 11,
+          "recordedAt": 1700000100000,
+          "latE7": 436589932,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 12,
+          "recordedAt": 1700000280000,
+          "latE7": 454486432,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 13,
+          "recordedAt": 1700000300000,
+          "latE7": 436634898,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 14,
+          "recordedAt": 1700000310000,
+          "latE7": 436643891,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 15,
+          "recordedAt": 1700000320000,
+          "latE7": 436652885,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 16,
+          "recordedAt": 1700000330000,
+          "latE7": 436661878,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 17,
+          "recordedAt": 1700000340000,
+          "latE7": 436670871,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 18,
+          "recordedAt": 1700000350000,
+          "latE7": 436679864,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 19,
+          "recordedAt": 1700000360000,
+          "latE7": 436688858,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 20,
+          "recordedAt": 1700000370000,
+          "latE7": 436697851,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 21,
+          "recordedAt": 1700000380000,
+          "latE7": 436706844,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 22,
+          "recordedAt": 1700000390000,
+          "latE7": 436715837,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 23,
+          "recordedAt": 1700000400000,
+          "latE7": 436724830,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        }
+      ],
+      "segmenter": "whole_shift"
+    },
+    "scenario_delivery_run": {
+      "shiftClientId": "scn",
+      "startedAt": 1700000000000,
+      "endedAt": 1700003330000,
+      "fixes": [
+        {
+          "seq": 1,
+          "recordedAt": 1700000000000,
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 2,
+          "recordedAt": 1700000010000,
+          "latE7": 436508993,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 3,
+          "recordedAt": 1700000020000,
+          "latE7": 436517986,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 4,
+          "recordedAt": 1700000030000,
+          "latE7": 436526980,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 5,
+          "recordedAt": 1700000040000,
+          "latE7": 436535973,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 6,
+          "recordedAt": 1700000050000,
+          "latE7": 436544966,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 7,
+          "recordedAt": 1700000060000,
+          "latE7": 436553959,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 8,
+          "recordedAt": 1700000070000,
+          "latE7": 436562953,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 9,
+          "recordedAt": 1700000080000,
+          "latE7": 436571946,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 10,
+          "recordedAt": 1700000090000,
+          "latE7": 436580939,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 11,
+          "recordedAt": 1700000100000,
+          "latE7": 436589932,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 12,
+          "recordedAt": 1700000110000,
+          "latE7": 436598925,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 13,
+          "recordedAt": 1700000120000,
+          "latE7": 436607919,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 14,
+          "recordedAt": 1700000130000,
+          "latE7": 436616912,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 15,
+          "recordedAt": 1700000140000,
+          "latE7": 436625905,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 16,
+          "recordedAt": 1700000150000,
+          "latE7": 436634898,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 17,
+          "recordedAt": 1700000160000,
+          "latE7": 436643891,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 18,
+          "recordedAt": 1700000170000,
+          "latE7": 436652885,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 19,
+          "recordedAt": 1700000180000,
+          "latE7": 436661878,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 20,
+          "recordedAt": 1700000190000,
+          "latE7": 436670871,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 21,
+          "recordedAt": 1700000200000,
+          "latE7": 436679864,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 22,
+          "recordedAt": 1700000210000,
+          "latE7": 436679595,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 23,
+          "recordedAt": 1700000220000,
+          "latE7": 436680134,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 24,
+          "recordedAt": 1700000230000,
+          "latE7": 436679595,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 25,
+          "recordedAt": 1700000240000,
+          "latE7": 436680134,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 26,
+          "recordedAt": 1700000250000,
+          "latE7": 436679595,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 27,
+          "recordedAt": 1700000260000,
+          "latE7": 436680134,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 28,
+          "recordedAt": 1700000270000,
+          "latE7": 436679595,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 29,
+          "recordedAt": 1700000280000,
+          "latE7": 436680134,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 30,
+          "recordedAt": 1700000290000,
+          "latE7": 436679595,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 31,
+          "recordedAt": 1700000300000,
+          "latE7": 436680134,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 32,
+          "recordedAt": 1700000310000,
+          "latE7": 436679595,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 33,
+          "recordedAt": 1700000320000,
+          "latE7": 436680134,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 34,
+          "recordedAt": 1700000330000,
+          "latE7": 436679595,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 35,
+          "recordedAt": 1700000340000,
+          "latE7": 436680134,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 36,
+          "recordedAt": 1700000350000,
+          "latE7": 436679595,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 37,
+          "recordedAt": 1700000500000,
+          "latE7": 436679864,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 38,
+          "recordedAt": 1700000510000,
+          "latE7": 436688858,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 39,
+          "recordedAt": 1700000520000,
+          "latE7": 436697851,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 40,
+          "recordedAt": 1700000530000,
+          "latE7": 436706844,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 41,
+          "recordedAt": 1700000540000,
+          "latE7": 436715837,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 42,
+          "recordedAt": 1700000550000,
+          "latE7": 436724830,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 43,
+          "recordedAt": 1700000560000,
+          "latE7": 436733824,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 44,
+          "recordedAt": 1700000570000,
+          "latE7": 436742817,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 45,
+          "recordedAt": 1700000580000,
+          "latE7": 436751810,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 46,
+          "recordedAt": 1700000590000,
+          "latE7": 436760803,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 47,
+          "recordedAt": 1700000600000,
+          "latE7": 436769796,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 48,
+          "recordedAt": 1700000610000,
+          "latE7": 436778790,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 49,
+          "recordedAt": 1700000620000,
+          "latE7": 436787783,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 50,
+          "recordedAt": 1700000630000,
+          "latE7": 436796776,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 51,
+          "recordedAt": 1700000640000,
+          "latE7": 436805769,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 52,
+          "recordedAt": 1700000650000,
+          "latE7": 436814763,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 53,
+          "recordedAt": 1700000660000,
+          "latE7": 436823756,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 54,
+          "recordedAt": 1700000670000,
+          "latE7": 436832749,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 55,
+          "recordedAt": 1700000680000,
+          "latE7": 436841742,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 56,
+          "recordedAt": 1700000690000,
+          "latE7": 436850735,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 57,
+          "recordedAt": 1700000700000,
+          "latE7": 436859729,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 58,
+          "recordedAt": 1700000710000,
+          "latE7": 436859459,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 59,
+          "recordedAt": 1700000720000,
+          "latE7": 436859998,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 60,
+          "recordedAt": 1700000730000,
+          "latE7": 436859459,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 61,
+          "recordedAt": 1700000740000,
+          "latE7": 436859998,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 62,
+          "recordedAt": 1700000750000,
+          "latE7": 436859459,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 63,
+          "recordedAt": 1700000760000,
+          "latE7": 436859998,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 64,
+          "recordedAt": 1700000770000,
+          "latE7": 436859459,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 65,
+          "recordedAt": 1700000780000,
+          "latE7": 436859998,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 66,
+          "recordedAt": 1700000790000,
+          "latE7": 436859459,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 67,
+          "recordedAt": 1700000800000,
+          "latE7": 436859998,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 68,
+          "recordedAt": 1700000940000,
+          "latE7": 436859729,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 69,
+          "recordedAt": 1700000950000,
+          "latE7": 436868722,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 70,
+          "recordedAt": 1700000960000,
+          "latE7": 436877715,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 71,
+          "recordedAt": 1700000970000,
+          "latE7": 436886708,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 72,
+          "recordedAt": 1700000980000,
+          "latE7": 436895702,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 73,
+          "recordedAt": 1700000990000,
+          "latE7": 436904695,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 74,
+          "recordedAt": 1700001000000,
+          "latE7": 436904425,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 75,
+          "recordedAt": 1700001010000,
+          "latE7": 436904965,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 76,
+          "recordedAt": 1700001020000,
+          "latE7": 436904425,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 77,
+          "recordedAt": 1700001030000,
+          "latE7": 436904965,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 78,
+          "recordedAt": 1700001040000,
+          "latE7": 436904425,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 79,
+          "recordedAt": 1700001050000,
+          "latE7": 436904965,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 80,
+          "recordedAt": 1700001060000,
+          "latE7": 436913688,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 81,
+          "recordedAt": 1700001070000,
+          "latE7": 436922681,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 82,
+          "recordedAt": 1700001080000,
+          "latE7": 436931674,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 83,
+          "recordedAt": 1700001090000,
+          "latE7": 436940668,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 84,
+          "recordedAt": 1700001100000,
+          "latE7": 436949661,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 85,
+          "recordedAt": 1700001110000,
+          "latE7": 436958654,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 86,
+          "recordedAt": 1700001120000,
+          "latE7": 436967647,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 87,
+          "recordedAt": 1700001130000,
+          "latE7": 436976640,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 88,
+          "recordedAt": 1700001140000,
+          "latE7": 436985634,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 89,
+          "recordedAt": 1700001150000,
+          "latE7": 436994627,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 90,
+          "recordedAt": 1700001160000,
+          "latE7": 436994357,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 91,
+          "recordedAt": 1700001170000,
+          "latE7": 436994897,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 92,
+          "recordedAt": 1700001180000,
+          "latE7": 436994357,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 93,
+          "recordedAt": 1700001190000,
+          "latE7": 436994897,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 94,
+          "recordedAt": 1700001200000,
+          "latE7": 436994357,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 95,
+          "recordedAt": 1700001210000,
+          "latE7": 436994897,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 96,
+          "recordedAt": 1700001220000,
+          "latE7": 436994357,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 97,
+          "recordedAt": 1700001230000,
+          "latE7": 436994897,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 98,
+          "recordedAt": 1700001240000,
+          "latE7": 436994357,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 99,
+          "recordedAt": 1700001250000,
+          "latE7": 436994897,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 100,
+          "recordedAt": 1700001260000,
+          "latE7": 436994357,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 101,
+          "recordedAt": 1700001270000,
+          "latE7": 436994897,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 102,
+          "recordedAt": 1700001280000,
+          "latE7": 436994357,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 103,
+          "recordedAt": 1700001290000,
+          "latE7": 436994897,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 104,
+          "recordedAt": 1700001300000,
+          "latE7": 436994357,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 105,
+          "recordedAt": 1700003250000,
+          "latE7": 436994627,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 106,
+          "recordedAt": 1700003260000,
+          "latE7": 437003620,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 107,
+          "recordedAt": 1700003270000,
+          "latE7": 437012613,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 108,
+          "recordedAt": 1700003280000,
+          "latE7": 437021607,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 109,
+          "recordedAt": 1700003290000,
+          "latE7": 437030600,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 110,
+          "recordedAt": 1700003300000,
+          "latE7": 437039593,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 111,
+          "recordedAt": 1700003310000,
+          "latE7": 437048586,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 112,
+          "recordedAt": 1700003320000,
+          "latE7": 437057579,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 113,
+          "recordedAt": 1700003330000,
+          "latE7": 437066573,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        }
+      ],
+      "segmenter": "stops"
+    },
+    "scenario_stacked_orders": {
+      "shiftClientId": "scn",
+      "startedAt": 1700000000000,
+      "endedAt": 1700001650000,
+      "fixes": [
+        {
+          "seq": 1,
+          "recordedAt": 1700000000000,
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 2,
+          "recordedAt": 1700000010000,
+          "latE7": 436508993,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 3,
+          "recordedAt": 1700000020000,
+          "latE7": 436517986,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 4,
+          "recordedAt": 1700000030000,
+          "latE7": 436526980,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 5,
+          "recordedAt": 1700000040000,
+          "latE7": 436535973,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 6,
+          "recordedAt": 1700000050000,
+          "latE7": 436544966,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 7,
+          "recordedAt": 1700000060000,
+          "latE7": 436553959,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 8,
+          "recordedAt": 1700000070000,
+          "latE7": 436562953,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 9,
+          "recordedAt": 1700000080000,
+          "latE7": 436571946,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 10,
+          "recordedAt": 1700000090000,
+          "latE7": 436580939,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 11,
+          "recordedAt": 1700000100000,
+          "latE7": 436589932,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 12,
+          "recordedAt": 1700000110000,
+          "latE7": 436598925,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 13,
+          "recordedAt": 1700000120000,
+          "latE7": 436607919,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 14,
+          "recordedAt": 1700000130000,
+          "latE7": 436616912,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 15,
+          "recordedAt": 1700000140000,
+          "latE7": 436625905,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 16,
+          "recordedAt": 1700000150000,
+          "latE7": 436634898,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 17,
+          "recordedAt": 1700000160000,
+          "latE7": 436634628,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 18,
+          "recordedAt": 1700000170000,
+          "latE7": 436635168,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 19,
+          "recordedAt": 1700000180000,
+          "latE7": 436634628,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 20,
+          "recordedAt": 1700000190000,
+          "latE7": 436635168,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 21,
+          "recordedAt": 1700000200000,
+          "latE7": 436634628,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 22,
+          "recordedAt": 1700000210000,
+          "latE7": 436635168,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 23,
+          "recordedAt": 1700000450000,
+          "latE7": 436634898,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 24,
+          "recordedAt": 1700000460000,
+          "latE7": 436643891,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 25,
+          "recordedAt": 1700000470000,
+          "latE7": 436652885,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 26,
+          "recordedAt": 1700000480000,
+          "latE7": 436661878,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 27,
+          "recordedAt": 1700000490000,
+          "latE7": 436661608,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 28,
+          "recordedAt": 1700000500000,
+          "latE7": 436662148,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 29,
+          "recordedAt": 1700000510000,
+          "latE7": 436661608,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 30,
+          "recordedAt": 1700000520000,
+          "latE7": 436662148,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 31,
+          "recordedAt": 1700000530000,
+          "latE7": 436661608,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 32,
+          "recordedAt": 1700000540000,
+          "latE7": 436662148,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 33,
+          "recordedAt": 1700000780000,
+          "latE7": 436661878,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 34,
+          "recordedAt": 1700000790000,
+          "latE7": 436670871,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 35,
+          "recordedAt": 1700000800000,
+          "latE7": 436679864,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 36,
+          "recordedAt": 1700000810000,
+          "latE7": 436688858,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 37,
+          "recordedAt": 1700000820000,
+          "latE7": 436697851,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 38,
+          "recordedAt": 1700000830000,
+          "latE7": 436706844,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 39,
+          "recordedAt": 1700000840000,
+          "latE7": 436715837,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 40,
+          "recordedAt": 1700000850000,
+          "latE7": 436724830,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 41,
+          "recordedAt": 1700000860000,
+          "latE7": 436733824,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 42,
+          "recordedAt": 1700000870000,
+          "latE7": 436742817,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 43,
+          "recordedAt": 1700000880000,
+          "latE7": 436751810,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 44,
+          "recordedAt": 1700000890000,
+          "latE7": 436760803,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 45,
+          "recordedAt": 1700000900000,
+          "latE7": 436769796,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 46,
+          "recordedAt": 1700000910000,
+          "latE7": 436769527,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 47,
+          "recordedAt": 1700000920000,
+          "latE7": 436770066,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 48,
+          "recordedAt": 1700000930000,
+          "latE7": 436769527,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 49,
+          "recordedAt": 1700000940000,
+          "latE7": 436770066,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 50,
+          "recordedAt": 1700000950000,
+          "latE7": 436769527,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 51,
+          "recordedAt": 1700000960000,
+          "latE7": 436770066,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 52,
+          "recordedAt": 1700001200000,
+          "latE7": 436769796,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 53,
+          "recordedAt": 1700001210000,
+          "latE7": 436778790,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 54,
+          "recordedAt": 1700001220000,
+          "latE7": 436787783,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 55,
+          "recordedAt": 1700001230000,
+          "latE7": 436796776,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 56,
+          "recordedAt": 1700001240000,
+          "latE7": 436805769,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 57,
+          "recordedAt": 1700001250000,
+          "latE7": 436814763,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 58,
+          "recordedAt": 1700001260000,
+          "latE7": 436823756,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 59,
+          "recordedAt": 1700001270000,
+          "latE7": 436832749,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 60,
+          "recordedAt": 1700001280000,
+          "latE7": 436841742,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 61,
+          "recordedAt": 1700001290000,
+          "latE7": 436850735,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 62,
+          "recordedAt": 1700001300000,
+          "latE7": 436850466,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 63,
+          "recordedAt": 1700001310000,
+          "latE7": 436851005,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 64,
+          "recordedAt": 1700001320000,
+          "latE7": 436850466,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 65,
+          "recordedAt": 1700001330000,
+          "latE7": 436851005,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 66,
+          "recordedAt": 1700001340000,
+          "latE7": 436850466,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 67,
+          "recordedAt": 1700001350000,
+          "latE7": 436851005,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 68,
+          "recordedAt": 1700001590000,
+          "latE7": 436850735,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 69,
+          "recordedAt": 1700001600000,
+          "latE7": 436859729,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 70,
+          "recordedAt": 1700001610000,
+          "latE7": 436868722,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 71,
+          "recordedAt": 1700001620000,
+          "latE7": 436877715,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 72,
+          "recordedAt": 1700001630000,
+          "latE7": 436886708,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 73,
+          "recordedAt": 1700001640000,
+          "latE7": 436895702,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 74,
+          "recordedAt": 1700001650000,
+          "latE7": 436904695,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        }
+      ],
+      "segmenter": "stops"
+    },
+    "scenario_queue_creep": {
+      "shiftClientId": "scn",
+      "startedAt": 1700000000000,
+      "endedAt": 1700000380000,
+      "fixes": [
+        {
+          "seq": 1,
+          "recordedAt": 1700000000000,
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 2,
+          "recordedAt": 1700000010000,
+          "latE7": 436508993,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 3,
+          "recordedAt": 1700000020000,
+          "latE7": 436517986,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 4,
+          "recordedAt": 1700000030000,
+          "latE7": 436526980,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 5,
+          "recordedAt": 1700000040000,
+          "latE7": 436535973,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 6,
+          "recordedAt": 1700000050000,
+          "latE7": 436544966,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 7,
+          "recordedAt": 1700000060000,
+          "latE7": 436553959,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 8,
+          "recordedAt": 1700000070000,
+          "latE7": 436562953,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 9,
+          "recordedAt": 1700000080000,
+          "latE7": 436571946,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 10,
+          "recordedAt": 1700000090000,
+          "latE7": 436580939,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 11,
+          "recordedAt": 1700000100000,
+          "latE7": 436589932,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 12,
+          "recordedAt": 1700000110000,
+          "latE7": 436590067,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 13,
+          "recordedAt": 1700000120000,
+          "latE7": 436590202,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 14,
+          "recordedAt": 1700000130000,
+          "latE7": 436590337,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 15,
+          "recordedAt": 1700000140000,
+          "latE7": 436590472,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 16,
+          "recordedAt": 1700000150000,
+          "latE7": 436590607,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 17,
+          "recordedAt": 1700000160000,
+          "latE7": 436590742,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 18,
+          "recordedAt": 1700000170000,
+          "latE7": 436590876,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 19,
+          "recordedAt": 1700000180000,
+          "latE7": 436591011,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 20,
+          "recordedAt": 1700000190000,
+          "latE7": 436591146,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 21,
+          "recordedAt": 1700000200000,
+          "latE7": 436591281,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 22,
+          "recordedAt": 1700000210000,
+          "latE7": 436591416,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 23,
+          "recordedAt": 1700000220000,
+          "latE7": 436591551,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 24,
+          "recordedAt": 1700000230000,
+          "latE7": 436591686,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 25,
+          "recordedAt": 1700000240000,
+          "latE7": 436591821,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 26,
+          "recordedAt": 1700000250000,
+          "latE7": 436591956,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 27,
+          "recordedAt": 1700000260000,
+          "latE7": 436592091,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 28,
+          "recordedAt": 1700000270000,
+          "latE7": 436592225,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 29,
+          "recordedAt": 1700000280000,
+          "latE7": 436592360,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 30,
+          "recordedAt": 1700000290000,
+          "latE7": 436601354,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 31,
+          "recordedAt": 1700000300000,
+          "latE7": 436610347,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 32,
+          "recordedAt": 1700000310000,
+          "latE7": 436619340,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 33,
+          "recordedAt": 1700000320000,
+          "latE7": 436628333,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 34,
+          "recordedAt": 1700000330000,
+          "latE7": 436637326,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 35,
+          "recordedAt": 1700000340000,
+          "latE7": 436646320,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 36,
+          "recordedAt": 1700000350000,
+          "latE7": 436655313,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 37,
+          "recordedAt": 1700000360000,
+          "latE7": 436664306,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 38,
+          "recordedAt": 1700000370000,
+          "latE7": 436673299,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 39,
+          "recordedAt": 1700000380000,
+          "latE7": 436682292,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        }
+      ],
+      "segmenter": "stops"
+    },
+    "scenario_start_wait": {
+      "shiftClientId": "scn",
+      "startedAt": 1700000000000,
+      "endedAt": 1700000450000,
+      "fixes": [
+        {
+          "seq": 1,
+          "recordedAt": 1700000000000,
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 2,
+          "recordedAt": 1700000010000,
+          "latE7": 436499730,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 3,
+          "recordedAt": 1700000020000,
+          "latE7": 436500270,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 4,
+          "recordedAt": 1700000030000,
+          "latE7": 436499730,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 5,
+          "recordedAt": 1700000040000,
+          "latE7": 436500270,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 6,
+          "recordedAt": 1700000050000,
+          "latE7": 436499730,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 7,
+          "recordedAt": 1700000060000,
+          "latE7": 436500270,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 8,
+          "recordedAt": 1700000070000,
+          "latE7": 436499730,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 9,
+          "recordedAt": 1700000080000,
+          "latE7": 436500270,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 10,
+          "recordedAt": 1700000090000,
+          "latE7": 436499730,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 11,
+          "recordedAt": 1700000100000,
+          "latE7": 436500270,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 12,
+          "recordedAt": 1700000110000,
+          "latE7": 436499730,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 13,
+          "recordedAt": 1700000120000,
+          "latE7": 436500270,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 14,
+          "recordedAt": 1700000130000,
+          "latE7": 436499730,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 15,
+          "recordedAt": 1700000140000,
+          "latE7": 436500270,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 16,
+          "recordedAt": 1700000150000,
+          "latE7": 436499730,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 17,
+          "recordedAt": 1700000250000,
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 18,
+          "recordedAt": 1700000260000,
+          "latE7": 436508993,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 19,
+          "recordedAt": 1700000270000,
+          "latE7": 436517986,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 20,
+          "recordedAt": 1700000280000,
+          "latE7": 436526980,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 21,
+          "recordedAt": 1700000290000,
+          "latE7": 436535973,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 22,
+          "recordedAt": 1700000300000,
+          "latE7": 436544966,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 23,
+          "recordedAt": 1700000310000,
+          "latE7": 436553959,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 24,
+          "recordedAt": 1700000320000,
+          "latE7": 436562953,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 25,
+          "recordedAt": 1700000330000,
+          "latE7": 436571946,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 26,
+          "recordedAt": 1700000340000,
+          "latE7": 436580939,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 27,
+          "recordedAt": 1700000350000,
+          "latE7": 436589932,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 28,
+          "recordedAt": 1700000360000,
+          "latE7": 436598925,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 29,
+          "recordedAt": 1700000370000,
+          "latE7": 436607919,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 30,
+          "recordedAt": 1700000380000,
+          "latE7": 436616912,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 31,
+          "recordedAt": 1700000390000,
+          "latE7": 436625905,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 32,
+          "recordedAt": 1700000400000,
+          "latE7": 436634898,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 33,
+          "recordedAt": 1700000410000,
+          "latE7": 436643891,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 34,
+          "recordedAt": 1700000420000,
+          "latE7": 436652885,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 35,
+          "recordedAt": 1700000430000,
+          "latE7": 436661878,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 36,
+          "recordedAt": 1700000440000,
+          "latE7": 436670871,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 37,
+          "recordedAt": 1700000450000,
+          "latE7": 436679864,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        }
+      ],
+      "segmenter": "stops"
+    },
+    "scenario_wake_up": {
+      "shiftClientId": "scn",
+      "startedAt": 1700000000000,
+      "endedAt": 1700000900000,
+      "fixes": [
+        {
+          "seq": 1,
+          "recordedAt": 1700000000000,
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 2,
+          "recordedAt": 1700000010000,
+          "latE7": 436508993,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 3,
+          "recordedAt": 1700000020000,
+          "latE7": 436517986,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 4,
+          "recordedAt": 1700000030000,
+          "latE7": 436526980,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 5,
+          "recordedAt": 1700000040000,
+          "latE7": 436535973,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 6,
+          "recordedAt": 1700000050000,
+          "latE7": 436544966,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 7,
+          "recordedAt": 1700000060000,
+          "latE7": 436553959,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 8,
+          "recordedAt": 1700000070000,
+          "latE7": 436562953,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 9,
+          "recordedAt": 1700000080000,
+          "latE7": 436571946,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 10,
+          "recordedAt": 1700000090000,
+          "latE7": 436580939,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 11,
+          "recordedAt": 1700000100000,
+          "latE7": 436589932,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 12,
+          "recordedAt": 1700000110000,
+          "latE7": 436598925,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 13,
+          "recordedAt": 1700000120000,
+          "latE7": 436607919,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 14,
+          "recordedAt": 1700000130000,
+          "latE7": 436616912,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 15,
+          "recordedAt": 1700000140000,
+          "latE7": 436625905,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 16,
+          "recordedAt": 1700000150000,
+          "latE7": 436634898,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 17,
+          "recordedAt": 1700000750000,
+          "latE7": 436643891,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 18,
+          "recordedAt": 1700000760000,
+          "latE7": 436652885,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 19,
+          "recordedAt": 1700000770000,
+          "latE7": 436661878,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 20,
+          "recordedAt": 1700000780000,
+          "latE7": 436670871,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 21,
+          "recordedAt": 1700000790000,
+          "latE7": 436679864,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 22,
+          "recordedAt": 1700000800000,
+          "latE7": 436688858,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 23,
+          "recordedAt": 1700000810000,
+          "latE7": 436697851,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 24,
+          "recordedAt": 1700000820000,
+          "latE7": 436706844,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 25,
+          "recordedAt": 1700000830000,
+          "latE7": 436715837,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 26,
+          "recordedAt": 1700000840000,
+          "latE7": 436724830,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 27,
+          "recordedAt": 1700000850000,
+          "latE7": 436733824,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 28,
+          "recordedAt": 1700000860000,
+          "latE7": 436742817,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 29,
+          "recordedAt": 1700000870000,
+          "latE7": 436751810,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 30,
+          "recordedAt": 1700000880000,
+          "latE7": 436760803,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 31,
+          "recordedAt": 1700000890000,
+          "latE7": 436769796,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 32,
+          "recordedAt": 1700000900000,
+          "latE7": 436778790,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        }
+      ],
+      "segmenter": "stops"
+    }
+  },
+  "expected": {
+    "ride_grid": "{\"algorithmVersion\":3,\"flags\":[],\"inputDigest\":\"17a1bf7d4accd95b\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436517986,\"lonE7\":-793800000,\"t\":1700000020000},{\"latE7\":436517986,\"lonE7\":-793775142,\"t\":1700000040000},{\"latE7\":436535973,\"lonE7\":-793775142,\"t\":1700000060000},{\"latE7\":436535973,\"lonE7\":-793750284,\"t\":1700000080000},{\"latE7\":436517986,\"lonE7\":-793750284,\"t\":1700000100000},{\"latE7\":436517986,\"lonE7\":-793725426,\"t\":1700000120000},{\"latE7\":436553959,\"lonE7\":-793725426,\"t\":1700000160000}],\"stats\":{\"fixes_in\":17,\"fixes_used\":17,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":1600,\"deadheadM\":0,\"personalM\":0,\"totalM\":1600},\"trips\":[{\"distanceM\":1600,\"endLatE7\":436553959,\"endLonE7\":-793725426,\"endedAt\":1700000160000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"synthetic-grid:1700000000000:active\"}]}",
+    "ride_loop": "{\"algorithmVersion\":3,\"flags\":[],\"inputDigest\":\"ef4d8b723b50461a\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436501320,\"lonE7\":-793788478,\"t\":1700000009416},{\"latE7\":436507902,\"lonE7\":-793773634,\"t\":1700000023540},{\"latE7\":436518642,\"lonE7\":-793764538,\"t\":1700000037664},{\"latE7\":436526980,\"lonE7\":-793762713,\"t\":1700000047080},{\"latE7\":436535317,\"lonE7\":-793764538,\"t\":1700000056496},{\"latE7\":436546057,\"lonE7\":-793773634,\"t\":1700000070620},{\"latE7\":436551019,\"lonE7\":-793783072,\"t\":1700000080036},{\"latE7\":436553959,\"lonE7\":-793800000,\"t\":1700000094160},{\"latE7\":436551019,\"lonE7\":-793816928,\"t\":1700000108284},{\"latE7\":436546057,\"lonE7\":-793826366,\"t\":1700000117700},{\"latE7\":436535317,\"lonE7\":-793835462,\"t\":1700000131824},{\"latE7\":436526980,\"lonE7\":-793837287,\"t\":1700000141240},{\"latE7\":436518642,\"lonE7\":-793835462,\"t\":1700000150656},{\"latE7\":436507902,\"lonE7\":-793826366,\"t\":1700000164780},{\"latE7\":436501320,\"lonE7\":-793811522,\"t\":1700000178904},{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000188320}],\"stats\":{\"fixes_in\":41,\"fixes_used\":41,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":1884,\"deadheadM\":0,\"personalM\":0,\"totalM\":1884},\"trips\":[{\"distanceM\":1884,\"endLatE7\":436500000,\"endLonE7\":-793800000,\"endedAt\":1700000188320,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"synthetic-loop:1700000000000:active\"}]}",
+    "ride_stop_and_go": "{\"algorithmVersion\":3,\"flags\":[],\"inputDigest\":\"37267328573f2b90\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436679864,\"lonE7\":-793800000,\"t\":1700000740000}],\"stats\":{\"fixes_in\":93,\"fixes_used\":21,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":72},\"stops\":[],\"totals\":{\"activeM\":2000,\"deadheadM\":0,\"personalM\":0,\"totalM\":2000},\"trips\":[{\"distanceM\":2000,\"endLatE7\":436679864,\"endLonE7\":-793800000,\"endedAt\":1700000740000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"synthetic-stop_and_go:1700000000000:active\"}]}",
+    "ride_straight": "{\"algorithmVersion\":3,\"flags\":[],\"inputDigest\":\"91522ec0650a53c9\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436949661,\"lonE7\":-793800000,\"t\":1700000500000}],\"stats\":{\"fixes_in\":51,\"fixes_used\":51,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":5000,\"deadheadM\":0,\"personalM\":0,\"totalM\":5000},\"trips\":[{\"distanceM\":5000,\"endLatE7\":436949661,\"endLonE7\":-793800000,\"endedAt\":1700000500000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"synthetic-straight:1700000000000:active\"}]}",
+    "scenario_dead_battery": "{\"algorithmVersion\":3,\"flags\":[{\"at\":1700000600000,\"code\":\"shift_auto_closed\"}],\"inputDigest\":\"6cb84cd3a33ea73c\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":437039593,\"lonE7\":-793800000,\"t\":1700000600000}],\"stats\":{\"fixes_in\":61,\"fixes_used\":61,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":6000,\"deadheadM\":0,\"personalM\":0,\"totalM\":6000},\"trips\":[{\"distanceM\":6000,\"endLatE7\":437039593,\"endLonE7\":-793800000,\"endedAt\":1700000600000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:active\"}]}",
+    "scenario_delivery_run": "{\"algorithmVersion\":3,\"flags\":[{\"at\":1700001150000,\"code\":\"long_stop\",\"detail\":\"scn:1700001150000:stop\"}],\"inputDigest\":\"93b3cb734276d2d3\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":437066573,\"lonE7\":-793800000,\"t\":1700003330000}],\"stats\":{\"fixes_in\":113,\"fixes_used\":64,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":49},\"stops\":[{\"confidence\":\"medium\",\"dwellS\":300,\"endedAt\":1700000500000,\"estRole\":\"pickup\",\"latE7\":436679864,\"lonE7\":-793800000,\"role\":\"pickup\",\"startedAt\":1700000200000,\"stopKey\":\"scn:1700000200000:stop\"},{\"confidence\":\"medium\",\"dwellS\":240,\"endedAt\":1700000940000,\"estRole\":\"dropoff\",\"latE7\":436859729,\"lonE7\":-793800000,\"role\":\"dropoff\",\"startedAt\":1700000700000,\"stopKey\":\"scn:1700000700000:stop\"},{\"confidence\":\"high\",\"dwellS\":2100,\"endedAt\":1700003250000,\"estRole\":\"none\",\"latE7\":436994627,\"lonE7\":-793800000,\"role\":\"none\",\"startedAt\":1700001150000,\"stopKey\":\"scn:1700001150000:stop\"}],\"totals\":{\"activeM\":2000,\"deadheadM\":4300,\"personalM\":0,\"totalM\":6300},\"trips\":[{\"distanceM\":2000,\"endLatE7\":436679864,\"endLonE7\":-793800000,\"endedAt\":1700000200000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:deadhead\"},{\"distanceM\":2000,\"endLatE7\":436859729,\"endLonE7\":-793800000,\"endedAt\":1700000700000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Delivery (estimated)\",\"startLatE7\":436679864,\"startLonE7\":-793800000,\"startedAt\":1700000200000,\"tripKey\":\"scn:1700000200000:active\"},{\"distanceM\":2300,\"endLatE7\":437066573,\"endLonE7\":-793800000,\"endedAt\":1700003330000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436859729,\"startLonE7\":-793800000,\"startedAt\":1700000700000,\"tripKey\":\"scn:1700000700000:deadhead\"}]}",
+    "scenario_gap_spike": "{\"algorithmVersion\":3,\"flags\":[{\"at\":1700000100000,\"code\":\"gap_counted\",\"detail\":\"dt_s=200,chord_m=500\"},{\"at\":1700000100000,\"code\":\"gap_dropped\",\"detail\":\"dt_s=180,chord_m=199000\"}],\"inputDigest\":\"c0ed8dcc5c69fbbe\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436724830,\"lonE7\":-793800000,\"t\":1700000400000}],\"stats\":{\"fixes_in\":23,\"fixes_used\":22,\"gap_m\":500,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":1,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":2500,\"deadheadM\":0,\"personalM\":0,\"totalM\":2500},\"trips\":[{\"distanceM\":2500,\"endLatE7\":436724830,\"endLonE7\":-793800000,\"endedAt\":1700000400000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:active\"}]}",
+    "scenario_killed_app": "{\"algorithmVersion\":3,\"flags\":[{\"at\":1700000200000,\"code\":\"gap_counted\",\"detail\":\"dt_s=720,chord_m=6000\"},{\"at\":1700000200000,\"code\":\"gap_large\",\"detail\":\"dt_s=720,chord_m=6000\"},{\"at\":1700000200000,\"code\":\"tracking_interrupted\",\"detail\":\"to=1700000900000\"}],\"inputDigest\":\"282caaa01d3d5003\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":437381335,\"lonE7\":-793800000,\"t\":1700001100000}],\"stats\":{\"fixes_in\":40,\"fixes_used\":40,\"gap_m\":6000,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":9800,\"deadheadM\":0,\"personalM\":0,\"totalM\":9800},\"trips\":[{\"distanceM\":9800,\"endLatE7\":437381335,\"endLonE7\":-793800000,\"endedAt\":1700001100000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:active\"}]}",
+    "scenario_parked_wait": "{\"algorithmVersion\":3,\"flags\":[],\"inputDigest\":\"9a1538d3b7cfd48d\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":437039593,\"lonE7\":-793800000,\"t\":1700000780000}],\"stats\":{\"fixes_in\":62,\"fixes_used\":61,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":1},\"stops\":[],\"totals\":{\"activeM\":6000,\"deadheadM\":0,\"personalM\":0,\"totalM\":6000},\"trips\":[{\"distanceM\":6000,\"endLatE7\":437039593,\"endLonE7\":-793800000,\"endedAt\":1700000780000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:active\"}]}",
+    "scenario_queue_creep": "{\"algorithmVersion\":3,\"flags\":[],\"inputDigest\":\"a4dcc2b101b9e7e5\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436682292,\"lonE7\":-793800000,\"t\":1700000380000}],\"stats\":{\"fixes_in\":39,\"fixes_used\":22,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":17},\"stops\":[{\"confidence\":\"medium\",\"dwellS\":180,\"endedAt\":1700000280000,\"estRole\":\"pickup\",\"latE7\":436589932,\"lonE7\":-793800000,\"role\":\"pickup\",\"startedAt\":1700000100000,\"stopKey\":\"scn:1700000100000:stop\"}],\"totals\":{\"activeM\":1006,\"deadheadM\":1021,\"personalM\":0,\"totalM\":2027},\"trips\":[{\"distanceM\":1021,\"endLatE7\":436591821,\"endLonE7\":-793800000,\"endedAt\":1700000240000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:deadhead\"},{\"distanceM\":1006,\"endLatE7\":436682292,\"endLonE7\":-793800000,\"endedAt\":1700000380000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Delivery (estimated)\",\"startLatE7\":436591821,\"startLonE7\":-793800000,\"startedAt\":1700000240000,\"tripKey\":\"scn:1700000240000:active\"}]}",
+    "scenario_stacked_orders": "{\"algorithmVersion\":3,\"flags\":[],\"inputDigest\":\"e871ab2e34cbf793\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436904695,\"lonE7\":-793800000,\"t\":1700001650000}],\"stats\":{\"fixes_in\":74,\"fixes_used\":46,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":28},\"stops\":[{\"confidence\":\"medium\",\"dwellS\":300,\"endedAt\":1700000450000,\"estRole\":\"pickup\",\"latE7\":436634898,\"lonE7\":-793800000,\"role\":\"pickup\",\"startedAt\":1700000150000,\"stopKey\":\"scn:1700000150000:stop\"},{\"confidence\":\"medium\",\"dwellS\":300,\"endedAt\":1700000780000,\"estRole\":\"dropoff\",\"latE7\":436661878,\"lonE7\":-793800000,\"role\":\"dropoff\",\"startedAt\":1700000480000,\"stopKey\":\"scn:1700000480000:stop\"},{\"confidence\":\"medium\",\"dwellS\":300,\"endedAt\":1700001200000,\"estRole\":\"pickup\",\"latE7\":436769796,\"lonE7\":-793800000,\"role\":\"pickup\",\"startedAt\":1700000900000,\"stopKey\":\"scn:1700000900000:stop\"},{\"confidence\":\"medium\",\"dwellS\":300,\"endedAt\":1700001590000,\"estRole\":\"dropoff\",\"latE7\":436850735,\"lonE7\":-793800000,\"role\":\"dropoff\",\"startedAt\":1700001290000,\"stopKey\":\"scn:1700001290000:stop\"}],\"totals\":{\"activeM\":1200,\"deadheadM\":3300,\"personalM\":0,\"totalM\":4500},\"trips\":[{\"distanceM\":1500,\"endLatE7\":436634898,\"endLonE7\":-793800000,\"endedAt\":1700000150000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:deadhead\"},{\"distanceM\":300,\"endLatE7\":436661878,\"endLonE7\":-793800000,\"endedAt\":1700000480000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Delivery (estimated)\",\"startLatE7\":436634898,\"startLonE7\":-793800000,\"startedAt\":1700000150000,\"tripKey\":\"scn:1700000150000:active\"},{\"distanceM\":1200,\"endLatE7\":436769796,\"endLonE7\":-793800000,\"endedAt\":1700000900000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436661878,\"startLonE7\":-793800000,\"startedAt\":1700000480000,\"tripKey\":\"scn:1700000480000:deadhead\"},{\"distanceM\":900,\"endLatE7\":436850735,\"endLonE7\":-793800000,\"endedAt\":1700001290000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Delivery (estimated)\",\"startLatE7\":436769796,\"startLonE7\":-793800000,\"startedAt\":1700000900000,\"tripKey\":\"scn:1700000900000:active\"},{\"distanceM\":600,\"endLatE7\":436904695,\"endLonE7\":-793800000,\"endedAt\":1700001650000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436850735,\"startLonE7\":-793800000,\"startedAt\":1700001290000,\"tripKey\":\"scn:1700001290000:deadhead\"}]}",
+    "scenario_start_wait": "{\"algorithmVersion\":3,\"flags\":[{\"code\":\"no_stops_detected\"}],\"inputDigest\":\"025d032e5229051e\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436679864,\"lonE7\":-793800000,\"t\":1700000450000}],\"stats\":{\"fixes_in\":37,\"fixes_used\":21,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":16},\"stops\":[{\"confidence\":\"medium\",\"dwellS\":250,\"endedAt\":1700000250000,\"estRole\":\"none\",\"latE7\":436500000,\"lonE7\":-793800000,\"role\":\"none\",\"startedAt\":1700000000000,\"stopKey\":\"scn:1700000000000:stop\"}],\"totals\":{\"activeM\":2000,\"deadheadM\":0,\"personalM\":0,\"totalM\":2000},\"trips\":[{\"distanceM\":2000,\"endLatE7\":436679864,\"endLonE7\":-793800000,\"endedAt\":1700000450000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:active\"}]}",
+    "scenario_tunnel": "{\"algorithmVersion\":3,\"flags\":[{\"at\":1700000200000,\"code\":\"gap_counted\",\"detail\":\"dt_s=100,chord_m=600\"}],\"inputDigest\":\"aa6dbcd2c213ec68\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436913688,\"lonE7\":-793800000,\"t\":1700000500000}],\"stats\":{\"fixes_in\":42,\"fixes_used\":42,\"gap_m\":600,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":4600,\"deadheadM\":0,\"personalM\":0,\"totalM\":4600},\"trips\":[{\"distanceM\":4600,\"endLatE7\":436913688,\"endLonE7\":-793800000,\"endedAt\":1700000500000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:active\"}]}",
+    "scenario_wake_up": "{\"algorithmVersion\":3,\"flags\":[{\"at\":1700000150000,\"code\":\"gap_counted\",\"detail\":\"dt_s=600,chord_m=100\"}],\"inputDigest\":\"dac643a028a9dc85\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436778790,\"lonE7\":-793800000,\"t\":1700000900000}],\"stats\":{\"fixes_in\":32,\"fixes_used\":32,\"gap_m\":100,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[{\"confidence\":\"high\",\"dwellS\":600,\"endedAt\":1700000750000,\"estRole\":\"pickup\",\"latE7\":436634898,\"lonE7\":-793800000,\"role\":\"pickup\",\"startedAt\":1700000150000,\"stopKey\":\"scn:1700000150000:stop\"}],\"totals\":{\"activeM\":1600,\"deadheadM\":1500,\"personalM\":0,\"totalM\":3100},\"trips\":[{\"distanceM\":1500,\"endLatE7\":436634898,\"endLonE7\":-793800000,\"endedAt\":1700000150000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:deadhead\"},{\"distanceM\":1600,\"endLatE7\":436778790,\"endLonE7\":-793800000,\"endedAt\":1700000900000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Delivery (estimated)\",\"startLatE7\":436634898,\"startLonE7\":-793800000,\"startedAt\":1700000150000,\"tripKey\":\"scn:1700000150000:active\"}]}"
+  }
+}
