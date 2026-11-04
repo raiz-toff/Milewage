@@ -1,11 +1,12 @@
 {
   "ledger": {
     "1": "fc5702690d832056786b8d4ca4ce6696c37f9df519b394a7b65223f814e31383",
-    "2": "20ef6d4d56c0f39e65fc339ce57645cd7bb703076da23b033240eb060258b8b6"
+    "2": "20ef6d4d56c0f39e65fc339ce57645cd7bb703076da23b033240eb060258b8b6",
+    "3": "cce61f90e57edb130496404a511c5be45091047fc2c09c636a14013589e39f71"
   },
   "results": {
     "ride_grid": {
-      "algorithmVersion": 2,
+      "algorithmVersion": 3,
       "inputDigest": "17a1bf7d4accd95b",
       "totals": {
         "totalM": 1600,
@@ -83,7 +84,7 @@
       }
     },
     "ride_loop": {
-      "algorithmVersion": 2,
+      "algorithmVersion": 3,
       "inputDigest": "ef4d8b723b50461a",
       "totals": {
         "totalM": 1884,
@@ -206,7 +207,7 @@
       }
     },
     "ride_stop_and_go": {
-      "algorithmVersion": 2,
+      "algorithmVersion": 3,
       "inputDigest": "37267328573f2b90",
       "totals": {
         "totalM": 2000,
@@ -254,7 +255,7 @@
       }
     },
     "ride_straight": {
-      "algorithmVersion": 2,
+      "algorithmVersion": 3,
       "inputDigest": "91522ec0650a53c9",
       "totals": {
         "totalM": 5000,
@@ -302,7 +303,7 @@
       }
     },
     "scenario_dead_battery": {
-      "algorithmVersion": 2,
+      "algorithmVersion": 3,
       "inputDigest": "6cb84cd3a33ea73c",
       "totals": {
         "totalM": 6000,
@@ -355,27 +356,53 @@
       }
     },
     "scenario_delivery_run": {
-      "algorithmVersion": 2,
+      "algorithmVersion": 3,
       "inputDigest": "93b3cb734276d2d3",
       "totals": {
         "totalM": 6300,
-        "activeM": 6300,
-        "deadheadM": 0,
+        "activeM": 2000,
+        "deadheadM": 4300,
         "personalM": 0
       },
       "trips": [
         {
-          "tripKey": "scn:1700000000000:active",
+          "tripKey": "scn:1700000000000:deadhead",
+          "kind": "deadhead",
+          "originalKind": "deadhead",
+          "startedAt": 1700000000000,
+          "endedAt": 1700000200000,
+          "startLatE7": 436500000,
+          "startLonE7": -793800000,
+          "endLatE7": 436679864,
+          "endLonE7": -793800000,
+          "distanceM": 2000,
+          "purpose": "Between deliveries (estimated)"
+        },
+        {
+          "tripKey": "scn:1700000200000:active",
           "kind": "active",
           "originalKind": "active",
-          "startedAt": 1700000000000,
+          "startedAt": 1700000200000,
+          "endedAt": 1700000700000,
+          "startLatE7": 436679864,
+          "startLonE7": -793800000,
+          "endLatE7": 436859729,
+          "endLonE7": -793800000,
+          "distanceM": 2000,
+          "purpose": "Delivery (estimated)"
+        },
+        {
+          "tripKey": "scn:1700000700000:deadhead",
+          "kind": "deadhead",
+          "originalKind": "deadhead",
+          "startedAt": 1700000700000,
           "endedAt": 1700003330000,
-          "startLatE7": 436500000,
+          "startLatE7": 436859729,
           "startLonE7": -793800000,
           "endLatE7": 437066573,
           "endLonE7": -793800000,
-          "distanceM": 6300,
-          "purpose": "Business driving"
+          "distanceM": 2300,
+          "purpose": "Between deliveries (estimated)"
         }
       ],
       "stops": [
@@ -387,8 +414,8 @@
           "latE7": 436679864,
           "lonE7": -793800000,
           "confidence": "medium",
-          "estRole": "none",
-          "role": "none"
+          "estRole": "pickup",
+          "role": "pickup"
         },
         {
           "stopKey": "scn:1700000700000:stop",
@@ -398,8 +425,8 @@
           "latE7": 436859729,
           "lonE7": -793800000,
           "confidence": "medium",
-          "estRole": "none",
-          "role": "none"
+          "estRole": "dropoff",
+          "role": "dropoff"
         },
         {
           "stopKey": "scn:1700001150000:stop",
@@ -425,7 +452,13 @@
           "t": 1700003330000
         }
       ],
-      "flags": [],
+      "flags": [
+        {
+          "code": "long_stop",
+          "at": 1700001150000,
+          "detail": "scn:1700001150000:stop"
+        }
+      ],
       "stats": {
         "fixes_in": 113,
         "fixes_used": 64,
@@ -437,7 +470,7 @@
       }
     },
     "scenario_gap_spike": {
-      "algorithmVersion": 2,
+      "algorithmVersion": 3,
       "inputDigest": "c0ed8dcc5c69fbbe",
       "totals": {
         "totalM": 2500,
@@ -496,7 +529,7 @@
       }
     },
     "scenario_killed_app": {
-      "algorithmVersion": 2,
+      "algorithmVersion": 3,
       "inputDigest": "282caaa01d3d5003",
       "totals": {
         "totalM": 9800,
@@ -560,7 +593,7 @@
       }
     },
     "scenario_parked_wait": {
-      "algorithmVersion": 2,
+      "algorithmVersion": 3,
       "inputDigest": "9a1538d3b7cfd48d",
       "totals": {
         "totalM": 6000,
@@ -608,27 +641,40 @@
       }
     },
     "scenario_queue_creep": {
-      "algorithmVersion": 2,
+      "algorithmVersion": 3,
       "inputDigest": "a4dcc2b101b9e7e5",
       "totals": {
         "totalM": 2027,
-        "activeM": 2027,
-        "deadheadM": 0,
+        "activeM": 1006,
+        "deadheadM": 1021,
         "personalM": 0
       },
       "trips": [
         {
-          "tripKey": "scn:1700000000000:active",
+          "tripKey": "scn:1700000000000:deadhead",
+          "kind": "deadhead",
+          "originalKind": "deadhead",
+          "startedAt": 1700000000000,
+          "endedAt": 1700000240000,
+          "startLatE7": 436500000,
+          "startLonE7": -793800000,
+          "endLatE7": 436591821,
+          "endLonE7": -793800000,
+          "distanceM": 1021,
+          "purpose": "Between deliveries (estimated)"
+        },
+        {
+          "tripKey": "scn:1700000240000:active",
           "kind": "active",
           "originalKind": "active",
-          "startedAt": 1700000000000,
+          "startedAt": 1700000240000,
           "endedAt": 1700000380000,
-          "startLatE7": 436500000,
+          "startLatE7": 436591821,
           "startLonE7": -793800000,
           "endLatE7": 436682292,
           "endLonE7": -793800000,
-          "distanceM": 2027,
-          "purpose": "Business driving"
+          "distanceM": 1006,
+          "purpose": "Delivery (estimated)"
         }
       ],
       "stops": [
@@ -640,8 +686,8 @@
           "latE7": 436589932,
           "lonE7": -793800000,
           "confidence": "medium",
-          "estRole": "none",
-          "role": "none"
+          "estRole": "pickup",
+          "role": "pickup"
         }
       ],
       "route": [
@@ -667,8 +713,153 @@
         "gap_m": 0
       }
     },
+    "scenario_stacked_orders": {
+      "algorithmVersion": 3,
+      "inputDigest": "e871ab2e34cbf793",
+      "totals": {
+        "totalM": 4500,
+        "activeM": 1200,
+        "deadheadM": 3300,
+        "personalM": 0
+      },
+      "trips": [
+        {
+          "tripKey": "scn:1700000000000:deadhead",
+          "kind": "deadhead",
+          "originalKind": "deadhead",
+          "startedAt": 1700000000000,
+          "endedAt": 1700000150000,
+          "startLatE7": 436500000,
+          "startLonE7": -793800000,
+          "endLatE7": 436634898,
+          "endLonE7": -793800000,
+          "distanceM": 1500,
+          "purpose": "Between deliveries (estimated)"
+        },
+        {
+          "tripKey": "scn:1700000150000:active",
+          "kind": "active",
+          "originalKind": "active",
+          "startedAt": 1700000150000,
+          "endedAt": 1700000480000,
+          "startLatE7": 436634898,
+          "startLonE7": -793800000,
+          "endLatE7": 436661878,
+          "endLonE7": -793800000,
+          "distanceM": 300,
+          "purpose": "Delivery (estimated)"
+        },
+        {
+          "tripKey": "scn:1700000480000:deadhead",
+          "kind": "deadhead",
+          "originalKind": "deadhead",
+          "startedAt": 1700000480000,
+          "endedAt": 1700000900000,
+          "startLatE7": 436661878,
+          "startLonE7": -793800000,
+          "endLatE7": 436769796,
+          "endLonE7": -793800000,
+          "distanceM": 1200,
+          "purpose": "Between deliveries (estimated)"
+        },
+        {
+          "tripKey": "scn:1700000900000:active",
+          "kind": "active",
+          "originalKind": "active",
+          "startedAt": 1700000900000,
+          "endedAt": 1700001290000,
+          "startLatE7": 436769796,
+          "startLonE7": -793800000,
+          "endLatE7": 436850735,
+          "endLonE7": -793800000,
+          "distanceM": 900,
+          "purpose": "Delivery (estimated)"
+        },
+        {
+          "tripKey": "scn:1700001290000:deadhead",
+          "kind": "deadhead",
+          "originalKind": "deadhead",
+          "startedAt": 1700001290000,
+          "endedAt": 1700001650000,
+          "startLatE7": 436850735,
+          "startLonE7": -793800000,
+          "endLatE7": 436904695,
+          "endLonE7": -793800000,
+          "distanceM": 600,
+          "purpose": "Between deliveries (estimated)"
+        }
+      ],
+      "stops": [
+        {
+          "stopKey": "scn:1700000150000:stop",
+          "startedAt": 1700000150000,
+          "endedAt": 1700000450000,
+          "dwellS": 300,
+          "latE7": 436634898,
+          "lonE7": -793800000,
+          "confidence": "medium",
+          "estRole": "pickup",
+          "role": "pickup"
+        },
+        {
+          "stopKey": "scn:1700000480000:stop",
+          "startedAt": 1700000480000,
+          "endedAt": 1700000780000,
+          "dwellS": 300,
+          "latE7": 436661878,
+          "lonE7": -793800000,
+          "confidence": "medium",
+          "estRole": "dropoff",
+          "role": "dropoff"
+        },
+        {
+          "stopKey": "scn:1700000900000:stop",
+          "startedAt": 1700000900000,
+          "endedAt": 1700001200000,
+          "dwellS": 300,
+          "latE7": 436769796,
+          "lonE7": -793800000,
+          "confidence": "medium",
+          "estRole": "pickup",
+          "role": "pickup"
+        },
+        {
+          "stopKey": "scn:1700001290000:stop",
+          "startedAt": 1700001290000,
+          "endedAt": 1700001590000,
+          "dwellS": 300,
+          "latE7": 436850735,
+          "lonE7": -793800000,
+          "confidence": "medium",
+          "estRole": "dropoff",
+          "role": "dropoff"
+        }
+      ],
+      "route": [
+        {
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "t": 1700000000000
+        },
+        {
+          "latE7": 436904695,
+          "lonE7": -793800000,
+          "t": 1700001650000
+        }
+      ],
+      "flags": [],
+      "stats": {
+        "fixes_in": 74,
+        "fixes_used": 46,
+        "low_accuracy": 0,
+        "non_positive_dt": 0,
+        "speed_spike": 0,
+        "within_gate": 28,
+        "gap_m": 0
+      }
+    },
     "scenario_start_wait": {
-      "algorithmVersion": 2,
+      "algorithmVersion": 3,
       "inputDigest": "025d032e5229051e",
       "totals": {
         "totalM": 2000,
@@ -716,7 +907,11 @@
           "t": 1700000450000
         }
       ],
-      "flags": [],
+      "flags": [
+        {
+          "code": "no_stops_detected"
+        }
+      ],
       "stats": {
         "fixes_in": 37,
         "fixes_used": 21,
@@ -728,7 +923,7 @@
       }
     },
     "scenario_tunnel": {
-      "algorithmVersion": 2,
+      "algorithmVersion": 3,
       "inputDigest": "aa6dbcd2c213ec68",
       "totals": {
         "totalM": 4600,
@@ -782,27 +977,40 @@
       }
     },
     "scenario_wake_up": {
-      "algorithmVersion": 2,
+      "algorithmVersion": 3,
       "inputDigest": "dac643a028a9dc85",
       "totals": {
         "totalM": 3100,
-        "activeM": 3100,
-        "deadheadM": 0,
+        "activeM": 1600,
+        "deadheadM": 1500,
         "personalM": 0
       },
       "trips": [
         {
-          "tripKey": "scn:1700000000000:active",
+          "tripKey": "scn:1700000000000:deadhead",
+          "kind": "deadhead",
+          "originalKind": "deadhead",
+          "startedAt": 1700000000000,
+          "endedAt": 1700000150000,
+          "startLatE7": 436500000,
+          "startLonE7": -793800000,
+          "endLatE7": 436634898,
+          "endLonE7": -793800000,
+          "distanceM": 1500,
+          "purpose": "Between deliveries (estimated)"
+        },
+        {
+          "tripKey": "scn:1700000150000:active",
           "kind": "active",
           "originalKind": "active",
-          "startedAt": 1700000000000,
+          "startedAt": 1700000150000,
           "endedAt": 1700000900000,
-          "startLatE7": 436500000,
+          "startLatE7": 436634898,
           "startLonE7": -793800000,
           "endLatE7": 436778790,
           "endLonE7": -793800000,
-          "distanceM": 3100,
-          "purpose": "Business driving"
+          "distanceM": 1600,
+          "purpose": "Delivery (estimated)"
         }
       ],
       "stops": [
@@ -814,8 +1022,8 @@
           "latE7": 436634898,
           "lonE7": -793800000,
           "confidence": "high",
-          "estRole": "none",
-          "role": "none"
+          "estRole": "pickup",
+          "role": "pickup"
         }
       ],
       "route": [

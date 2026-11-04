@@ -37,10 +37,15 @@ export { processShift } from './process';
 export { applyEdits, sortEdits } from './edits';
 export {
   detectStops,
+  estimateRoles,
+  stopTrips,
   stopConfidence,
   makeStopKey,
+  ESTIMATED_PURPOSE,
   STOP_RADIUS_DM,
   STOP_MIN_DWELL_MS,
+  STOP_TOGGLE_DWELL_MS,
+  STOP_BREAK_DWELL_MS,
   STOP_MEDIUM_DWELL_MS,
   STOP_HIGH_DWELL_MS,
   STOP_WAKE_GAP_MS,
@@ -50,4 +55,4 @@ export {
   STOP_START_GUARD_MS,
   STOP_START_GUARD_RADIUS_DM,
 } from './stops';
-export type { DetectedStop, Confidence } from './stops';
+export type { DetectedStop, RoleResult, TripState, Confidence } from './stops';

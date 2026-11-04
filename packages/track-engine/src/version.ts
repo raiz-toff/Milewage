@@ -3,6 +3,9 @@
  * rounding or a stage (14 section 11). Pure refactors do not bump it.
  *
  * History: 1 = stages 1-4 and whole-shift result. 2 = stage 5 stops and the stop-based segmenter
- * (output for `segmenter: 'stops'` inputs changed; every `whole_shift` output is unchanged).
+ * as a list of facts (output for `segmenter: 'stops'` inputs changed).
+ * 3 = the estimate: roles from stops and labels, trips cut at state changes, `no_stops_detected`,
+ * `long_stop`, `label_orphaned` (output for `'stops'` inputs with stops changed; `whole_shift`
+ * outputs are unchanged apart from the version field).
  */
-export const algorithmVersion = 2;
+export const algorithmVersion = 3;

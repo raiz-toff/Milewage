@@ -9,8 +9,8 @@ import {
   roundHalfUp,
 } from '../src/index';
 
-test('algorithmVersion is 2 (stops, M6)', () => {
-  expect(algorithmVersion).toBe(2);
+test('algorithmVersion is 3 (stop estimate, M6.2)', () => {
+  expect(algorithmVersion).toBe(3);
 });
 
 test('degrees round-trip through E7', () => {

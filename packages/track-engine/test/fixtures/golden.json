@@ -1,11 +1,12 @@
 {
   "ledger": {
     "1": "ae22b735d5b789f26df98d47bb9c849cd05f7fa571452fd21bfa0e75ce7c913a",
-    "2": "09ff97aab5af4e6f350e5c9e3dc938458223b70aafb0191809db4f9dfdda2872"
+    "2": "09ff97aab5af4e6f350e5c9e3dc938458223b70aafb0191809db4f9dfdda2872",
+    "3": "2fe6df12647c2decf76a11932cc4e2b12ce81e15e9eea5ee827462719a68816c"
   },
   "rides": {
     "straight": {
-      "algorithmVersion": 2,
+      "algorithmVersion": 3,
       "totals": {
         "totalM": 5000
       },
@@ -19,7 +20,7 @@
       }
     },
     "grid": {
-      "algorithmVersion": 2,
+      "algorithmVersion": 3,
       "totals": {
         "totalM": 1600
       },
@@ -33,7 +34,7 @@
       }
     },
     "loop": {
-      "algorithmVersion": 2,
+      "algorithmVersion": 3,
       "totals": {
         "totalM": 1884
       },
@@ -47,7 +48,7 @@
       }
     },
     "stop_and_go": {
-      "algorithmVersion": 2,
+      "algorithmVersion": 3,
       "totals": {
         "totalM": 2000
       },

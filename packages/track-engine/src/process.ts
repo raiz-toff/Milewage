@@ -7,7 +7,7 @@ import { normalize } from './normalize';
 import { qualify } from './qualify';
 import { simplifyRoute } from './route';
 import { buildTrips, totalsOf, wholeShiftTrips } from './trips';
-import { detectStops } from './stops';
+import { detectStops, estimateRoles, stopTrips } from './stops';
 import type { Flag, ShiftInput, ShiftResult, Stop } from './types';
 import { algorithmVersion } from './version';
 
@@ -24,20 +24,17 @@ export function processShift(input: ShiftInput): ShiftResult {
   const gaps = detectGaps(g); // 4
   // 5 and 6: the segmenter slot. Stops are read from the qualified fixes, not the gated ones.
   let stops: Stop[] = [];
-  const drafts = wholeShiftTrips(g.segments);
+  let drafts = wholeShiftTrips(g.segments);
+  const stopFlags: Flag[] = [];
   if (input.segmenter === 'stops') {
-    // M6.1: stops are recorded as facts; roles and the split arrive with M6.2.
-    stops = detectStops(input.shiftClientId, qualified, input.startedAt).map((d) => ({
-      stopKey: d.stopKey,
-      startedAt: d.startedAt,
-      endedAt: d.endedAt,
-      dwellS: d.dwellS,
-      latE7: d.latE7,
-      lonE7: d.lonE7,
-      confidence: d.confidence,
-      estRole: 'none',
-      role: 'none',
-    }));
+    const roles = estimateRoles(
+      detectStops(input.shiftClientId, qualified, input.startedAt),
+      input.stopLabels,
+    );
+    stops = roles.stops;
+    stopFlags.push(...roles.flags);
+    if (roles.changes.length > 0) drafts = stopTrips(g.segments, roles.changes);
+    else stopFlags.push({ code: 'no_stops_detected' });
   }
   const built = buildTrips(input.shiftClientId, drafts);
   const edited = applyEdits(built, input.edits); // 7
@@ -46,6 +43,7 @@ export function processShift(input: ShiftInput): ShiftResult {
   const flags: Flag[] = [
     ...gaps.flags,
     ...edited.flags,
+    ...stopFlags,
     ...interruptionFlags(input.interruptions),
     ...clockSkewFlag(input.clockSkewMs),
     ...qualityFlags({

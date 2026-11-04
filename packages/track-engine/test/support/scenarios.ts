@@ -133,6 +133,23 @@ export const SCENARIOS: Record<string, () => ShiftInput> = {
       .sleep(1950) // break: 35 minutes, long_stop
       .ride(800)
       .input(),
+  // Four unlabelled stops of an order stack: the estimate alternates (and under-states active).
+  stacked_orders: () =>
+    new Path()
+      .ride(1500)
+      .wait(60)
+      .sleep(240) // pickup 1
+      .ride(300)
+      .wait(60)
+      .sleep(240) // pickup 2 (estimate: dropoff)
+      .ride(1200)
+      .wait(60)
+      .sleep(240) // dropoff 1 (estimate: pickup)
+      .ride(900)
+      .wait(60)
+      .sleep(240) // dropoff 2 (estimate: dropoff)
+      .ride(600)
+      .input(),
   // Queue creep: 3 minutes of crawling 3 m per 10 s inside 40 m. Looks like a stop: known false positive.
   queue_creep: () => {
     const p = new Path().ride(1000);

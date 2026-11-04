@@ -1,7 +1,9 @@
+import type { Segment } from './gate';
 import { haversineDm } from './haversine';
-import type { Fix, Stop } from './types';
+import type { TripDraft } from './trips';
+import type { Fix, Flag, Stop, StopLabelInput } from './types';
 
-// Stage 5, stop detection (14 section 6.2). Everything here is
+// Stage 5 (stop detection) and the estimate of stage 6 (14 section 6). Everything here is
 // integer arithmetic on the same decimetre haversine as the gate. Nothing in this file reads
 // an accepted-fix distance for a total: stops only decide where a trip is cut.
 //
@@ -15,6 +17,10 @@ import type { Fix, Stop } from './types';
 export const STOP_RADIUS_DM = 400;
 /** A cluster shorter than 120 s is not a stop (traffic lights, brief pauses). Guess (E9: 90 / 150 s). */
 export const STOP_MIN_DWELL_MS = 120_000;
+/** An unlabelled stop must last at least 180 s to change the estimate. Guess (E10: 150 / 240 s). */
+export const STOP_TOGGLE_DWELL_MS = 180_000;
+/** A stop of 30 minutes or more is a break or long wait: flagged `long_stop`, never changes the estimate. Guess. */
+export const STOP_BREAK_DWELL_MS = 1_800_000;
 /** Confidence from dwell only: medium from 180 s, high from 600 s (14 section 6.5). Guess. */
 export const STOP_MEDIUM_DWELL_MS = 180_000;
 export const STOP_HIGH_DWELL_MS = 600_000;
@@ -43,7 +49,7 @@ export function makeStopKey(shiftClientId: string, anchorAt: number): string {
   return `${shiftClientId}:${anchorAt}:stop`;
 }
 
-/** A detected stop before roles (M6.2 adds the estimate). `startGuarded` stops never change the estimate. */
+/** A detected stop before roles. `startGuarded` stops never change the estimate. */
 export interface DetectedStop {
   stopKey: string;
   startedAt: number;
@@ -126,4 +132,119 @@ export function detectStops(
         dist(first, anchor) <= STOP_START_GUARD_RADIUS_DM,
     };
   });
+}
+
+export type TripState = 'active' | 'deadhead';
+
+export interface RoleResult {
+  stops: Stop[];
+  flags: Flag[];
+  /** State changes in time order: from `at` (a stop's departure) the state is `state`. */
+  changes: { at: number; state: TripState }[];
+}
+
+/**
+ * Stage 6, the estimate (14 section 6.3). State starts as deadhead. A driver label wins:
+ * pickup sets active, dropoff sets deadhead, other changes nothing. An unlabelled stop of
+ * 180 s up to (not including) 30 min, not start-guarded, flips the state. `estRole` is what
+ * the engine would say in the state in force at that stop; `role` is the label if any, else
+ * `estRole`. A label whose stop no longer exists is returned as `label_orphaned`.
+ */
+export function estimateRoles(
+  detected: readonly DetectedStop[],
+  labels: readonly StopLabelInput[] | undefined,
+): RoleResult {
+  const byKey = new Map<string, StopLabelInput['role']>();
+  const sorted = [...(labels ?? [])].sort((a, b) =>
+    a.stopKey < b.stopKey
+      ? -1
+      : a.stopKey > b.stopKey
+        ? 1
+        : a.role < b.role
+          ? -1
+          : a.role > b.role
+            ? 1
+            : 0,
+  );
+  for (const l of sorted) byKey.set(l.stopKey, l.role); // later in sorted order wins
+  const flags: Flag[] = [];
+  const stops: Stop[] = [];
+  const changes: RoleResult['changes'] = [];
+  let state: TripState = 'deadhead';
+  const known = new Set<string>();
+  for (const d of detected) {
+    known.add(d.stopKey);
+    const dwellMs = d.endedAt - d.startedAt;
+    const flips =
+      !d.startGuarded && dwellMs >= STOP_TOGGLE_DWELL_MS && dwellMs < STOP_BREAK_DWELL_MS;
+    const estRole: Stop['estRole'] = !flips ? 'none' : state === 'deadhead' ? 'pickup' : 'dropoff';
+    const label = byKey.get(d.stopKey);
+    const role: Stop['role'] = label ?? estRole;
+    if (dwellMs >= STOP_BREAK_DWELL_MS)
+      flags.push({ code: 'long_stop', at: d.startedAt, detail: d.stopKey });
+    const next: TripState | null =
+      role === 'pickup' ? 'active' : role === 'dropoff' ? 'deadhead' : null;
+    if (next !== null && next !== state) {
+      state = next;
+      changes.push({ at: d.endedAt, state });
+    }
+    stops.push({
+      stopKey: d.stopKey,
+      startedAt: d.startedAt,
+      endedAt: d.endedAt,
+      dwellS: d.dwellS,
+      latE7: d.latE7,
+      lonE7: d.lonE7,
+      confidence: d.confidence,
+      estRole,
+      role,
+    });
+  }
+  for (const [stopKey] of byKey) {
+    if (!known.has(stopKey)) flags.push({ code: 'label_orphaned', detail: stopKey });
+  }
+  return { stops, flags, changes };
+}
+
+export const ESTIMATED_PURPOSE: Record<TripState, string> = {
+  active: 'Delivery (estimated)',
+  deadhead: 'Between deliveries (estimated)',
+};
+
+/**
+ * The stop-based segmenter (the segmenter slot). Each accepted segment takes the state in
+ * force at its END time; a state starts at the stop's departure, so a segment ending exactly
+ * at `endedAt` (the wake-up fix) already belongs to the new state. Cuts happen only where
+ * the state changes, and distance is only partitioned, never altered.
+ */
+export function stopTrips(
+  segments: readonly Segment[],
+  changes: RoleResult['changes'],
+): TripDraft[] {
+  const drafts: TripDraft[] = [];
+  let state: TripState = 'deadhead';
+  let c = 0;
+  let cur: TripDraft | null = null;
+  for (const s of segments) {
+    while (c < changes.length && changes[c]!.at <= s.to.recordedAt) state = changes[c++]!.state;
+    if (cur === null || cur.originalKind !== state) {
+      cur = {
+        originalKind: state,
+        startedAt: s.from.recordedAt,
+        endedAt: s.to.recordedAt,
+        startLatE7: s.from.latE7,
+        startLonE7: s.from.lonE7,
+        endLatE7: s.to.latE7,
+        endLonE7: s.to.lonE7,
+        distanceDm: 0,
+        purpose: ESTIMATED_PURPOSE[state],
+      };
+      drafts.push(cur);
+    }
+    cur.endedAt = s.to.recordedAt;
+    cur.endLatE7 = s.to.latE7;
+    cur.endLonE7 = s.to.lonE7;
+    cur.distanceDm += s.distanceDm;
+  }
+  return drafts;
 }
