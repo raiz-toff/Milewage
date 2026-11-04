@@ -11,6 +11,7 @@ import {
 import { gunzipRequest } from './gzip';
 import { installHooks, type InstanceIdentity } from './hooks';
 import { SERVER_VERSION } from './version';
+import type { ServerState } from './state';
 import { newRequestId, ProblemError, sendProblem, toProblem } from './errors';
 
 export const API_PREFIX = '/api/v1';
@@ -34,6 +35,8 @@ export interface AppOptions {
   now?: () => number;
   /** Addresses (or CIDRs) of the reverse proxy whose `X-Forwarded-For` is believed; off by default. */
   trustProxy?: boolean | string[];
+  /** Mode of the server; defaults to always normal. */
+  state?: ServerState;
 }
 
 export interface App {
@@ -74,6 +77,7 @@ export function buildApp(options: AppOptions): App {
     now: options.now ?? Date.now,
     version: SERVER_VERSION,
     identity: options.identity,
+    state: options.state,
   });
   fastify.addHook('preParsing', gunzipRequest);
   fastify.setErrorHandler((error, request, reply) => {

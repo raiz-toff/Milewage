@@ -4,9 +4,6 @@
 }
 
 :8080 {
-	request_body {
-		max_size 2MB
-	}
 	encode zstd gzip
 
 	header {
@@ -17,8 +14,21 @@
 	}
 
 	# The static web client and tiles are added by later PRs. The API container publishes no port.
+	# Body limits are set per handler, because a site-level limit would also cap the restore route.
+	# Restore uploads a whole backup (08 section 7.3: 512 MiB on this route only); the rest keep 2 MiB.
+	@restore path /api/v1/setup/restore
+	handle @restore {
+		request_body {
+			max_size 512MB
+		}
+		reverse_proxy api:3000
+	}
+
 	@api path /api/* /healthz
 	handle @api {
+		request_body {
+			max_size 2MB
+		}
 		reverse_proxy api:3000
 	}
 	handle {

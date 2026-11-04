@@ -36,6 +36,19 @@ esac
 "${compose[@]}" exec -T api test -f /app/diagnostics-migrations/diagnostics/0001_events.sql \
   || fail "diagnostics migrations are missing from the image"
 
+# Body limit at the edge: the restore route takes a whole backup (512 MB); the rest keep 2 MB.
+# A 3 MB multipart upload that the API reads to the end gets 413 from Caddy only if its limit is 2 MB.
+body="$(mktemp)"
+{
+  printf -- '--b\r\nContent-Disposition: form-data; name="file"; filename="x.age"\r\n\r\n'
+  head -c 3000000 /dev/zero
+  printf -- '\r\n--b\r\nContent-Disposition: form-data; name="recovery_key"\r\n\r\nnot-a-key\r\n--b--\r\n'
+} >"$body"
+status="$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'content-type: multipart/form-data; boundary=b' \
+  --data-binary "@$body" "$base/api/v1/setup/restore")"
+rm -f "$body"
+[ "$status" = "422" ] || fail "a 3 MB restore upload through Caddy returned $status, want 422 from the API"
+
 # Trusted proxy (08 section 7.4): the API trusts X-Forwarded-For only from the compose network (a /24).
 subnet="${MILEWAGE_PROXY_SUBNET:-172.29.88.0/24}"
 prefix="${subnet%.*/24}."

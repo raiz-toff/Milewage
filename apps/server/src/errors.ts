@@ -90,7 +90,9 @@ export function toProblem(error: FastifyError | ProblemError): ProblemError {
     }));
     return new ProblemError('validation_failed', 'The request body is not valid.', errors);
   }
-  if (fe.code === 'FST_ERR_CTP_BODY_TOO_LARGE') return new ProblemError('payload_too_large');
+  if (fe.code === 'FST_ERR_CTP_BODY_TOO_LARGE' || fe.code === 'FST_REQ_FILE_TOO_LARGE') {
+    return new ProblemError('payload_too_large');
+  }
   if (fe.code === 'FST_ERR_CTP_INVALID_MEDIA_TYPE') {
     return new ProblemError('unsupported_media_type');
   }

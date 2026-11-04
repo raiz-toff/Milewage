@@ -4,9 +4,11 @@ import { join } from 'node:path';
 import {
   buildApp,
   createInstanceReader,
+  createServerState,
   createServerModules,
   openAndMigrate,
   type AppOptions,
+  type Db,
 } from '../src/index';
 
 export const owner = {
@@ -20,11 +22,17 @@ export const owner = {
 const site = { host: 'mw.test', origin: 'http://mw.test' };
 
 /** A server on a throwaway database with an injectable clock. Call `close()` in afterEach. */
-export function harness(enabled: Record<string, boolean> = {}, extra: Partial<AppOptions> = {}) {
+export function harness(
+  enabled: Record<string, boolean> = {},
+  extra: Partial<AppOptions> & { restoreVerify?: (db: Db) => void } = {},
+) {
   const dir = mkdtempSync(join(tmpdir(), 'mw-test-'));
   const db = openAndMigrate(join(dir, 'milewage.db'));
   const clock = { t: 1_800_000_000_000 };
+  const state = createServerState();
   const modules = createServerModules({
+    state,
+    restoreVerify: extra.restoreVerify,
     db,
     now: () => clock.t,
     diagnosticsPath: join(dir, 'diagnostics.db'),
@@ -39,6 +47,7 @@ export function harness(enabled: Record<string, boolean> = {}, extra: Partial<Ap
       logLevel: 'silent',
       now: () => clock.t,
       identity: createInstanceReader(db),
+      state,
       ...extra,
     }).fastify;
   } catch (e) {
@@ -58,6 +67,7 @@ export function harness(enabled: Record<string, boolean> = {}, extra: Partial<Ap
     app,
     db,
     dir,
+    state,
     clock,
     call,
     /** POST /setup only: the recovery key is shown but not yet confirmed. */

@@ -5,6 +5,7 @@ import { buildApp, type App } from './app';
 import { loadConfig } from './config';
 import { createInstanceReader, openAndMigrate, type Db } from './db';
 import { createServerModules, serverModules } from './modules';
+import { createServerState } from './state';
 
 export interface RunningServer extends App {
   db: Db;
@@ -16,6 +17,7 @@ export async function startServer(
   const config = loadConfig(env);
   const enabled = resolveModuleConfig(serverModules, config.settings, env);
   mkdirSync(config.dataDir, { recursive: true });
+  const state = createServerState();
   const db = openAndMigrate(join(config.dataDir, 'milewage.db'));
   try {
     const app = buildApp({
@@ -24,6 +26,7 @@ export async function startServer(
         now: Date.now,
         backupDir: config.backupDir,
         configDir: config.configDir,
+        state,
         backupSchedule: true,
         log: (message, fields) => console.log(JSON.stringify({ msg: message, ...fields })),
         diagnosticsPath: join(config.dataDir, 'diagnostics.db'),
@@ -33,6 +36,7 @@ export async function startServer(
       enabled,
       logLevel: config.logLevel,
       trustProxy: config.trustProxy,
+      state,
       identity: createInstanceReader(db),
       isHealthy: () => db.prepare('SELECT 1').pluck().get() === 1,
     });

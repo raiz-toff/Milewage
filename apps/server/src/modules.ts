@@ -1,7 +1,9 @@
+import { dirname, join } from 'node:path';
 import { defineModule } from '@milewage/shared';
 import { Authenticator } from './auth/authenticator';
 import { nightlyBackupJob } from './backup/schedule';
 import { fileSecrets, secretsCodec, type SecretsStore } from './backup/secrets';
+import { createRestoreService } from './backup/restore';
 import { createBackupService, type BackupService } from './backup/service';
 import {
   createBackupRepository,
@@ -11,6 +13,8 @@ import {
 } from './db';
 import { openDiagnosticsStore } from './diagnostics/store';
 import { backupRoutes } from './routes/backup';
+import { restoreRoutes } from './routes/restore';
+import { createServerState, type ServerState } from './state';
 import { coreRoutes, type CoreContext } from './routes/core';
 import { devicesRoutes } from './routes/devices';
 import { diagnosticsRoutes } from './routes/diagnostics';
@@ -50,6 +54,10 @@ export interface ServerContext extends CoreContext {
   backupSchedule?: boolean;
   /** Use this service instead of building one, so setup, migration and restore share it. */
   backup?: BackupService;
+  /** Server mode shared with `buildApp`; a restore in progress answers 503 to everything else. */
+  state?: ServerState;
+  /** Test seam passed to the restore service (forces a revert). */
+  restoreVerify?: (db: ServerContext['db']) => void;
   log?: (message: string, fields?: object) => void;
 }
 
@@ -88,6 +96,15 @@ export function createServerModules(ctx: ServerContext) {
       ctx.onDiagnosticsRecreated,
     ));
   const backup = ctx.backup ?? buildBackupService({ ...ctx, secrets });
+  const restore = createRestoreService({
+    db: ctx.db,
+    backup,
+    secrets,
+    state: ctx.state ?? createServerState(),
+    verify: ctx.restoreVerify,
+    log: ctx.log,
+  });
+  const uploadDir = join(dirname(ctx.db.name), '.restore-upload');
   return [
     defineModule({ ...coreModule, routes: coreRoutes({ ...ctx, secrets }, authn) }),
     defineModule({ ...devicesModule, routes: devicesRoutes({ ...ctx, authn, readSettings }) }),
@@ -99,7 +116,10 @@ export function createServerModules(ctx: ServerContext) {
     }),
     defineModule({
       ...backupModule,
-      routes: backupRoutes({ ...ctx, authn, service: backup }),
+      routes: (host) => {
+        backupRoutes({ ...ctx, authn, service: backup })(host);
+        restoreRoutes({ ...ctx, restore, uploadDir })(host);
+      },
       jobs: ctx.backupSchedule ? [nightlyBackupJob(backup, ctx.now, ctx.log)] : [],
     }),
   ] as const;

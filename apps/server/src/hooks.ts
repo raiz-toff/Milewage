@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { ProblemError } from './errors';
+import type { ServerState } from './state';
 
 export interface InstanceIdentity {
   instanceId: string;
@@ -12,6 +13,8 @@ export interface HookOptions {
   version: string;
   /** The `instance` row; absent before first-run setup. */
   identity?: () => InstanceIdentity | undefined;
+  /** Server mode; a restore in progress answers 503 `restoring` (10 section 7 step 2). */
+  state?: ServerState;
 }
 
 /** Per-minute rate and burst for each limit class (08 section 7.4). Keys are in memory; one instance. */
@@ -62,6 +65,10 @@ export function installHooks(fastify: FastifyInstance, o: HookOptions) {
 
   fastify.addHook('onRequest', async (request, reply) => {
     if (!isApi(request.url)) return;
+    if (o.state?.mode === 'restoring' && !request.url.startsWith(`${o.apiPrefix}/setup/status`)) {
+      const headers = { 'Retry-After': '5' };
+      throw new ProblemError('restoring', 'A restore is in progress.', undefined, headers);
+    }
     const config = request.routeOptions.config as { rateLimit?: RateClass };
     const cls = config.rateLimit ?? 'general';
     const spec = RATE_CLASSES[cls];
