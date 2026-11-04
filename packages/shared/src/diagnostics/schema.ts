@@ -15,6 +15,8 @@ export type Shape = Readonly<Record<string, Field>>;
 
 /** Patterns of 16 section 4.2. */
 export const PATTERNS = {
+  // Spec pattern plus: no leading street number ("123 Main St" is not a device model).
+  deviceName: /^(?!\d+ )[A-Za-z0-9 ._+-]{1,40}$/,
   identifier: /^[A-Za-z0-9_.$<>@/:-]{1,120}$/,
   version: /^[0-9A-Za-z._+-]{1,40}$/,
   code: /^[a-z0-9_]{1,40}$/,
