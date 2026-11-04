@@ -3,5 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "src/index.ts"
+  "main": "src/index.ts",
+  "scripts": {
+    "conformance": "vite-node scripts/conformance.ts --",
+    "comma-sanity": "vite-node scripts/comma-sanity.ts --"
+  }
 }
