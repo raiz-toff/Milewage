@@ -1,0 +1,27 @@
+{
+	admin off
+	auto_https off
+}
+
+:8080 {
+	request_body {
+		max_size 2MB
+	}
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		X-Frame-Options DENY
+		-Server
+	}
+
+	# The static web client and tiles are added by later PRs. The API container publishes no port.
+	@api path /api/* /healthz
+	handle @api {
+		reverse_proxy api:3000
+	}
+	handle {
+		respond "Not found" 404
+	}
+}

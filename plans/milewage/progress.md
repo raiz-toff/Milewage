@@ -107,3 +107,11 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 ## chore-01 — ignore agent worktrees in lint
 
 - Branch `chore-01-eslint-ignore`. Deviation outside the roadmap: agent worktrees live inside the repo folder, so `npm run verify` linted them. Added the agent-worktree folder to the ESLint ignores and `.prettierignore`, and to `.gitignore` (was absent). Config only, 3 lines.
+
+## PR M2.9 — Server image, compose stack, Caddyfile
+
+- Branch `pr-M2-9-server-image`. Done: `infra/docker/{Dockerfile,docker-compose.yml,Caddyfile,smoke.sh}`, `apps/server/src/main.ts` (process entry with SIGTERM/SIGINT close), `scripts/build-server.mjs` (esbuild bundle to `dist/server.mjs`, `better-sqlite3` external and pinned to the locked 13.0.3 through `dist/native-package.json`, migrations copied next to the bundle because `MIGRATIONS_DIR` resolves relative to the module), `.dockerignore`, scripts `build:server` and `smoke:docker`, `esbuild@0.28.2` as an exact devDependency (was only transitive).
+- Image: `node:22.22.0-bookworm-slim` (three stages, non-root `node` user, `--max-old-space-size=96`, HEALTHCHECK on `/healthz`). Compose: `caddy:2.8.4-alpine` and `milewage-server:0.1.0`, Caddy published only on `127.0.0.1:${MILEWAGE_HOST_PORT:-8080}`, API publishes nothing, `mem_limit`/`cpus` caps (api 192m/1.0, caddy 64m/0.5), volumes `data`, `backups`, `config`, `caddy_data`, `caddy_config`. Caddyfile proxies only `/api/*` and `/healthz` (WebSocket upgrade works through `reverse_proxy`), everything else 404 until the web client PR; 2 MB body limit, gzip/zstd, basic security headers.
+- Docker was available: `npm run smoke:docker` built the stack, got `{"ok":true}` through Caddy on a throwaway loopback port, checked 404 on unknown path, `/api/v1/setup/status` reachable, Caddy bound to loopback, API with no published port. The script exits 2 (skipped) when Docker is missing and 1 on any failed check. Not in `verify` (needs Docker).
+- Tests: build-server test (bundle keeps `better-sqlite3` external, pins locked version, ships migrations).
+- Not done: `trustProxy` for `request.ip` behind Caddy is still open (needs a change in `app.ts`/config, another track's files; do it in the deployment/hardening PR); idle RSS vs the 10 section 14 budget not measured here (Spike B's job); no ARM64 build tested; no `tiles` volume or static web yet.

@@ -1,0 +1,42 @@
+# Home-lab stack (03 section 3, 10 sections 2 and 8). Caddy is published on loopback only;
+# the host's Tailscale terminates HTTPS. Tags are pinned, never :latest (10 section 12).
+name: milewage
+services:
+  caddy:
+    image: caddy:2.8.4-alpine
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${MILEWAGE_HOST_PORT:-8080}:8080'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    mem_limit: 64m
+    cpus: 0.5
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile
+    image: milewage-server:0.1.0
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - MILEWAGE_MODE=home-lab
+    volumes:
+      - data:/app/data
+      - backups:/app/backups
+      - config:/app/config
+    mem_limit: 192m
+    cpus: 1.0
+    # no published ports; only Caddy reaches the API
+
+volumes:
+  data:
+  backups:
+  config:
+  caddy_data:
+  caddy_config:
