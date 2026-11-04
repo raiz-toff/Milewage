@@ -3,6 +3,7 @@ import { ApiClient, ApiError } from '../api/client';
 import type { Flags } from '../pairing/pairing';
 import type { KeyValueStore } from '../pairing/pairing';
 import type { Tracker } from '../tracker/types';
+import { buildEndExtras } from './endPayload';
 import { PUMP_LIMIT, PointFeed, toFix } from './feed';
 import { newId } from './uuid';
 
@@ -201,7 +202,13 @@ export class ShiftController {
     if (shift.endedAt === null) return shift.odometerSent;
     if (this.d.beforeEnd && !(await this.d.beforeEnd(shift.clientId))) return false;
     try {
-      await s.client.request('POST', `/shifts/${shift.clientId}/end`, { ended_at: shift.endedAt });
+      const extras = s.flags.tracking
+        ? buildEndExtras(this.d.tracker, { ...shift, endedAt: shift.endedAt })
+        : {};
+      await s.client.request('POST', `/shifts/${shift.clientId}/end`, {
+        ended_at: shift.endedAt,
+        ...extras,
+      });
     } catch (e) {
       // 409 shift_finalized is terminal: the driver finalized it on the web, nothing more to send.
       if (!(e instanceof ApiError && e.status === 409)) {

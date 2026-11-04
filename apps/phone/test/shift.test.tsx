@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { algorithmVersion, processShift } from '@milewage/track-engine';
+import { toFix } from '../src/shift/feed';
 import { ApiError } from '../src/api/client';
 import { FakeTracker } from '../src/tracker/fake';
 import { json, makeServices, problem } from './support/mock';
@@ -210,6 +213,89 @@ describe('ShiftController', () => {
     again.plain.data.set('shift.active', plain.data.get('shift.active')!);
     await again.services.shift.load();
     expect(again.services.shift.pump()).toBe(first);
+  });
+
+  describe('shift.end extras (manifest and phone_result)', () => {
+    const endBody = (routes: ReturnType<typeof server>) =>
+      routes.calls.filter((c) => c.path.endsWith('/end')).map((c) => c.body as Record<string, any>);
+
+    it('sends the manifest and the engine result for the stored points, uploaded or not', async () => {
+      const routes = server();
+      const { services, tracker, clock } = setup(routes);
+      await services.shift.start({ vehicleId: 3 });
+      drive(tracker);
+      clock.t = 100_000;
+      await services.shift.end();
+      const [body] = endBody(routes);
+      const rows = tracker.readByShift(ID, 0, 100);
+      const expected = processShift({
+        shiftClientId: ID,
+        startedAt: 1_000,
+        endedAt: 100_000,
+        fixes: rows.map(toFix),
+        segmenter: 'stops',
+      });
+      expect(body).toEqual({
+        ended_at: 100_000,
+        manifest: { first_seq: rows[0]!.seq, last_seq: rows[4]!.seq, point_count: 5 },
+        phone_result: {
+          calc_version: algorithmVersion,
+          segmenter: 'stops',
+          input_digest: expected.inputDigest,
+          total_m: expected.totals.totalM,
+          active_m: expected.totals.activeM,
+          deadhead_m: expected.totals.deadheadM,
+          personal_m: expected.totals.personalM,
+          trips_count: expected.trips.length,
+        },
+      });
+      expect(body.phone_result.total_m).toBeGreaterThan(400);
+      expect(body.phone_result.input_digest).toMatch(/^[0-9a-f]{16}$/);
+      expect(body).not.toHaveProperty('interruptions');
+    });
+
+    it('a retried end sends the same extras', async () => {
+      let up = false;
+      const routes = server({
+        [`POST /shifts/${ID}/end`]: () => (up ? json(200, {}) : problem(503, 'x', true)),
+      });
+      const { services, tracker, clock } = setup(routes);
+      await services.shift.start({ vehicleId: 3 });
+      drive(tracker);
+      clock.t = 100_000;
+      await services.shift.end();
+      up = true;
+      await services.shift.sync();
+      const [a, b] = endBody(routes);
+      expect(b).toEqual(a);
+      expect(a.phone_result).toBeDefined();
+    });
+
+    it('no stored points or tracking off: just ended_at', async () => {
+      const none = server();
+      const a = setup(none);
+      await a.services.shift.start({ vehicleId: 3 });
+      await a.services.shift.end();
+      expect(endBody(none)).toEqual([{ ended_at: 1_000 }]);
+
+      const off = server();
+      const b = setup(off, { paired: { modules: { tracking: false } } });
+      await b.services.shift.start({ vehicleId: 3 });
+      await b.services.shift.end();
+      expect(endBody(off)).toEqual([{ ended_at: 1_000 }]);
+    });
+
+    it('an engine failure never blocks the end', async () => {
+      const routes = server();
+      const { services, tracker } = setup(routes);
+      await services.shift.start({ vehicleId: 3 });
+      drive(tracker);
+      jest.spyOn(tracker, 'readByShift').mockImplementation(() => {
+        throw new Error('boom');
+      });
+      expect(await services.shift.end()).toEqual({ ok: true, sent: true });
+      expect(endBody(routes)).toEqual([{ ended_at: 1_000 }]);
+    });
   });
 
   it('ApiError is exported for callers', () => {
