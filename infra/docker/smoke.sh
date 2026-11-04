@@ -33,4 +33,28 @@ case "$published" in
 esac
 [ -z "$(docker port "${project}-api-1")" ] || fail "the api container publishes a port"
 
+"${compose[@]}" exec -T api test -f /app/diagnostics-migrations/diagnostics/0001_events.sql \
+  || fail "diagnostics migrations are missing from the image"
+
+# Trusted proxy (08 section 7.4): the API trusts X-Forwarded-For only from the compose network (a /24).
+subnet="${MILEWAGE_PROXY_SUBNET:-172.29.88.0/24}"
+prefix="${subnet%.*/24}."
+[ "$("${compose[@]}" exec -T api printenv MILEWAGE_TRUST_PROXY)" = "$subnet" ] \
+  || fail "MILEWAGE_TRUST_PROXY is not $subnet in the api container"
+for svc in caddy api; do
+  ip="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "${project}-${svc}-1")"
+  case "$ip" in "$prefix"*) ;; *) fail "$svc ($ip) is not inside the trusted subnet $subnet" ;; esac
+done
+# A request from inside the container (127.0.0.1, not trusted) cannot choose its own client address:
+# eleven failed redeems with eleven different X-Forwarded-For values still share one limit bucket.
+last="$("${compose[@]}" exec -T api node -e '
+const go = async (i) => (await fetch("http://127.0.0.1:3000/api/v1/pairing/redeem", {
+  method: "POST",
+  headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113." + i },
+  body: JSON.stringify({ token: "mwp_" + "x".repeat(43), device_name: "p", platform: "android" }),
+})).status;
+(async () => { let s; for (let i = 1; i <= 11; i++) s = await go(i); console.log(s); })();
+')"
+[ "$last" = "429" ] || fail "a spoofed X-Forwarded-For from an untrusted address was believed (got $last, want 429)"
+
 echo "OK: /healthz reached through Caddy on 127.0.0.1:${MILEWAGE_HOST_PORT}"

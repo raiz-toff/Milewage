@@ -26,6 +26,9 @@ services:
     environment:
       - NODE_ENV=production
       - MILEWAGE_MODE=home-lab
+      # The API believes X-Forwarded-For only from this network, which holds just Caddy and the API
+      # (the fixed /24 below). Without it every login and redeem limit would see Caddy's address.
+      - MILEWAGE_TRUST_PROXY=${MILEWAGE_PROXY_SUBNET:-172.29.88.0/24}
     volumes:
       - data:/app/data
       - backups:/app/backups
@@ -33,6 +36,12 @@ services:
     mem_limit: 192m
     cpus: 1.0
     # no published ports; only Caddy reaches the API
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${MILEWAGE_PROXY_SUBNET:-172.29.88.0/24}
 
 volumes:
   data:
