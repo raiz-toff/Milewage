@@ -27,3 +27,10 @@ export {
   LOW_FIX_DENSITY_MS,
   CLOCK_SKEW_LIMIT_MS,
 } from './gaps';
+export { simplifyRoute, ROUTE_TOLERANCE_DM } from './route';
+export type { RoutePoint } from './route';
+export { inputDigest, canonicalInputText, fnv1a64Hex } from './digest';
+export { makeTripKey, wholeShiftTrips, buildTrips, totalsOf, WHOLE_SHIFT_PURPOSE } from './trips';
+export type { TripDraft } from './trips';
+export { canonicalJson } from './canonical';
+export { processShift } from './process';
