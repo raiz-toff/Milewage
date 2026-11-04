@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { Modules } from './api/client';
+import { Devices } from './pages/Devices';
 
 /**
  * Every signed-in screen, in navigation order. `visible` is the module-flag rule of 05 section
@@ -19,6 +20,7 @@ export const screens: Screen[] = [
     label: 'Home',
     element: <p className="text-muted">Signed in. Screens arrive in the next changes.</p>,
   },
+  { path: '/devices', label: 'Devices', visible: (m) => m.devices, element: <Devices /> },
 ];
 
 export const visibleScreens = (modules: Modules): Screen[] =>

@@ -31,7 +31,7 @@ export const ALL_ON: Modules = {
 };
 
 export function settingsFixture(
-  over: Partial<Settings> & { modules?: Partial<Modules> } = {},
+  over: Omit<Partial<Settings>, 'modules'> & { modules?: Partial<Modules> } = {},
 ): Settings {
   return {
     country: 'CA',
