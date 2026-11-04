@@ -7,6 +7,7 @@ import type { Api, Settings } from './api/client';
 export type SessionState =
   | { status: 'loading' }
   | { status: 'needs_setup' }
+  | { status: 'needs_confirmation' }
   | { status: 'signed_out' }
   | { status: 'error'; message: string }
   | { status: 'ready'; settings: Settings };
@@ -47,6 +48,8 @@ export function SessionProvider({ api, children }: { api?: Api; children: ReactN
       setState({ status: 'ready', settings });
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) setState({ status: 'signed_out' });
+      else if (e instanceof ApiError && e.code === 'setup_incomplete')
+        setState({ status: 'needs_confirmation' });
       else setState({ status: 'error', message: 'The server could not be reached.' });
     }
   }, [client]);

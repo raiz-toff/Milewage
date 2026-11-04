@@ -18,14 +18,14 @@ describe('auth shell', () => {
       'GET /setup/status': () => ({ body: { state: 'ready' } }),
       'GET /settings': () => ({ status: 401, body: { code: 'auth_required' } }),
     });
-    expect(await screen.findByText('Sign in required.')).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeTruthy();
   });
 
   it('a server with no owner asks for setup before anything else', async () => {
     const { calls } = renderApp({
       'GET /setup/status': () => ({ body: { state: 'needs_setup' } }),
     });
-    expect(await screen.findByText(/no account yet/)).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Set up MileWage' })).toBeTruthy();
     expect(calls.map((c) => c.path)).toEqual(['/setup/status']);
   });
 

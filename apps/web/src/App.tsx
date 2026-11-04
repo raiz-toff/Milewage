@@ -1,5 +1,8 @@
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { visibleScreens } from './screens';
+import { Login } from './pages/Login';
+import { RecoveryKey } from './pages/RecoveryKey';
+import { Setup } from './pages/Setup';
 import { useSession } from './session';
 import type { Settings } from './api/client';
 
@@ -51,9 +54,11 @@ export function App() {
     case 'error':
       return <Notice>{state.message}</Notice>;
     case 'needs_setup':
-      return <Notice>This server has no account yet.</Notice>;
+      return <Setup />;
+    case 'needs_confirmation':
+      return <RecoveryKey />;
     case 'signed_out':
-      return <Notice>Sign in required.</Notice>;
+      return <Login />;
     case 'ready':
       return <Shell settings={state.settings} />;
   }
