@@ -177,6 +177,19 @@ export class Pairing {
     }
   }
 
+  /** An authenticated client plus the flags from the cached settings; null when not paired. */
+  async session(): Promise<{ client: ApiClient; flags: Flags } | null> {
+    const state = await this.load();
+    if (!state) return null;
+    const client = new ApiClient({
+      baseUrl: state.credential.baseUrl,
+      token: state.credential.deviceToken,
+      fetch: this.d.fetch,
+      now: this.d.now,
+    });
+    return { client, flags: deriveFlags(state.settings) };
+  }
+
   /** Forgets the credential. The telemetry buffer is not touched: it is kept for re-pairing. */
   async unpair(): Promise<void> {
     await this.d.secure.remove(K_CRED);

@@ -1,6 +1,6 @@
-import { MemoryStore, Pairing, type CachedSettings } from '../../src/pairing/pairing';
+import { MemoryStore, type CachedSettings } from '../../src/pairing/pairing';
 import { FakePermissions } from '../../src/permissions/fake';
-import type { Services } from '../../src/services';
+import { createServices, type Parts, type Services } from '../../src/services';
 import { FakeTracker } from '../../src/tracker/fake';
 
 export interface Recorded {
@@ -41,7 +41,7 @@ export function mockServer(routes: Record<string, Handler>) {
     const h = routes[`${req.method} ${path}`];
     return h ? h(req) : problem(404, 'not_found');
   };
-  return { fetch: fetchFn, calls };
+  return { fetch: fetchFn, calls, routes };
 }
 
 export const SETTINGS: CachedSettings = {
@@ -59,17 +59,37 @@ export const TOKEN = `mwp_${'a'.repeat(43)}`;
 export const DEVICE_TOKEN = `mwd_${'b'.repeat(43)}`;
 export const QR = `milewage://pair?v=1&u=${encodeURIComponent('https://mw.example.net')}&t=${TOKEN}`;
 
+/** Services over fakes. `paired` writes a credential and cached settings straight into storage. */
 export function makeServices(
   fetchFn: (url: string, init: RequestInit) => Promise<Response>,
-  over: Partial<Services> = {},
+  over: Partial<Parts> & { paired?: Partial<CachedSettings> | boolean } = {},
 ) {
   const secure = new MemoryStore();
   const plain = new MemoryStore();
-  const services: Services = {
-    tracker: new FakeTracker(),
+  const tracker = (over.tracker as FakeTracker | undefined) ?? new FakeTracker();
+  const { paired, ...rest } = over;
+  if (paired) {
+    secure.data.set(
+      'pairing.credential',
+      JSON.stringify({
+        baseUrl: 'https://mw.example.net',
+        deviceId: 7,
+        deviceToken: DEVICE_TOKEN,
+        instanceId: null,
+      }),
+    );
+    plain.data.set(
+      'pairing.settings',
+      JSON.stringify({ ...SETTINGS, ...(typeof paired === 'object' ? paired : {}) }),
+    );
+  }
+  const services: Services = createServices({
+    tracker,
     permissions: new FakePermissions(),
-    pairing: new Pairing({ secure, plain, fetch: fetchFn }),
-    ...over,
-  };
-  return { services, secure, plain };
+    secure,
+    plain,
+    fetch: fetchFn,
+    ...rest,
+  });
+  return { services, secure, plain, tracker };
 }
