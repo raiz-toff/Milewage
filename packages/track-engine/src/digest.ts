@@ -1,3 +1,4 @@
+import { sortEdits } from './edits';
 import type { Fix, ShiftInput } from './types';
 
 // inputDigest (14 section 9.2): 64-bit FNV-1a over a canonical text of the effective input.
@@ -60,12 +61,7 @@ export function canonicalInputText(input: ShiftInput, normalized: readonly Fix[]
     (a, b) => a.fromMs - b.fromMs || a.toMs - b.toMs,
   );
   for (const i of ints) lines.push(`i:${i.fromMs},${i.toMs}`);
-  const edits = [...(input.edits ?? [])].sort(
-    (a, b) =>
-      cmp(a.tripKey, b.tripKey) ||
-      cmp(a.kind ?? '', b.kind ?? '') ||
-      cmp(a.purpose ?? '', b.purpose ?? ''),
-  );
+  const edits = sortEdits(input.edits ?? []);
   for (const e of edits) lines.push(`e:${e.tripKey},${e.kind ?? ''},${e.purpose ?? ''}`);
   return lines.join('\n');
 }

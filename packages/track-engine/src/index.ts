@@ -34,3 +34,4 @@ export { makeTripKey, wholeShiftTrips, buildTrips, totalsOf, WHOLE_SHIFT_PURPOSE
 export type { TripDraft } from './trips';
 export { canonicalJson } from './canonical';
 export { processShift } from './process';
+export { applyEdits, sortEdits } from './edits';

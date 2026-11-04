@@ -1,3 +1,4 @@
+import { applyEdits } from './edits';
 import { inputDigest } from './digest';
 import { clockSkewFlag, detectGaps, interruptionFlags, qualityFlags, sortFlags } from './gaps';
 import { gate } from './gate';
@@ -13,17 +14,20 @@ import { algorithmVersion } from './version';
  * The authority: batch, deterministic, no clock, no randomness (14 section 3).
  * Stages 1-4, 6 (whole-shift segmenter) and 8 run here. Stage 5 (stops) and the
  * stop-based segmenter arrive with M6; until then `segmenter: 'stops'` behaves as
- * `whole_shift`, which cannot change a total. Stage 7 (edits) arrives with M1.6.
+ * `whole_shift`, which cannot change a total. Stage 7 re-applies the driver's trip edits.
  */
 export function processShift(input: ShiftInput): ShiftResult {
   const normalized = normalize(input.fixes, input.startedAt, input.endedAt); // 1
   const qualified = qualify(normalized); // 2
   const g = gate(qualified); // 3
   const gaps = detectGaps(g); // 4
-  const trips = buildTrips(input.shiftClientId, wholeShiftTrips(g.segments)); // 6
+  const built = buildTrips(input.shiftClientId, wholeShiftTrips(g.segments)); // 6
+  const edited = applyEdits(built, input.edits); // 7
+  const trips = edited.trips;
 
   const flags: Flag[] = [
     ...gaps.flags,
+    ...edited.flags,
     ...interruptionFlags(input.interruptions),
     ...clockSkewFlag(input.clockSkewMs),
     ...qualityFlags({
