@@ -10,3 +10,6 @@ coverage/
 apps/phone/android/
 apps/phone/ios/
 apps/phone/.expo/
+# Gradle output written inside the autolinked native module
+apps/phone/native/**/android/build/
+apps/phone/native/**/android/.gradle/

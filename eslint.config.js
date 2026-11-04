@@ -35,6 +35,7 @@ export default tseslint.config(
       'apps/phone/*.config.js', // CommonJS configs read by Expo/Metro/Babel
       'apps/phone/android/**',
       'apps/phone/ios/**',
+      'apps/phone/native/comma-tracker/**', // verbatim Comma copy until M4.3
     ],
   },
   js.configs.recommended,

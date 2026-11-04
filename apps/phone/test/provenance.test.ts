@@ -5,7 +5,9 @@ const dir = join(__dirname, '..', 'native', 'comma-tracker');
 const note = readFileSync(join(dir, 'COPIED-FROM-COMMA.md'), 'utf8');
 
 function walk(d: string): string[] {
+  // Gradle writes build output next to the sources; it is ignored by version control.
   return readdirSync(d).flatMap((n) => {
+    if (n === 'build' || n === '.gradle') return [];
     const p = join(d, n);
     return statSync(p).isDirectory() ? walk(p) : [relative(dir, p)];
   });
