@@ -142,3 +142,18 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 ## PR M2.10b — Remaining A-rig event kinds
 
 - Branch `pr-M2-10b-diagnostics-kinds` (second half of M2.10, split for the 400-line cap). Added `app.start` (device make/model pattern also refuses a leading street number), `upload.window`, `shift.summary`, `engine.run` (stats counters of 14 section 8 as a fixed object, flags are `[a-z0-9_]` codes). The A-rig set of 16 section 9.3 is now complete (those four, `service.event`, `track.window`, `crash`) plus `diag.self`; the canary tests iterate every kind, so they cover the new ones.
+## PR M4.1 — [M4.1] Phone app skeleton
+
+- Branch `pr-M4-1-phone-skeleton` (pushed as `pr-M4-1-phone-skeleton-rebased` after a rebase onto parallel work); squash commit on main `e495c53`.
+- Done: `apps/phone` workspace (Expo SDK 56.0.x, React Native 0.85.3, React 19.2.3, React Navigation native stack with `Home` and `Settings` placeholders, safe-area provider), design tokens in `packages/shared/src/tokens.ts` (05 section 1.1 dark palette, light theme with the `#15803D` accent, fonts, touch targets), `scripts/phone-release-build.sh` (Node 22.22 check, JDK 17, `expo prebuild` + `gradlew assembleRelease`), jest-expo + React Native Testing Library set up. `npm run verify` now also runs `typecheck:phone` and `test:phone`; the root `tsc` excludes `apps/phone` (different `lib`/`jsx`).
+- Tests: render/navigation test and a dark/light token test (jest-expo, 3 tests), token test in vitest. 129 vitest + 3 jest in total on main.
+- Build: the release script produced `app-release.apk` (75 MB, debug-keystore signed, Gradle 9.3.1, JDK 17) on `coder` in about 1m45s. Nothing was run on a device (no USB from this machine).
+- Decisions/deviations: React Navigation instead of expo-router (simpler to test, no file routing needed). Light-theme `card` equals `background` (05 gives no separate light card colour; no hex was invented). Root `package.json` has `overrides` pinning `hermes-parser` and `babel-plugin-syntax-hermes-parser` to 0.35.0: with 0.33.3 jest cannot parse React Native 0.85's Flow `readonly` syntax; the lockfile was regenerated for those entries only. Android package `app.milewage.phone` is a placeholder decision. Size 367 changed lines excluding the lockfile.
+
+## PR M4.2 — [M4.2] Copy Comma's native tracker verbatim
+
+- Branch `pr-M4-2-copy-comma-tracker`.
+- Done: `apps/phone/native/comma-tracker/` is a byte-identical copy (checked with `diff -r`) of `/home/coder/Production/commaApp/modules/comma-tracker` at Comma commit `968e4c7a4447357039d9208de7a6239de90c72ad`, plus `COPIED-FROM-COMMA.md` (source path, commit, date 2026-11-04, exact file list, what was left out). Not copied: `android/.gradle/**` and `android/build/**`, build caches that Comma tracks in git by mistake. Autolinking via `expo.autolinking.nativeModulesDir = "./native"` in `apps/phone/package.json`. Prettier ignores the directory until M4.3.
+- Tests: provenance test (path, 40-hex hash, date; listed files equal files present). 
+- Build: `scripts/phone-release-build.sh` still succeeds with the module autolinked (`:comma-tracker` tasks ran; 75.8 MB APK, 1m30s). The merged release manifest still carries `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` (from the copy) and `SYSTEM_ALERT_WINDOW` (transitive from React Native); M4.3 removes both.
+- Exempt from the 400-line limit (roadmap 17 section 1).
