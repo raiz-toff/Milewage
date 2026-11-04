@@ -26,10 +26,17 @@ export class Authenticator {
     this.devices = branch;
   }
 
-  authenticate: AuthFn = ((request: FastifyRequest, allow: 'S' | 'SD'): Principal => {
+  authenticate: AuthFn = ((request: FastifyRequest, allow: 'S' | 'SD' | 'D'): Principal => {
     const bearer = /^Bearer (\S+)$/.exec(request.headers.authorization ?? '')?.[1];
-    if (bearer === undefined)
-      return { kind: 'session', ...authenticate(this.sessions, request, this.now()) };
+    if (bearer === undefined) {
+      const session = {
+        kind: 'session' as const,
+        ...authenticate(this.sessions, request, this.now()),
+      };
+      if (allow === 'D')
+        throw new ProblemError('scope_forbidden', 'Only a paired phone can do this.');
+      return session;
+    }
     if (!this.devices || !/^mwd_[A-Za-z0-9_-]{43}$/.test(bearer)) {
       throw new ProblemError('auth_required', 'Sign in to continue.');
     }

@@ -8,6 +8,7 @@ import {
   type ModuleRegistry,
   type RouteHost,
 } from '@milewage/shared';
+import { gunzipRequest } from './gzip';
 import { newRequestId, ProblemError, sendProblem, toProblem } from './errors';
 
 export const API_PREFIX = '/api/v1';
@@ -59,6 +60,7 @@ export function buildApp(options: AppOptions): App {
   });
   const bus = createEventBus();
 
+  fastify.addHook('preParsing', gunzipRequest);
   fastify.setErrorHandler((error, request, reply) => {
     const problem = toProblem(error as never);
     if (problem.status >= 500) request.log.error({ err: error }, 'request failed');

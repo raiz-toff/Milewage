@@ -115,7 +115,7 @@ test('redeem: 10 failures per 15 minutes per IP, then 429 with Retry-After', asy
 });
 
 test('with the devices module off there are no pairing routes', async () => {
-  const off = harness({ devices: false });
+  const off = harness({ devices: false, tracking: false });
   const { cookie: c } = await off.signUp();
   expect((await off.call('POST', '/pairing-tokens', undefined, { cookie: c })).statusCode).toBe(
     404,

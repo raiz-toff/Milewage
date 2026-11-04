@@ -123,3 +123,22 @@ export const odometerReadings = sqliteTable('odometer_readings', {
   readingM: integer('reading_m').notNull(),
   recordedAt: integer('recorded_at').notNull(),
 });
+
+export const telemetryPoints = sqliteTable('telemetry_points', {
+  id: integer('id').primaryKey(),
+  userId: userRef(),
+  deviceId: integer('device_id')
+    .notNull()
+    .references(() => devices.id),
+  seq: integer('seq').notNull(),
+  shiftId: integer('shift_id')
+    .notNull()
+    .references(() => shifts.id),
+  recordedAt: integer('recorded_at').notNull(),
+  latE7: integer('lat_e7').notNull(),
+  lonE7: integer('lon_e7').notNull(),
+  accuracyM: integer('accuracy_m').notNull(),
+  speedDmps: integer('speed_dmps'),
+  bearingDeg: integer('bearing_deg'),
+  altitudeM: integer('altitude_m'),
+});

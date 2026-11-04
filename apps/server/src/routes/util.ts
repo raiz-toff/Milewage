@@ -5,11 +5,17 @@ export interface SessionPrincipal {
   userId: number;
   idHash: string;
 }
-export type Principal = SessionPrincipal | { kind: 'device'; userId: number; deviceId: number };
-/** `S`: web session only. `SD`: session or device (08 section 3). */
+export interface DevicePrincipal {
+  kind: 'device';
+  userId: number;
+  deviceId: number;
+}
+export type Principal = SessionPrincipal | DevicePrincipal;
+/** `S`: web session only. `SD`: session or device. `D`: device only (08 section 3). */
 export interface AuthFn {
   (request: FastifyRequest, allow: 'S'): SessionPrincipal;
   (request: FastifyRequest, allow: 'SD'): Principal;
+  (request: FastifyRequest, allow: 'D'): DevicePrincipal;
 }
 
 export const str = (min: number, max = 1024) => ({
