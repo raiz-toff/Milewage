@@ -2,10 +2,12 @@ import Database from 'better-sqlite3';
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { Readable } from 'node:stream';
 import { gunzipSync } from 'node:zlib';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import {
   BackupError,
+  decryptStream,
   buildBackupService,
   nextRunAt,
   selectExcess,
@@ -16,11 +18,14 @@ import { harness, type Harness } from './support';
 
 let h: Harness;
 let cookie: string;
+let recoveryKey: string;
 let backupDir: string;
+let configDir: string;
 beforeEach(async () => {
   h = harness();
   backupDir = join(h.dir, 'backups');
-  ({ cookie } = await h.signUp());
+  configDir = join(h.dir, 'config');
+  ({ cookie, recoveryKey } = await h.signUp());
   await h.call('POST', '/vehicles', { name: 'Civic', kind: 'car' }, { cookie });
   const start = {
     client_id: '0b1c8a52-8f0d-4c52-9d5b-5c8a0f3d1e11',
@@ -31,22 +36,26 @@ beforeEach(async () => {
 });
 afterEach(() => h.close());
 
-const service = () => buildBackupService({ db: h.db, now: () => h.clock.t, backupDir });
-const files = (sub = '') => readdirSync(join(backupDir, sub)).filter((f) => f.endsWith('.gz'));
+const service = () => buildBackupService({ db: h.db, now: () => h.clock.t, backupDir, configDir });
+const files = (sub = '') => readdirSync(join(backupDir, sub)).filter((f) => f.endsWith('.gz.age'));
+const readAll = async (s: Readable) => Buffer.concat(await s.toArray());
 const day = 24 * 60 * 60 * 1000;
 
 describe('engine and service', () => {
   test('a manual backup is verified, compressed, recorded and restorable', async () => {
     const row = (await service().run('manual'))!;
     const path = join(backupDir, row.fileName);
-    expect(row.fileName).toBe(`milewage-${stamp(h.clock.t)}.db.gz`);
+    expect(row.fileName).toBe(`milewage-${stamp(h.clock.t)}.db.gz.age`);
     expect(row.integrityOk).toBe(1);
     const bytes = readFileSync(path);
     expect(row.sizeBytes).toBe(bytes.length);
     expect(row.sha256).toBe(createHash('sha256').update(bytes).digest('hex'));
-    // The file is a gzip of a database that has the live rows.
+    // The file is age-encrypted gzip of a database that has the live rows.
     const copyPath = join(h.dir, 'copy.db');
-    writeFileSync(copyPath, gunzipSync(bytes));
+    writeFileSync(
+      copyPath,
+      gunzipSync(await readAll(await decryptStream(Readable.from(bytes), recoveryKey))),
+    );
     const copy = new Database(copyPath, { readonly: true });
     expect(copy.prepare('SELECT count(*) FROM shifts').pluck().get()).toBe(1);
     expect(copy.pragma('integrity_check', { simple: true })).toBe('ok');
@@ -69,7 +78,7 @@ describe('engine and service', () => {
       copy.close();
       return result;
     }) as never;
-    const bad = buildBackupService({ db: lossy, now: () => h.clock.t, backupDir });
+    const bad = buildBackupService({ db: lossy, now: () => h.clock.t, backupDir, configDir });
     await expect(bad.run('manual')).rejects.toMatchObject({
       name: 'BackupError',
       reason: 'counts',
@@ -89,7 +98,7 @@ describe('engine and service', () => {
       writeFileSync(dest, bytes);
       return result;
     }) as never;
-    const svc = buildBackupService({ db: corrupting, now: () => h.clock.t, backupDir });
+    const svc = buildBackupService({ db: corrupting, now: () => h.clock.t, backupDir, configDir });
     const err = await svc.run('manual').catch((e: unknown) => e);
     expect(err).toBeInstanceOf(BackupError);
     expect(files()).toEqual([]);
@@ -143,7 +152,12 @@ describe('engine and service', () => {
 
   test('no owner yet: nothing is backed up and nothing fails', async () => {
     const empty = harness();
-    const svc = buildBackupService({ db: empty.db, now: () => 1, backupDir: join(empty.dir, 'b') });
+    const svc = buildBackupService({
+      db: empty.db,
+      now: () => 1,
+      backupDir: join(empty.dir, 'b'),
+      configDir: join(empty.dir, 'c'),
+    });
     expect(await svc.run('nightly')).toBeUndefined();
     await empty.close();
   });

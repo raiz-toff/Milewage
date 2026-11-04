@@ -31,6 +31,7 @@ export const instance = sqliteTable('instance', {
   id: integer('id').primaryKey(),
   instanceId: text('instance_id').notNull(),
   restoreGeneration: integer('restore_generation').notNull().default(0),
+  setupConfirmedAt: integer('setup_confirmed_at'),
 });
 
 export const vehicles = sqliteTable('vehicles', {

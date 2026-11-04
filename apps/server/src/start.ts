@@ -23,6 +23,7 @@ export async function startServer(
         db,
         now: Date.now,
         backupDir: config.backupDir,
+        configDir: config.configDir,
         backupSchedule: true,
         log: (message, fields) => console.log(JSON.stringify({ msg: message, ...fields })),
         diagnosticsPath: join(config.dataDir, 'diagnostics.db'),

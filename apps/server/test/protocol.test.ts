@@ -48,6 +48,7 @@ test('before setup there is no instance to name', async () => {
 });
 
 test('general limit: 300 per minute per credential, 429 with Retry-After, RateLimit headers', async () => {
+  h.clock.t += 60_000; // the bucket the sign-up used is full again
   const other = await h.pair(cookie); // costs the cookie one token; the bearer has its own allowance
   const first = await get('/api/v1/settings');
   expect(first.headers).toMatchObject({ 'ratelimit-limit': '300', 'ratelimit-remaining': '298' });

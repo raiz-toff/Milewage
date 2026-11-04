@@ -96,6 +96,11 @@ export function createInstanceReader(db: Db) {
   return () => orm.select().from(instance).get();
 }
 
+/** Marks setup complete once the recovery key tail was confirmed (08 section 2.3). */
+export function confirmSetup(db: Db, at: number) {
+  drizzle(db).update(instance).set({ setupConfirmedAt: at }).where(eq(instance.id, 1)).run();
+}
+
 export type DeviceRow = typeof devices.$inferSelect;
 
 export function createDeviceRepository(db: Db) {

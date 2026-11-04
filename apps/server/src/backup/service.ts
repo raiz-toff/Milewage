@@ -3,8 +3,8 @@ import { join } from 'node:path';
 import { createBackupRepository, type BackupRunRow, type Db } from '../db';
 import {
   createBackupEngine,
-  type BackupCodec,
   type BackupEngine,
+  type BackupEngineOptions,
   type BackupTrigger,
 } from './engine';
 import { RETENTION, selectExcess, selectExpired } from './retention';
@@ -15,7 +15,10 @@ export interface BackupServiceOptions {
   now: () => number;
   /** The instance's IANA time zone, for the retention calendar. */
   timeZone: () => string;
-  codec?: BackupCodec;
+  /** False until setup is confirmed; nightly and shift-end runs wait, other triggers do not. */
+  ready?: () => boolean;
+  /** See BackupEngineOptions.codec. */
+  codec: BackupEngineOptions['codec'];
 }
 
 /**
@@ -46,6 +49,8 @@ export function createBackupService(o: BackupServiceOptions) {
   async function execute(trigger: BackupTrigger): Promise<BackupRunRow | undefined> {
     const userId = repo.ownerId();
     if (userId === undefined) return undefined; // nothing to protect before the owner exists
+    if ((trigger === 'nightly' || trigger === 'shift_end') && o.ready?.() === false)
+      return undefined;
     try {
       const a = await engine.run(trigger);
       const row = repo.insert({

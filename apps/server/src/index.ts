@@ -13,3 +13,5 @@ export * from './backup/engine';
 export * from './backup/retention';
 export * from './backup/schedule';
 export * from './backup/service';
+export * from './backup/age';
+export * from './backup/secrets';

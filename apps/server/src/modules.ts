@@ -1,8 +1,14 @@
 import { defineModule } from '@milewage/shared';
 import { Authenticator } from './auth/authenticator';
 import { nightlyBackupJob } from './backup/schedule';
+import { fileSecrets, secretsCodec, type SecretsStore } from './backup/secrets';
 import { createBackupService, type BackupService } from './backup/service';
-import { createBackupRepository, createSessionRepository, createSettingsRepository } from './db';
+import {
+  createBackupRepository,
+  createInstanceReader,
+  createSessionRepository,
+  createSettingsRepository,
+} from './db';
 import { openDiagnosticsStore } from './diagnostics/store';
 import { backupRoutes } from './routes/backup';
 import { coreRoutes, type CoreContext } from './routes/core';
@@ -36,6 +42,10 @@ export interface ServerContext extends CoreContext {
   onDiagnosticsRecreated?: (movedTo: string, reason: string) => void;
   /** The `backups` volume (`MILEWAGE_BACKUP_DIR`). Nothing is written there until a backup runs. */
   backupDir?: string;
+  /** The `config` volume (`MILEWAGE_CONFIG_DIR`), where `secrets.json` lives. */
+  configDir?: string;
+  /** Use this secrets store instead of `<configDir>/secrets.json`. */
+  secrets?: SecretsStore;
   /** Start the nightly 03:30 job (off in tests). */
   backupSchedule?: boolean;
   /** Use this service instead of building one, so setup, migration and restore share it. */
@@ -44,13 +54,19 @@ export interface ServerContext extends CoreContext {
 }
 
 /** Builds the backup service for a connection; the time zone is the owner's, UTC before setup. */
-export function buildBackupService(ctx: Pick<ServerContext, 'db' | 'now' | 'backupDir'>) {
+export function buildBackupService(
+  ctx: Pick<ServerContext, 'db' | 'now' | 'backupDir' | 'configDir' | 'secrets'>,
+) {
   const settings = createSettingsRepository(ctx.db);
   const owner = createBackupRepository(ctx.db);
+  const instance = createInstanceReader(ctx.db);
   return createBackupService({
     db: ctx.db,
     dir: ctx.backupDir ?? 'backups',
     now: ctx.now,
+    codec: secretsCodec(ctx.secrets ?? fileSecrets(ctx.configDir ?? 'config')),
+    // Scheduled backups wait for the recovery key to be confirmed (08 section 2.3).
+    ready: () => instance()?.setupConfirmedAt != null,
     timeZone: () => {
       const id = owner.ownerId();
       return (id === undefined ? undefined : settings.get(id)?.timezone) ?? 'UTC';
@@ -60,6 +76,7 @@ export function buildBackupService(ctx: Pick<ServerContext, 'db' | 'now' | 'back
 
 export function createServerModules(ctx: ServerContext) {
   const authn = new Authenticator(createSessionRepository(ctx.db), ctx.now);
+  const secrets = ctx.secrets ?? fileSecrets(ctx.configDir ?? 'config');
   const countries = ctx.countries ?? DEFAULT_COUNTRIES;
   const readSettings = (host: { registry: Parameters<typeof settingsReader>[0]['registry'] }) =>
     settingsReader({ ...ctx, registry: host.registry, countries });
@@ -70,9 +87,9 @@ export function createServerModules(ctx: ServerContext) {
       ctx.now,
       ctx.onDiagnosticsRecreated,
     ));
-  const backup = ctx.backup ?? buildBackupService(ctx);
+  const backup = ctx.backup ?? buildBackupService({ ...ctx, secrets });
   return [
-    defineModule({ ...coreModule, routes: coreRoutes(ctx, authn) }),
+    defineModule({ ...coreModule, routes: coreRoutes({ ...ctx, secrets }, authn) }),
     defineModule({ ...devicesModule, routes: devicesRoutes({ ...ctx, authn, readSettings }) }),
     defineModule({ ...trackingModule, routes: trackingRoutes({ ...ctx, authn }) }),
     defineModule({

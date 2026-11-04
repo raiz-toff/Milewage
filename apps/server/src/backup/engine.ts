@@ -10,7 +10,7 @@ import {
 } from 'node:fs';
 import { rename } from 'node:fs/promises';
 import { join } from 'node:path';
-import { Transform } from 'node:stream';
+import { PassThrough, Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { createGzip } from 'node:zlib';
 import type { Db } from '../db';
@@ -20,20 +20,20 @@ export type BackupTrigger = 'nightly' | 'shift_end' | 'manual' | 'pre_migration'
 export class BackupError extends Error {
   override name = 'BackupError';
   constructor(
-    readonly reason: 'integrity' | 'foreign_keys' | 'counts' | 'io',
+    readonly reason: 'integrity' | 'foreign_keys' | 'counts' | 'io' | 'no_key',
     message: string,
   ) {
     super(message);
   }
 }
 
-/** The step after gzip. M3.1 ships gzip only; the age encryptor of M3.2 plugs in here. */
+/** The step after gzip: the age encryptor (`age.ts`). Tests may use `gzipOnly`. */
 export interface BackupCodec {
-  /** File name suffix after the timestamp, e.g. `.db.gz`. */
+  /** File name suffix after the timestamp, e.g. `.db.gz.age`. */
   suffix: string;
-  transforms(): Transform[];
+  wrap(gzipped: Readable): Promise<Readable> | Readable;
 }
-export const gzipOnly: BackupCodec = { suffix: '.db.gz', transforms: () => [] };
+export const gzipOnly: BackupCodec = { suffix: '.db.gz', wrap: (s) => s };
 
 export interface BackupArtifact {
   /** Path relative to the backup directory, e.g. `milewage-20261104T033000123Z.db.gz`. */
@@ -51,7 +51,8 @@ export interface BackupEngineOptions {
   /** The `backups` volume. */
   dir: string;
   now: () => number;
-  codec?: BackupCodec;
+  /** Chosen per run, so a key added or removed later is honoured. Throws when no key is configured. */
+  codec: () => BackupCodec | Promise<BackupCodec>;
 }
 
 // Tables compared live-vs-copy (10 section 3.1 step 3); telemetry differs by writes during the copy.
@@ -84,7 +85,7 @@ function counts(db: Db): Record<string, number> {
  * writing connection would restart `db.backup()` (S0 finding, B5b). Recording in `backup_runs`
  * and retention are the service's job, not the engine's.
  */
-export function createBackupEngine({ db, dir, now, codec = gzipOnly }: BackupEngineOptions) {
+export function createBackupEngine({ db, dir, now, codec: chooseCodec }: BackupEngineOptions) {
   const tmpDir = join(dir, '.tmp');
   const cleanTemp = () => {
     rmSync(tmpDir, { recursive: true, force: true });
@@ -123,6 +124,7 @@ export function createBackupEngine({ db, dir, now, codec = gzipOnly }: BackupEng
 
     async run(trigger: BackupTrigger): Promise<BackupArtifact> {
       const createdAt = now();
+      const codec = await chooseCodec();
       const base = `milewage-${stamp(createdAt)}`;
       const subdir = SUBDIR[trigger];
       const targetDir = subdir ? join(dir, subdir) : dir;
@@ -142,13 +144,13 @@ export function createBackupEngine({ db, dir, now, codec = gzipOnly }: BackupEng
             done(null, chunk);
           },
         });
-        await pipeline(
-          createReadStream(tmpDb),
-          createGzip(),
-          ...codec.transforms(),
-          digest,
-          createWriteStream(tmpOut, { flags: 'wx', mode: 0o600 }),
-        );
+        const gz = new PassThrough();
+        const gzipped = pipeline(createReadStream(tmpDb), createGzip(), gz);
+        const sealed = await codec.wrap(gz);
+        await Promise.all([
+          gzipped,
+          pipeline(sealed, digest, createWriteStream(tmpOut, { flags: 'wx', mode: 0o600 })),
+        ]);
         const fileName = `${base}${codec.suffix}`;
         await rename(tmpOut, join(targetDir, fileName)); // atomic: a sync tool never sees a half file
         return {

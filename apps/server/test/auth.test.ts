@@ -22,7 +22,7 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'mw-auth-'));
   db = openAndMigrate(join(dir, 'milewage.db'));
   t = 1_800_000_000_000;
-  const modules = createServerModules({ db, now: () => t });
+  const modules = createServerModules({ db, now: () => t, configDir: join(dir, 'config') });
   app = buildApp({ modules, enabled: { core: true }, logLevel: 'silent' }).fastify;
 });
 afterEach(async () => {
@@ -45,12 +45,21 @@ const login = (password: string, ip?: string, username = 'sam') =>
 const cookieOf = (res: { headers: Record<string, unknown> }) =>
   String(res.headers['set-cookie']).split(';')[0] as string;
 const count = (table: string) => db.prepare(`SELECT count(*) FROM ${table}`).pluck().get();
-const signUp = async () => cookieOf(await post('/setup', owner));
+const signUp = async () => {
+  const res = await post('/setup', owner);
+  const cookie = cookieOf(res);
+  await post('/setup/confirm', { last6: res.json().recovery_key.slice(-6) }, cookie);
+  return cookie;
+};
 
 test('setup creates the owner once: user, settings, instance, hashed password, session', async () => {
   expect((await app.inject('/api/v1/setup/status')).json()).toEqual({ state: 'needs_setup' });
   const res = await post('/setup', owner);
-  expect([res.statusCode, res.json()]).toEqual([201, { state: 'ready' }]);
+  expect(res.statusCode).toBe(201);
+  expect(res.json()).toEqual({
+    recovery_key: expect.stringMatching(/^AGE-SECRET-KEY-1[A-Z0-9]+$/),
+    state: 'needs_confirmation',
+  });
   expect(String(res.headers['set-cookie'])).toMatch(
     /^mw_session=.+; HttpOnly; Secure; SameSite=Strict/,
   );

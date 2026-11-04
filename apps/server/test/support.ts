@@ -29,6 +29,7 @@ export function harness(enabled: Record<string, boolean> = {}, extra: Partial<Ap
     now: () => clock.t,
     diagnosticsPath: join(dir, 'diagnostics.db'),
     backupDir: join(dir, 'backups'),
+    configDir: join(dir, 'config'),
   });
   let app: ReturnType<typeof buildApp>['fastify'];
   try {
@@ -59,10 +60,21 @@ export function harness(enabled: Record<string, boolean> = {}, extra: Partial<Ap
     dir,
     clock,
     call,
-    /** Creates the owner through POST /setup and returns the session cookie. */
+    /** POST /setup only: the recovery key is shown but not yet confirmed. */
+    async signUpUnconfirmed() {
+      const res = await call('POST', '/setup', owner);
+      return {
+        cookie: String(res.headers['set-cookie']).split(';')[0] as string,
+        recoveryKey: res.json().recovery_key as string,
+      };
+    },
+    /** Creates the owner, types back the end of the recovery key, and returns the session cookie. */
     async signUp() {
       const res = await call('POST', '/setup', owner);
-      return { cookie: String(res.headers['set-cookie']).split(';')[0] as string };
+      const cookie = String(res.headers['set-cookie']).split(';')[0] as string;
+      const recoveryKey = res.json().recovery_key as string;
+      await call('POST', '/setup/confirm', { last6: recoveryKey.slice(-6) }, { cookie });
+      return { cookie, recoveryKey };
     },
     /** Pairs a phone through the real endpoints; returns its id and Authorization header. */
     async pair(cookie: string) {
