@@ -111,6 +111,6 @@ Break down the implementation into small, atomic, verifiable PRs.
 | **Gate 1** | *2026-11-02* | rajkumar | **APPROVED 2026-11-03** | Items 1.1–1.8 decided |
 | **Gate 2** | *2026-11-03* | rajkumar | **APPROVED 2026-11-03** | Dossier: [`11`](./11-gate2-audit-and-decisions.md). Specs 07–10 frozen as the basis for Gate 3. 14 unverified claims (`11` §4) must be checked before Gate 4. |
 | **Gate 3** | *2026-11-03* | rajkumar | **MERGED INTO GATE 4 (2026-11-04)** | The Human chose not to run a separate spike phase. The checks in `12` (Spike B in the capped VM, D, and the on-phone checks of A and C) run as build milestones with pass/fail exit criteria in the Gate 4 roadmap. Throwaway rigs already built stay in `milewage-spikes/`. |
-| **Gate 4** | *2026-11-04* | Pending | **OPEN — roadmap being drafted** | Roadmap: [`17`](./17-gate4-execution-roadmap.md) (in progress). |
-| **Final Exec** | — | — | LOCKED | Blocked on Gate 4 |
+| **Gate 4** | *2026-11-04* | rajkumar | **APPROVED 2026-11-04** | Roadmap: [`17`](./17-gate4-execution-roadmap.md). Web: React. Repo: self-hosted GitLab (`<your MileWage repository>`) with GitLab CI. Release: Play Store beta (existing account), APK sideload for dev. The eight asks in `17` §14 are accepted; thresholds marked "(new)" can still be revised with data. |
+| **Final Exec** | *2026-11-04* | rajkumar | **GIVEN 2026-11-04** | Authorizes PRs 1–10 (`17` §7) in the product repo, then milestone by milestone under the PR rules unless the Human pauses at a milestone exit. **Start deferred by the Human: no implementation work has begun.** |
 
