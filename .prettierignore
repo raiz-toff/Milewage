@@ -6,4 +6,4 @@ packages/shared/openapi/
 apps/phone/android/
 apps/phone/ios/
 apps/phone/.expo/
-apps/phone/native/comma-tracker/
+apps/phone/native/**/android/build/

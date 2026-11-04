@@ -8,9 +8,18 @@
     "scheme": "milewage",
     "android": {
       "package": "app.milewage.phone",
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "ACTIVITY_RECOGNITION",
+        "POST_NOTIFICATIONS"
+      ]
     },
     "plugins": [
+      "./plugins/withManifestPolicy",
       [
         "expo-build-properties",
         { "android": { "minSdkVersion": 24, "usesCleartextTraffic": false, "allowBackup": false } }

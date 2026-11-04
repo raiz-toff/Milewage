@@ -1,6 +1,5 @@
 package expo.modules.commatracker
 
-import android.app.ActivityManager
 import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
@@ -25,19 +24,13 @@ class LocationTrackingService : Service() {
     private var isLocationUpdateActive = false
     private var activityPendingIntent: PendingIntent? = null
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var cadence = CadenceConfig()
     private val pauseGpsRunnable = Runnable {
-        Log.d(TAG, "Still for ${STILL_TIMEOUT_MS}ms — pausing GPS to save battery.")
+        Log.d(TAG, "Still for ${cadence.stillTimeoutMs}ms — pausing GPS to save battery.")
         stopLocationUpdates()
     }
 
-    private var overlay: ShiftOverlay? = null
     private var activeDistanceMeters = 0.0
-    private val overlayTicker = object : Runnable {
-        override fun run() {
-            tickOverlay()
-            mainHandler.postDelayed(this, 1000L)
-        }
-    }
 
     companion object {
         // v2: changed channel importance from DEFAULT→LOW so the ongoing tracking
@@ -47,13 +40,11 @@ class LocationTrackingService : Service() {
         private const val TAG = "LocationTrackingService"
         private const val PREFS_NAME = "CommaTracker"
         private const val KEY_TRACKING_ACTIVE = "tracking_active"
+        const val CADENCE_PREFS_PREFIX = "cadence_"
         private const val RESTART_DELAY_MS = 2000L
         // Commands delivered by ActivityTransitionReceiver when movement state changes.
         const val ACTION_MOVEMENT = "expo.modules.commatracker.ACTION_MOVEMENT"
         const val ACTION_STILL = "expo.modules.commatracker.ACTION_STILL"
-        // Battery-first: pause GPS only after this long of confirmed stillness (so short stops —
-        // red lights, brief waits — keep GPS on and don't shred the route).
-        private const val STILL_TIMEOUT_MS = 150_000L // 2.5 min
     }
 
     override fun onCreate() {
@@ -78,6 +69,16 @@ class LocationTrackingService : Service() {
             Log.d(TAG, "onStartCommand: tracking_active=false, stopping self.")
             stopSelf()
             return START_NOT_STICKY
+        }
+
+        // Cadence comes from JS at start (persisted so a restarted service uses the same values).
+        cadence = try {
+            CadenceConfig.fromMap(
+                CadenceConfig().toMap().keys.associateWith { prefs.all[CADENCE_PREFS_PREFIX + it] }
+            )
+        } catch (e: IllegalArgumentException) {
+            Log.e(TAG, "Stored cadence invalid; using defaults.", e)
+            CadenceConfig()
         }
 
         createNotificationChannel()
@@ -120,7 +121,6 @@ class LocationTrackingService : Service() {
                 // in-progress drive, and register movement detection so we can sleep GPS while still.
                 if (!isLocationUpdateActive) startLocationUpdates()
                 registerActivityTransitions()
-                startOverlay()
             }
         }
 
@@ -138,9 +138,6 @@ class LocationTrackingService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         cancelPauseGps()
-        mainHandler.removeCallbacks(overlayTicker)
-        overlay?.hide()
-        overlay = null
         unregisterActivityTransitions()
         fusedLocationClient.removeLocationUpdates(locationCallback)
         isLocationUpdateActive = false
@@ -183,9 +180,9 @@ class LocationTrackingService : Service() {
     }
 
     private fun startLocationUpdates() {
-        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10000L).apply {
-            setMinUpdateDistanceMeters(20f)
-            setMaxUpdateDelayMillis(30000L)
+        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, cadence.intervalMs).apply {
+            setMinUpdateDistanceMeters(cadence.minDisplacementM)
+            setMaxUpdateDelayMillis(cadence.maxUpdateDelayMs)
         }.build()
 
         try {
@@ -225,7 +222,7 @@ class LocationTrackingService : Service() {
 
     private fun schedulePauseGps() {
         mainHandler.removeCallbacks(pauseGpsRunnable)
-        mainHandler.postDelayed(pauseGpsRunnable, STILL_TIMEOUT_MS)
+        mainHandler.postDelayed(pauseGpsRunnable, cadence.stillTimeoutMs)
     }
 
     private fun cancelPauseGps() {
@@ -284,68 +281,6 @@ class LocationTrackingService : Service() {
             Log.e(TAG, "Failed to unregister activity transitions", e)
         }
         activityPendingIntent = null
-    }
-
-    // ─── Floating "live shift" overlay ──────────────────────────────────────────
-    private fun startOverlay() {
-        Log.d(TAG, "startOverlay: creating overlay + starting 1s ticker")
-        if (overlay == null) overlay = ShiftOverlay(this)
-        mainHandler.removeCallbacks(overlayTicker)
-        mainHandler.post(overlayTicker)
-    }
-
-    /** Runs every second: show the floating pill ONLY when Comma is backgrounded (so it never
-     *  covers Comma's own UI or steals taps from the in-app shift controls). */
-    private fun tickOverlay() {
-        val o = overlay ?: run { Log.d(TAG, "tickOverlay: overlay object is null"); return }
-        val canDraw = android.provider.Settings.canDrawOverlays(this)
-        val foreground = isAppInForeground()
-        Log.d(TAG, "tickOverlay: canDrawOverlays=$canDraw appInForeground=$foreground")
-        if (!canDraw || foreground) {
-            o.hide()
-            return
-        }
-        o.show() // over another app — no-op if already shown
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        // Mirror the in-app timer EXACTLY (pause-aware). JS pushes startTime/pausedSeconds/isPaused
-        // via setShiftTiming; native computes the same formula so the pill and the app stay synced.
-        val elapsedSec = if (prefs.getBoolean("shift_is_paused", false)) {
-            prefs.getLong("shift_frozen_elapsed", 0L)
-        } else {
-            val startTime = prefs.getLong(
-                "shift_start_time",
-                prefs.getLong("tracking_started_at", System.currentTimeMillis())
-            )
-            val pausedSec = prefs.getLong("shift_paused_seconds", 0L)
-            ((System.currentTimeMillis() - startTime) / 1000L - pausedSec).coerceAtLeast(0L)
-        }
-        val unit = prefs.getString("distance_unit", "mi") ?: "mi"
-        val factor = if (unit == "km") 1000.0 else 1609.344
-        val dist = activeDistanceMeters / factor
-        o.update(formatElapsed(elapsedSec), String.format(java.util.Locale.US, "%.1f %s", dist, unit))
-    }
-
-    /** True when Comma's own UI is on screen (its process is at FOREGROUND importance). While a
-     *  shift runs in the background, the process sits at FOREGROUND_SERVICE importance instead. */
-    private fun isAppInForeground(): Boolean {
-        return try {
-            val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            val procs = am.runningAppProcesses ?: return false
-            procs.any {
-                it.processName == packageName &&
-                    it.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
-            }
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    private fun formatElapsed(totalSec: Long): String {
-        val h = totalSec / 3600
-        val m = (totalSec % 3600) / 60
-        val s = totalSec % 60
-        // HH:MM:SS to match the in-app formatTime() exactly.
-        return String.format(java.util.Locale.US, "%02d:%02d:%02d", h, m, s)
     }
 
     private fun processLocation(loc: android.location.Location) {

@@ -1,8 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-  <!-- Exempts the app from battery optimization so OEM killers (Samsung, Xiaomi, etc.)
-       don't kill the foreground service when the app is swiped from recents. -->
-  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-
+  <!-- Permissions are listed once, in apps/phone/app.json (09 section 5.3). This module declares
+       none: no battery-optimization exemption, no overlay, no boot receiver. -->
   <application>
     <service
       android:name="expo.modules.commatracker.LocationTrackingService"
@@ -16,16 +14,5 @@
       android:name="expo.modules.commatracker.ActivityTransitionReceiver"
       android:enabled="true"
       android:exported="false" />
-
-    <!-- Restarts the tracking service after the device reboots mid-shift. -->
-    <receiver
-      android:name="expo.modules.commatracker.BootReceiver"
-      android:enabled="true"
-      android:exported="true">
-      <intent-filter>
-        <action android:name="android.intent.action.BOOT_COMPLETED" />
-        <action android:name="android.intent.action.QUICKBOOT_POWERON" />
-      </intent-filter>
-    </receiver>
   </application>
 </manifest>

@@ -1,16 +1,14 @@
 # Copied from Comma
 
-This directory is a verbatim copy of Comma's local Expo native module (roadmap 17 section 3.6, PR M4.2).
-It is copied once. After the trim in M4.3 it is MileWage's own code and is not synced with Comma.
+This directory started as a verbatim copy of Comma's local Expo native module (roadmap 17 section 3.6, PR M4.2).
+It was copied once. Since M4.3 it is MileWage's own code and is not synced with Comma.
 
 - Source path: `/home/coder/Production/commaApp/modules/comma-tracker` (read-only; never modified)
 - Comma commit: `968e4c7a4447357039d9208de7a6239de90c72ad` (HEAD of `commaApp` on the copy date; the module's own source was last changed in `ba580cbb550d81f27a54ecd7496fc42a73236035`)
 - Date copied: 2026-11-04
-- Check: `diff -r` against the source working tree (clean for these paths) reports no difference.
+- Check: at PR M4.2 (git commit `04042a4` on main) `diff -r` against the source working tree reported no difference.
 
-## Files (relative to this directory)
-
-<!-- files:start -->
+## Files as copied in M4.2 (relative to this directory)
 
 - `LICENSE`
 - `android/build.gradle`
@@ -28,13 +26,12 @@ It is copied once. After the trim in M4.3 it is MileWage's own code and is not s
 - `src/CommaTrackerModule.ts`
 - `src/CommaTrackerModule.web.ts`
 
-<!-- files:end -->
+Not copied: Gradle caches and build output that Comma tracks in git by mistake (`android/.gradle/**`, `android/build/**`).
 
-## Not copied
+## Changes since the copy
 
-Gradle caches and build output that Comma tracks in git by mistake: `android/.gradle/**` and `android/build/**`.
+- M4.3 (09 section 5.2): deleted `BootReceiver.kt` and `ShiftOverlay.kt`; removed the overlay, boot restart and battery-exemption request; cadence now comes from JS (`CadenceConfig.kt`, JUnit test); manifest declares no permissions (the list is in `apps/phone/app.json`, policy in `apps/phone/plugins/manifestPolicy.js`).
 
 ## Notes
 
 - Autolinking finds the module through `expo.autolinking.nativeModulesDir = "./native"` in `apps/phone/package.json`.
-- Prettier ignores this directory so the copy stays byte-identical until M4.3.

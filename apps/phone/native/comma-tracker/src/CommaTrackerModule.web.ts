@@ -5,15 +5,11 @@ class CommaTrackerModule extends NativeModule {
     return false;
   }
   stopTracking() {}
-  requestBatteryOptimizationExemption() {}
-  hasOverlayPermission() {
+  requestBatteryOptimizationSettings() {
     return false;
   }
-  requestOverlayPermission() {}
-  setDistanceUnit(_unit: string) {}
-  setShiftTiming(_startTimeMs: number, _pausedSeconds: number, _isPaused: boolean, _frozenElapsed: number) {}
-  consumeOpenConsole() {
-    return false;
+  getActiveDistanceMeters() {
+    return 0;
   }
 }
 
