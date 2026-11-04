@@ -14,3 +14,11 @@ Running log for the Gate 4 build (roadmap `17`). Updated and pushed after each P
 - Lint rule: `track-engine/src` forbids `react-native`, `node:*`, `fs`, `path`, DB and network libs, `Date.now`, `Math.random`, `fetch`. Proven by `packages/track-engine/test/lint-rule.test.ts` (bad samples fail, same code passes outside track-engine).
 - Tests: 12 passed. Size: about 297 changed lines excluding lockfile.
 - Deviation: roadmap says this PR makes the repo's initial commit including `plans/`; the repo already had commits (plans committed earlier), so this is an ordinary commit.
+
+## PR 2 — [M0.2] CI, VERSION, version.mjs
+
+- Branch `pr-02-ci-version`; squash commit on main `fd6e4e1`.
+- Done: `VERSION` (0.1.0; all package.json files synced to it), `scripts/version.mjs check|sync`, `npm run version:check` added to `verify`, `.gitlab-ci.yml` (runs `npm run verify` on `node:22.22.0-bookworm-slim`), branch protection notes in `infra/docs/branch-protection.md`.
+- Tests: 16 passed (4 new for version.mjs: match, mismatch fails, malformed VERSION, sync). `verify` green on Node 22.22.0.
+- **Blocker/owner action: no GitLab runner is registered yet and the GitLab project URL/path is not known; the pipeline is untested.** `origin` is a git server on the LAN (push works). Branch protection (`infra/docs/branch-protection.md`) must be applied by the owner; until then the `verify`-before-merge rule is enforced manually.
+- Small additions beyond the PR text: ESLint node globals for `scripts/*.mjs`; root `package.json` now carries `version`.
