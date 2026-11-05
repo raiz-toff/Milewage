@@ -1,3 +1,5 @@
+import type { Schemas } from '../../src/api/client';
+
 /** API-shaped records for the screen tests. */
 export const shift = (over: object = {}) => ({
   id: 1,
@@ -35,7 +37,7 @@ export const trip = (id: number, over: object = {}) => ({
   ...over,
 });
 
-export const stop = (n: number, over: object = {}) => ({
+export const stop = (n: number, over: Partial<Schemas['Stop']> = {}): Schemas['Stop'] => ({
   stop_key: `00000000-0000-4000-8000-000000000001:${1_700_000_000_000 + n * 600_000}:stop`,
   shift_id: 1,
   started_at: 1_700_000_000_000 + n * 600_000,
