@@ -34,6 +34,7 @@ export const ALL_ON: Modules = {
   goals: true,
   analytics: true,
   maintenance: true,
+  import: true,
   backup_download: false,
   exporters: ['csv', 'gpx', 'geojson'],
   countries: ['US', 'CA', 'GB'],

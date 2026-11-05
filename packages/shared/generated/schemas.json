@@ -105,6 +105,7 @@
       "type": "object",
       "description": "Read-only module flags so clients can hide screens and buttons of absent modules.",
       "required": [
+        "import",
         "maintenance",
         "analytics",
         "goals",
@@ -157,6 +158,10 @@
         "maintenance": {
           "type": "boolean",
           "description": "Maintenance module registered (18 section 6)."
+        },
+        "import": {
+          "type": "boolean",
+          "description": "Import module registered (18 section 12). The expenses kind also needs the expenses module."
         },
         "sync": {
           "type": "boolean"
@@ -1973,6 +1978,133 @@
         },
         "created_at": {
           "$ref": "#/$defs/EpochMs"
+        }
+      }
+    },
+    "ImportPreview": {
+      "type": "object",
+      "required": [
+        "kind",
+        "columns",
+        "fields",
+        "mapping",
+        "row_count",
+        "summary",
+        "rows"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "expenses",
+            "shifts"
+          ]
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "mapping": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "row_count": {
+          "type": "integer"
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "integer"
+            },
+            "duplicate": {
+              "type": "integer"
+            },
+            "error": {
+              "type": "integer"
+            }
+          }
+        },
+        "rows": {
+          "type": "array",
+          "description": "The first 200 rows.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "row": {
+                "type": "integer"
+              },
+              "status": {
+                "enum": [
+                  "ok",
+                  "duplicate",
+                  "error"
+                ]
+              },
+              "message": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "ImportResult": {
+      "type": "object",
+      "required": [
+        "kind",
+        "imported",
+        "duplicates",
+        "errors",
+        "error_rows"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "expenses",
+            "shifts"
+          ]
+        },
+        "imported": {
+          "type": "integer"
+        },
+        "duplicates": {
+          "type": "integer"
+        },
+        "errors": {
+          "type": "integer"
+        },
+        "error_rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "row": {
+                "type": "integer"
+              },
+              "message": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
         }
       }
     },

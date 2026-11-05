@@ -36,6 +36,7 @@ tags:
   - { name: goals }
   - { name: analytics }
   - { name: maintenance }
+  - { name: import }
   - { name: system }
 
 x-modules:
@@ -134,6 +135,11 @@ x-modules:
     default: true
     dependsOn: [core]
     operations: [listMaintenance, createMaintenance, updateMaintenance, deleteMaintenance]
+  import:
+    toggle: modules.import
+    default: true
+    dependsOn: [core]
+    operations: [previewImport, commitImport]
 
 paths:
   /healthz:
@@ -1576,6 +1582,49 @@ paths:
         '204': { description: Deleted. }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /imports/{kind}/preview:
+    parameters:
+      - { name: kind, in: path, required: true, schema: { enum: [expenses, shifts] } }
+      - { name: mapping, in: query, schema: { type: string }, description: JSON object of field to column name; omitted means the server's guess from the header. }
+    post:
+      tags: [import]
+      operationId: previewImport
+      summary: Read a CSV (text/csv, gzip allowed, 5 MB) and report the columns, the mapping and each row as ok, duplicate or error. Writes nothing.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          text/csv: { schema: { type: string } }
+      responses:
+        '200':
+          description: The preview.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportPreview' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /imports/{kind}:
+    parameters:
+      - { name: kind, in: path, required: true, schema: { enum: [expenses, shifts] } }
+      - { name: mapping, in: query, schema: { type: string } }
+    post:
+      tags: [import]
+      operationId: commitImport
+      summary: Write the ok rows in one transaction. Idempotent - a repeat of the same file imports zero rows. Imported shifts are finalized, whole-shift, with one manual trip of the typed distance, flagged imported, and marked as imported in every export.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          text/csv: { schema: { type: string } }
+      responses:
+        '200':
+          description: Counts.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportResult' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
   /exports/{format}:
     get:
       tags: [exports]
@@ -1978,7 +2027,7 @@ components:
     Modules:
       type: object
       description: Read-only module flags so clients can hide screens and buttons of absent modules.
-      required: [maintenance, analytics, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
+      required: [import, maintenance, analytics, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
       properties:
         platforms: { type: boolean, description: 'Platforms module registered (18 section 4.2).' }
         earnings: { type: boolean, description: 'Earnings module registered (18 section 4.3): the driver can type a total per shift and platform.' }
@@ -1988,6 +2037,7 @@ components:
         goals: { type: boolean, description: 'Goals module registered (18 section 8.1).' }
         analytics: { type: boolean, description: 'Analytics module registered (18 section 10.1).' }
         maintenance: { type: boolean, description: 'Maintenance module registered (18 section 6).' }
+        import: { type: boolean, description: 'Import module registered (18 section 12). The expenses kind also needs the expenses module.' }
         sync: { type: boolean }
         local_export: { type: boolean, description: Reserved for v1.1; false in v1. }
         devices: { type: boolean }
@@ -2430,6 +2480,35 @@ components:
         double_counts: { type: boolean, description: The linked expense is covered by the vehicle's standard mileage rate. }
         notes: { type: [string, 'null'] }
         created_at: { $ref: '#/components/schemas/EpochMs' }
+
+    ImportPreview:
+      type: object
+      required: [kind, columns, fields, mapping, row_count, summary, rows]
+      properties:
+        kind: { enum: [expenses, shifts] }
+        columns: { type: array, items: { type: string } }
+        fields: { type: array, items: { type: string } }
+        mapping: { type: object, additionalProperties: { type: [string, 'null'] } }
+        row_count: { type: integer }
+        summary: { type: object, properties: { ok: { type: integer }, duplicate: { type: integer }, error: { type: integer } } }
+        rows:
+          type: array
+          description: The first 200 rows.
+          items:
+            type: object
+            properties:
+              row: { type: integer }
+              status: { enum: [ok, duplicate, error] }
+              message: { type: [string, 'null'] }
+    ImportResult:
+      type: object
+      required: [kind, imported, duplicates, errors, error_rows]
+      properties:
+        kind: { enum: [expenses, shifts] }
+        imported: { type: integer }
+        duplicates: { type: integer }
+        errors: { type: integer }
+        error_rows: { type: array, items: { type: object, properties: { row: { type: integer }, message: { type: [string, 'null'] } } } }
 
     ShiftStatus: { enum: [active, ended, finalized] }
     ShiftStart:

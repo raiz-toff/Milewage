@@ -99,8 +99,18 @@ function* shiftLevel(c: ExportContext) {
     'Odometer_Check',
     'Year_Odometer_Check',
     'Bonus',
+    'Imported',
   ]);
   const odometer = createOdometerChecks(c.db, c.userId, c.timeZone);
+  // A shift made from a CSV file has a typed distance, not a tracked one; every export says so (18 section 12).
+  const imported = new Map(
+    (
+      c.db
+        .prepare("SELECT shift_id FROM shift_flags WHERE user_id = ? AND code = 'imported'")
+        .pluck()
+        .all(c.userId) as number[]
+    ).map((id) => [id, true]),
+  );
   for (const s of c.shifts) {
     const trips = c.readers.trips(s.id);
     const labels = c.stopsOn ? c.readers.labels(s.id) : [];
@@ -141,6 +151,7 @@ function* shiftLevel(c: ExportContext) {
       odo.check,
       odometer.year(s),
       paid ? money(sum((r) => r.bonusCents)) : '',
+      imported.get(s.id) ? 'yes' : '',
     ]);
   }
 }

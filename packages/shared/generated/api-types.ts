@@ -1007,6 +1007,49 @@ export interface paths {
         patch: operations["updateMaintenance"];
         trace?: never;
     };
+    "/imports/{kind}/preview": {
+        parameters: {
+            query?: {
+                /** @description JSON object of field to column name; omitted means the server's guess from the header. */
+                mapping?: string;
+            };
+            header?: never;
+            path: {
+                kind: "expenses" | "shifts";
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read a CSV (text/csv, gzip allowed, 5 MB) and report the columns, the mapping and each row as ok, duplicate or error. Writes nothing. */
+        post: operations["previewImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/imports/{kind}": {
+        parameters: {
+            query?: {
+                mapping?: string;
+            };
+            header?: never;
+            path: {
+                kind: "expenses" | "shifts";
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Write the ok rows in one transaction. Idempotent - a repeat of the same file imports zero rows. Imported shifts are finalized, whole-shift, with one manual trip of the typed distance, flagged imported, and marked as imported in every export. */
+        post: operations["commitImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/exports/{format}": {
         parameters: {
             query?: never;
@@ -1288,6 +1331,8 @@ export interface components {
             analytics: boolean;
             /** @description Maintenance module registered (18 section 6). */
             maintenance: boolean;
+            /** @description Import module registered (18 section 12). The expenses kind also needs the expenses module. */
+            import: boolean;
             sync: boolean;
             /** @description Reserved for v1.1; false in v1. */
             local_export?: boolean;
@@ -1748,6 +1793,39 @@ export interface components {
             double_counts: boolean;
             notes: string | null;
             created_at: components["schemas"]["EpochMs"];
+        };
+        ImportPreview: {
+            /** @enum {unknown} */
+            kind: "expenses" | "shifts";
+            columns: string[];
+            fields: string[];
+            mapping: {
+                [key: string]: string | null;
+            };
+            row_count: number;
+            summary: {
+                ok?: number;
+                duplicate?: number;
+                error?: number;
+            };
+            /** @description The first 200 rows. */
+            rows: {
+                row?: number;
+                /** @enum {unknown} */
+                status?: "ok" | "duplicate" | "error";
+                message?: string | null;
+            }[];
+        };
+        ImportResult: {
+            /** @enum {unknown} */
+            kind: "expenses" | "shifts";
+            imported: number;
+            duplicates: number;
+            errors: number;
+            error_rows: {
+                row?: number;
+                message?: string | null;
+            }[];
         };
         /** @enum {unknown} */
         ShiftStatus: "active" | "ended" | "finalized";
@@ -4559,6 +4637,67 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MaintenanceLog"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    previewImport: {
+        parameters: {
+            query?: {
+                /** @description JSON object of field to column name; omitted means the server's guess from the header. */
+                mapping?: string;
+            };
+            header?: never;
+            path: {
+                kind: "expenses" | "shifts";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "text/csv": string;
+            };
+        };
+        responses: {
+            /** @description The preview. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreview"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    commitImport: {
+        parameters: {
+            query?: {
+                mapping?: string;
+            };
+            header?: never;
+            path: {
+                kind: "expenses" | "shifts";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "text/csv": string;
+            };
+        };
+        responses: {
+            /** @description Counts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResult"];
                 };
             };
             404: components["responses"]["NotFound"];
