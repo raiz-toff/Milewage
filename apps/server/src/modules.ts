@@ -84,6 +84,8 @@ export interface ServerContext extends CoreContext {
   onDiagnosticsRecreated?: (movedTo: string, reason: string) => void;
   /** Size cap of the diagnostics events (100 MB unless a test lowers it). */
   diagnosticsCapBytes?: number;
+  /** `diagnostics.bundle` (default on). */
+  diagnosticsBundle?: boolean;
   /** Interval of `server.sample` and `api.window` (15 minutes unless a test shortens it). */
   diagnosticsSampleMs?: number;
   /** Interval of the retention job (a day unless a test shortens it). */
@@ -328,6 +330,7 @@ export function createServerModules(ctx: ServerContext) {
         disk: ctx.disk && (() => ctx.disk!.state()),
         onDrop: (reason) => keeper.drop(reason),
         observe: metrics.install,
+        bundle: ctx.diagnosticsBundle !== false,
         lastBackupAt: () => backup.list().find((r) => r.integrityOk === 1)?.createdAt,
       }),
       subscriptions: { ...recorder.subscriptions, ...metrics.subscriptions },

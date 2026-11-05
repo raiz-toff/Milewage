@@ -32,6 +32,7 @@ export function harness(
     lateRecomputeMs?: number;
     archiveEveryMs?: number;
     diagnosticsSampleMs?: number;
+    diagnosticsBundle?: boolean;
     backupOnShiftEnd?: boolean;
     backupDownload?: boolean;
     exporters?: ExporterRegistry;
@@ -65,6 +66,7 @@ export function harness(
     lateRecomputeMs: extra.lateRecomputeMs,
     archiveEveryMs: extra.archiveEveryMs,
     diagnosticsSampleMs: extra.diagnosticsSampleMs,
+    diagnosticsBundle: extra.diagnosticsBundle,
     // Off unless a test asks: a real backup after every shift end would race with the teardown.
     backupOnShiftEnd: extra.backupOnShiftEnd ?? false,
     backupDownload: extra.backupDownload,

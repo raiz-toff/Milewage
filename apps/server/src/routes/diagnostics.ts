@@ -7,7 +7,12 @@ import type { DiskState } from '../disk';
 import { effectiveLevel } from '../diagnostics/recorder';
 import type { DiagnosticsStore } from '../diagnostics/store';
 import { ProblemError } from '../errors';
+import { gzipSync } from 'node:zlib';
+import { algorithmVersion } from '@milewage/track-engine';
+import { buildBundle } from '../diagnostics/bundle';
 import { deviceHealth, serverHealth } from '../diagnostics/health';
+import { createProcessingRepository, createShiftRepository } from '../db';
+import { SERVER_VERSION } from '../version';
 import { strictObject } from './util';
 
 // Each event is validated on its own, so a bad one is listed in `rejected` and never fails the batch.
@@ -52,6 +57,7 @@ export function diagnosticsRoutes({
   onDrop,
   observe,
   lastBackupAt,
+  bundle = true,
 }: {
   db: Db;
   now: () => number;
@@ -60,6 +66,8 @@ export function diagnosticsRoutes({
   disk?: () => DiskState;
   /** Counts what ingest refused or discarded, for the server's own `diag.self`. */
   onDrop?: (reason: 'schema_reject' | 'level_off' | 'disk_low') => void;
+  /** `diagnostics.bundle` (default on): the debug-bundle route exists. */
+  bundle?: boolean;
   /** Creation time of the newest verified backup, for check S3. */
   lastBackupAt?: () => number | undefined;
   /** Installs the request counters of `api.window` on the app. */
@@ -131,8 +139,7 @@ export function diagnosticsRoutes({
       };
     });
 
-    app.get('/diagnostics/health', async (req) => {
-      const p = authn.authenticate(req, 'S');
+    const healthOf = (p: { userId: number }) => {
       const t = now();
       const day = t - 24 * 3600_000;
       const devices = db
@@ -175,7 +182,94 @@ export function diagnosticsRoutes({
         disk?.() ?? 'ok',
       );
       return { generated_at: t, devices: out, server };
-    });
+    };
+    app.get('/diagnostics/health', async (req) => healthOf(authn.authenticate(req, 'S')));
+
+    const bundleQuery = strictObject(
+      {
+        from: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+        to: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+        shift: { type: 'string', format: 'uuid' },
+        include_capture: { type: 'integer', minimum: 1 },
+      },
+      [],
+    );
+    if (bundle) {
+      app.get(
+        '/diagnostics/bundle',
+        { schema: { querystring: bundleQuery } },
+        async (req, reply) => {
+          const p = authn.authenticate(req, 'S');
+          const q = req.query as {
+            from?: string;
+            to?: string;
+            shift?: string;
+            include_capture?: number;
+          };
+          if (q.include_capture !== undefined) {
+            throw new ProblemError('validation_failed', 'The request is not valid.', [
+              { path: '/include_capture', message: 'capture sessions are not available' },
+            ]);
+          }
+          const shiftRepo = createShiftRepository(db);
+          const rows = q.shift
+            ? [shiftRepo.byRef(p.userId, q.shift.toLowerCase())].filter((r) => r !== undefined)
+            : shiftRepo.list(p.userId, { from: q.from, to: q.to, limit: 20 }).slice(0, 20);
+          if (q.shift && rows.length === 0)
+            throw new ProblemError('shift_not_found', 'No such shift.');
+          const flags = createProcessingRepository(db).flagsOf(rows.map((r) => r.id));
+          const t = now();
+          const start = rows.length
+            ? Math.min(...rows.map((r) => r.startedAt)) - 3600_000
+            : t - 14 * 24 * 3600_000;
+          const events = store().list(p.userId, {
+            fromAt: start,
+            shift: q.shift?.toLowerCase(),
+            limit: 5000,
+          });
+          const body = buildBundle({
+            events,
+            shifts: rows.map((r) => ({
+              clientId: r.clientId,
+              startedAt: r.startedAt,
+              endedAt: r.endedAt,
+              totalM: r.totalM,
+              activeM: r.activeM,
+              deadheadM: r.deadheadM,
+              segmenter: r.segmenter,
+              calcVersion: r.calcVersion,
+              reconStatus: r.reconStatus,
+              flags: (flags.get(r.id) ?? []).map((f) => f.code),
+            })),
+            versions: {
+              app: SERVER_VERSION,
+              engine: algorithmVersion,
+              schema: String(db.prepare('SELECT count(*) FROM schema_migrations').pluck().get()),
+              sqlite: String(db.prepare('SELECT sqlite_version()').pluck().get()),
+              node: process.versions.node,
+            },
+            modules: Object.fromEntries(
+              [
+                'devices',
+                'tracking',
+                'stops',
+                'replay',
+                'live',
+                'sync',
+                'exporters',
+                'diagnostics',
+                'capture',
+              ].map((m) => [m, (host as ServerRouteHost).registry.isEnabled(m)]),
+            ),
+            health: healthOf(p),
+          });
+          return reply
+            .header('Content-Type', 'application/gzip')
+            .header('Content-Disposition', 'attachment; filename="milewage-debug-bundle.json.gz"')
+            .send(gzipSync(JSON.stringify(body)));
+        },
+      );
+    }
 
     app.post(
       '/diagnostics/events',

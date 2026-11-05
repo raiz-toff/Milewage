@@ -19,6 +19,8 @@ export interface ServerConfig {
   settings: ModuleSettings;
   /** `backup.on_shift_end` and `backup.download` (10 section 3.1): both on by default. */
   backup: { onShiftEnd: boolean; download: boolean };
+  /** `diagnostics.bundle` (16 section 11): the debug-bundle route; on by default. */
+  diagnostics: { bundle: boolean };
 }
 
 /** Export formats switched on: `modules.export_<format>` in the settings file, then `MILEWAGE_MODULE_EXPORT_<FORMAT>=0|1` (08 section 16.1). */
@@ -65,6 +67,13 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): S
     backup: {
       onShiftEnd: flag(env.MILEWAGE_BACKUP_ON_SHIFT_END, file?.on_shift_end, 'backup.on_shift_end'),
       download: flag(env.MILEWAGE_BACKUP_DOWNLOAD, file?.download, 'backup.download'),
+    },
+    diagnostics: {
+      bundle: flag(
+        env.MILEWAGE_DIAGNOSTICS_BUNDLE,
+        (settings as { diagnostics?: { bundle?: unknown } }).diagnostics?.bundle,
+        'diagnostics.bundle',
+      ),
     },
   };
 }

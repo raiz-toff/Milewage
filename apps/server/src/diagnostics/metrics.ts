@@ -64,7 +64,7 @@ export function createServerMetrics(o: MetricsOptions) {
   const loop = monitorEventLoopDelay({ resolution: 10 });
   let cpu = process.cpuUsage();
   let since = o.now();
-  let startNote: Record<string, unknown> | undefined;
+  let startNote: (() => Record<string, unknown>) | undefined;
 
   const windowOf = (g: Group): Window => {
     let w = windows.get(g);
@@ -106,7 +106,7 @@ export function createServerMetrics(o: MetricsOptions) {
 
   const flush0 = () => {
     if (startNote && o.recorder.ready()) {
-      o.recorder.record('server.start', startNote);
+      o.recorder.record('server.start', startNote());
       startNote = undefined;
     }
   };
@@ -115,7 +115,7 @@ export function createServerMetrics(o: MetricsOptions) {
   const flush = () => {
     // `server.start` waits for the owner to exist (setup happens after the process starts).
     if (startNote && o.recorder.ready()) {
-      o.recorder.record('server.start', startNote);
+      o.recorder.record('server.start', startNote());
       startNote = undefined;
     }
     const t = o.now();
@@ -172,7 +172,7 @@ export function createServerMetrics(o: MetricsOptions) {
       const unclean = o.markerPath ? existsSync(o.markerPath) : false;
       if (o.markerPath) writeFileSync(o.markerPath, String(o.now()));
       loop.enable();
-      startNote = {
+      startNote = () => ({
         app_v: o.recorder.version,
         schema_v: o.schemaVersion(),
         sqlite_v: o.sqliteVersion(),
@@ -184,7 +184,7 @@ export function createServerMetrics(o: MetricsOptions) {
         ),
         modules: o.modules(),
         unclean_shutdown: unclean,
-      };
+      });
       flush0();
       const timer = setInterval(flush, o.everyMs ?? 15 * 60_000);
       timer.unref();

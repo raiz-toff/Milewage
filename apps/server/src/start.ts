@@ -57,6 +57,7 @@ export async function startServer(
           exportFormatsOn(['csv', 'pdf', 'gpx', 'geojson'], config.settings, env),
         backupOnShiftEnd: config.backup.onShiftEnd,
         backupDownload: config.backup.download,
+        diagnosticsBundle: config.diagnostics.bundle,
         log,
         diagnosticsPath: join(config.dataDir, 'diagnostics.db'),
         onDiagnosticsRecreated: (movedTo, reason) =>
