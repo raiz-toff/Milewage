@@ -5,6 +5,7 @@ import type { Schemas, Settings } from '../api/client';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
 import { Account } from './Account';
+import { PlatformsCard } from './Platforms';
 
 type Patch = Schemas['SettingsPatch'];
 
@@ -58,7 +59,17 @@ export function changes(saved: Settings, draft: Draft): Patch {
 /** The read-only module list: what this server runs, so the driver can see why a screen is absent. */
 function ModuleFlags({ modules }: { modules: Settings['modules'] }) {
   const flags = (
-    ['sync', 'devices', 'tracking', 'replay', 'live', 'stops', 'diagnostics', 'capture'] as const
+    [
+      'sync',
+      'devices',
+      'tracking',
+      'replay',
+      'live',
+      'stops',
+      'diagnostics',
+      'capture',
+      'platforms',
+    ] as const
   ).map((k) => [k, modules[k]] as const);
   return (
     <section aria-label="Modules" className="space-y-2">
@@ -221,6 +232,7 @@ export function SettingsPage() {
         </Button>
       </form>
       <Account />
+      {saved.modules.platforms ? <PlatformsCard /> : null}
       <ModuleFlags modules={saved.modules} />
     </section>
   );

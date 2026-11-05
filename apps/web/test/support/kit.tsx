@@ -123,4 +123,5 @@ export function renderApp(table: Record<string, Handler>, url = '/') {
 export const signedIn = (settings: Settings = settingsFixture()): Record<string, Handler> => ({
   'GET /setup/status': () => ({ body: { state: 'ready' } }),
   'GET /settings': () => ({ body: settings }),
+  'GET /platforms': () => ({ body: [] }),
 });
