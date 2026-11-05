@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { processShift, type Fix } from '@milewage/track-engine';
 import { reconcile } from '../src/processing/recon';
 import { ride, SHIFT, toWire } from './rides';
-import { harness, type Harness } from './support';
+import { harness, TRACKING_OFF, type Harness } from './support';
 
 let h: Harness;
 let cookie: string;
@@ -266,7 +266,7 @@ describe('segmenter and modules', () => {
   });
 
   test('tracking off: the shift ends with null totals and nothing is derived', async () => {
-    await setup({ tracking: false, stops: false });
+    await setup(TRACKING_OFF);
     const res = await end({ phone_result: phoneResult(engine('stops')) });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ status: 'ended', total_m: null, calc_version: null });

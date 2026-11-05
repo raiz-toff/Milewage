@@ -1608,7 +1608,9 @@ components:
       type: object
       required: [stop, shift]
       properties:
-        stop: { $ref: '#/components/schemas/Stop' }
+        stop:
+          oneOf: [{ $ref: '#/components/schemas/Stop' }, { type: 'null' }]
+          description: Null only when DELETE cleared a label whose stop no longer exists (label_orphaned).
         shift: { $ref: '#/components/schemas/Shift' }
 
     TelemetryPoint:

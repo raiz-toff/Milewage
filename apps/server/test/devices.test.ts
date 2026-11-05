@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test } from 'vitest';
-import { harness, type Harness } from './support';
+import { harness, TRACKING_OFF, type Harness } from './support';
 
 let h: Harness;
 let cookie: string;
@@ -115,7 +115,7 @@ test('redeem: 10 failures per 15 minutes per IP, then 429 with Retry-After', asy
 });
 
 test('with the devices module off there are no pairing routes', async () => {
-  const off = harness({ devices: false, tracking: false, stops: false });
+  const off = harness({ devices: false, ...TRACKING_OFF });
   const { cookie: c } = await off.signUp();
   expect((await off.call('POST', '/pairing-tokens', undefined, { cookie: c })).statusCode).toBe(
     404,

@@ -8,6 +8,7 @@ import {
   type Db,
   type FlagRow,
   type ShiftRow,
+  type TripRow,
 } from '../db';
 import { ProblemError } from '../errors';
 import type { ShiftProcessor } from '../processing/shift-processor';
@@ -118,6 +119,8 @@ export const shiftView = (r: ShiftRow, flags: readonly FlagRow[] = []) => ({
   deduction_cents: null, // from the country registry at read time; no packs yet
   flags: flags.map(flagView),
 });
+/** The `Trip` object; the client UUID of a manual trip is not part of it. */
+export const tripView = (t: TripRow) => snakeKeys(t, 'userId', 'clientId');
 /** `recon` of `POST /shifts/{ref}/end`, rebuilt from the stored columns so a retry answers the same. */
 const reconView = (r: ShiftRow) =>
   r.phoneTotalM === null || r.totalM === null || r.reconStatus === 'pending'
@@ -264,6 +267,10 @@ export function shiftRoutes(
 
   app.get('/shifts/:ref', { schema: { params: refParams } }, async (req) =>
     view(load(auth(req, 'SD'), refOf(req), false)),
+  );
+
+  app.get('/shifts/:ref/trips', { schema: { params: refParams } }, async (req) =>
+    processing.tripsOf(load(auth(req, 'SD'), refOf(req), false).id).map(tripView),
   );
 
   app.patch('/shifts/:ref', { schema: { params: refParams, body: patch } }, async (req, reply) => {

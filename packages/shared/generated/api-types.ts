@@ -1136,7 +1136,8 @@ export interface components {
             label: components["schemas"]["StopLabel"] | null;
         };
         StopLabelResult: {
-            stop: components["schemas"]["Stop"];
+            /** @description Null only when DELETE cleared a label whose stop no longer exists (label_orphaned). */
+            stop: components["schemas"]["Stop"] | null;
             shift: components["schemas"]["Shift"];
         };
         TelemetryPoint: {

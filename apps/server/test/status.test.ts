@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { parse } from 'yaml';
 import { diskStateOf, DISK_LIMITS } from '../src/index';
-import { harness, type Harness } from './support';
+import { harness, TRACKING_OFF, type Harness } from './support';
 
 const MB = 1024 * 1024;
 const GB = 1024 * MB;
@@ -106,7 +106,7 @@ describe('disk rules (10 section 11.3)', () => {
   });
 
   test('with the tracking and diagnostics modules off the 507 still applies (it lives in core)', async () => {
-    const bare = harness({ tracking: false, stops: false, devices: false, diagnostics: false });
+    const bare = harness({ ...TRACKING_OFF, devices: false, diagnostics: false });
     const { cookie: c } = await bare.signUp();
     bare.volume.free = 10 * MB;
     expect(

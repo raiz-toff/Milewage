@@ -1,0 +1,50 @@
+import { asc, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import type { RouteHost } from '@milewage/shared';
+import type { ServerRouteHost } from '../app';
+import type { Authenticator } from '../auth/authenticator';
+import { telemetryPoints, type Db } from '../db';
+import { refParam, shiftReader } from './shift-access';
+import { strictObject } from './util';
+
+const params = strictObject({ ref: refParam }, ['ref']);
+
+/** `GET /shifts/{ref}/route`: the stored points as parallel arrays for the map and the scrubber (module `replay`). */
+export function replayRoutes({
+  db,
+  now,
+  authn,
+}: {
+  db: Db;
+  now: () => number;
+  authn: Authenticator;
+}) {
+  return (host: RouteHost) => {
+    const { app } = host as ServerRouteHost;
+    const orm = drizzle(db);
+    const read = shiftReader(db, now);
+
+    app.get('/shifts/:ref/route', { schema: { params } }, async (req) => {
+      const p = authn.authenticate(req, 'SD');
+      const shift = read(p, (req.params as { ref: string }).ref);
+      const rows = orm
+        .select({
+          t: telemetryPoints.recordedAt,
+          lat: telemetryPoints.latE7,
+          lon: telemetryPoints.lonE7,
+          speed: telemetryPoints.speedDmps,
+        })
+        .from(telemetryPoints)
+        .where(eq(telemetryPoints.shiftId, shift.id))
+        .orderBy(asc(telemetryPoints.recordedAt), asc(telemetryPoints.seq))
+        .all();
+      return {
+        source: 'raw',
+        t: rows.map((r) => r.t),
+        lat_e7: rows.map((r) => r.lat),
+        lon_e7: rows.map((r) => r.lon),
+        speed_dmps: rows.map((r) => r.speed),
+      };
+    });
+  };
+}

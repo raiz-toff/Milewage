@@ -1221,7 +1221,15 @@
       ],
       "properties": {
         "stop": {
-          "$ref": "#/$defs/Stop"
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Stop"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Null only when DELETE cleared a label whose stop no longer exists (label_orphaned)."
         },
         "shift": {
           "$ref": "#/$defs/Shift"

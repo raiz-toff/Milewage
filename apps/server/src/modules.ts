@@ -22,6 +22,8 @@ import { devicesRoutes } from './routes/devices';
 import { diagnosticsRoutes } from './routes/diagnostics';
 import { DEFAULT_COUNTRIES, settingsReader } from './routes/settings';
 import { createShiftProcessor } from './processing/shift-processor';
+import { replayRoutes } from './routes/replay';
+import { stopsRoutes } from './routes/stops';
 import { trackingRoutes } from './routes/tracking';
 
 export const coreModule = defineModule({ name: 'core', dependsOn: [], toggleable: false });
@@ -32,6 +34,8 @@ export const stopsModule = defineModule({
   name: 'stops',
   dependsOn: ['core', 'tracking'],
 });
+/** The route for the map and the replay scrubber (08 section 3). */
+export const replayModule = defineModule({ name: 'replay', dependsOn: ['tracking'] });
 export const diagnosticsModule = defineModule({ name: 'diagnostics', dependsOn: ['core'] });
 /** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */
 export const backupModule = defineModule({
@@ -45,6 +49,7 @@ export const serverModules = [
   devicesModule,
   trackingModule,
   stopsModule,
+  replayModule,
   diagnosticsModule,
   backupModule,
 ] as const;
@@ -151,7 +156,8 @@ export function createServerModules(ctx: ServerContext) {
     }),
     defineModule({ ...devicesModule, routes: devicesRoutes({ ...ctx, authn, readSettings }) }),
     defineModule({ ...trackingModule, routes: trackingRoutes({ ...ctx, authn }) }),
-    defineModule({ ...stopsModule }),
+    defineModule({ ...stopsModule, routes: stopsRoutes({ ...ctx, authn, processor }) }),
+    defineModule({ ...replayModule, routes: replayRoutes({ ...ctx, authn }) }),
     defineModule({
       ...diagnosticsModule,
       routes: diagnosticsRoutes({

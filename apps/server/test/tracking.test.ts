@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { afterEach, beforeEach, expect, test } from 'vitest';
-import { harness, type Harness } from './support';
+import { harness, TRACKING_OFF, type Harness } from './support';
 
 const SHIFT = '0b1c8a52-8f0d-4c52-9d5b-5c8a0f3d1e11';
 let h: Harness;
@@ -124,7 +124,7 @@ test('who may upload and to what', async () => {
 });
 
 test('with the tracking module off the route is absent', async () => {
-  const off = harness({ tracking: false, stops: false });
+  const off = harness(TRACKING_OFF);
   const res = await off.app.inject({ method: 'POST', url: '/api/v1/telemetry/batch', payload: {} });
   expect(res.statusCode).toBe(404);
   await off.close();

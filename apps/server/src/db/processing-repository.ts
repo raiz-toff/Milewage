@@ -62,6 +62,26 @@ export function createProcessingRepository(db: Db) {
     },
     labelsOf: (shiftId: number): StopLabelRow[] =>
       orm.select().from(stopLabels).where(eq(stopLabels.shiftId, shiftId)).all(),
+    findLabel: (shiftId: number, stopKey: string): StopLabelRow | undefined =>
+      orm
+        .select()
+        .from(stopLabels)
+        .where(and(eq(stopLabels.shiftId, shiftId), eq(stopLabels.stopKey, stopKey)))
+        .get(),
+    /** Insert or replace the one label of a stop. */
+    putLabel(row: typeof stopLabels.$inferInsert): StopLabelRow {
+      return orm
+        .insert(stopLabels)
+        .values(row)
+        .onConflictDoUpdate({ target: [stopLabels.shiftId, stopLabels.stopKey], set: row })
+        .returning()
+        .get();
+    },
+    deleteLabel: (shiftId: number, stopKey: string) =>
+      void orm
+        .delete(stopLabels)
+        .where(and(eq(stopLabels.shiftId, shiftId), eq(stopLabels.stopKey, stopKey)))
+        .run(),
     tripsOf: (shiftId: number): TripRow[] =>
       orm
         .select()
