@@ -5,6 +5,7 @@ import type { ScreenProps } from '../navigation';
 import { deriveFlags } from '../pairing/pairing';
 import { useServices } from '../services';
 import type { ShiftRow } from '../store/shiftStore';
+import { markerFor } from '../sync/status';
 import { useTheme } from '../theme/theme';
 import { Screen } from './Screen';
 
@@ -42,7 +43,7 @@ export function ShiftsScreen({ navigation }: ScreenProps<'Shifts'>) {
               {s.total_m === null ? '-' : formatDistance(s.total_m, unit)}
             </Text>
             <Text style={{ color: theme.textMuted }}>
-              {s.status === 'active' ? 'In progress' : totalsCaption(s)}
+              {s.status === 'active' ? 'In progress' : totalsCaption(s)} · {markerFor(s).label}
             </Text>
           </Pressable>
         ))}

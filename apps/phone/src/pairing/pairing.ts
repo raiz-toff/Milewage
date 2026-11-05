@@ -115,6 +115,11 @@ export interface PairingDeps {
   appVersion?: string;
   /** Called with the settings whenever they are stored or loaded (feeds diagnostics level). */
   onSettings?: (s: CachedSettings) => void;
+  /** Checks every answer's instance and restore generation against what this phone was paired with. */
+  monitor?: {
+    blocked(): boolean;
+    observe(headers: Headers, expectedInstance: string | null): void;
+  };
 }
 
 export class Pairing {
@@ -173,15 +178,21 @@ export class Pairing {
    * `GET /settings` at app start and after each sync drain. On failure the cache stays and the
    * error is returned for the caller to show; a 401 means "re-pair" (08 section 4.3).
    */
+  private clientFor(c: Credential): ApiClient {
+    return new ApiClient({
+      baseUrl: c.baseUrl,
+      token: c.deviceToken,
+      fetch: this.d.fetch,
+      now: this.d.now,
+      blocked: () => this.d.monitor?.blocked() ?? false,
+      onResponse: (h) => this.d.monitor?.observe(h, c.instanceId),
+    });
+  }
+
   async refreshSettings(
     state: PairedState,
   ): Promise<{ state: PairedState; error: ApiError | null }> {
-    const client = new ApiClient({
-      baseUrl: state.credential.baseUrl,
-      token: state.credential.deviceToken,
-      fetch: this.d.fetch,
-      now: this.d.now,
-    });
+    const client = this.clientFor(state.credential);
     try {
       const res = await client.request<CachedSettings>('GET', '/settings');
       await this.d.plain.set(K_SETTINGS, JSON.stringify(res.data));
@@ -197,12 +208,7 @@ export class Pairing {
   async session(): Promise<{ client: ApiClient; flags: Flags } | null> {
     const state = await this.load();
     if (!state) return null;
-    const client = new ApiClient({
-      baseUrl: state.credential.baseUrl,
-      token: state.credential.deviceToken,
-      fetch: this.d.fetch,
-      now: this.d.now,
-    });
+    const client = this.clientFor(state.credential);
     return { client, flags: deriveFlags(state.settings) };
   }
 

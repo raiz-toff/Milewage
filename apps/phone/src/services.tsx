@@ -14,7 +14,9 @@ import { ShiftController } from './shift/controller';
 import { PUMP_LIMIT, PointFeed } from './shift/feed';
 import { ShiftStore, type ServerRecon, type ServerShift } from './store/shiftStore';
 import { SyncDrain } from './sync/drain';
+import { ConnectionMonitor } from './sync/connection';
 import { ChangePuller } from './sync/pull';
+import { buildStatus, storageState, type SyncStatus } from './sync/status';
 import { Outbox, shiftOf } from './sync/outbox';
 import { OutboxRunner } from './sync/runner';
 import { createLazyNativeTracker } from './tracker/native';
@@ -48,6 +50,11 @@ export interface Services {
   /** Backlog drain: shifts oldest first, with progress, cancel and the live shift first (15 section 6). */
   sync: SyncDrain;
   puller: ChangePuller;
+  monitor: ConnectionMonitor;
+  /** Plain key-value storage (caches, flags). */
+  plain: KeyValueStore;
+  /** The numbers behind the home banner. */
+  status: () => Promise<SyncStatus>;
   uploader: UploadWorker;
   diagnostics: PhoneDiagnostics;
   /** Loads the diagnostics ring, applies the cached level and records `app.start` (once). */
@@ -74,6 +81,8 @@ export interface Parts {
   scanner?: QrScanner;
   refreshMs?: number;
   rand?: () => number;
+  /** Free device storage in bytes; null when it cannot be read. NOT wired in production yet. */
+  freeBytes?: () => Promise<number | null>;
   autoUpload?: boolean;
   appVersion?: string;
   deviceInfo?: DeviceInfo;
@@ -90,7 +99,10 @@ export function createServices(p: Parts): Services {
     now: p.now,
     telemetryPending: () => p.tracker.readPending(1).length > 0,
   });
+  const appDb = createLazyAppDb(p.openAppDb);
+  const monitor = new ConnectionMonitor(appDb);
   const pairing = new Pairing({
+    monitor,
     secure: p.secure,
     plain: p.plain,
     fetch: p.fetch,
@@ -100,7 +112,6 @@ export function createServices(p: Parts): Services {
   });
   const feed = new PointFeed(p.tracker);
   const session = () => pairing.session();
-  const appDb = createLazyAppDb(p.openAppDb);
   const shifts = new ShiftStore(appDb, p.now);
   const outbox = new Outbox(appDb, p.now);
   const runner = new OutboxRunner({
@@ -144,6 +155,7 @@ export function createServices(p: Parts): Services {
     session,
     shiftReady: (id) => shift.isCreated(id),
     shiftParked: (id) => shift.isParked(id),
+    evictBlocked: () => monitor.restored,
     flushOutbox: () => shift.sync(),
     now: p.now,
     rand: p.rand,
@@ -158,6 +170,10 @@ export function createServices(p: Parts): Services {
   });
   const sync = new SyncDrain({
     pull: (force) => puller.pull({ force }),
+    handshake: async () => {
+      const st = await pairing.load();
+      if (st) await pairing.refreshSettings(st);
+    },
     store: shifts,
     outbox,
     runner,
@@ -166,6 +182,21 @@ export function createServices(p: Parts): Services {
     controller: shift,
     now: p.now,
   });
+
+  const status = async () => {
+    const state = uploader.lastState;
+    const counts = await outbox.counts();
+    return buildStatus({
+      shifts: await shifts.list(),
+      parkedItems: counts.parked,
+      oldestQueuedAt: counts.oldestAt,
+      wrongServer: monitor.wrongServer,
+      restored: monitor.restored,
+      halted: runner.haltedState ?? (state === 'repair' || state === 'auth_problem' ? state : null),
+      offline: state === 'backoff' || state === 'waiting_create',
+      storage: storageState((await p.freeBytes?.()) ?? null),
+    });
+  };
 
   let started = false;
   const startDiagnostics = async () => {
@@ -204,6 +235,9 @@ export function createServices(p: Parts): Services {
     runner,
     sync,
     puller,
+    monitor,
+    plain: p.plain,
+    status,
     uploader,
     diagnostics,
     startDiagnostics,

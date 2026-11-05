@@ -81,6 +81,11 @@ export class OutboxRunner {
     this.backoff = new Backoff(d.rand);
   }
 
+  /** Why the runner stopped for good until `resume` (revoked or bad credential), if it did. */
+  get haltedState(): 'repair' | 'auth_problem' | null {
+    return this.halted;
+  }
+
   resume(): void {
     this.halted = null;
     this.backoff.reset();

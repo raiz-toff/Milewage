@@ -36,7 +36,7 @@ describe('shift list and detail (work offline)', () => {
     fireEvent.press(await screen.findByRole('button', { name: 'Shifts' }));
     expect(await screen.findByText('2023-11-14')).toBeTruthy();
     expect(screen.getByText('3.9 mi')).toBeTruthy();
-    expect(screen.getByText('Calculated on phone')).toBeTruthy();
+    expect(screen.getByText(/Calculated on phone · On phone only/)).toBeTruthy();
 
     fireEvent.press(screen.getByRole('button', { name: 'Shift 2023-11-14' }));
     expect((await screen.findByLabelText('Total')).props.children).toBe('3.9 mi');
@@ -61,7 +61,7 @@ describe('shift list and detail (work offline)', () => {
     );
     render(<App services={services} />);
     fireEvent.press(await screen.findByRole('button', { name: 'Shifts' }));
-    expect(await screen.findByText('Confirmed by server')).toBeTruthy();
+    expect(await screen.findByText(/Confirmed by server · On server/)).toBeTruthy();
   });
 
   it('captions: empty totals wait for the server', () => {

@@ -96,6 +96,8 @@ export interface WorkerDeps {
   /** Has `POST /shifts` for this shift been acknowledged (08 section 4.2 rule 2)? */
   shiftReady: (clientId: string) => boolean | Promise<boolean>;
   /** The shift's create was refused for good: park its points instead of waiting for it. */
+  /** True while eviction must not run (the server was restored from a backup, 15 section 3.2). */
+  evictBlocked?: () => boolean;
   shiftParked?: (clientId: string) => boolean | Promise<boolean>;
   /** Drain the outbox (shift create, odometer, end); called on 404 `shift_not_found`. */
   flushOutbox: () => Promise<unknown>;
@@ -209,7 +211,8 @@ export class UploadWorker {
             !this.parked.has(p.shiftClientId) && (!opts.shift || p.shiftClientId === opts.shift),
         );
       if (pending.length === 0) {
-        this.d.tracker.evictUploaded(this.now() - LOCAL_RAW_DAYS * 86_400_000);
+        if (!this.d.evictBlocked?.())
+          this.d.tracker.evictUploaded(this.now() - LOCAL_RAW_DAYS * 86_400_000);
         const parked = this.parked.size > 0;
         return this.done(parked ? 'parked' : 'idle', uploaded, rejected, null);
       }

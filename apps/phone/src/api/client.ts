@@ -31,6 +31,10 @@ export interface ApiClientOptions {
   now?: () => number;
   /** Device bearer token. Omitted for the unauthenticated redeem call. */
   token?: string | null;
+  /** True stops every request before it is sent (a wrong server was detected, 15 section 9.4). */
+  blocked?: () => boolean;
+  /** Sees the headers of every answer, ok or not. */
+  onResponse?: (headers: Headers) => void;
 }
 
 export class ApiClient {
@@ -51,6 +55,8 @@ export class ApiClient {
     extraHeaders: Record<string, string> = {},
     rawBody?: Uint8Array,
   ): Promise<ApiResponse<T>> {
+    // Retryable on purpose: queued data is kept and retried, nothing is sent while blocked.
+    if (this.opts.blocked?.()) throw new ApiError(0, 'wrong_server', true);
     const headers: Record<string, string> = {
       Accept: 'application/json',
       'X-Client-Time': String(this.now()),
@@ -75,6 +81,7 @@ export class ApiClient {
     } catch {
       throw new ApiError(0, 'network', true);
     }
+    this.opts.onResponse?.(res.headers);
     const text = await res.text();
     let json: unknown = null;
     if (text !== '') {

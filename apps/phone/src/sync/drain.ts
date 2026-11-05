@@ -31,6 +31,8 @@ export interface DrainDeps {
   controller: ShiftController;
   /** The change feed; called after a drain finished (forced when something was sent). */
   pull?: (force: boolean) => Promise<unknown>;
+  /** `GET /settings` first: it reveals a wrong server before any data is sent (15 section 6.2 step 1). */
+  handshake?: () => Promise<unknown>;
   now?: () => number;
 }
 
@@ -111,6 +113,7 @@ export class SyncDrain {
 
   private async run(): Promise<DrainSummary> {
     const { store, runner } = this.d;
+    await this.d.handshake?.();
     await this.serveRunning();
     const todo = await this.unsynced();
     const pending = this.d.feed.readPending(PUMP_LIMIT);
