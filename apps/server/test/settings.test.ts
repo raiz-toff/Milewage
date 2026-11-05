@@ -39,7 +39,7 @@ test('the modules object follows the registry: registered is true, absent is fal
   expect(await flagsOf(false)).toMatchObject({
     live: false,
     tracking: true,
-    stops: false,
+    stops: true,
     backup_download: false,
     exporters: [],
     countries: ['US', 'CA', 'GB'],

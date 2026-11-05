@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 // Mirrors migrations/core (07 section 2.1). Constraints live in the SQL; this file types the queries.
 export const users = sqliteTable('users', {
@@ -110,7 +110,11 @@ export const shifts = sqliteTable('shifts', {
     .notNull()
     .default('pending'),
   reconReasons: text('recon_reasons'),
+  phoneTotalM: integer('phone_total_m'),
+  phoneCalcVersion: integer('phone_calc_version'),
+  inputDigest: text('input_digest'),
   calcMismatch: integer('calc_mismatch').notNull().default(0),
+  interruptionsJson: text('interruptions_json'),
   deviceTouchedAt: integer('device_touched_at'),
   overlapsShiftId: integer('overlaps_shift_id'),
 });
@@ -143,6 +147,76 @@ export const telemetryPoints = sqliteTable('telemetry_points', {
   bearingDeg: integer('bearing_deg'),
   altitudeM: integer('altitude_m'),
 });
+
+export const trips = sqliteTable('trips', {
+  id: integer('id').primaryKey(),
+  userId: userRef(),
+  shiftId: integer('shift_id')
+    .notNull()
+    .references(() => shifts.id),
+  tripKey: text('trip_key').notNull(),
+  clientId: text('client_id'),
+  kind: text('kind', { enum: ['active', 'deadhead', 'personal'] }).notNull(),
+  originalKind: text('original_kind', { enum: ['active', 'deadhead'] }).notNull(),
+  source: text('source', { enum: ['auto', 'manual'] }).notNull(),
+  startedAt: integer('started_at').notNull(),
+  endedAt: integer('ended_at').notNull(),
+  startLatE7: integer('start_lat_e7'),
+  startLonE7: integer('start_lon_e7'),
+  endLatE7: integer('end_lat_e7'),
+  endLonE7: integer('end_lon_e7'),
+  distanceM: integer('distance_m').notNull(),
+  purpose: text('purpose').notNull(),
+  editedAt: integer('edited_at'),
+});
+
+export const shiftFlags = sqliteTable('shift_flags', {
+  id: integer('id').primaryKey(),
+  userId: userRef(),
+  shiftId: integer('shift_id')
+    .notNull()
+    .references(() => shifts.id),
+  code: text('code').notNull(),
+  severity: text('severity', { enum: ['info', 'review'] }).notNull(),
+  detail: text('detail'),
+  createdAt: integer('created_at').notNull(),
+});
+
+export const stops = sqliteTable('stops', {
+  id: integer('id').primaryKey(),
+  userId: userRef(),
+  shiftId: integer('shift_id')
+    .notNull()
+    .references(() => shifts.id),
+  stopKey: text('stop_key').notNull(),
+  startedAt: integer('started_at').notNull(),
+  endedAt: integer('ended_at').notNull(),
+  dwellS: integer('dwell_s').notNull(),
+  latE7: integer('lat_e7').notNull(),
+  lonE7: integer('lon_e7').notNull(),
+  confidence: text('confidence', { enum: ['low', 'medium', 'high'] }).notNull(),
+  estRole: text('est_role', { enum: ['pickup', 'dropoff', 'none'] }).notNull(),
+  role: text('role', { enum: ['pickup', 'dropoff', 'other', 'none'] }).notNull(),
+});
+
+export const stopLabels = sqliteTable(
+  'stop_labels',
+  {
+    userId: userRef(),
+    shiftId: integer('shift_id')
+      .notNull()
+      .references(() => shifts.id),
+    stopKey: text('stop_key').notNull(),
+    role: text('role', { enum: ['pickup', 'dropoff', 'other'] }).notNull(),
+    platform: text('platform'),
+    place: text('place'),
+    payoutCents: integer('payout_cents').notNull().default(0),
+    tipCents: integer('tip_cents').notNull().default(0),
+    notes: text('notes'),
+    editedAt: integer('edited_at').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.shiftId, t.stopKey] })],
+);
 
 export const backupRuns = sqliteTable('backup_runs', {
   id: integer('id').primaryKey(),

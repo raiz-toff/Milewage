@@ -17,6 +17,7 @@ import {
 import { ProblemError } from '../errors';
 import { DEFAULT_COUNTRIES, settingsRoutes } from './settings';
 import { statusRoute, type StatusContext } from './status';
+import type { ShiftProcessor } from '../processing/shift-processor';
 import { shiftRoutes } from './shifts';
 import { vehicleRoutes } from './vehicles';
 
@@ -29,6 +30,8 @@ export interface CoreContext {
   secrets?: SecretsStore;
   /** Inputs of `GET /system/status`; each is optional so a bare core still serves it. */
   status?: Pick<StatusContext, 'state' | 'disk' | 'lastBackup' | 'diagnostics'>;
+  /** The engine run at shift end (tracking module); absent in a bare core. */
+  processor?: ShiftProcessor;
 }
 
 const str = (min: number, max = 1024) => ({ type: 'string', minLength: min, maxLength: max });
@@ -64,7 +67,14 @@ interface SetupBody {
 }
 
 export function coreRoutes(
-  { db, now, countries = DEFAULT_COUNTRIES, secrets = fileSecrets('config'), status }: CoreContext,
+  {
+    db,
+    now,
+    countries = DEFAULT_COUNTRIES,
+    secrets = fileSecrets('config'),
+    status,
+    processor,
+  }: CoreContext,
   authn: Authenticator,
 ) {
   return (host: RouteHost) => {
@@ -77,7 +87,14 @@ export function coreRoutes(
     settingsRoutes(app, { db, now, auth, registry, countries });
     vehicleRoutes(app, { db, now, auth });
     statusRoute(app, { db, now, auth, registry, ...status });
-    shiftRoutes(app, { db, now, auth });
+    shiftRoutes(app, {
+      db,
+      now,
+      auth,
+      processor,
+      trackingOn: () => registry.isEnabled('tracking'),
+      stopsOn: () => registry.isEnabled('stops'),
+    });
 
     const instanceRow = createInstanceReader(db);
     const setupState = () => {

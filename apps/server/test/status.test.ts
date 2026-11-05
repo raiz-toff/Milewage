@@ -106,7 +106,7 @@ describe('disk rules (10 section 11.3)', () => {
   });
 
   test('with the tracking and diagnostics modules off the 507 still applies (it lives in core)', async () => {
-    const bare = harness({ tracking: false, devices: false, diagnostics: false });
+    const bare = harness({ tracking: false, stops: false, devices: false, diagnostics: false });
     const { cookie: c } = await bare.signUp();
     bare.volume.free = 10 * MB;
     expect(

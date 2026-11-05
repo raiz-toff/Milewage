@@ -58,7 +58,7 @@ test('minimal end is idempotent, refuses an end before the start, and frees the 
   expect((await web('POST', `/shifts/${A}/end`, { ended_at: t0 - 1 })).statusCode).toBe(422);
   h.clock.t += 3600_000;
   const end = await web('POST', `/shifts/${A}/end`, { ended_at: h.clock.t });
-  expect(end.json()).toMatchObject({ status: 'ended', ended_at: h.clock.t, total_m: null });
+  expect(end.json()).toMatchObject({ status: 'ended', ended_at: h.clock.t, total_m: 0 });
   const again = await web('POST', '/shifts/1/end', { ended_at: h.clock.t - 5 });
   expect(again.json().ended_at).toBe(h.clock.t);
   expect((await start(B)).statusCode).toBe(201);

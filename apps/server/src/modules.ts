@@ -1,5 +1,5 @@
 import { dirname, join } from 'node:path';
-import { defineModule } from '@milewage/shared';
+import { defineModule, type ModuleRegistry } from '@milewage/shared';
 import { Authenticator } from './auth/authenticator';
 import { nightlyBackupJob } from './backup/schedule';
 import { fileSecrets, secretsCodec, type SecretsStore } from './backup/secrets';
@@ -15,16 +15,23 @@ import type { DiskMonitor } from './disk';
 import { openDiagnosticsStore } from './diagnostics/store';
 import { backupRoutes } from './routes/backup';
 import { restoreRoutes } from './routes/restore';
+import type { ServerRouteHost } from './app';
 import { createServerState, type ServerState } from './state';
 import { coreRoutes, type CoreContext } from './routes/core';
 import { devicesRoutes } from './routes/devices';
 import { diagnosticsRoutes } from './routes/diagnostics';
 import { DEFAULT_COUNTRIES, settingsReader } from './routes/settings';
+import { createShiftProcessor } from './processing/shift-processor';
 import { trackingRoutes } from './routes/tracking';
 
 export const coreModule = defineModule({ name: 'core', dependsOn: [], toggleable: false });
 export const devicesModule = defineModule({ name: 'devices', dependsOn: ['core'] });
 export const trackingModule = defineModule({ name: 'tracking', dependsOn: ['core', 'devices'] });
+/** Derived stops and the driver's optional labels; the runtime toggle is `settings.stops_enabled` (08 section 16.1). */
+export const stopsModule = defineModule({
+  name: 'stops',
+  dependsOn: ['core', 'tracking'],
+});
 export const diagnosticsModule = defineModule({ name: 'diagnostics', dependsOn: ['core'] });
 /** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */
 export const backupModule = defineModule({
@@ -37,6 +44,7 @@ export const serverModules = [
   coreModule,
   devicesModule,
   trackingModule,
+  stopsModule,
   diagnosticsModule,
   backupModule,
 ] as const;
@@ -109,29 +117,41 @@ export function createServerModules(ctx: ServerContext) {
     log: ctx.log,
   });
   const uploadDir = join(dirname(ctx.db.name), '.restore-upload');
+  // The registry exists only once routes are registered; the processor asks it per call.
+  let registry: ModuleRegistry | undefined;
+  const processor = createShiftProcessor({
+    db: ctx.db,
+    now: ctx.now,
+    stopsOn: () => registry?.isEnabled('stops') ?? false,
+  });
   return [
     defineModule({
       ...coreModule,
-      routes: coreRoutes(
-        {
-          ...ctx,
-          secrets,
-          status: {
-            state: ctx.state,
-            disk: ctx.disk,
-            lastBackup: () => backup.list()[0],
-            diagnostics: (userId) => ({
-              level: createSettingsRepository(ctx.db).get(userId)?.diagnosticsLevel ?? 'basic',
-              db_bytes: diagnosticsStore().bytes(),
-              event_count: diagnosticsStore().count(),
-            }),
+      routes: (host) => {
+        registry = (host as ServerRouteHost).registry;
+        coreRoutes(
+          {
+            ...ctx,
+            secrets,
+            processor,
+            status: {
+              state: ctx.state,
+              disk: ctx.disk,
+              lastBackup: () => backup.list()[0],
+              diagnostics: (userId) => ({
+                level: createSettingsRepository(ctx.db).get(userId)?.diagnosticsLevel ?? 'basic',
+                db_bytes: diagnosticsStore().bytes(),
+                event_count: diagnosticsStore().count(),
+              }),
+            },
           },
-        },
-        authn,
-      ),
+          authn,
+        )(host);
+      },
     }),
     defineModule({ ...devicesModule, routes: devicesRoutes({ ...ctx, authn, readSettings }) }),
     defineModule({ ...trackingModule, routes: trackingRoutes({ ...ctx, authn }) }),
+    defineModule({ ...stopsModule }),
     defineModule({
       ...diagnosticsModule,
       routes: diagnosticsRoutes({
