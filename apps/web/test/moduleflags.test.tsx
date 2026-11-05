@@ -76,6 +76,7 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
     open(ALL_ON, '/shifts');
     expect(await navNames()).toEqual([
       'Dashboard',
+      'Live map',
       'Shifts',
       'Odometer',
       'Exports',
