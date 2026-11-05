@@ -16,6 +16,10 @@ interface Draft {
   raw_retention_days: string;
   stops_enabled: boolean;
   diagnostics_level: 'off' | 'basic' | 'verbose';
+  display_name: string;
+  region: string;
+  week_start: '0' | '1';
+  time_format: '12h' | '24h';
 }
 
 const draftOf = (s: Settings): Draft => ({
@@ -26,6 +30,10 @@ const draftOf = (s: Settings): Draft => ({
   raw_retention_days: String(s.raw_retention_days),
   stops_enabled: s.stops_enabled,
   diagnostics_level: s.diagnostics.level,
+  display_name: s.display_name ?? '',
+  region: s.region ?? '',
+  week_start: s.week_start === 0 ? '0' : '1',
+  time_format: s.time_format,
 });
 
 /** Only the fields that differ from the saved settings, so a save never rewrites the rest. */
@@ -34,7 +42,15 @@ export function changes(saved: Settings, draft: Draft): Patch {
   const patch: Record<string, unknown> = {};
   for (const key of Object.keys(draft) as (keyof Draft)[]) {
     if (draft[key] === was[key]) continue;
-    patch[key] = key === 'raw_retention_days' ? Number(draft[key]) : draft[key];
+    const v = draft[key];
+    patch[key] =
+      key === 'raw_retention_days' || key === 'week_start'
+        ? Number(v)
+        : key === 'display_name' || key === 'region'
+          ? v === ''
+            ? null
+            : v
+          : v;
   }
   return patch as Patch;
 }
@@ -105,6 +121,37 @@ export function SettingsPage() {
           value={draft.country}
           onChange={(v) => set({ country: v })}
           options={countries.map((c) => ({ value: c, label: c }))}
+        />
+        <Field
+          label="Name"
+          maxLength={64}
+          value={draft.display_name}
+          onChange={(e) => set({ display_name: e.target.value })}
+        />
+        <Field
+          label="Region"
+          hint="Province or state code, for example ON or QC."
+          maxLength={3}
+          value={draft.region}
+          onChange={(e) => set({ region: e.target.value.toUpperCase() })}
+        />
+        <SelectField
+          label="Week starts on"
+          value={draft.week_start}
+          onChange={(v) => set({ week_start: v === '0' ? '0' : '1' })}
+          options={[
+            { value: '1', label: 'Monday' },
+            { value: '0', label: 'Sunday' },
+          ]}
+        />
+        <SelectField
+          label="Time format"
+          value={draft.time_format}
+          onChange={(v) => set({ time_format: v === '12h' ? '12h' : '24h' })}
+          options={[
+            { value: '24h', label: '24-hour' },
+            { value: '12h', label: '12-hour' },
+          ]}
         />
         <SelectField
           label="Distance unit"

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { renderApp, signedIn } from './support/kit';
+import { renderApp, settingsFixture, signedIn } from './support/kit';
 
 afterEach(cleanup);
 
@@ -9,6 +9,11 @@ interface Row {
   id: number;
   name: string;
   kind: string;
+  make: string | null;
+  model: string | null;
+  year: number | null;
+  plate: string | null;
+  power: string | null;
   created_at: number;
   archived_at: number | null;
 }
@@ -16,6 +21,11 @@ const car = (over: Partial<Row> = {}): Row => ({
   id: 1,
   name: 'Corolla',
   kind: 'car',
+  make: null,
+  model: null,
+  year: null,
+  plate: null,
+  power: null,
   created_at: 1_700_000_000_000,
   archived_at: null,
   ...over,
@@ -37,14 +47,23 @@ function server(initial: Row[] = [car()]) {
       rows = [...rows, row];
       return { status: 201, body: row };
     },
+    'PATCH /settings': () => ({ body: settingsFixture({ default_vehicle_id: 1 }) }),
     'PATCH /vehicles/1': ({ body }: { body: unknown }) => {
-      const b = body as { name?: string; kind?: string; archived?: boolean };
+      const b = body as {
+        name?: string;
+        kind?: string;
+        archived?: boolean;
+        make?: string | null;
+        year?: number | null;
+      };
       rows = rows.map((r) =>
         r.id === 1
           ? {
               ...r,
               name: b.name ?? r.name,
               kind: b.kind ?? r.kind,
+              make: 'make' in b ? (b as Row).make : r.make,
+              year: 'year' in b ? (b as Row).year : r.year,
               archived_at:
                 b.archived === undefined ? r.archived_at : b.archived ? 1_700_000_900_000 : null,
             }
@@ -89,7 +108,33 @@ describe('vehicles page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findAllByRole('cell', { name: 'Van' })).toHaveLength(2);
     const patch = s.calls.find((c) => c.method === 'PATCH');
-    expect(patch?.body).toEqual({ name: 'Van', kind: 'van' });
+    expect(patch?.body).toEqual({
+      ...{ name: 'Van', kind: 'van' },
+      ...{ make: null, model: null, year: null, plate: null },
+    });
+  });
+
+  it('edits details and sets the default vehicle', async () => {
+    const s = server();
+    await screen.findByText('Corolla');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.change(screen.getByLabelText('Make of Corolla'), { target: { value: 'Toyota' } });
+    fireEvent.change(screen.getByLabelText('Year of Corolla'), { target: { value: '2020' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Save' })).toBeNull());
+    expect(s.calls.find((c) => c.method === 'PATCH')?.body).toMatchObject({
+      make: 'Toyota',
+      year: 2020,
+    });
+  });
+
+  it('offers the e-bike, scooter and on-foot types', async () => {
+    server();
+    await screen.findByText('Corolla');
+    const options = Array.from((screen.getByLabelText('Type') as HTMLSelectElement).options).map(
+      (o) => o.value,
+    );
+    expect(options).toEqual(['car', 'van', 'motorcycle', 'bicycle', 'ebike', 'scooter', 'walking']);
   });
 
   it('archives a vehicle, shows it on request, and restores it', async () => {

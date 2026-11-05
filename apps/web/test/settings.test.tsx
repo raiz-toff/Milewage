@@ -114,9 +114,33 @@ describe('settings page', () => {
       raw_retention_days: '90',
       stops_enabled: true,
       diagnostics_level: 'basic' as const,
+      display_name: '',
+      region: '',
+      week_start: '1' as const,
+      time_format: '24h' as const,
     };
     expect(changes(s, same)).toEqual({});
     expect(changes(s, { ...same, raw_retention_days: '30' })).toEqual({ raw_retention_days: 30 });
+  });
+
+  it('saves the profile fields: empty name and region become null, week start a number', async () => {
+    const { calls } = server();
+    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Sam' } });
+    fireEvent.change(screen.getByLabelText(/^Region/), { target: { value: 'on' } });
+    fireEvent.change(screen.getByLabelText('Week starts on'), { target: { value: '0' } });
+    fireEvent.change(screen.getByLabelText('Time format'), { target: { value: '12h' } });
+    fireEvent.click(save());
+    await screen.findByRole('status');
+    expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({
+      display_name: 'Sam',
+      region: 'ON',
+      week_start: 0,
+      time_format: '12h',
+    });
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: '' } });
+    fireEvent.click(save());
+    await waitFor(() => expect(calls.filter((c) => c.method === 'PATCH')).toHaveLength(2));
+    expect(calls.filter((c) => c.method === 'PATCH')[1]?.body).toEqual({ display_name: null });
   });
 
   it('upper-cases the currency while typing and saves it', async () => {

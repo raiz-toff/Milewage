@@ -14,17 +14,39 @@ const KINDS: { value: Kind; label: string }[] = [
   { value: 'van', label: 'Van' },
   { value: 'motorcycle', label: 'Motorcycle' },
   { value: 'bicycle', label: 'Bicycle' },
+  { value: 'ebike', label: 'E-bike' },
+  { value: 'scooter', label: 'Scooter' },
+  { value: 'walking', label: 'On foot' },
 ];
 const kindLabel = (k: Kind) => KINDS.find((x) => x.value === k)?.label ?? k;
 
 function VehicleRow({ vehicle, onChanged }: { vehicle: Vehicle; onChanged: () => void }) {
   const { api } = useSession();
   const { timezone } = useSettings();
-  const [edit, setEdit] = useState<{ name: string; kind: Kind } | null>(null);
+  const [edit, setEdit] = useState<{
+    name: string;
+    kind: Kind;
+    make: string;
+    model: string;
+    year: string;
+    plate: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const archived = vehicle.archived_at !== null;
 
-  async function act(body: { name?: string; kind?: Kind; archived?: boolean }) {
+  const { setSettings } = useSession();
+  const saved = useSettings();
+  async function makeDefault() {
+    setError(null);
+    try {
+      setSettings(
+        await unwrap(api.PATCH('/settings', { body: { default_vehicle_id: vehicle.id } })),
+      );
+    } catch (e) {
+      setError(describe(e));
+    }
+  }
+  async function act(body: Schemas['VehicleCreate'] | { archived: boolean }) {
     setError(null);
     try {
       await unwrap(api.PATCH('/vehicles/{id}', { params: { path: { id: vehicle.id } }, body }));
@@ -48,6 +70,25 @@ function VehicleRow({ vehicle, onChanged }: { vehicle: Vehicle; onChanged: () =>
             value={edit.name}
             onChange={(e) => setEdit({ ...edit, name: e.target.value })}
           />
+        )}
+        {edit !== null ? (
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {(['make', 'model', 'year', 'plate'] as const).map((k) => (
+              <input
+                key={k}
+                aria-label={`${k[0]!.toUpperCase()}${k.slice(1)} of ${vehicle.name}`}
+                placeholder={k}
+                className="rounded border border-line bg-bg px-2 py-1"
+                value={edit[k]}
+                onChange={(e) => setEdit({ ...edit, [k]: e.target.value })}
+              />
+            ))}
+          </div>
+        ) : (
+          <span className="block text-sm text-muted">
+            {[vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ')}
+            {saved.default_vehicle_id === vehicle.id ? ' (default)' : ''}
+          </span>
         )}
         <FormError message={error} />
       </td>
@@ -80,7 +121,16 @@ function VehicleRow({ vehicle, onChanged }: { vehicle: Vehicle; onChanged: () =>
               type="button"
               className="text-accent"
               disabled={!edit.name.trim()}
-              onClick={() => void act({ name: edit.name.trim(), kind: edit.kind })}
+              onClick={() =>
+                void act({
+                  name: edit.name.trim(),
+                  kind: edit.kind,
+                  make: edit.make.trim() || null,
+                  model: edit.model.trim() || null,
+                  year: edit.year.trim() === '' ? null : Number(edit.year),
+                  plate: edit.plate.trim() || null,
+                })
+              }
             >
               Save
             </button>
@@ -94,9 +144,27 @@ function VehicleRow({ vehicle, onChanged }: { vehicle: Vehicle; onChanged: () =>
               <button
                 type="button"
                 className="text-muted hover:text-ink"
-                onClick={() => setEdit({ name: vehicle.name, kind: vehicle.kind })}
+                onClick={() =>
+                  setEdit({
+                    name: vehicle.name,
+                    kind: vehicle.kind,
+                    make: vehicle.make ?? '',
+                    model: vehicle.model ?? '',
+                    year: vehicle.year === null ? '' : String(vehicle.year),
+                    plate: vehicle.plate ?? '',
+                  })
+                }
               >
                 Edit
+              </button>
+            )}
+            {archived || saved.default_vehicle_id === vehicle.id ? null : (
+              <button
+                type="button"
+                className="text-muted hover:text-ink"
+                onClick={() => void makeDefault()}
+              >
+                Make default
               </button>
             )}
             <button
