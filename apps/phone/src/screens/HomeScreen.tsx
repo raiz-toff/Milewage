@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { touchTarget } from '@milewage/shared';
 import type { ScreenProps } from '../navigation';
+import { M_PER_UNIT } from '../format';
 import { deriveFlags } from '../pairing/pairing';
 import { canStartShift, initialLadder } from '../permissions/ladder';
 import { useServices } from '../services';
@@ -10,7 +11,6 @@ import { useTheme } from '../theme/theme';
 import { Screen } from './Screen';
 
 const DIAG_WINDOW_MS = 10 * 60 * 1000;
-const M_PER_UNIT = { km: 1000, mi: 1609.344 } as const;
 
 const MESSAGES: Record<string, string> = {
   not_paired: 'Pair this phone first (Settings).',
@@ -292,6 +292,13 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
           {message}
         </Text>
       )}
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => navigation.navigate('Shifts')}
+        style={button}
+      >
+        <Text style={{ color: theme.accent }}>Shifts</Text>
+      </Pressable>
       <Pressable
         accessibilityRole="button"
         onPress={() => navigation.navigate('Settings')}

@@ -709,3 +709,10 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Tests: 9 new in `localshift.test.ts` (offline end vs the committed fixture result: totals, split, trips, stops; queue order and body; whole_shift stores no stops; engine failure; server answer replaces the label; differing total; parked create; kill before the hand-off; time zones), 1 rewritten in `shift.test.tsx` (queued end survives a restart on the same `app.db`).
 - Deviations: over the 400 line cap (about 800 lines with tests): store, controller and the queue hand-off could not be shipped apart. The running shift's create and start odometer still go straight to the server (with the 409 prompt) and enter the outbox only at shift end if unacknowledged. `interruptions` are still not sent. A shift that has zero stored points gets no phone result (totals stay empty until the server answers).
 - Not verified: `expo-sqlite` transactions, `Intl` time zones on Hermes, and the whole flow on a device.
+
+
+## PR M5.4 (2 of 2) — Shift list and shift detail, offline (Phone track)
+
+- Done: screens `Shifts` (every shift on the phone, newest first, local date, total in the instance unit, "Calculated on phone" / "Confirmed by server" / "Totals will appear after sync") and `ShiftDetail` (total with that caption, active/deadhead split marked "(estimated)" when the shift used the `stops` segmenter, start/end clock times in the instance zone, the route as a polyline on a plain background, trips with the same estimated marker). Both read only `app.db`, so they work with no connection. `RouteView` draws the simplified route with rotated views (no graphics library added). `format.ts` (distance, clock, caption). Home has a "Shifts" button.
+- Tests: 3 new in `shifts.screen.test.tsx` (list and detail of a shift recorded with the server down, "Confirmed by server" after the answer, empty list).
+- Not done / limits: stops are not listed yet and the split does not yet follow `stops_enabled` (M6.5); the sync markers and the diff view come in M5.7/M5.8; no scale bar on the route; the route view and all screens were only run under jest, not on a device.
