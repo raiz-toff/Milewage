@@ -5,6 +5,7 @@ import type { Schemas } from '../api/client';
 import { formatDateTime } from '../format';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
+import { VehicleMaintenance } from './VehicleMaintenance';
 import { VehicleTaxYear } from './VehicleTaxYear';
 
 type Vehicle = Schemas['Vehicle'];
@@ -33,6 +34,7 @@ function VehicleRow({ vehicle, onChanged }: { vehicle: Vehicle; onChanged: () =>
     plate: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [service, setService] = useState(false);
   const archived = vehicle.archived_at !== null;
 
   const { setSettings } = useSession();
@@ -93,6 +95,19 @@ function VehicleRow({ vehicle, onChanged }: { vehicle: Vehicle; onChanged: () =>
         )}
         {saved.modules.tax && !archived && edit === null ? (
           <VehicleTaxYear vehicleId={vehicle.id} name={vehicle.name} />
+        ) : null}
+        {saved.modules.maintenance && !archived && edit === null ? (
+          <>
+            <button
+              type="button"
+              className="block text-sm text-accent"
+              aria-expanded={service}
+              onClick={() => setService(!service)}
+            >
+              {service ? 'Hide service log' : 'Service log'}
+            </button>
+            {service ? <VehicleMaintenance vehicleId={vehicle.id} name={vehicle.name} /> : null}
+          </>
         ) : null}
         <FormError message={error} />
       </td>

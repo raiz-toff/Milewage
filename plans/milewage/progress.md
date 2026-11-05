@@ -886,3 +886,10 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Done: migration `maintenance/0001_maintenance.sql`; `GET/POST /vehicles/{id}/maintenance`, `PATCH/DELETE /maintenance/{id}` (web session). Kinds: oil change, tires, brakes, other (fuel and washes are expense categories, as in 18 section 6). With `expenses` on and a cost, `record_expense` (default true) creates a `maintenance` expense for the vehicle on the service date and links it; the entry then stores no cost and reads it from the expense (a change of cost or date edits the expense), so a cost is one fact in one place. The response carries `double_counts` (the linked expense is covered by the vehicle's standard mileage rate). Deleting an entry keeps its expense (a tax record). Without `expenses` the cost is stored on the entry.
 - Tests: 6 in `maintenance.test.ts` (expense creation and link, cost read from the expense, edits flow to it, no cost, `record_expense: false`, actual-expense vehicle not flagged, ordering and delete-keeps-expense, validation and ownership, expenses off, module off); the matrix covers the 404 side.
 - Not done: the Maintenance tab on the vehicle screen (S8w); reminders from odometer or date (not carried, 18 section 3.3).
+
+
+## PR S8w — Web: service log on the vehicle screen (Comma-parity track)
+
+- Done: each active vehicle on the Vehicles screen gets a "Service log" toggle (only with `modules.maintenance` on) that opens its entries (date, service, cost, odometer in the driver's unit, a "covered by the mileage rate" marker, delete) and a form to add one (service, date, cost, odometer, converted to cents and metres; the cost label says it is also saved as an expense when `expenses` is on). Not a new route, so `screens.tsx` and the Caddyfile are unchanged.
+- Tests: 3 in `maintenance.test.tsx` (open, add with exact units, delete; bad cost refused with no call; absent when the module is off and no call made).
+- Not done: editing an entry in place, a notes field in the form (in the API).
