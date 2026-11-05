@@ -1,0 +1,14 @@
+# Override for the VM tests, used together with infra/docker/docker-compose.yml:
+#   docker compose -p mwvm -f infra/docker/docker-compose.yml -f infra/vm-tests/docker-compose.vm.yml up -d
+# It changes no limits. It only (1) lets B13 switch modules through the environment and (2) lets B10
+# put the data volume on a small loop-mounted filesystem (DATA_SRC=/srv/b10) so filling it is cheap.
+services:
+  api:
+    environment:
+      - MILEWAGE_MODULE_TRACKING=${MILEWAGE_MODULE_TRACKING:-}
+      - MILEWAGE_MODULE_DEVICES=${MILEWAGE_MODULE_DEVICES:-}
+      - MILEWAGE_MODULE_DIAGNOSTICS=${MILEWAGE_MODULE_DIAGNOSTICS:-}
+    volumes: !override
+      - ${DATA_SRC:-data}:/app/data
+      - backups:/app/backups
+      - config:/app/config

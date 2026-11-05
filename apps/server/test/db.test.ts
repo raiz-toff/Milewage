@@ -10,6 +10,7 @@ import {
   MigrationError,
   openAndMigrate,
   openDatabase,
+  sqliteVersionOk,
   startServer,
   type Db,
 } from '../src/index';
@@ -48,6 +49,40 @@ describe('PRAGMAs (10 section 3.4)', () => {
       expect(db.pragma('wal_autocheckpoint', { simple: true })).toBe(1000);
       db.close();
     }
+  });
+});
+
+describe('SQLite version gate (10 section 3.3, B12)', () => {
+  test('the fixed releases of each series pass, everything older is refused', () => {
+    const ok = [
+      '3.51.3',
+      '3.51.9',
+      '3.52.0',
+      '3.53.4',
+      '3.50.7',
+      '3.50.9',
+      '3.44.6',
+      '3.44.9',
+      '4.0.0',
+    ];
+    const bad = [
+      '3.51.2',
+      '3.51.0',
+      '3.50.6',
+      '3.44.5',
+      '3.45.3',
+      '3.49.1',
+      '3.46.0',
+      '3.40.1',
+      '2.9.9',
+    ];
+    for (const v of ok) expect(sqliteVersionOk(v), v).toBe(true);
+    for (const v of bad) expect(sqliteVersionOk(v), v).toBe(false);
+  });
+
+  test('the bundled SQLite passes, so the server opens a database', () => {
+    const version = open().prepare('SELECT sqlite_version()').pluck().get() as string;
+    expect(sqliteVersionOk(version), version).toBe(true);
   });
 });
 

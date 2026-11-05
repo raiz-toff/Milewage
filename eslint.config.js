@@ -44,7 +44,29 @@ export default tseslint.config(
     files: ['scripts/**/*.mjs'],
     languageOptions: { globals: { process: 'readonly', console: 'readonly', URL: 'readonly' } },
   },
+  {
+    files: ['infra/vm-tests/**/*.mjs', 'infra/vm-tests/**/*.cjs'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        fetch: 'readonly',
+        URL: 'readonly',
+        Buffer: 'readonly',
+        FormData: 'readonly',
+        Blob: 'readonly',
+        setTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        require: 'readonly',
+      },
+    },
+  },
   ...tseslint.configs.recommended,
+  {
+    files: ['infra/vm-tests/**/*.cjs'],
+    rules: { '@typescript-eslint/no-require-imports': 'off' }, // runs inside the api image as CommonJS
+  },
   {
     files: ['packages/track-engine/src/**/*.ts'],
     rules: {

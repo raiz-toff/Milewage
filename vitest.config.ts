@@ -7,6 +7,7 @@ export default defineConfig({
       'apps/*/test/**/*.test.{ts,tsx}',
       'packages/*/test/**/*.test.ts',
       'scripts/**/*.test.mjs',
+      'infra/**/*.test.mjs',
     ],
   },
 });
