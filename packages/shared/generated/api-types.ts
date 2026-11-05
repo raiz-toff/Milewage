@@ -1091,7 +1091,8 @@ export interface components {
             purpose: string;
         };
         TripEditResult: {
-            trip: components["schemas"]["Trip"];
+            /** @description Null only for a trip override whose trip_key matches no trip (reported as override_orphaned). */
+            trip: components["schemas"]["Trip"] | null;
             shift: components["schemas"]["Shift"];
         };
         /** @enum {unknown} */

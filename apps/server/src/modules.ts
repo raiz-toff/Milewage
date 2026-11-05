@@ -215,7 +215,7 @@ export function createServerModules(ctx: ServerContext) {
       },
     }),
     defineModule({ ...devicesModule, routes: devicesRoutes({ ...ctx, authn, readSettings }) }),
-    defineModule({ ...trackingModule, routes: trackingRoutes({ ...ctx, authn }) }),
+    defineModule({ ...trackingModule, routes: trackingRoutes({ ...ctx, authn, processor }) }),
     defineModule({ ...stopsModule, routes: stopsRoutes({ ...ctx, authn, processor }) }),
     defineModule({ ...replayModule, routes: replayRoutes({ ...ctx, authn }) }),
     defineModule({

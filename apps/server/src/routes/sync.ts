@@ -64,8 +64,18 @@ export function createSync({ db, now, authn, readSettings }: SyncOptions) {
     for (const key of log.liveTripKeys(shift.userId, shift.clientId)) {
       if (!current.has(key)) log.record(shift.userId, 'trip', key, 'delete', t);
     }
+    // Driver edits are re-sent after every run: one whose trip is gone arrives as `orphaned_override`.
+    for (const o of processing.overridesOf(shift.id)) {
+      log.record(shift.userId, 'override', o.tripKey, 'upsert', t);
+    }
   };
   const subscriptions: EventSubscriptions = {
+    'trip.updated'(p) {
+      // A manual trip's key is its client id, so a deletion cannot be found by the shift's key prefix.
+      if (!p.deleted || !p.tripKey) return;
+      const shift = shifts.byId(Number(p.shiftId));
+      if (shift) log.record(shift.userId, 'trip', p.tripKey, 'delete', now());
+    },
     'shift.started': (p) => logShift(p.shiftId),
     'shift.ended': (p) => logShift(p.shiftId),
     'shift.updated': (p) => logShift(p.shiftId),
@@ -118,6 +128,12 @@ export function createSync({ db, now, authn, readSettings }: SyncOptions) {
           const v = vehicles.find(userId, Number(row.key));
           return v ? vehicleView(v) : null;
         }
+        case 'override': {
+          const o = processing.overrideByKey(userId, row.key);
+          return o
+            ? { trip_key: o.tripKey, kind: o.kind, purpose: o.purpose, edited_at: o.editedAt }
+            : null;
+        }
         case 'settings':
           return settings(userId);
         default:
@@ -127,7 +143,12 @@ export function createSync({ db, now, authn, readSettings }: SyncOptions) {
     /** The client_id of the shift an entry belongs to, when it belongs to one (for the device window). */
     const shiftOf = (userId: number, row: ChangeRow): string | undefined => {
       if (row.entity === 'shift') return row.key;
-      if (row.entity === 'trip' || row.entity === 'override') return row.key.split(':')[0];
+      if (row.entity === 'trip' || row.entity === 'override') {
+        // Manual trips are keyed by a client id; the shift comes from the row while it exists.
+        const t = processing.tripByKey(userId, row.key);
+        if (t) return shifts.byId(t.shiftId)?.clientId;
+        return row.key.includes(':') ? row.key.split(':')[0] : undefined;
+      }
       if (row.entity === 'odometer') {
         const r = odometer.byId(userId, Number(row.key));
         return r?.shiftId == null ? undefined : shifts.byId(r.shiftId)?.clientId;
@@ -173,10 +194,12 @@ export function createSync({ db, now, authn, readSettings }: SyncOptions) {
         .filter((r) => latest.get(`${r.entity}/${r.key}`) === r.seq)
         .map((r) => {
           const data = r.op === 'delete' ? null : dataOf(p.userId, r);
+          const orphan =
+            r.entity === 'override' && data !== null && !processing.tripByKey(p.userId, r.key);
           return {
             seq: r.seq,
             entity: r.entity,
-            op: data === null ? 'delete' : 'upsert',
+            op: data === null ? 'delete' : orphan ? 'orphaned_override' : 'upsert',
             key: r.key,
             data,
           };

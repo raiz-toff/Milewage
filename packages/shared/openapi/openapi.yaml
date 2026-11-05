@@ -1563,7 +1563,7 @@ components:
       type: object
       required: [trip, shift]
       properties:
-        trip: { $ref: '#/components/schemas/Trip' }
+        trip: { oneOf: [{ $ref: '#/components/schemas/Trip' }, { type: 'null' }], description: Null only for a trip override whose trip_key matches no trip (reported as override_orphaned). }
         shift: { $ref: '#/components/schemas/Shift' }
 
     StopRole: { enum: [pickup, dropoff, other] }

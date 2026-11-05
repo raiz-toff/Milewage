@@ -6,7 +6,7 @@ export interface EventMap {
   'shift.finalized': { shiftId: string };
   'stops.derived': { shiftId: string };
   'stop_label.updated': { shiftId: string; stopId: string };
-  'trip.updated': { shiftId: string; tripId: string };
+  'trip.updated': { shiftId: string; tripId: string; tripKey?: string; deleted?: boolean };
   'telemetry.accepted': { shiftId: string; deviceId: string; count: number };
   'device.seen': { deviceId: string };
   'odometer.updated': { odometerId: string; userId: string; deleted?: boolean };

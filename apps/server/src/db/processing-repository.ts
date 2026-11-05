@@ -2,12 +2,21 @@ import { and, asc, count, eq, gte, inArray, lte } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import type { Fix } from '@milewage/track-engine';
 import type { Db } from './open';
-import { shiftFlags, shifts, stopLabels, stops, telemetryPoints, trips } from './schema';
+import {
+  shiftFlags,
+  shifts,
+  stopLabels,
+  stops,
+  telemetryPoints,
+  tripOverrides,
+  trips,
+} from './schema';
 
 export type TripRow = typeof trips.$inferSelect;
 export type FlagRow = typeof shiftFlags.$inferSelect;
 export type StopRow = typeof stops.$inferSelect;
 export type StopLabelRow = typeof stopLabels.$inferSelect;
+export type OverrideRow = typeof tripOverrides.$inferSelect;
 export type ShiftPatch = Partial<typeof shifts.$inferSelect>;
 
 export interface DerivedWrite {
@@ -95,6 +104,41 @@ export function createProcessingRepository(db: Db) {
         .from(trips)
         .where(and(eq(trips.userId, userId), eq(trips.tripKey, tripKey)))
         .get(),
+    tripById: (userId: number, id: number): TripRow | undefined =>
+      orm
+        .select()
+        .from(trips)
+        .where(and(eq(trips.userId, userId), eq(trips.id, id)))
+        .get(),
+    insertTrip: (row: typeof trips.$inferInsert): TripRow =>
+      orm.insert(trips).values(row).returning().get(),
+    updateTrip: (id: number, set: Partial<TripRow>): TripRow | undefined =>
+      orm.update(trips).set(set).where(eq(trips.id, id)).returning().get(),
+    deleteTrip: (id: number) => void orm.delete(trips).where(eq(trips.id, id)).run(),
+    overridesOf: (shiftId: number): OverrideRow[] =>
+      orm.select().from(tripOverrides).where(eq(tripOverrides.shiftId, shiftId)).all(),
+    findOverride: (shiftId: number, tripKey: string): OverrideRow | undefined =>
+      orm
+        .select()
+        .from(tripOverrides)
+        .where(and(eq(tripOverrides.shiftId, shiftId), eq(tripOverrides.tripKey, tripKey)))
+        .get(),
+    /** The override of a trip key for a user; the key carries the shift, so it is unique per user. */
+    overrideByKey: (userId: number, tripKey: string): OverrideRow | undefined =>
+      orm
+        .select()
+        .from(tripOverrides)
+        .where(and(eq(tripOverrides.userId, userId), eq(tripOverrides.tripKey, tripKey)))
+        .get(),
+    /** Insert or replace the one override of a trip key. */
+    putOverride(row: typeof tripOverrides.$inferInsert): OverrideRow {
+      return orm
+        .insert(tripOverrides)
+        .values(row)
+        .onConflictDoUpdate({ target: [tripOverrides.shiftId, tripOverrides.tripKey], set: row })
+        .returning()
+        .get();
+    },
     stopsOf: (shiftId: number): StopRow[] =>
       orm
         .select()
@@ -162,6 +206,29 @@ export function createProcessingRepository(db: Db) {
         )
         .get(userId, from, to) as { n: number; payout: number; tips: number };
       return r.n === 0 ? null : { earningsCents: r.payout + r.tips, tipsCents: r.tips };
+    },
+    /** Updates the totals only and keeps `manual_trip_present` in step; no engine run, nothing else is touched. */
+    writeTotals(
+      w: { userId: number; shiftId: number; now: number; manual: number },
+      patch: ShiftPatch,
+    ): typeof shifts.$inferSelect | undefined {
+      return orm.transaction((tx) => {
+        tx.delete(shiftFlags)
+          .where(and(eq(shiftFlags.shiftId, w.shiftId), eq(shiftFlags.code, 'manual_trip_present')))
+          .run();
+        if (w.manual > 0)
+          tx.insert(shiftFlags)
+            .values({
+              userId: w.userId,
+              shiftId: w.shiftId,
+              code: 'manual_trip_present',
+              severity: 'info',
+              detail: JSON.stringify({ at: null, detail: String(w.manual) }),
+              createdAt: w.now,
+            })
+            .run();
+        return tx.update(shifts).set(patch).where(eq(shifts.id, w.shiftId)).returning().get();
+      });
     },
     /** Replaces the derived rows of one shift and updates the shift, all in one transaction. */
     writeDerived(w: DerivedWrite): typeof shifts.$inferSelect | undefined {

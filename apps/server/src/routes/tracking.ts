@@ -3,6 +3,8 @@ import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import { createShiftRepository, createTelemetryRepository, type Db, type NewPoint } from '../db';
 import { ProblemError } from '../errors';
+import type { ShiftProcessor } from '../processing/shift-processor';
+import { overrideRoutes } from './trips';
 import { strictObject } from './util';
 
 const MIN = 60 * 1000;
@@ -47,15 +49,27 @@ export function trackingRoutes({
   db,
   now,
   authn,
+  processor,
 }: {
   db: Db;
   now: () => number;
   authn: Authenticator;
+  processor?: ShiftProcessor;
 }) {
   return (host: RouteHost) => {
     const { app, bus } = host as ServerRouteHost;
     const shifts = createShiftRepository(db);
     const telemetry = createTelemetryRepository(db);
+    if (processor) {
+      overrideRoutes(app, {
+        db,
+        now,
+        auth: authn.authenticate,
+        processor,
+        emit: bus.emit,
+        trackingOn: () => true,
+      });
+    }
 
     app.post(
       '/telemetry/batch',

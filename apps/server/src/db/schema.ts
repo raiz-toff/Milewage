@@ -170,6 +170,22 @@ export const trips = sqliteTable('trips', {
   editedAt: integer('edited_at'),
 });
 
+export const tripOverrides = sqliteTable(
+  'trip_overrides',
+  {
+    userId: userRef(),
+    shiftId: integer('shift_id')
+      .notNull()
+      .references(() => shifts.id),
+    tripKey: text('trip_key').notNull(),
+    kind: text('kind', { enum: ['active', 'deadhead', 'personal'] }).notNull(),
+    purpose: text('purpose').notNull(),
+    editedAt: integer('edited_at').notNull(),
+    deviceId: integer('device_id'),
+  },
+  (t) => [primaryKey({ columns: [t.shiftId, t.tripKey] })],
+);
+
 export const shiftFlags = sqliteTable('shift_flags', {
   id: integer('id').primaryKey(),
   userId: userRef(),

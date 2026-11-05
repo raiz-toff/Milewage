@@ -21,6 +21,7 @@ import type { ShiftProcessor } from '../processing/shift-processor';
 import { odometerRoutes } from './odometer';
 import { shiftRoutes } from './shifts';
 import { summaryRoute } from './summary';
+import { tripRoutes } from './trips';
 import { vehicleRoutes } from './vehicles';
 
 export interface CoreContext {
@@ -115,6 +116,17 @@ export function coreRoutes(
       trackingOn: () => registry.isEnabled('tracking'),
       stopsOn: () => registry.isEnabled('stops'),
     });
+
+    if (processor) {
+      tripRoutes(app, {
+        db,
+        now,
+        auth,
+        processor,
+        emit,
+        trackingOn: () => registry.isEnabled('tracking'),
+      });
+    }
 
     const instanceRow = createInstanceReader(db);
     const setupState = () => {

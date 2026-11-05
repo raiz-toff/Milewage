@@ -11,6 +11,19 @@ const REVIEW = new Set([
   'clock_skew',
 ]);
 
+interface Totals {
+  totalM: number;
+  activeM: number;
+  deadheadM: number;
+  personalM: number;
+}
+function addTrip(t: Totals, x: { kind: 'active' | 'deadhead' | 'personal'; distanceM: number }) {
+  t.totalM += x.distanceM;
+  if (x.kind === 'active') t.activeM += x.distanceM;
+  else if (x.kind === 'deadhead') t.deadheadM += x.distanceM;
+  else t.personalM += x.distanceM;
+}
+
 export interface PhoneReport {
   manifest?: { firstSeq: number; lastSeq: number; pointCount: number };
   result?: PhoneSummary & { segmenter: 'stops' | 'whole_shift'; tripsCount: number };
@@ -54,6 +67,9 @@ export function createShiftProcessor({ db, now, stopsOn }: ShiftProcessorOptions
         ? repo.labelsOf(shift.id).map((l) => ({ stopKey: l.stopKey, role: l.role }))
         : [],
       interruptions: interruptions.map((i) => ({ fromMs: i.from_ms, toMs: i.to_ms })),
+      edits: repo
+        .overridesOf(shift.id)
+        .map((o) => ({ tripKey: o.tripKey, kind: o.kind, purpose: o.purpose })),
     };
   };
 
@@ -65,6 +81,11 @@ export function createShiftProcessor({ db, now, stopsOn }: ShiftProcessorOptions
     run(shift: ShiftRow, phone: PhoneReport = {}, extra: ShiftPatch = {}): ProcessOutcome {
       const result = processShift(inputOf(shift));
       const t = now();
+      const editedAt = new Map(repo.overridesOf(shift.id).map((o) => [o.tripKey, o.editedAt]));
+      // Manual trips (distance typed in) are kept by the write below and count in the totals (07 section 3).
+      const manual = repo.tripsOf(shift.id).filter((x) => x.source === 'manual');
+      const totals = { ...result.totals };
+      for (const m of manual) addTrip(totals, m);
       const recon =
         phone.result &&
         reconcile({
@@ -80,6 +101,13 @@ export function createShiftProcessor({ db, now, stopsOn }: ShiftProcessorOptions
         severity: REVIEW.has(f.code) ? ('review' as const) : ('info' as const),
         detail: JSON.stringify({ at: f.at ?? null, detail: f.detail ?? null }),
       }));
+      if (manual.length > 0) {
+        flags.push({
+          code: 'manual_trip_present',
+          severity: 'info',
+          detail: JSON.stringify({ at: null, detail: String(manual.length) }),
+        });
+      }
       if (recon?.calcMismatch) {
         flags.push({
           code: 'calc_mismatch',
@@ -92,10 +120,10 @@ export function createShiftProcessor({ db, now, stopsOn }: ShiftProcessorOptions
       }
       const patch: ShiftPatch = {
         ...extra,
-        totalM: result.totals.totalM,
-        activeM: result.totals.activeM,
-        deadheadM: result.totals.deadheadM,
-        personalM: result.totals.personalM,
+        totalM: totals.totalM,
+        activeM: totals.activeM,
+        deadheadM: totals.deadheadM,
+        personalM: totals.personalM,
         calcVersion: result.algorithmVersion,
         calculatedAt: t,
         ...(recon
@@ -123,7 +151,7 @@ export function createShiftProcessor({ db, now, stopsOn }: ShiftProcessorOptions
           endLonE7: x.endLonE7,
           distanceM: x.distanceM,
           purpose: x.purpose,
-          editedAt: null,
+          editedAt: editedAt.get(x.tripKey) ?? null,
         })),
         flags,
         stops: stopsOn()
@@ -141,6 +169,22 @@ export function createShiftProcessor({ db, now, stopsOn }: ShiftProcessorOptions
           : undefined,
       });
       return { shift: saved ?? shift, result, recon };
+    },
+    /**
+     * Totals from the stored trips alone, with no engine run: for a shift while `tracking` is off
+     * (only manual trips exist) and after a manual trip changes with no points to read.
+     */
+    retotal(shift: ShiftRow): ShiftRow {
+      const totals = { totalM: 0, activeM: 0, deadheadM: 0, personalM: 0 };
+      const all = repo.tripsOf(shift.id);
+      for (const x of all) addTrip(totals, x);
+      const t = now();
+      const manual = all.filter((x) => x.source === 'manual').length;
+      const saved = repo.writeTotals(
+        { userId: shift.userId, shiftId: shift.id, now: t, manual },
+        { ...totals, calculatedAt: t },
+      );
+      return saved ?? shift;
     },
   };
 }
