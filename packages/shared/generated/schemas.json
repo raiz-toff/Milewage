@@ -105,6 +105,7 @@
       "type": "object",
       "description": "Read-only module flags so clients can hide screens and buttons of absent modules.",
       "required": [
+        "expenses",
         "earnings",
         "platforms",
         "devices",
@@ -127,6 +128,10 @@
         "earnings": {
           "type": "boolean",
           "description": "Earnings module registered (18 section 4.3): the driver can type a total per shift and platform."
+        },
+        "expenses": {
+          "type": "boolean",
+          "description": "Expenses module registered (18 section 5)."
         },
         "sync": {
           "type": "boolean"
@@ -851,6 +856,383 @@
                   "entered",
                   "mixed"
                 ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "ExpenseCreate": {
+      "type": "object",
+      "required": [
+        "spent_on",
+        "category",
+        "amount_cents"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "spent_on": {
+          "type": "string",
+          "format": "date",
+          "description": "The driver's local date."
+        },
+        "category": {
+          "type": "string",
+          "description": "A slug from GET /expenses/categories."
+        },
+        "amount_cents": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Total paid",
+          "tax included.": null
+        },
+        "merchant": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "deductible": {
+          "type": "boolean",
+          "description": "Defaults from the category."
+        },
+        "business_pct": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Defaults from the category."
+        },
+        "tax_credit_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Input tax credit portion (HST/GST/VAT); not more than the amount."
+        },
+        "vehicle_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "shift_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        },
+        "recurrence": {
+          "enum": [
+            "weekly",
+            "monthly",
+            "yearly",
+            null
+          ],
+          "description": "Makes the row a reminder template, not an expense. Needs next_due."
+        },
+        "next_due": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        }
+      }
+    },
+    "ExpensePatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "spent_on": {
+          "type": "string",
+          "format": "date",
+          "description": "The driver's local date."
+        },
+        "category": {
+          "type": "string",
+          "description": "A slug from GET /expenses/categories."
+        },
+        "amount_cents": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Total paid",
+          "tax included.": null
+        },
+        "merchant": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "deductible": {
+          "type": "boolean",
+          "description": "Defaults from the category."
+        },
+        "business_pct": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Defaults from the category."
+        },
+        "tax_credit_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Input tax credit portion (HST/GST/VAT); not more than the amount."
+        },
+        "vehicle_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "shift_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        },
+        "recurrence": {
+          "enum": [
+            "weekly",
+            "monthly",
+            "yearly",
+            null
+          ],
+          "description": "Makes the row a reminder template, not an expense. Needs next_due."
+        },
+        "next_due": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        }
+      }
+    },
+    "Expense": {
+      "type": "object",
+      "required": [
+        "id",
+        "spent_on",
+        "category",
+        "amount_cents",
+        "merchant",
+        "deductible",
+        "business_pct",
+        "tax_credit_cents",
+        "vehicle_id",
+        "shift_id",
+        "notes",
+        "recurrence",
+        "next_due",
+        "snoozed_until",
+        "template_id",
+        "deductible_cents",
+        "double_counts",
+        "has_receipt",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "spent_on": {
+          "type": "string",
+          "format": "date"
+        },
+        "category": {
+          "type": "string"
+        },
+        "amount_cents": {
+          "type": "integer"
+        },
+        "merchant": {
+          "type": "string"
+        },
+        "deductible": {
+          "type": "boolean"
+        },
+        "business_pct": {
+          "type": "integer"
+        },
+        "tax_credit_cents": {
+          "type": "integer"
+        },
+        "vehicle_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "shift_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recurrence": {
+          "enum": [
+            "weekly",
+            "monthly",
+            "yearly",
+            null
+          ]
+        },
+        "next_due": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "snoozed_until": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "template_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "deductible_cents": {
+          "type": "integer",
+          "description": "Computed at read time: amount x business % rounded half up, 0 when not deductible."
+        },
+        "double_counts": {
+          "type": "boolean",
+          "description": "A standard-mileage vehicle's rate already covers this category; saved and warned about",
+          "not deducted.": null
+        },
+        "has_receipt": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/EpochMs"
+        }
+      }
+    },
+    "ExpensePage": {
+      "type": "object",
+      "required": [
+        "items",
+        "next_cursor"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Expense"
+          }
+        },
+        "next_cursor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "ExpenseCategory": {
+      "type": "object",
+      "required": [
+        "slug",
+        "label",
+        "default_deductible",
+        "default_business_pct",
+        "vehicle_related",
+        "covered_by_standard_rate"
+      ],
+      "properties": {
+        "slug": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "default_deductible": {
+          "type": "boolean"
+        },
+        "default_business_pct": {
+          "type": "integer"
+        },
+        "vehicle_related": {
+          "type": "boolean"
+        },
+        "covered_by_standard_rate": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ExpenseTotals": {
+      "type": "object",
+      "required": [
+        "year",
+        "total_cents",
+        "deductible_cents",
+        "double_counts_cents",
+        "by_category"
+      ],
+      "properties": {
+        "year": {
+          "type": "integer"
+        },
+        "total_cents": {
+          "type": "integer"
+        },
+        "deductible_cents": {
+          "type": "integer",
+          "description": "Without the double-counting ones."
+        },
+        "double_counts_cents": {
+          "type": "integer"
+        },
+        "by_category": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "category",
+              "count",
+              "total_cents",
+              "deductible_cents",
+              "double_counts_cents"
+            ],
+            "properties": {
+              "category": {
+                "type": "string"
+              },
+              "count": {
+                "type": "integer"
+              },
+              "total_cents": {
+                "type": "integer"
+              },
+              "deductible_cents": {
+                "type": "integer"
+              },
+              "double_counts_cents": {
+                "type": "integer"
               }
             }
           }

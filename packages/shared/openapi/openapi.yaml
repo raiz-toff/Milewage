@@ -30,6 +30,7 @@ tags:
   - { name: diagnostics }
   - { name: platforms }
   - { name: earnings }
+  - { name: expenses }
   - { name: system }
 
 x-modules:
@@ -98,6 +99,11 @@ x-modules:
     default: true
     dependsOn: [core]
     operations: [listShiftEarnings, putShiftEarnings, deleteShiftEarnings]
+  expenses:
+    toggle: modules.expenses
+    default: true
+    dependsOn: [core]
+    operations: [listExpenses, createExpense, getExpense, updateExpense, deleteExpense, getExpenseTotals, listExpenseMerchants, getDueExpenses, confirmDueExpense, snoozeExpense, listExpenseCategories]
 
 paths:
   /healthz:
@@ -1025,6 +1031,187 @@ paths:
               schema: { $ref: '#/components/schemas/ShiftEarnings' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /expenses:
+    get:
+      tags: [expenses]
+      operationId: listExpenses
+      summary: Expenses newest first; templates=true lists the recurring reminders instead.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/From' }
+        - { $ref: '#/components/parameters/To' }
+        - { name: category, in: query, schema: { type: string } }
+        - { name: deductible, in: query, schema: { type: boolean } }
+        - { name: vehicle_id, in: query, schema: { type: integer } }
+        - { name: templates, in: query, schema: { type: boolean } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExpensePage' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    post:
+      tags: [expenses]
+      operationId: createExpense
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExpenseCreate' }
+      responses:
+        '201':
+          description: Created. deductible_cents and double_counts are read-time values.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Expense' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /expenses/totals:
+    get:
+      tags: [expenses]
+      operationId: getExpenseTotals
+      summary: Deductible against total spend for a calendar year, per category.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: year, in: query, schema: { type: integer } }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExpenseTotals' }
+  /expenses/merchants:
+    get:
+      tags: [expenses]
+      operationId: listExpenseMerchants
+      summary: Distinct merchants starting with q, newest first (autocomplete).
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { type: array, items: { type: string } }
+  /expenses/due:
+    get:
+      tags: [expenses]
+      operationId: getDueExpenses
+      summary: Recurring templates due today or earlier and not snoozed.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Expense' } }
+  /expenses/categories:
+    get:
+      tags: [expenses]
+      operationId: listExpenseCategories
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/ExpenseCategory' } }
+  /expenses/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [expenses]
+      operationId: getExpense
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Expense' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [expenses]
+      operationId: updateExpense
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExpensePatch' }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Expense' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    delete:
+      tags: [expenses]
+      operationId: deleteExpense
+      summary: Delete. Deleting a template keeps its occurrences.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Deleted. }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /expenses/{id}/occurrences:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [expenses]
+      operationId: confirmDueExpense
+      summary: Create one occurrence of a recurring template on the given date and move the template's next_due one interval on.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [spent_on]
+              additionalProperties: false
+              properties:
+                spent_on: { type: string, format: date }
+                amount_cents: { type: integer, minimum: 1 }
+      responses:
+        '201':
+          description: The occurrence.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Expense' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /expenses/{id}/snooze:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    put:
+      tags: [expenses]
+      operationId: snoozeExpense
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [until]
+              additionalProperties: false
+              properties:
+                until: { type: string, format: date }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Expense' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
   /exports/{format}:
     get:
       tags: [exports]
@@ -1424,10 +1611,11 @@ components:
     Modules:
       type: object
       description: Read-only module flags so clients can hide screens and buttons of absent modules.
-      required: [earnings, platforms, devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
+      required: [expenses, earnings, platforms, devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
       properties:
         platforms: { type: boolean, description: 'Platforms module registered (18 section 4.2).' }
         earnings: { type: boolean, description: 'Earnings module registered (18 section 4.3): the driver can type a total per shift and platform.' }
+        expenses: { type: boolean, description: 'Expenses module registered (18 section 5).' }
         sync: { type: boolean }
         local_export: { type: boolean, description: Reserved for v1.1; false in v1. }
         devices: { type: boolean }
@@ -1605,6 +1793,100 @@ components:
               total_cents: { type: integer }
               orders: { type: [integer, 'null'] }
               source: { enum: [labels, entered, mixed] }
+
+    ExpenseCreate:
+      type: object
+      required: [spent_on, category, amount_cents]
+      additionalProperties: false
+      properties:
+        spent_on: { type: string, format: date, description: The driver's local date. }
+        category: { type: string, description: A slug from GET /expenses/categories. }
+        amount_cents: { type: integer, minimum: 1, description: Total paid, tax included. }
+        merchant: { type: string, maxLength: 120 }
+        deductible: { type: boolean, description: Defaults from the category. }
+        business_pct: { type: integer, minimum: 0, maximum: 100, description: Defaults from the category. }
+        tax_credit_cents: { type: integer, minimum: 0, description: Input tax credit portion (HST/GST/VAT); not more than the amount. }
+        vehicle_id: { type: [integer, 'null'] }
+        shift_id: { type: [integer, 'null'] }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+        recurrence: { enum: [weekly, monthly, yearly, null], description: 'Makes the row a reminder template, not an expense. Needs next_due.' }
+        next_due: { type: [string, 'null'], format: date }
+    ExpensePatch:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        spent_on: { type: string, format: date, description: The driver's local date. }
+        category: { type: string, description: A slug from GET /expenses/categories. }
+        amount_cents: { type: integer, minimum: 1, description: Total paid, tax included. }
+        merchant: { type: string, maxLength: 120 }
+        deductible: { type: boolean, description: Defaults from the category. }
+        business_pct: { type: integer, minimum: 0, maximum: 100, description: Defaults from the category. }
+        tax_credit_cents: { type: integer, minimum: 0, description: Input tax credit portion (HST/GST/VAT); not more than the amount. }
+        vehicle_id: { type: [integer, 'null'] }
+        shift_id: { type: [integer, 'null'] }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+        recurrence: { enum: [weekly, monthly, yearly, null], description: 'Makes the row a reminder template, not an expense. Needs next_due.' }
+        next_due: { type: [string, 'null'], format: date }
+    Expense:
+      type: object
+      required: [id, spent_on, category, amount_cents, merchant, deductible, business_pct, tax_credit_cents, vehicle_id, shift_id, notes, recurrence, next_due, snoozed_until, template_id, deductible_cents, double_counts, has_receipt, created_at, updated_at]
+      properties:
+        id: { type: integer }
+        spent_on: { type: string, format: date }
+        category: { type: string }
+        amount_cents: { type: integer }
+        merchant: { type: string }
+        deductible: { type: boolean }
+        business_pct: { type: integer }
+        tax_credit_cents: { type: integer }
+        vehicle_id: { type: [integer, 'null'] }
+        shift_id: { type: [integer, 'null'] }
+        notes: { type: [string, 'null'] }
+        recurrence: { enum: [weekly, monthly, yearly, null] }
+        next_due: { type: [string, 'null'] }
+        snoozed_until: { type: [string, 'null'] }
+        template_id: { type: [integer, 'null'] }
+        deductible_cents: { type: integer, description: 'Computed at read time: amount x business % rounded half up, 0 when not deductible.' }
+        double_counts: { type: boolean, description: A standard-mileage vehicle's rate already covers this category; saved and warned about, not deducted. }
+        has_receipt: { type: boolean }
+        created_at: { $ref: '#/components/schemas/EpochMs' }
+        updated_at: { $ref: '#/components/schemas/EpochMs' }
+    ExpensePage:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Expense' } }
+        next_cursor: { type: [string, 'null'] }
+    ExpenseCategory:
+      type: object
+      required: [slug, label, default_deductible, default_business_pct, vehicle_related, covered_by_standard_rate]
+      properties:
+        slug: { type: string }
+        label: { type: string }
+        default_deductible: { type: boolean }
+        default_business_pct: { type: integer }
+        vehicle_related: { type: boolean }
+        covered_by_standard_rate: { type: boolean }
+    ExpenseTotals:
+      type: object
+      required: [year, total_cents, deductible_cents, double_counts_cents, by_category]
+      properties:
+        year: { type: integer }
+        total_cents: { type: integer }
+        deductible_cents: { type: integer, description: Without the double-counting ones. }
+        double_counts_cents: { type: integer }
+        by_category:
+          type: array
+          items:
+            type: object
+            required: [category, count, total_cents, deductible_cents, double_counts_cents]
+            properties:
+              category: { type: string }
+              count: { type: integer }
+              total_cents: { type: integer }
+              deductible_cents: { type: integer }
+              double_counts_cents: { type: integer }
 
     ShiftStatus: { enum: [active, ended, finalized] }
     ShiftStart:

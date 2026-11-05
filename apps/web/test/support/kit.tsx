@@ -28,6 +28,7 @@ export const ALL_ON: Modules = {
   capture: false,
   platforms: true,
   earnings: true,
+  expenses: true,
   backup_download: false,
   exporters: ['csv', 'gpx', 'geojson'],
   countries: ['US', 'CA', 'GB'],

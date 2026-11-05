@@ -5,6 +5,7 @@ import { openDatabase, type Db } from './open';
 export * from './archive-repository';
 export * from './backup-repository';
 export * from './earnings-repository';
+export * from './expense-repository';
 export * from './migrate';
 export * from './platform-repository';
 export * from './open';

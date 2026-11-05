@@ -677,6 +677,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/expenses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Expenses newest first; templates=true lists the recurring reminders instead. */
+        get: operations["listExpenses"];
+        put?: never;
+        post: operations["createExpense"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/expenses/totals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Deductible against total spend for a calendar year, per category. */
+        get: operations["getExpenseTotals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/expenses/merchants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Distinct merchants starting with q, newest first (autocomplete). */
+        get: operations["listExpenseMerchants"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/expenses/due": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recurring templates due today or earlier and not snoozed. */
+        get: operations["getDueExpenses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/expenses/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listExpenseCategories"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/expenses/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["getExpense"];
+        put?: never;
+        post?: never;
+        /** Delete. Deleting a template keeps its occurrences. */
+        delete: operations["deleteExpense"];
+        options?: never;
+        head?: never;
+        patch: operations["updateExpense"];
+        trace?: never;
+    };
+    "/expenses/{id}/occurrences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create one occurrence of a recurring template on the given date and move the template's next_due one interval on. */
+        post: operations["confirmDueExpense"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/expenses/{id}/snooze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["snoozeExpense"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/exports/{format}": {
         parameters: {
             query?: never;
@@ -946,6 +1086,8 @@ export interface components {
             platforms: boolean;
             /** @description Earnings module registered (18 section 4.3): the driver can type a total per shift and platform. */
             earnings: boolean;
+            /** @description Expenses module registered (18 section 5). */
+            expenses: boolean;
             sync: boolean;
             /** @description Reserved for v1.1; false in v1. */
             local_export?: boolean;
@@ -1120,6 +1262,114 @@ export interface components {
                 orders: number | null;
                 /** @enum {unknown} */
                 source: "labels" | "entered" | "mixed";
+            }[];
+        };
+        ExpenseCreate: {
+            /**
+             * Format: date
+             * @description The driver's local date.
+             */
+            spent_on: string;
+            /** @description A slug from GET /expenses/categories. */
+            category: string;
+            /** @description Total paid */
+            amount_cents: number;
+            merchant?: string;
+            /** @description Defaults from the category. */
+            deductible?: boolean;
+            /** @description Defaults from the category. */
+            business_pct?: number;
+            /** @description Input tax credit portion (HST/GST/VAT); not more than the amount. */
+            tax_credit_cents?: number;
+            vehicle_id?: number | null;
+            shift_id?: number | null;
+            notes?: string | null;
+            /**
+             * @description Makes the row a reminder template, not an expense. Needs next_due.
+             * @enum {unknown}
+             */
+            recurrence?: "weekly" | "monthly" | "yearly" | null;
+            /** Format: date */
+            next_due?: string | null;
+        };
+        ExpensePatch: {
+            /**
+             * Format: date
+             * @description The driver's local date.
+             */
+            spent_on?: string;
+            /** @description A slug from GET /expenses/categories. */
+            category?: string;
+            /** @description Total paid */
+            amount_cents?: number;
+            merchant?: string;
+            /** @description Defaults from the category. */
+            deductible?: boolean;
+            /** @description Defaults from the category. */
+            business_pct?: number;
+            /** @description Input tax credit portion (HST/GST/VAT); not more than the amount. */
+            tax_credit_cents?: number;
+            vehicle_id?: number | null;
+            shift_id?: number | null;
+            notes?: string | null;
+            /**
+             * @description Makes the row a reminder template, not an expense. Needs next_due.
+             * @enum {unknown}
+             */
+            recurrence?: "weekly" | "monthly" | "yearly" | null;
+            /** Format: date */
+            next_due?: string | null;
+        };
+        Expense: {
+            id: number;
+            /** Format: date */
+            spent_on: string;
+            category: string;
+            amount_cents: number;
+            merchant: string;
+            deductible: boolean;
+            business_pct: number;
+            tax_credit_cents: number;
+            vehicle_id: number | null;
+            shift_id: number | null;
+            notes: string | null;
+            /** @enum {unknown} */
+            recurrence: "weekly" | "monthly" | "yearly" | null;
+            next_due: string | null;
+            snoozed_until: string | null;
+            template_id: number | null;
+            /** @description Computed at read time: amount x business % rounded half up, 0 when not deductible. */
+            deductible_cents: number;
+            /** @description A standard-mileage vehicle's rate already covers this category; saved and warned about */
+            double_counts: boolean;
+            has_receipt: boolean;
+            created_at: components["schemas"]["EpochMs"];
+            updated_at: components["schemas"]["EpochMs"];
+        };
+        ExpensePage: {
+            items: components["schemas"]["Expense"][];
+            next_cursor: string | null;
+        };
+        ExpenseCategory: {
+            slug: string;
+            label: string;
+            default_deductible: boolean;
+            default_business_pct: number;
+            vehicle_related: boolean;
+            covered_by_standard_rate: boolean;
+        };
+        ExpenseTotals: {
+            year: number;
+            total_cents: number;
+            /** @description Without the double-counting ones. */
+            deductible_cents: number;
+            double_counts_cents: number;
+            by_category: {
+                category: string;
+                count: number;
+                total_cents: number;
+                deductible_cents: number;
+                double_counts_cents: number;
             }[];
         };
         /** @enum {unknown} */
@@ -3127,6 +3377,281 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+        };
+    };
+    listExpenses: {
+        parameters: {
+            query?: {
+                /** @description Local date YYYY-MM-DD in the instance timezone, inclusive. */
+                from?: components["parameters"]["From"];
+                to?: components["parameters"]["To"];
+                category?: string;
+                deductible?: boolean;
+                vehicle_id?: number;
+                templates?: boolean;
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpensePage"];
+                };
+            };
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    createExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpenseCreate"];
+            };
+        };
+        responses: {
+            /** @description Created. deductible_cents and double_counts are read-time values. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"];
+                };
+            };
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    getExpenseTotals: {
+        parameters: {
+            query?: {
+                year?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpenseTotals"];
+                };
+            };
+        };
+    };
+    listExpenseMerchants: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+        };
+    };
+    getDueExpenses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"][];
+                };
+            };
+        };
+    };
+    listExpenseCategories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpenseCategory"][];
+                };
+            };
+        };
+    };
+    getExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpensePatch"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    confirmDueExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: date */
+                    spent_on: string;
+                    amount_cents?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The occurrence. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    snoozeExpense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: date */
+                    until: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     exportData: {

@@ -41,6 +41,7 @@ import { createLive } from './routes/live';
 import { createSync } from './routes/sync';
 import { replayRoutes } from './routes/replay';
 import { createEarningsPolicy, earningsRoutes } from './routes/earnings';
+import { expensesRoutes } from './routes/expenses';
 import { platformsRoutes, platformKnown } from './routes/platforms';
 import { stopsRoutes } from './routes/stops';
 import { trackingRoutes } from './routes/tracking';
@@ -72,6 +73,8 @@ export const captureModule = defineModule({
 export const platformsModule = defineModule({ name: 'platforms', dependsOn: ['core'] });
 /** The driver's typed payout per shift and platform (18 section 4.3). */
 export const earningsModule = defineModule({ name: 'earnings', dependsOn: ['core'] });
+/** Expenses, categories and recurring reminders (18 section 5). */
+export const expensesModule = defineModule({ name: 'expenses', dependsOn: ['core'] });
 /** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */
 export const backupModule = defineModule({
   name: 'backup',
@@ -92,6 +95,7 @@ export const serverModules = [
   captureModule,
   platformsModule,
   earningsModule,
+  expensesModule,
   backupModule,
 ] as const;
 
@@ -362,6 +366,7 @@ export function createServerModules(ctx: ServerContext) {
       }),
     }),
     defineModule({ ...platformsModule, routes: platformsRoutes({ ...ctx, authn }) }),
+    defineModule({ ...expensesModule, routes: expensesRoutes({ ...ctx, authn }) }),
     defineModule({
       ...earningsModule,
       routes: earningsRoutes({ ...ctx, authn, policy: earningsPolicy }),

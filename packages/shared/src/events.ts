@@ -68,6 +68,8 @@ export interface EventMap {
   };
   /** A typed earnings row was written or removed (18 section 4.3). */
   'earnings.changed': { shiftId: string };
+  /** An expense or a recurring template was created, changed or deleted (18 section 5). */
+  'expense.changed': { expenseId: string };
   'device.seen': { deviceId: string };
   'odometer.updated': { odometerId: string; userId: string; deleted?: boolean };
   'vehicle.updated': { vehicleId: string };
