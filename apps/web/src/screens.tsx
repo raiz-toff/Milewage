@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Modules } from './api/client';
 import { Backups } from './pages/Backups';
+import { Dashboard } from './pages/Dashboard';
 import { Devices } from './pages/Devices';
 import { SettingsPage } from './pages/SettingsPage';
 import { ShiftsRoutes } from './pages/Shifts';
@@ -19,6 +20,7 @@ export interface Screen {
 }
 
 export const screens: Screen[] = [
+  { path: '/dashboard', label: 'Dashboard', element: <Dashboard /> },
   { path: '/shifts/*', label: 'Shifts', element: <ShiftsRoutes /> },
   { path: '/devices', label: 'Devices', visible: (m) => m.devices, element: <Devices /> },
   { path: '/backups', label: 'Backups', element: <Backups /> },
