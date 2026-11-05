@@ -71,3 +71,31 @@ export function reconcile(i: ReconInput): Recon {
   if (reasons.length === 0) reasons.push('unknown');
   return { status: 'differs', diffM, reasons, calcMismatch: false };
 }
+
+export interface StoredReconInput {
+  server: Pick<ShiftResult, 'inputDigest' | 'totals' | 'algorithmVersion'>;
+  /** What the phone sent at shift end and the server kept (the split is not kept, only the total). */
+  phone: { totalM: number; calcVersion: number; inputDigest: string };
+  editedOnWeb: boolean;
+  latePoints: boolean;
+}
+
+/**
+ * The same comparison after a later server recompute (a label, a trip edit, late points, a recalculate),
+ * against the phone figures stored at shift end. Only the total is stored, so only the total is compared;
+ * the split cannot show a difference here (15 section 7.3).
+ */
+export function reconFromStored(i: StoredReconInput): Recon {
+  const diffM = i.server.totals.totalM - i.phone.totalM;
+  if (diffM === 0) return { status: 'match', diffM, reasons: [], calcMismatch: false };
+  const sameVersion = i.server.algorithmVersion === i.phone.calcVersion;
+  if (i.server.inputDigest === i.phone.inputDigest && sameVersion) {
+    return { status: 'differs', diffM, reasons: ['engine_disagreement'], calcMismatch: true };
+  }
+  const reasons: ReconReason[] = [];
+  if (!sameVersion) reasons.push('calc_version');
+  if (i.editedOnWeb) reasons.push('edited_on_web');
+  if (i.latePoints) reasons.push('late_points');
+  if (reasons.length === 0) reasons.push('unknown');
+  return { status: 'differs', diffM, reasons, calcMismatch: false };
+}

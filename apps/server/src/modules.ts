@@ -17,6 +17,7 @@ import { openDiagnosticsStore } from './diagnostics/store';
 import { backupRoutes } from './routes/backup';
 import { restoreRoutes } from './routes/restore';
 import type { ServerRouteHost } from './app';
+import type { EventEmit } from './events';
 import { SERVER_VERSION } from './version';
 import { createServerState, type ServerState } from './state';
 import { coreRoutes, type CoreContext } from './routes/core';
@@ -24,6 +25,7 @@ import { devicesRoutes } from './routes/devices';
 import { diagnosticsRoutes } from './routes/diagnostics';
 import { DEFAULT_COUNTRIES, settingsReader } from './routes/settings';
 import { createShiftProcessor } from './processing/shift-processor';
+import { createLateRecompute } from './processing/late-recompute';
 import { csvExporter } from './exporters/csv';
 import { geojsonExporter, gpxExporter } from './exporters/geo';
 import { createExporterRegistry, type ExporterRegistry } from './exporters/registry';
@@ -101,6 +103,8 @@ export interface ServerContext extends CoreContext {
   state?: ServerState;
   /** Test seam passed to the restore service (forces a revert). */
   restoreVerify?: (db: ServerContext['db']) => void;
+  /** Debounce of the recompute after late points (5 s unless a test shortens it). */
+  lateRecomputeMs?: number;
   /** Ping interval of `GET /live`; 30 s unless a test shortens it. */
   livePingMs?: number;
   log?: (message: string, fields?: object) => void;
@@ -188,6 +192,15 @@ export function createServerModules(ctx: ServerContext) {
     now: ctx.now,
     stopsOn: () => registry?.isEnabled('stops') ?? false,
   });
+  let busEmit: EventEmit | undefined;
+  const late = createLateRecompute({
+    db: ctx.db,
+    processor,
+    emit: () => busEmit,
+    stopsOn: () => registry?.isEnabled('stops') ?? false,
+    delayMs: ctx.lateRecomputeMs,
+    log: ctx.log,
+  });
   return [
     defineModule({
       ...coreModule,
@@ -215,7 +228,15 @@ export function createServerModules(ctx: ServerContext) {
       },
     }),
     defineModule({ ...devicesModule, routes: devicesRoutes({ ...ctx, authn, readSettings }) }),
-    defineModule({ ...trackingModule, routes: trackingRoutes({ ...ctx, authn, processor }) }),
+    defineModule({
+      ...trackingModule,
+      routes: (host) => {
+        busEmit = (host as ServerRouteHost).bus.emit;
+        trackingRoutes({ ...ctx, authn, processor })(host);
+      },
+      subscriptions: late.subscriptions,
+      jobs: [late.job],
+    }),
     defineModule({ ...stopsModule, routes: stopsRoutes({ ...ctx, authn, processor }) }),
     defineModule({ ...replayModule, routes: replayRoutes({ ...ctx, authn }) }),
     defineModule({

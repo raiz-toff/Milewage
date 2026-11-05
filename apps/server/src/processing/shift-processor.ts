@@ -1,6 +1,6 @@
 import { processShift, type ShiftInput, type ShiftResult } from '@milewage/track-engine';
 import { createProcessingRepository, type Db, type ShiftPatch, type ShiftRow } from '../db';
-import { reconcile, type PhoneSummary, type Recon } from './recon';
+import { reconcile, reconFromStored, type PhoneSummary, type Recon } from './recon';
 
 /** Flags a driver should look at; the rest are information (14 section 8). */
 const REVIEW = new Set([
@@ -27,6 +27,8 @@ function addTrip(t: Totals, x: { kind: 'active' | 'deadhead' | 'personal'; dista
 export interface PhoneReport {
   manifest?: { firstSeq: number; lastSeq: number; pointCount: number };
   result?: PhoneSummary & { segmenter: 'stops' | 'whole_shift'; tripsCount: number };
+  /** The run is caused by points that arrived after the shift ended (recon reason `late_points`). */
+  latePoints?: boolean;
 }
 
 export interface ProcessOutcome {
@@ -81,21 +83,41 @@ export function createShiftProcessor({ db, now, stopsOn }: ShiftProcessorOptions
     run(shift: ShiftRow, phone: PhoneReport = {}, extra: ShiftPatch = {}): ProcessOutcome {
       const result = processShift(inputOf(shift));
       const t = now();
-      const editedAt = new Map(repo.overridesOf(shift.id).map((o) => [o.tripKey, o.editedAt]));
       // Manual trips (distance typed in) are kept by the write below and count in the totals (07 section 3).
       const manual = repo.tripsOf(shift.id).filter((x) => x.source === 'manual');
       const totals = { ...result.totals };
       for (const m of manual) addTrip(totals, m);
-      const recon =
-        phone.result &&
-        reconcile({
-          server: result,
-          phone: phone.result,
-          manifest: phone.manifest,
-          storedPoints: phone.manifest
-            ? repo.countPoints(shift.id, phone.manifest.firstSeq, phone.manifest.lastSeq)
-            : 0,
-        });
+      const overrides = repo.overridesOf(shift.id);
+      const editedAt = new Map(overrides.map((o) => [o.tripKey, o.editedAt]));
+      // Anything the web (or a manual trip) added after the phone's own run explains a different total.
+      const editedOnWeb =
+        manual.length > 0 ||
+        overrides.some((o) => o.deviceId === null) ||
+        (stopsOn() && repo.labelsOf(shift.id).length > 0);
+      const stored =
+        shift.phoneTotalM !== null && shift.phoneCalcVersion !== null && shift.inputDigest !== null
+          ? {
+              totalM: shift.phoneTotalM,
+              calcVersion: shift.phoneCalcVersion,
+              inputDigest: shift.inputDigest,
+            }
+          : undefined;
+      const recon: Recon | undefined = phone.result
+        ? reconcile({
+            server: result,
+            phone: phone.result,
+            manifest: phone.manifest,
+            storedPoints: phone.manifest
+              ? repo.countPoints(shift.id, phone.manifest.firstSeq, phone.manifest.lastSeq)
+              : 0,
+          })
+        : stored &&
+          reconFromStored({
+            server: result,
+            phone: stored,
+            editedOnWeb,
+            latePoints: phone.latePoints === true,
+          });
       const flags = result.flags.map((f) => ({
         code: f.code,
         severity: REVIEW.has(f.code) ? ('review' as const) : ('info' as const),
@@ -114,7 +136,7 @@ export function createShiftProcessor({ db, now, stopsOn }: ShiftProcessorOptions
           severity: 'review',
           detail: JSON.stringify({
             at: null,
-            detail: `server ${result.totals.totalM} m, phone ${phone.result?.totalM} m`,
+            detail: `server ${result.totals.totalM} m, phone ${phone.result?.totalM ?? stored?.totalM} m`,
           }),
         });
       }

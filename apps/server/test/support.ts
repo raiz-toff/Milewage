@@ -29,6 +29,7 @@ export function harness(
   extra: Partial<AppOptions> & {
     restoreVerify?: (db: Db) => void;
     livePingMs?: number;
+    lateRecomputeMs?: number;
     backupOnShiftEnd?: boolean;
     backupDownload?: boolean;
     exporters?: ExporterRegistry;
@@ -59,6 +60,7 @@ export function harness(
     disk,
     restoreVerify: extra.restoreVerify,
     livePingMs: extra.livePingMs,
+    lateRecomputeMs: extra.lateRecomputeMs,
     // Off unless a test asks: a real backup after every shift end would race with the teardown.
     backupOnShiftEnd: extra.backupOnShiftEnd ?? false,
     backupDownload: extra.backupDownload,

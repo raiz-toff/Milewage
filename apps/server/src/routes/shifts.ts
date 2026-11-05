@@ -300,6 +300,31 @@ export function shiftRoutes(
     return reply.header('X-MileWage-Applied', 'true').send(view(saved));
   });
 
+  // Finalize: the driver has reviewed the shift. From now on nothing recomputes or edits it (14 section 11).
+  app.post('/shifts/:ref/finalize', { schema: { params: refParams } }, async (req) => {
+    const p = auth(req, 'S');
+    const row = load(p, refOf(req), false);
+    if (row.status === 'finalized') return view(row); // idempotent
+    if (row.status === 'active')
+      throw new ProblemError('shift_not_ended', 'End the shift before finalizing it.');
+    const saved = shifts.update(row.id, { status: 'finalized', updatedAt: now() }) ?? row;
+    emit('shift.finalized', { shiftId: String(row.id) });
+    return view(saved);
+  });
+
+  // Recalculate: the engine again on the stored points with the current algorithm (calc_version follows it).
+  app.post('/shifts/:ref/recalculate', { schema: { params: refParams } }, async (req) => {
+    const p = auth(req, 'S');
+    const row = load(p, refOf(req)); // a finalized shift is 409 shift_finalized
+    if (row.status === 'active')
+      throw new ProblemError('shift_not_ended', 'End the shift before recalculating it.');
+    if (!processor) return view(row);
+    const saved = trackingOn() ? processor.run(row).shift : processor.retotal(row);
+    emit('shift.updated', { shiftId: String(row.id) });
+    if (trackingOn() && stopsOn()) emit('stops.derived', { shiftId: String(row.id) });
+    return view(saved);
+  });
+
   const purgeQuery = strictObject({ confirm_recent: { type: 'boolean' } }, []);
   app.delete(
     '/shifts/:ref',
