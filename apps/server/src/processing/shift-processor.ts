@@ -18,17 +18,47 @@ const REVIEW = new Set([
   'clock_skew',
 ]);
 
-interface Totals {
+export interface Totals {
   totalM: number;
   activeM: number;
   deadheadM: number;
   personalM: number;
 }
-function addTrip(t: Totals, x: { kind: 'active' | 'deadhead' | 'personal'; distanceM: number }) {
+export function addTrip(
+  t: Totals,
+  x: { kind: 'active' | 'deadhead' | 'personal'; distanceM: number },
+) {
   t.totalM += x.distanceM;
   if (x.kind === 'active') t.activeM += x.distanceM;
   else if (x.kind === 'deadhead') t.deadheadM += x.distanceM;
   else t.personalM += x.distanceM;
+}
+
+type ProcessingRepo = ReturnType<typeof createProcessingRepository>;
+
+/** What the engine reads for a shift: its stored points, segmenter, interruptions, labels and overrides. */
+export function buildShiftInput(
+  repo: ProcessingRepo,
+  shift: ShiftRow,
+  withLabels: boolean,
+): ShiftInput {
+  const interruptions = shift.interruptionsJson
+    ? (JSON.parse(shift.interruptionsJson) as { from_ms: number; to_ms: number }[])
+    : [];
+  return {
+    shiftClientId: shift.clientId,
+    startedAt: shift.startedAt,
+    endedAt: shift.endedAt ?? shift.startedAt,
+    fixes: repo.fixesOf(shift.id),
+    segmenter: shift.segmenter,
+    stopLabels: withLabels
+      ? repo.labelsOf(shift.id).map((l) => ({ stopKey: l.stopKey, role: l.role }))
+      : [],
+    interruptions: interruptions.map((i) => ({ fromMs: i.from_ms, toMs: i.to_ms })),
+    edits: repo
+      .overridesOf(shift.id)
+      .map((o) => ({ tripKey: o.tripKey, kind: o.kind, purpose: o.purpose })),
+  };
 }
 
 export interface PhoneReport {
@@ -71,25 +101,7 @@ export function createShiftProcessor({ db, now, stopsOn }: ShiftProcessorOptions
       );
   };
 
-  const inputOf = (shift: ShiftRow): ShiftInput => {
-    const interruptions = shift.interruptionsJson
-      ? (JSON.parse(shift.interruptionsJson) as { from_ms: number; to_ms: number }[])
-      : [];
-    return {
-      shiftClientId: shift.clientId,
-      startedAt: shift.startedAt,
-      endedAt: shift.endedAt ?? shift.startedAt,
-      fixes: repo.fixesOf(shift.id),
-      segmenter: shift.segmenter,
-      stopLabels: stopsOn()
-        ? repo.labelsOf(shift.id).map((l) => ({ stopKey: l.stopKey, role: l.role }))
-        : [],
-      interruptions: interruptions.map((i) => ({ fromMs: i.from_ms, toMs: i.to_ms })),
-      edits: repo
-        .overridesOf(shift.id)
-        .map((o) => ({ tripKey: o.tripKey, kind: o.kind, purpose: o.purpose })),
-    };
-  };
+  const inputOf = (shift: ShiftRow): ShiftInput => buildShiftInput(repo, shift, stopsOn());
 
   return {
     assertRecomputable,

@@ -20,4 +20,5 @@ test('the bundle keeps the native module external and pins it', async () => {
   const pkg = JSON.parse(readFileSync(join(out, 'native-package.json'), 'utf8'));
   expect(pkg.dependencies).toEqual(dependencies);
   expect(existsSync(join(out, 'migrations', 'core', '0001_identity.sql'))).toBe(true);
+  expect(readFileSync(join(out, 'cli.mjs'), 'utf8')).toMatch(/comparison|dry-run/);
 }, 30_000);

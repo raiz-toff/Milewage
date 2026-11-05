@@ -19,8 +19,13 @@ export function lockedVersion(lock, name) {
 export async function buildServer(outDir = join(root, 'dist')) {
   mkdirSync(outDir, { recursive: true });
   await build({
-    entryPoints: [join(root, 'apps/server/src/main.ts')],
-    outfile: join(outDir, 'server.mjs'),
+    // server.mjs is the API; cli.mjs is `milewage-cli` (10 section 7), both with the native module external.
+    entryPoints: {
+      server: join(root, 'apps/server/src/main.ts'),
+      cli: join(root, 'apps/server/src/cli-main.ts'),
+    },
+    outdir: outDir,
+    outExtension: { '.js': '.mjs' },
     bundle: true,
     platform: 'node',
     target: 'node22',
