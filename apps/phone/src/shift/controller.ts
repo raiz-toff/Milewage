@@ -3,7 +3,10 @@ import { ApiClient, ApiError } from '../api/client';
 import type { Flags } from '../pairing/pairing';
 import type { KeyValueStore } from '../pairing/pairing';
 import type { Tracker } from '../tracker/types';
-import { buildEndExtras } from './endPayload';
+import type { ShiftStore } from '../store/shiftStore';
+import { shiftOf, type Outbox } from '../sync/outbox';
+import type { OutboxRunner } from '../sync/runner';
+import { runLocal } from './endPayload';
 import { PUMP_LIMIT, PointFeed, toFix } from './feed';
 import { newId } from './uuid';
 
@@ -17,8 +20,10 @@ export interface ActiveShift {
   created: boolean;
   odometerStartM: number | null;
   odometerSent: boolean;
-  /** Set when the driver ends the shift; the end call is retried with this same time. */
+  /** Set when the driver ends the shift; the hand-off to the outbox uses this same time. */
   endedAt: number | null;
+  /** End odometer typed at "End shift"; kept here until the hand-off writes it to the outbox. */
+  odometerEndM?: number | null;
   /**
    * Set when a retried create got 409 `shift_already_active`: the server holds another active
    * shift. The local shift keeps recording and is not dropped; the driver decides (see
@@ -51,13 +56,18 @@ export interface ShiftDeps {
   tracker: Tracker;
   feed: PointFeed;
   store: KeyValueStore;
+  /** Shifts, trips and results on the phone (`app.db`). */
+  shifts: ShiftStore;
+  /** What the server has not acknowledged yet, and the engine that sends it. */
+  outbox: Outbox;
+  runner: OutboxRunner;
   /** The device client and the flags from the cached settings, or null when not paired. */
   session: () => Promise<{ client: ApiClient; flags: Flags } | null>;
   now?: () => number;
   newId?: () => string;
   /**
-   * `shift.end` is not sent until every point of the shift is uploaded or quarantined
-   * (08 section 4.2 rule 9). Resolves true when it is safe. Omitted: always safe.
+   * Called for each shift whose `shift.end` is queued, before the outbox runs: the place to upload
+   * that shift's points. The barrier itself is the runner's `canSend` (08 section 4.2 rule 9).
    */
   beforeEnd?: (clientId: string) => Promise<boolean>;
 }
@@ -89,13 +99,23 @@ export class ShiftController {
     if (this.active && this.active.endedAt === null) {
       this.attach(this.active);
       this.seed(this.active);
+    } else if (this.active) {
+      await this.handOff(); // killed between "End shift" and the hand-off
     }
     return this.active;
   }
 
-  /** False only for the local shift whose create the server has not acknowledged yet. */
-  isCreated(clientId: string): boolean {
-    return !(this.active?.clientId === clientId && !this.active.created);
+  /** False while the server has not acknowledged this shift's create (live or queued). */
+  async isCreated(clientId: string): Promise<boolean> {
+    if (this.active?.clientId === clientId) return this.active.created;
+    return !(await this.d.outbox.has('shift.create', clientId));
+  }
+
+  /** The shift's create was refused for good (parked): its points must not block other shifts. */
+  async isParked(clientId: string): Promise<boolean> {
+    return (await this.d.outbox.parked()).some(
+      (i) => i.kind === 'shift.create' && i.entityKey === clientId,
+    );
   }
 
   async vehicles(): Promise<Vehicle[]> {
@@ -126,13 +146,22 @@ export class ShiftController {
     this.active = shift;
     this.attach(shift);
     await this.save();
+    await this.begin(shift, s.flags.timezone);
+    if (shift.odometerStartM !== null) {
+      await this.d.shifts.setOdometer(
+        shift.clientId,
+        'shift_start',
+        shift.odometerStartM,
+        shift.startedAt,
+      );
+    }
     await this.d.store.set(K_VEHICLE, String(opts.vehicleId));
     const create = await this.create(s.client, shift);
     if (create === 'ok' || create === 'pending') {
       if (create === 'ok') await this.sendOdometer(s.client, this.active!);
       return { ok: true, shift: this.active! };
     }
-    await this.discard();
+    await this.discard(true);
     return create.kind === 'conflict'
       ? { ok: false, reason: 'server_has_active', active: create.active }
       : { ok: false, reason: 'rejected' };
@@ -157,7 +186,7 @@ export class ShiftController {
   async useServerShift(): Promise<StartResult> {
     const conflict = this.conflict;
     if (!conflict) return { ok: false, reason: 'rejected' };
-    await this.discard();
+    await this.discard(true);
     return this.adopt(conflict);
   }
 
@@ -189,7 +218,18 @@ export class ShiftController {
     this.active = shift;
     this.attach(shift);
     await this.save();
+    await this.begin(shift, s.flags.timezone);
     return { ok: true, shift };
+  }
+
+  private begin(shift: ActiveShift, timeZone: string) {
+    return this.d.shifts.begin({
+      clientId: shift.clientId,
+      vehicleId: shift.vehicleId,
+      segmenter: shift.segmenter,
+      startedAt: shift.startedAt,
+      timeZone,
+    });
   }
 
   /** Edit the start odometer (metres); sent now if possible, else with the next `sync`. */
@@ -197,6 +237,12 @@ export class ShiftController {
     if (!this.active) return;
     this.active = { ...this.active, odometerStartM: Math.round(readingM), odometerSent: false };
     await this.save();
+    await this.d.shifts.setOdometer(
+      this.active.clientId,
+      'shift_start',
+      this.active.odometerStartM!,
+      this.active.startedAt,
+    );
     await this.sync();
   }
 
@@ -213,18 +259,89 @@ export class ShiftController {
       this.pump(); // last look at the buffer so the live number matches what was recorded
       this.d.tracker.stop();
       this.detach();
-      this.active = { ...shift, endedAt: this.now() };
-      if (opts.odometerEndM != null) await this.putOdometer('shift_end', opts.odometerEndM);
+      this.active = { ...shift, endedAt: this.now(), odometerEndM: opts.odometerEndM ?? null };
       await this.save();
     }
+    await this.handOff();
     return { ok: true, sent: await this.sync() };
   }
 
   /**
-   * Finishes anything the server has not acknowledged: create, start odometer, end. Returns true
-   * when nothing is left to send. Called at app start, after the network comes back and by `end`.
+   * Ends the shift on the phone: runs the shared engine over the stored points, queues what the
+   * server has not seen (create, odometer readings, then `shift.end` with the manifest and the
+   * phone's result) and stores the totals, trips, stops and route, so everything shows offline
+   * (15 section 5). Safe to run again after a kill: the queue is written first and `shift.end`
+   * last, and a shift that is already `ended` is left alone.
+   */
+  private async handOff(): Promise<void> {
+    const shift = this.active;
+    if (!shift || shift.endedAt === null) return;
+    const s = await this.d.session();
+    const endedAt = shift.endedAt;
+    const local = !s || s.flags.tracking ? runLocal(this.d.tracker, { ...shift, endedAt }) : null;
+    const { outbox, shifts } = this.d;
+    if (!(await outbox.has('shift.end', shift.clientId))) {
+      if (!shift.created) {
+        await outbox.enqueue('shift.create', shift.clientId, {
+          client_id: shift.clientId,
+          vehicle_id: shift.vehicleId,
+          started_at: shift.startedAt,
+          segmenter: shift.segmenter,
+        });
+      }
+      if (shift.odometerStartM !== null && !shift.odometerSent) {
+        await outbox.enqueue('odometer.put', `${shift.clientId}:shift_start`, {
+          reading_m: shift.odometerStartM,
+          recorded_at: shift.startedAt,
+        });
+      }
+      if (shift.odometerEndM != null) {
+        await outbox.enqueue('odometer.put', `${shift.clientId}:shift_end`, {
+          reading_m: Math.round(shift.odometerEndM),
+          recorded_at: endedAt,
+        });
+      }
+      await outbox.enqueue('shift.end', shift.clientId, { ended_at: endedAt, ...local?.extras });
+    }
+    if (shift.odometerEndM != null) {
+      await shifts.setOdometer(shift.clientId, 'shift_end', shift.odometerEndM, endedAt);
+    }
+    await shifts.finish({
+      clientId: shift.clientId,
+      endedAt,
+      result: local?.result ?? null,
+      manifest: local?.manifest ?? null,
+    });
+    await this.discard(false);
+  }
+
+  /**
+   * Finishes anything the server has not acknowledged: the running shift's create and start
+   * odometer, then the outbox (ended shifts: create, odometer, `end`). Returns true when nothing
+   * is left to send. Called at app start, after the network comes back and by `end`.
    */
   async sync(): Promise<boolean> {
+    if (this.active && this.active.endedAt !== null) await this.handOff();
+    const live = this.active ? await this.syncLive() : true;
+    return (await this.flushOutbox()) && live;
+  }
+
+  private async flushOutbox(): Promise<boolean> {
+    const { outbox, runner } = this.d;
+    if (this.d.beforeEnd) {
+      const ending = new Set(
+        (await outbox.pending())
+          .filter((i) => i.kind === 'shift.end')
+          .map((i) => shiftOf(i.entityKey)),
+      );
+      for (const id of ending) await this.d.beforeEnd(id);
+    }
+    await runner.run();
+    const c = await outbox.counts();
+    return c.pending === 0 && c.parked === 0;
+  }
+
+  private async syncLive(): Promise<boolean> {
     let shift = this.active;
     if (!shift) return true;
     const s = await this.d.session();
@@ -241,46 +358,13 @@ export class ShiftController {
           }
           return false;
         }
-        await this.discard();
+        await this.discard(true);
         return false;
       }
       shift = this.active!;
     }
     await this.sendOdometer(s.client, shift);
-    shift = this.active!;
-    if (shift.endedAt === null) return shift.odometerSent;
-    if (this.d.beforeEnd && !(await this.d.beforeEnd(shift.clientId))) return false;
-    try {
-      const extras = s.flags.tracking
-        ? buildEndExtras(this.d.tracker, { ...shift, endedAt: shift.endedAt })
-        : {};
-      await s.client.request('POST', `/shifts/${shift.clientId}/end`, {
-        ended_at: shift.endedAt,
-        ...extras,
-      });
-    } catch (e) {
-      // 409 shift_finalized is terminal: the driver finalized it on the web, nothing more to send.
-      if (!(e instanceof ApiError && e.status === 409)) {
-        if (e instanceof ApiError && !e.retryable && e.status !== 404) await this.discard();
-        return false;
-      }
-    }
-    await this.discard();
-    return true;
-  }
-
-  private async putOdometer(kind: 'shift_start' | 'shift_end', readingM: number) {
-    const s = await this.d.session();
-    if (!s || !this.active) return;
-    try {
-      await s.client.request('PUT', `/shifts/${this.active.clientId}/odometer/${kind}`, {
-        reading_m: Math.round(readingM),
-        recorded_at: this.now(),
-      });
-    } catch {
-      // Not acknowledged: only the start reading is retried (kept in state); the end reading is
-      // not queued here (the outbox arrives with M5.1).
-    }
+    return this.active!.odometerSent || this.active!.odometerStartM === null;
   }
 
   private async sendOdometer(client: ApiClient, shift: ActiveShift) {
@@ -353,12 +437,18 @@ export class ShiftController {
     this.unsub = null;
   }
 
-  private async discard() {
+  /** Forgets the running shift. `dropRecord` also removes its row, queue and results (it never reached the server). */
+  private async discard(dropRecord: boolean) {
+    const id = this.active?.clientId;
     this.detach();
     if (this.active?.endedAt === null) this.d.tracker.stop();
     this.active = null;
     this.acc = null;
     await this.d.store.remove(KEY);
+    if (dropRecord && id) {
+      await this.d.outbox.dropShift(id);
+      await this.d.shifts.remove(id);
+    }
   }
 
   private async save() {

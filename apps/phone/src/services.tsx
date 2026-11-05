@@ -3,13 +3,18 @@ import { createContext, useContext, type ComponentType, type ReactNode } from 'r
 import { Platform } from 'react-native';
 import type { FetchFn } from './api/client';
 import { installCrashHandler, PhoneDiagnostics } from './diagnostics/phoneDiagnostics';
+import { createLazyAppDb } from './db/lazyDb';
+import { openExpoAppDb, type AppSqlDb } from './db/appDb';
 import { Pairing, type KeyValueStore } from './pairing/pairing';
 import { AndroidPermissions, createReactNativePermissionApi } from './permissions/android';
 import type { PermissionsPort } from './permissions/ladder';
 import { createExpoSecureBackend, SecureKeyValueStore } from './storage/secureStore';
 import { openExpoDb, SqliteKeyValueStore } from './storage/sqliteStore';
 import { ShiftController } from './shift/controller';
-import { PointFeed } from './shift/feed';
+import { PUMP_LIMIT, PointFeed } from './shift/feed';
+import { ShiftStore, type ServerRecon, type ServerShift } from './store/shiftStore';
+import { Outbox, shiftOf } from './sync/outbox';
+import { OutboxRunner } from './sync/runner';
 import { createLazyNativeTracker } from './tracker/native';
 import type { Tracker } from './tracker/types';
 import { UploadWorker } from './upload/worker';
@@ -34,6 +39,10 @@ export interface Services {
   pairing: Pairing;
   feed: PointFeed;
   shift: ShiftController;
+  /** Shifts, trips and results on the phone (`app.db`). */
+  shifts: ShiftStore;
+  outbox: Outbox;
+  runner: OutboxRunner;
   uploader: UploadWorker;
   diagnostics: PhoneDiagnostics;
   /** Loads the diagnostics ring, applies the cached level and records `app.start` (once). */
@@ -52,6 +61,8 @@ export interface Parts {
   permissions: PermissionsPort;
   secure: KeyValueStore;
   plain: KeyValueStore;
+  /** Opens `app.db` (migrated on first use). */
+  openAppDb: () => Promise<AppSqlDb>;
   fetch: FetchFn;
   now?: () => number;
   newId?: () => string;
@@ -84,6 +95,29 @@ export function createServices(p: Parts): Services {
   });
   const feed = new PointFeed(p.tracker);
   const session = () => pairing.session();
+  const appDb = createLazyAppDb(p.openAppDb);
+  const shifts = new ShiftStore(appDb, p.now);
+  const outbox = new Outbox(appDb, p.now);
+  const runner = new OutboxRunner({
+    outbox,
+    session,
+    rand: p.rand,
+    // shift.end waits until every point of the shift is uploaded or quarantined (15 section 6.2).
+    canSend: (item) =>
+      item.kind !== 'shift.end' ||
+      !feed.readPending(PUMP_LIMIT).some((pt) => pt.shiftClientId === shiftOf(item.entityKey)),
+    onSent: async ({ item, outcome, response }) => {
+      if (item.kind !== 'shift.end') return;
+      const id = shiftOf(item.entityKey);
+      const body = response?.data as (ServerShift & { recon?: ServerRecon }) | undefined;
+      if (outcome === 'sent' && typeof body?.id === 'number') {
+        await shifts.applyEnd(id, body, body.recon ?? null);
+      } else {
+        await shifts.setSyncState(id, 'on_server');
+      }
+    },
+    onParked: (item) => shifts.setSyncState(shiftOf(item.entityKey), 'needs_attention'),
+  });
   // The worker and the shift controller need each other: the worker asks whether a shift is
   // created and to flush the outbox; the controller waits for the worker before it sends `end`.
   const late: { uploader?: UploadWorker } = {};
@@ -91,6 +125,9 @@ export function createServices(p: Parts): Services {
     tracker: p.tracker,
     feed,
     store: p.plain,
+    shifts,
+    outbox,
+    runner,
     session,
     now: p.now,
     newId: p.newId,
@@ -101,6 +138,7 @@ export function createServices(p: Parts): Services {
     feed,
     session,
     shiftReady: (id) => shift.isCreated(id),
+    shiftParked: (id) => shift.isParked(id),
     flushOutbox: () => shift.sync(),
     now: p.now,
     rand: p.rand,
@@ -139,6 +177,9 @@ export function createServices(p: Parts): Services {
     pairing,
     feed,
     shift,
+    shifts,
+    outbox,
+    runner,
     uploader,
     diagnostics,
     startDiagnostics,
@@ -170,6 +211,7 @@ export function defaultServices(): Services {
     permissions: new AndroidPermissions({ api: createReactNativePermissionApi(), store: plain }),
     secure: new SecureKeyValueStore(createExpoSecureBackend()),
     plain,
+    openAppDb: () => openExpoAppDb(),
     fetch: (url, init) => fetch(url, init),
     deviceInfo: {
       make: clean(c.Brand, 'unknown', /[^A-Za-z0-9 ._+-]/g),

@@ -70,6 +70,8 @@ export interface Flags {
   segmenter: 'stops' | 'whole_shift';
   diagnostics: boolean;
   distanceUnit: 'km' | 'mi';
+  /** IANA zone of the instance; local dates never use the device zone (15 section 10). */
+  timezone: string;
 }
 
 export function deriveFlags(s: CachedSettings | null): Flags {
@@ -82,6 +84,7 @@ export function deriveFlags(s: CachedSettings | null): Flags {
     segmenter: stops ? 'stops' : 'whole_shift',
     diagnostics: s?.modules.diagnostics === true,
     distanceUnit: s?.distance_unit ?? 'km',
+    timezone: s?.timezone ?? 'UTC',
   };
 }
 

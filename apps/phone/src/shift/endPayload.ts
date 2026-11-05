@@ -1,4 +1,4 @@
-import { processShift, type Fix } from '@milewage/track-engine';
+import { processShift, type Fix, type ShiftResult } from '@milewage/track-engine';
 import type { components } from '@milewage/shared/generated/api-types';
 import type { Tracker } from '../tracker/types';
 import { PUMP_LIMIT, toFix } from './feed';
@@ -31,20 +31,26 @@ export function readAllRows(tracker: Tracker, clientId: string) {
   }
 }
 
+export interface LocalRun {
+  result: ShiftResult;
+  manifest: { firstSeq: number; lastSeq: number; pointCount: number };
+  extras: EndExtras;
+}
+
 /**
- * Builds the manifest and the phone's result for `shift.end`. Runs after the upload barrier, so
- * the rows read here are the ones the server has. Points the server quarantined are no longer in
- * the buffer and so are in neither the manifest nor the digest; the server did not keep them
- * either, so the two sides agree on the same set.
+ * Runs the shared engine over every stored row of the shift (PENDING, UPLOADED, never the
+ * quarantined ones) and builds the manifest and the phone's result for `shift.end` (15 section 5,
+ * 6.1). It runs at shift end, offline, before anything is uploaded; points the server later
+ * refuses show up as `points_missing` in the reconciliation, which is what that reason is for.
  *
- * Not sent: `interruptions` (they come from the native recovery path, which does not write them
- * yet) and the clock-skew input. A shift without stored points sends neither field. Any engine
- * failure sends nothing extra: ending the shift never depends on the engine.
+ * Returns null for a shift without stored points and when the engine throws: ending the shift
+ * never depends on the engine (the server calculates, the phone shows "Totals will appear after
+ * sync"). Not sent: `interruptions` (the native recovery path does not write them yet).
  */
-export function buildEndExtras(tracker: Tracker, shift: EndShiftInfo): EndExtras {
+export function runLocal(tracker: Tracker, shift: EndShiftInfo): LocalRun | null {
   try {
     const rows = readAllRows(tracker, shift.clientId);
-    if (rows.length === 0) return {};
+    if (rows.length === 0) return null;
     const fixes: Fix[] = rows.map(toFix);
     const r = processShift({
       shiftClientId: shift.clientId,
@@ -53,24 +59,26 @@ export function buildEndExtras(tracker: Tracker, shift: EndShiftInfo): EndExtras
       fixes,
       segmenter: shift.segmenter,
     });
+    const first = rows[0]!.seq;
+    const last = rows[rows.length - 1]!.seq;
     return {
-      manifest: {
-        first_seq: rows[0]!.seq,
-        last_seq: rows[rows.length - 1]!.seq,
-        point_count: rows.length,
-      },
-      phone_result: {
-        calc_version: r.algorithmVersion,
-        segmenter: shift.segmenter,
-        input_digest: r.inputDigest,
-        total_m: r.totals.totalM,
-        active_m: r.totals.activeM,
-        deadhead_m: r.totals.deadheadM,
-        personal_m: r.totals.personalM,
-        trips_count: r.trips.length,
+      result: r,
+      manifest: { firstSeq: first, lastSeq: last, pointCount: rows.length },
+      extras: {
+        manifest: { first_seq: first, last_seq: last, point_count: rows.length },
+        phone_result: {
+          calc_version: r.algorithmVersion,
+          segmenter: shift.segmenter,
+          input_digest: r.inputDigest,
+          total_m: r.totals.totalM,
+          active_m: r.totals.activeM,
+          deadhead_m: r.totals.deadheadM,
+          personal_m: r.totals.personalM,
+          trips_count: r.trips.length,
+        },
       },
     };
   } catch {
-    return {};
+    return null;
   }
 }

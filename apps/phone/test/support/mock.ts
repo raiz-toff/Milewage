@@ -3,6 +3,7 @@ import { MemoryStore, type CachedSettings } from '../../src/pairing/pairing';
 import { FakePermissions } from '../../src/permissions/fake';
 import { createServices, type Parts, type Services } from '../../src/services';
 import { FakeTracker } from '../../src/tracker/fake';
+import { openNodeAppDb } from './nodeSql';
 
 export interface Recorded {
   method: string;
@@ -90,6 +91,7 @@ export function makeServices(
     permissions: new FakePermissions(),
     secure,
     plain,
+    openAppDb: async () => openNodeAppDb(),
     fetch: fetchFn,
     autoUpload: false,
     ...rest,

@@ -81,7 +81,9 @@ export interface WorkerDeps {
   feed: PointFeed;
   session: () => Promise<{ client: ApiClient; flags: Flags } | null>;
   /** Has `POST /shifts` for this shift been acknowledged (08 section 4.2 rule 2)? */
-  shiftReady: (clientId: string) => boolean;
+  shiftReady: (clientId: string) => boolean | Promise<boolean>;
+  /** The shift's create was refused for good: park its points instead of waiting for it. */
+  shiftParked?: (clientId: string) => boolean | Promise<boolean>;
   /** Drain the outbox (shift create, odometer, end); called on 404 `shift_not_found`. */
   flushOutbox: () => Promise<unknown>;
   now?: () => number;
@@ -191,9 +193,13 @@ export class UploadWorker {
         return this.done(parked ? 'parked' : 'idle', uploaded, rejected, null);
       }
       const shiftId = pending[0]!.shiftClientId;
-      if (!this.d.shiftReady(shiftId)) {
+      if (!(await this.d.shiftReady(shiftId))) {
         await this.d.flushOutbox();
-        if (!this.d.shiftReady(shiftId)) {
+        if (await this.d.shiftParked?.(shiftId)) {
+          this.parked.add(shiftId); // never dropped; the driver sees the shift needs attention
+          continue;
+        }
+        if (!(await this.d.shiftReady(shiftId))) {
           return this.done('waiting_create', uploaded, rejected, this.backoff.next());
         }
       }
@@ -297,7 +303,7 @@ export class UploadWorker {
       const n = (this.notFound.get(shiftId) ?? 0) + 1;
       this.notFound.set(shiftId, n);
       await this.d.flushOutbox();
-      if (n >= NOT_FOUND_ATTEMPTS && this.d.shiftReady(shiftId)) {
+      if (n >= NOT_FOUND_ATTEMPTS && (await this.d.shiftReady(shiftId))) {
         this.parked.add(shiftId); // the server still does not know it: park, never drop
         return { kind: 'rejected', rejected: 0 };
       }

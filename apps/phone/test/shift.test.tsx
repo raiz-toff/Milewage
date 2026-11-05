@@ -1,3 +1,4 @@
+import { openNodeAppDb } from './support/nodeSql';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { algorithmVersion, processShift } from '@milewage/track-engine';
 import { toFix } from '../src/shift/feed';
@@ -146,22 +147,30 @@ describe('ShiftController', () => {
     expect(plain.data.has('shift.active')).toBe(false);
   });
 
-  it('an end that cannot be sent is kept, then retried with the same ended_at after a restart', async () => {
+  it('an end that cannot be sent is queued with its ended_at, then sent unchanged after a restart', async () => {
     let up = false;
     const routes = server({
       [`POST /shifts/${ID}/end`]: () => (up ? json(200, {}) : problem(503, 'x', true)),
     });
-    const { services, plain, clock } = setup(routes);
+    const db = openNodeAppDb();
+    const { services, clock } = setup(routes, { paired: true, openAppDb: async () => db });
     await services.shift.start({ vehicleId: 3 });
     clock.t = 7_000;
     expect(await services.shift.end()).toEqual({ ok: true, sent: false });
-    expect(services.shift.current?.endedAt).toBe(7_000);
+    expect(services.shift.current).toBeNull();
+    expect((await services.outbox.pending()).map((i) => [i.kind, i.body])).toEqual([
+      ['shift.end', { ended_at: 7_000 }],
+    ]);
+    expect(await services.shifts.get(ID)).toMatchObject({ status: 'ended', ended_at: 7_000 });
 
-    // New process: same storage, new controller.
+    // New process: same app.db, new object graph.
     clock.t = 500_000;
     up = true;
-    const again = makeServices(routes.fetch, { paired: true, now: () => clock.t });
-    again.plain.data.set('shift.active', plain.data.get('shift.active')!);
+    const again = makeServices(routes.fetch, {
+      paired: true,
+      now: () => clock.t,
+      openAppDb: async () => db,
+    });
     await again.services.shift.load();
     expect(await again.services.shift.sync()).toBe(true);
     const ends = routes.calls.filter((c) => c.path.endsWith('/end'));
