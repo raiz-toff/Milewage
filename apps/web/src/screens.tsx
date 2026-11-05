@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { Modules } from './api/client';
+import { AnalyticsPage } from './pages/Analytics';
 import { Backups } from './pages/Backups';
 import { Dashboard } from './pages/Dashboard';
 import { ExpensesPage } from './pages/Expenses';
@@ -35,6 +36,12 @@ export const screens: Screen[] = [
     label: 'Expenses',
     visible: (m) => m.expenses,
     element: <ExpensesPage />,
+  },
+  {
+    path: '/analytics',
+    label: 'Analytics',
+    visible: (m) => m.analytics,
+    element: <AnalyticsPage />,
   },
   { path: '/goals', label: 'Goals', visible: (m) => m.goals, element: <GoalsPage /> },
   { path: '/tax', label: 'Tax', visible: (m) => m.tax, element: <TaxPage /> },
