@@ -9,6 +9,7 @@ import { SortTable } from '../ui/SortTable';
 import type { Column } from '../ui/SortTable';
 import { Button, FormError } from '../ui/form';
 import { ExportButtons } from './Exports';
+import { ShiftEarnings } from './ShiftEarnings';
 import { ShiftOdometer } from './ShiftOdometer';
 import { StopsPanel } from './Stops';
 import { TripsTable } from './Trips';
@@ -291,6 +292,10 @@ export function ShiftDetail() {
           <h2 className="font-heading text-lg">Stops</h2>
           <StopsPanel shift={shift} onShift={setShift} />
         </section>
+      ) : null}
+
+      {settings.modules.earnings && shift.status !== 'active' ? (
+        <ShiftEarnings shift={shift} />
       ) : null}
 
       {settings.modules.replay ? <RouteView shiftId={shift.id} /> : null}
