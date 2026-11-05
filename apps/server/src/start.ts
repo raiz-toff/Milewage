@@ -53,6 +53,8 @@ export async function startServer(
         configDir: config.configDir,
         state,
         backupSchedule: state.mode === 'normal',
+        backupOnShiftEnd: config.backup.onShiftEnd,
+        backupDownload: config.backup.download,
         log,
         diagnosticsPath: join(config.dataDir, 'diagnostics.db'),
         onDiagnosticsRecreated: (movedTo, reason) =>

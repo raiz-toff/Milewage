@@ -89,6 +89,8 @@ export function createBackupService(o: BackupServiceOptions) {
       return userId === undefined ? undefined : record(trigger, userId, artifact);
     },
     timeZone: o.timeZone,
+    /** Where a recorded backup lives on the `backups` volume. */
+    pathOf: (row: BackupRunRow) => join(o.dir, row.fileName),
     cleanTemp: () => engine.cleanTemp(),
     /** Undefined when there is no owner yet. Rejects with BackupError; older backups are never deleted then. */
     run(trigger: BackupTrigger): Promise<BackupRunRow | undefined> {
@@ -96,6 +98,7 @@ export function createBackupService(o: BackupServiceOptions) {
       return inFlight;
     },
     list: () => repo.list(),
+    byId: (id: number) => repo.byId(id),
     lastFailure: () => lastFailure,
     /** Creation time of the newest run in the given triggers; used for the 15-minute limit. */
     lastRunAt: (triggers: readonly BackupTrigger[]) =>

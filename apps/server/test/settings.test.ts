@@ -41,7 +41,7 @@ test('the modules object follows the registry: registered is true, absent is fal
     live: true,
     tracking: true,
     stops: true,
-    backup_download: false,
+    backup_download: true,
     exporters: [],
     countries: ['US', 'CA', 'GB'],
   });

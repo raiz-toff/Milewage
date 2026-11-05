@@ -44,14 +44,15 @@ export function moduleFlags(
   reg: ModuleRegistry,
   stopsEnabled: boolean,
   countries: readonly string[],
+  backupDownload = false,
 ) {
   const on = (name: string) => reg.isEnabled(name);
   const flag = (names: string[]) => Object.fromEntries(names.map((n) => [n, on(n)]));
   return {
     ...flag(['sync', 'devices', 'tracking', 'replay', 'live', 'diagnostics', 'capture']),
     stops: on('stops') && stopsEnabled,
-    // The engine is always on; this flag is the `backup.download` toggle and its route (M3.2).
-    backup_download: false,
+    // The engine is always on; this flag is the `backup.download` toggle and its routes.
+    backup_download: backupDownload,
     exporters: ['csv', 'pdf', 'gpx', 'geojson'].filter((f) => on(`export_${f}`)),
     countries: [...countries],
   };
@@ -77,6 +78,8 @@ type ReaderContext = {
   now: () => number;
   registry: ModuleRegistry;
   countries: readonly string[];
+  /** `backup.download`; false until the backup module says otherwise. */
+  backupDownload?: boolean;
 };
 
 /** The `Settings` response for a user. Also returned to a phone when it pairs. */
@@ -88,7 +91,7 @@ export function settingsReader(ctx: ReaderContext) {
     const verbose = row.diagnosticsLevel === 'verbose';
     const expired = verbose && (row.diagnosticsVerboseUntil ?? 0) <= ctx.now();
     return {
-      modules: moduleFlags(ctx.registry, row.stopsEnabled === 1, ctx.countries),
+      modules: moduleFlags(ctx.registry, row.stopsEnabled === 1, ctx.countries, ctx.backupDownload),
       engine_version: algorithmVersion,
       country: row.country,
       distance_unit: row.distanceUnit,

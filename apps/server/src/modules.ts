@@ -74,6 +74,8 @@ export interface ServerContext extends CoreContext {
   secrets?: SecretsStore;
   /** Start the nightly 03:30 job (off in tests). */
   backupSchedule?: boolean;
+  /** `backup.on_shift_end` (default on): a verified backup after a shift ends, at most one per 15 minutes. */
+  backupOnShiftEnd?: boolean;
   /** Use this service instead of building one, so setup, migration and restore share it. */
   backup?: BackupService;
   /** Free-space rules (10 section 11.3); omitted means plenty of room. */
@@ -114,7 +116,12 @@ export function createServerModules(ctx: ServerContext) {
   const secrets = ctx.secrets ?? fileSecrets(ctx.configDir ?? 'config');
   const countries = ctx.countries ?? DEFAULT_COUNTRIES;
   const readSettings = (host: { registry: Parameters<typeof settingsReader>[0]['registry'] }) =>
-    settingsReader({ ...ctx, registry: host.registry, countries });
+    settingsReader({
+      ...ctx,
+      registry: host.registry,
+      countries,
+      backupDownload: ctx.backupDownload !== false,
+    });
   let store: ReturnType<typeof openDiagnosticsStore> | undefined;
   const diagnosticsStore = () =>
     (store ??= openDiagnosticsStore(
@@ -201,10 +208,23 @@ export function createServerModules(ctx: ServerContext) {
     defineModule({
       ...backupModule,
       routes: (host) => {
-        backupRoutes({ ...ctx, authn, service: backup })(host);
+        backupRoutes({ ...ctx, authn, service: backup, download: ctx.backupDownload })(host);
         restoreRoutes({ ...ctx, restore, uploadDir })(host);
       },
       jobs: ctx.backupSchedule ? [nightlyBackupJob(backup, ctx.now, ctx.log)] : [],
+      subscriptions:
+        ctx.backupOnShiftEnd === false
+          ? {}
+          : {
+              'shift.ended'() {
+                // One manual or shift-end backup per 15 minutes for the instance (10 section 13).
+                const last = backup.lastRunAt(['manual', 'shift_end']);
+                if (last !== undefined && ctx.now() - last < 15 * 60_000) return;
+                backup
+                  .run('shift_end')
+                  .catch((e: Error) => ctx.log?.('shift-end backup failed', { error: e.message }));
+              },
+            },
     }),
   ] as const;
 }

@@ -9,6 +9,24 @@ import { toBackup } from './backup';
 import type { AuthFn } from './util';
 
 const DAY = 24 * 60 * 60 * 1000;
+/**
+ * 10 section 6: remind until a backup was downloaded in the last 30 days or the driver said a synced
+ * folder exists (asked again every 90 days). Nothing to remind about before the first backup.
+ */
+export function offsiteState(
+  row:
+    { offsiteLastDownloadAt: number | null; offsiteSyncedElsewhereAt: number | null } | undefined,
+  hasBackup: boolean,
+  t: number,
+) {
+  const downloaded = (row?.offsiteLastDownloadAt ?? 0) > t - 30 * DAY;
+  const synced = (row?.offsiteSyncedElsewhereAt ?? 0) > t - 90 * DAY;
+  return {
+    last_download_at: row?.offsiteLastDownloadAt ?? null,
+    synced_elsewhere_at: row?.offsiteSyncedElsewhereAt ?? null,
+    reminder_due: hasBackup && !downloaded && !synced,
+  };
+}
 const size = (path: string) => {
   try {
     return statSync(path).size;
@@ -42,10 +60,6 @@ export function statusRoute(app: FastifyInstance, ctx: StatusContext) {
     const disk = ctx.disk?.snapshot();
     const last = ctx.lastBackup?.();
     const row = settings.get(userId);
-    // 10 section 6: remind until a backup was downloaded in the last 30 days or the driver said a
-    // synced folder exists (asked again every 90 days). Nothing to remind about before the first backup.
-    const downloaded = (row?.offsiteLastDownloadAt ?? 0) > t - 30 * DAY;
-    const synced = (row?.offsiteSyncedElsewhereAt ?? 0) > t - 90 * DAY;
     return {
       app_version: SERVER_VERSION,
       schema_version: count('SELECT count(*) FROM schema_migrations'),
@@ -55,11 +69,7 @@ export function statusRoute(app: FastifyInstance, ctx: StatusContext) {
       disk_free_bytes: disk?.freeBytes ?? 0,
       disk_state: disk?.state ?? 'ok',
       last_backup: last ? toBackup(last) : null,
-      offsite: {
-        last_download_at: row?.offsiteLastDownloadAt ?? null,
-        synced_elsewhere_at: row?.offsiteSyncedElsewhereAt ?? null,
-        reminder_due: last !== undefined && !downloaded && !synced,
-      },
+      offsite: offsiteState(row, last !== undefined, t),
       paired_device_count: count('SELECT count(*) FROM devices WHERE revoked_at IS NULL'),
       mode: state.mode,
       ...(ctx.registry.isEnabled('diagnostics') && ctx.diagnostics

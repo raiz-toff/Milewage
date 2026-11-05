@@ -17,6 +17,8 @@ export interface ServerConfig {
   /** `MILEWAGE_TRUST_PROXY`: comma-separated proxy addresses or CIDRs, or `true`. Empty means no proxy is trusted. */
   trustProxy: boolean | string[];
   settings: ModuleSettings;
+  /** `backup.on_shift_end` and `backup.download` (10 section 3.1): both on by default. */
+  backup: { onShiftEnd: boolean; download: boolean };
 }
 
 export function loadConfig(env: Readonly<Record<string, string | undefined>>): ServerConfig {
@@ -27,6 +29,8 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): S
     );
   }
   const configDir = env.MILEWAGE_CONFIG_DIR ?? 'config';
+  const settings = readSettingsFile(join(configDir, 'settings.json'));
+  const file = (settings as { backup?: { on_shift_end?: unknown; download?: unknown } }).backup;
   return {
     host: env.MILEWAGE_HOST ?? '0.0.0.0',
     port,
@@ -35,8 +39,23 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): S
     backupDir: env.MILEWAGE_BACKUP_DIR ?? 'backups',
     logLevel: env.MILEWAGE_LOG_LEVEL ?? 'info',
     trustProxy: parseTrustProxy(env.MILEWAGE_TRUST_PROXY),
-    settings: readSettingsFile(join(configDir, 'settings.json')),
+    settings,
+    backup: {
+      onShiftEnd: flag(env.MILEWAGE_BACKUP_ON_SHIFT_END, file?.on_shift_end, 'backup.on_shift_end'),
+      download: flag(env.MILEWAGE_BACKUP_DOWNLOAD, file?.download, 'backup.download'),
+    },
   };
+}
+
+/** A switch: default on, then `config/settings.json`, then the environment (`0` or `1`). */
+function flag(env: string | undefined, file: unknown, name: string): boolean {
+  if (env !== undefined && env !== '') {
+    if (env !== '0' && env !== '1') throw new ConfigError(`The switch for ${name} must be 0 or 1.`);
+    return env === '1';
+  }
+  if (file === undefined) return true;
+  if (typeof file !== 'boolean') throw new ConfigError(`settings.${name} must be true or false.`);
+  return file;
 }
 
 function readSettingsFile(path: string): ModuleSettings {

@@ -25,7 +25,12 @@ const site = { host: 'mw.test', origin: 'http://mw.test' };
 /** A server on a throwaway database with an injectable clock. Call `close()` in afterEach. */
 export function harness(
   enabled: Record<string, boolean> = {},
-  extra: Partial<AppOptions> & { restoreVerify?: (db: Db) => void; livePingMs?: number } = {},
+  extra: Partial<AppOptions> & {
+    restoreVerify?: (db: Db) => void;
+    livePingMs?: number;
+    backupOnShiftEnd?: boolean;
+    backupDownload?: boolean;
+  } = {},
 ) {
   const dir = mkdtempSync(join(tmpdir(), 'mw-test-'));
   const db = openAndMigrate(join(dir, 'milewage.db'));
@@ -50,6 +55,9 @@ export function harness(
     disk,
     restoreVerify: extra.restoreVerify,
     livePingMs: extra.livePingMs,
+    // Off unless a test asks: a real backup after every shift end would race with the teardown.
+    backupOnShiftEnd: extra.backupOnShiftEnd ?? false,
+    backupDownload: extra.backupDownload,
     db,
     now: () => clock.t,
     diagnosticsPath: join(dir, 'diagnostics.db'),

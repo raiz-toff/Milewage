@@ -32,6 +32,8 @@ export interface CoreContext {
   secrets?: SecretsStore;
   /** Inputs of `GET /system/status`; each is optional so a bare core still serves it. */
   status?: Pick<StatusContext, 'state' | 'disk' | 'lastBackup' | 'diagnostics'>;
+  /** `backup.download` (10 section 3.1); reported to clients as `modules.backup_download`. */
+  backupDownload?: boolean;
   /** The engine run at shift end (tracking module); absent in a bare core. */
   processor?: ShiftProcessor;
 }
@@ -76,6 +78,7 @@ export function coreRoutes(
     secrets = fileSecrets('config'),
     status,
     processor,
+    backupDownload,
   }: CoreContext,
   authn: Authenticator,
 ) {
@@ -87,7 +90,15 @@ export function coreRoutes(
     const dummy = hashPassword('no-such-user');
     const auth = authn.authenticate;
     const emit = (host as ServerRouteHost).bus.emit;
-    settingsRoutes(app, { db, now, auth, registry, countries, emit });
+    settingsRoutes(app, {
+      db,
+      now,
+      auth,
+      registry,
+      countries,
+      emit,
+      backupDownload: backupDownload !== false,
+    });
     vehicleRoutes(app, { db, now, auth, emit });
     odometerRoutes(app, { db, now, auth, emit });
     summaryRoute(app, { db, now, auth, labelsOn: () => registry.isEnabled('stops') });
