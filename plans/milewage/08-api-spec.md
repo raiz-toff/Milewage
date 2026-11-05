@@ -313,7 +313,7 @@ All errors are RFC 9457 `application/problem+json`:
 | `401` | `auth_required`, `session_expired`, `invalid_credentials`, `device_revoked`, `invalid_pairing_token` |
 | `403` | `scope_forbidden`, `origin_mismatch`, `setup_incomplete` |
 | `404` | `not_found`, `shift_not_found` |
-| `409` | `setup_already_done`, `shift_already_active`, `shift_finalized`, `shift_not_ended`, `trip_not_editable`, `not_recomputable` (raw points were replaced by the route archive, `07` §4.2) |
+| `409` | `setup_already_done`, `shift_already_active`, `shift_finalized`, `shift_not_ended`, `trip_not_editable`, `capture_active` (a device already has a capture session, or a session has ended or holds its shifts), `not_recomputable` (raw points were replaced by the route archive, `07` §4.2) |
 | `413` | `payload_too_large` |
 | `415` | `unsupported_media_type` |
 | `422` | `validation_failed` |

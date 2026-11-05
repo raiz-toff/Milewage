@@ -97,6 +97,8 @@ export function createServerRecorder(o: RecorderOptions) {
         },
         o.shiftClientId(Number(p.shiftId)),
       ),
+    'capture.state': (p) =>
+      record('capture.state', { event: p.event, profile: p.profile, shifts_done: p.shiftsDone }),
     'backup.finished': (p) =>
       record('backup.run', {
         trigger: p.trigger,

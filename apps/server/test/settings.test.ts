@@ -27,7 +27,9 @@ test('GET /settings returns the preferences, engine version and diagnostics', as
 test('the modules object follows the registry: registered is true, absent is false', async () => {
   const flagsOf = async (capture: boolean) => {
     const modules = [
-      ...createServerModules({ db: h.db, now: () => h.clock.t }),
+      ...createServerModules({ db: h.db, now: () => h.clock.t }).filter(
+        (m) => m.name !== 'capture',
+      ),
       defineModule({ name: 'capture', dependsOn: ['core'] }),
     ];
     const app = buildApp({ modules, enabled: { core: true, capture }, logLevel: 'silent' });

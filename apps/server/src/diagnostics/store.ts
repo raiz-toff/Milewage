@@ -43,6 +43,8 @@ export interface StoredEvent {
 
 /** The diagnostics store (16 section 7.1): its own file, its own single writer. */
 export interface DiagnosticsStore {
+  /** The connection, for the `capture` module's own tables in the same file. */
+  db: Db;
   /** Inserts one event; returns false for a duplicate `(device, src, seq)`. */
   insert(e: StoredEvent): boolean;
   count(): number;
@@ -161,6 +163,7 @@ export function openDiagnosticsStore(
   };
   const vacuum = () => void db.pragma('incremental_vacuum');
   return {
+    db,
     written: () => writes,
     liveBytes,
     pruneExpired(now, batch = 5000) {

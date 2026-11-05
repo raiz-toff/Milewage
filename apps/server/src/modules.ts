@@ -14,6 +14,8 @@ import {
 } from './db';
 import type { DiskMonitor } from './disk';
 import { createDiagnosticsKeeper } from './diagnostics/keeper';
+import { captureModuleParts } from './routes/capture';
+import { createCaptureStore, stateOf } from './diagnostics/capture';
 import { createServerMetrics } from './diagnostics/metrics';
 import { createServerRecorder, effectiveLevel } from './diagnostics/recorder';
 import { statSync } from 'node:fs';
@@ -58,6 +60,12 @@ export const syncModule = defineModule({ name: 'sync', dependsOn: ['core', 'devi
 /** `GET /exports/{format}`; each format is a registered exporter (08 sections 11 and 16.3). */
 export const exportersModule = defineModule({ name: 'exporters', dependsOn: ['core'] });
 export const diagnosticsModule = defineModule({ name: 'diagnostics', dependsOn: ['core'] });
+/** Time-boxed dense recording, annotations and anonymized replay; off by default (16 section 8). */
+export const captureModule = defineModule({
+  name: 'capture',
+  dependsOn: ['diagnostics', 'tracking', 'devices'],
+  defaultEnabled: false,
+});
 /** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */
 export const backupModule = defineModule({
   name: 'backup',
@@ -75,6 +83,7 @@ export const serverModules = [
   syncModule,
   exportersModule,
   diagnosticsModule,
+  captureModule,
   backupModule,
 ] as const;
 
@@ -84,6 +93,8 @@ export interface ServerContext extends CoreContext {
   onDiagnosticsRecreated?: (movedTo: string, reason: string) => void;
   /** Size cap of the diagnostics events (100 MB unless a test lowers it). */
   diagnosticsCapBytes?: number;
+  /** Interval of the 30 day capture purge (a day unless a test shortens it). */
+  captureHousekeepingMs?: number;
   /** `diagnostics.bundle` (default on). */
   diagnosticsBundle?: boolean;
   /** Interval of `server.sample` and `api.window` (15 minutes unless a test shortens it). */
@@ -147,6 +158,21 @@ export function createServerModules(ctx: ServerContext) {
   const authn = new Authenticator(createSessionRepository(ctx.db), ctx.now);
   const secrets = ctx.secrets ?? fileSecrets(ctx.configDir ?? 'config');
   const countries = ctx.countries ?? DEFAULT_COUNTRIES;
+  const captureFor = (_userId: number, deviceId: number) => {
+    if (!registry?.isEnabled('capture')) return null;
+    const c = createCaptureStore(diagnosticsStore().db);
+    const id = c.activeFor(deviceId, ctx.now())[0];
+    const s = id === undefined ? undefined : c.session(id);
+    return s && stateOf(s, ctx.now()) === 'active'
+      ? {
+          id: s.id,
+          profile: s.profile,
+          expires_at: s.expiresAt,
+          max_shifts: s.maxShifts,
+          shifts_done: c.shiftsDone(s.id),
+        }
+      : null;
+  };
   const readSettings = (host: { registry: Parameters<typeof settingsReader>[0]['registry'] }) =>
     settingsReader({
       ...ctx,
@@ -154,6 +180,7 @@ export function createServerModules(ctx: ServerContext) {
       countries,
       backupDownload: ctx.backupDownload !== false,
       exportFormats,
+      captureFor,
     });
   let store: ReturnType<typeof openDiagnosticsStore> | undefined;
   const diagnosticsStore = () =>
@@ -228,6 +255,16 @@ export function createServerModules(ctx: ServerContext) {
     sqliteVersion: () => String(ctx.db.prepare('SELECT sqlite_version()').pluck().get()),
     markerPath: diagFile === ':memory:' ? undefined : `${diagFile}.running`,
   });
+  const capture = captureModuleParts({
+    db: ctx.db,
+    now: ctx.now,
+    authn,
+    store: diagnosticsStore,
+    disk: ctx.disk && (() => ctx.disk!.state()),
+    purgeEveryMs: ctx.captureHousekeepingMs,
+    announce: (event, session, shiftsDone) =>
+      busEmit?.('capture.state', { event, profile: session.profile, shiftsDone }),
+  });
   const live = createLive({
     db: ctx.db,
     now: ctx.now,
@@ -278,6 +315,7 @@ export function createServerModules(ctx: ServerContext) {
             secrets,
             processor,
             exportFormats,
+            captureFor,
             status: {
               state: ctx.state,
               disk: ctx.disk,
@@ -339,6 +377,11 @@ export function createServerModules(ctx: ServerContext) {
         keeper.job(),
         metrics.job,
       ],
+    }),
+    defineModule({
+      ...captureModule,
+      routes: capture.routes,
+      jobs: [capture.job],
     }),
     defineModule({
       ...backupModule,

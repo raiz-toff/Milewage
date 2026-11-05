@@ -83,12 +83,14 @@ type ReaderContext = {
   backupDownload?: boolean;
   /** Export formats that exist right now (registered, switched on, requirements met). */
   exportFormats?: (reg: ModuleRegistry) => string[];
+  /** The active capture session of a device, for `diagnostics.capture` (module `capture`). */
+  captureFor?: (userId: number, deviceId: number) => object | null;
 };
 
 /** The `Settings` response for a user. Also returned to a phone when it pairs. */
 export function settingsReader(ctx: ReaderContext) {
   const repo = createSettingsRepository(ctx.db);
-  return (userId: number) => {
+  return (userId: number, deviceId?: number) => {
     const row = repo.get(userId);
     if (!row) throw new ProblemError('not_found', 'No settings for this user.');
     const verbose = row.diagnosticsLevel === 'verbose';
@@ -111,7 +113,7 @@ export function settingsReader(ctx: ReaderContext) {
       diagnostics: {
         level: expired ? 'basic' : row.diagnosticsLevel,
         verbose_until: verbose && !expired ? row.diagnosticsVerboseUntil : null,
-        capture: null,
+        capture: deviceId === undefined ? null : (ctx.captureFor?.(userId, deviceId) ?? null),
       },
     };
   };
@@ -124,7 +126,10 @@ export function settingsRoutes(
   const repo = createSettingsRepository(ctx.db);
   const read = settingsReader(ctx);
 
-  app.get('/settings', async (req) => read(ctx.auth(req, 'SD').userId));
+  app.get('/settings', async (req) => {
+    const p = ctx.auth(req, 'SD');
+    return read(p.userId, p.kind === 'device' ? p.deviceId : undefined);
+  });
 
   app.patch('/settings', { schema: { body: patchSchema } }, async (req) => {
     const { userId } = ctx.auth(req, 'S');

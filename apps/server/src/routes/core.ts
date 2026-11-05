@@ -36,6 +36,8 @@ export interface CoreContext {
   /** `backup.download` (10 section 3.1); reported to clients as `modules.backup_download`. */
   backupDownload?: boolean;
   exportFormats?: (reg: ModuleRegistry) => string[];
+  /** The active capture session of a device, for `diagnostics.capture` in `GET /settings`. */
+  captureFor?: (userId: number, deviceId: number) => object | null;
   /** The engine run at shift end (tracking module); absent in a bare core. */
   processor?: ShiftProcessor;
 }
@@ -82,6 +84,7 @@ export function coreRoutes(
     processor,
     backupDownload,
     exportFormats,
+    captureFor,
   }: CoreContext,
   authn: Authenticator,
 ) {
@@ -102,6 +105,7 @@ export function coreRoutes(
       emit,
       backupDownload: backupDownload !== false,
       exportFormats,
+      captureFor,
     });
     vehicleRoutes(app, { db, now, auth, emit });
     odometerRoutes(app, { db, now, auth, emit });
