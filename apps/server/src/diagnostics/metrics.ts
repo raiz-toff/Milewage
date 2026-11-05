@@ -61,7 +61,7 @@ export function createServerMetrics(o: MetricsOptions) {
     duplicates: 0,
     rejected: { invalid_coordinate: 0, future_timestamp: 0, outside_shift_window: 0 },
   };
-  const loop = monitorEventLoopDelay({ resolution: 10 });
+  const loop = monitorEventLoopDelay({ resolution: 100 });
   let cpu = process.cpuUsage();
   let since = o.now();
   let startNote: (() => Record<string, unknown>) | undefined;
