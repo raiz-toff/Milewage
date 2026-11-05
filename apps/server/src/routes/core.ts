@@ -18,7 +18,9 @@ import { ProblemError } from '../errors';
 import { DEFAULT_COUNTRIES, settingsRoutes } from './settings';
 import { statusRoute, type StatusContext } from './status';
 import type { ShiftProcessor } from '../processing/shift-processor';
+import { odometerRoutes } from './odometer';
 import { shiftRoutes } from './shifts';
+import { summaryRoute } from './summary';
 import { vehicleRoutes } from './vehicles';
 
 export interface CoreContext {
@@ -86,6 +88,8 @@ export function coreRoutes(
     const auth = authn.authenticate;
     settingsRoutes(app, { db, now, auth, registry, countries });
     vehicleRoutes(app, { db, now, auth });
+    odometerRoutes(app, { db, now, auth });
+    summaryRoute(app, { db, now, auth, labelsOn: () => registry.isEnabled('stops') });
     statusRoute(app, { db, now, auth, registry, ...status });
     shiftRoutes(app, {
       db,

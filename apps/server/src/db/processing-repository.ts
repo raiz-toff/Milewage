@@ -108,6 +108,40 @@ export function createProcessingRepository(db: Db) {
       for (const r of rows) out.set(r.shiftId, [...(out.get(r.shiftId) ?? []), r]);
       return out;
     },
+    /** Sums over ended and finalized shifts with `local_date` in `[from, to]` (08 section 12). */
+    periodTotals(userId: number, from: string, to: string) {
+      return db
+        .prepare(
+          `SELECT count(*) AS shift_count,
+                  coalesce(sum(ended_at - started_at), 0) AS ms,
+                  coalesce(sum(active_m), 0) AS active_m,
+                  coalesce(sum(deadhead_m), 0) AS deadhead_m,
+                  coalesce(sum(personal_m), 0) AS personal_m,
+                  coalesce(sum(total_m), 0) AS total_m
+             FROM shifts
+            WHERE user_id = ? AND status IN ('ended','finalized') AND local_date BETWEEN ? AND ?`,
+        )
+        .get(userId, from, to) as {
+        shift_count: number;
+        ms: number;
+        active_m: number;
+        deadhead_m: number;
+        personal_m: number;
+        total_m: number;
+      };
+    },
+    /** Payout and tips over the driver's labels for the same shifts; null when nothing was labelled. */
+    labelEarnings(userId: number, from: string, to: string) {
+      const r = db
+        .prepare(
+          `SELECT count(*) AS n, coalesce(sum(l.payout_cents), 0) AS payout, coalesce(sum(l.tip_cents), 0) AS tips
+             FROM stop_labels l JOIN shifts s ON s.id = l.shift_id
+            WHERE s.user_id = ? AND s.status IN ('ended','finalized') AND s.local_date BETWEEN ? AND ?
+              AND (l.payout_cents > 0 OR l.tip_cents > 0)`,
+        )
+        .get(userId, from, to) as { n: number; payout: number; tips: number };
+      return r.n === 0 ? null : { earningsCents: r.payout + r.tips, tipsCents: r.tips };
+    },
     /** Replaces the derived rows of one shift and updates the shift, all in one transaction. */
     writeDerived(w: DerivedWrite): typeof shifts.$inferSelect | undefined {
       return orm.transaction((tx) => {

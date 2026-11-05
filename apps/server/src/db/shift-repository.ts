@@ -83,6 +83,30 @@ export function createOdometerRepository(db: Db) {
       .get();
   return {
     find,
+    byId: (userId: number, id: number): OdometerRow | undefined =>
+      orm
+        .select()
+        .from(odometerReadings)
+        .where(and(eq(odometerReadings.userId, userId), eq(odometerReadings.id, id)))
+        .get(),
+    /** Newest first; the caller applies the date window, which needs the owner's time zone. */
+    list: (userId: number, f: { vehicleId?: number; kind?: OdometerKind }): OdometerRow[] =>
+      orm
+        .select()
+        .from(odometerReadings)
+        .where(
+          and(
+            eq(odometerReadings.userId, userId),
+            maybe(f.vehicleId, (v) => eq(odometerReadings.vehicleId, v)),
+            maybe(f.kind, (k) => eq(odometerReadings.kind, k)),
+          ),
+        )
+        .orderBy(desc(odometerReadings.recordedAt), desc(odometerReadings.id))
+        .all(),
+    insert: (row: typeof odometerReadings.$inferInsert): OdometerRow =>
+      orm.insert(odometerReadings).values(row).returning().get(),
+    remove: (id: number) =>
+      void orm.delete(odometerReadings).where(eq(odometerReadings.id, id)).run(),
     /** Upsert on (shift, kind). */
     set(row: typeof odometerReadings.$inferInsert & { shiftId: number }): OdometerRow {
       const old = find(row.shiftId, row.kind);

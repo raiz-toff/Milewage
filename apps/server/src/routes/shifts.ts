@@ -11,6 +11,7 @@ import {
   type TripRow,
 } from '../db';
 import { ProblemError } from '../errors';
+import { localDate } from '../time';
 import type { ShiftProcessor } from '../processing/shift-processor';
 import { snakeKeys, str, strictObject, type AuthFn, type Principal } from './util';
 
@@ -131,13 +132,6 @@ const reconView = (r: ShiftRow) =>
         diff_m: r.totalM - r.phoneTotalM,
         reasons: r.reconReasons ? (JSON.parse(r.reconReasons) as string[]) : [],
       };
-const localDate = (at: number, timeZone: string) =>
-  new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(at);
 const invalid = (path: string, message: string) =>
   new ProblemError('validation_failed', 'The request is not valid.', [{ path, message }]);
 
