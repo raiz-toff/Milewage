@@ -14,12 +14,14 @@ import {
   createUserRepository,
   type Db,
 } from '../db';
+import type { CommaOptions } from '../comma-options';
 import { ProblemError } from '../errors';
 import { DEFAULT_COUNTRIES, settingsRoutes } from './settings';
 import { statusRoute, type StatusContext } from './status';
 import type { ShiftProcessor } from '../processing/shift-processor';
 import { odometerRoutes } from './odometer';
 import { shiftRoutes } from './shifts';
+import { createEarningsPolicy } from './earnings';
 import { summaryRoute } from './summary';
 import { tripRoutes } from './trips';
 import { vehicleRoutes } from './vehicles';
@@ -38,6 +40,8 @@ export interface CoreContext {
   exportFormats?: (reg: ModuleRegistry) => string[];
   /** The active capture session of a device, for `diagnostics.capture` in `GET /settings`. */
   captureFor?: (userId: number, deviceId: number) => object | null;
+  /** The owner's answers to the open questions of 18 section 16 (defaults in `comma-options.ts`). */
+  comma?: Partial<CommaOptions>;
   /** The engine run at shift end (tracking module); absent in a bare core. */
   processor?: ShiftProcessor;
 }
@@ -85,6 +89,7 @@ export function coreRoutes(
     backupDownload,
     exportFormats,
     captureFor,
+    comma,
   }: CoreContext,
   authn: Authenticator,
 ) {
@@ -109,7 +114,12 @@ export function coreRoutes(
     });
     vehicleRoutes(app, { db, now, auth, emit });
     odometerRoutes(app, { db, now, auth, emit });
-    summaryRoute(app, { db, now, auth, labelsOn: () => registry.isEnabled('stops') });
+    summaryRoute(app, {
+      db,
+      now,
+      auth,
+      earnings: createEarningsPolicy(db, registry, comma?.earningsOverride),
+    });
     statusRoute(app, { db, now, auth, registry, ...status });
     shiftRoutes(app, {
       db,

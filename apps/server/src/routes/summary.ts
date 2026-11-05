@@ -1,12 +1,22 @@
 import type { FastifyInstance } from 'fastify';
-import { createProcessingRepository, createSettingsRepository, type Db } from '../db';
+import {
+  createEarningsRepository,
+  createProcessingRepository,
+  createSettingsRepository,
+  totalOf,
+  type Db,
+} from '../db';
 import { ProblemError } from '../errors';
 import { deductionOfShift } from '../processing/presenter';
 import { localDate } from '../time';
+import type { EarningsPolicy } from './earnings';
 import { strictObject, type AuthFn } from './util';
 
 const date = { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' };
-const query = strictObject({ from: date, to: date }, []);
+const query = strictObject(
+  { from: date, to: date, platform: { type: 'string', pattern: '^[a-z0-9_]{1,32}$' } },
+  [],
+);
 
 const valid = (d: string) => {
   const t = Date.parse(`${d}T00:00:00Z`);
@@ -26,8 +36,8 @@ export interface SummaryContext {
   db: Db;
   now: () => number;
   auth: AuthFn;
-  /** Whether payout and tip sums are available (the `stops` module is on). */
-  labelsOn?: () => boolean;
+  /** What counts as earnings (labels, typed rows, override rule); absent means nothing does. */
+  earnings?: EarningsPolicy;
 }
 
 /**
@@ -42,7 +52,7 @@ export function summaryRoute(app: FastifyInstance, ctx: SummaryContext) {
     const { userId } = ctx.auth(req, 'S');
     const prefs = settings.get(userId);
     if (!prefs) throw new ProblemError('setup_incomplete', 'Finish setup first.');
-    const q = req.query as { from?: string; to?: string };
+    const q = req.query as { from?: string; to?: string; platform?: string };
     const today = localDate(ctx.now(), prefs.timezone);
     const to = q.to ?? today;
     const from = q.from ?? `${to.slice(0, 8)}01`;
@@ -58,11 +68,22 @@ export function summaryRoute(app: FastifyInstance, ctx: SummaryContext) {
 
     const totals = repo.periodTotals(userId, from, to);
     const hours = Math.round((totals.ms / 3_600_000) * 1000) / 1000;
-    // Earnings come only from the driver's labels; with the stops setting off or nothing labelled they are null, never 0.
+    // Earnings come from the driver's labels or typed totals (18 section 4.3); with neither they are null, never 0.
+    const rows = ctx.earnings?.any(userId)
+      ? createEarningsRepository(ctx.db).effective(
+          userId,
+          from,
+          to,
+          ctx.earnings.options(userId, q.platform),
+        )
+      : [];
     const labelled =
-      prefs.stopsEnabled === 1 && (ctx.labelsOn?.() ?? false)
-        ? repo.labelEarnings(userId, from, to)
-        : null;
+      rows.length === 0
+        ? null
+        : {
+            earningsCents: rows.reduce((a, r) => a + totalOf(r), 0),
+            tipsCents: rows.reduce((a, r) => a + r.tipsCents, 0),
+          };
     return {
       from,
       to,
@@ -77,6 +98,8 @@ export function summaryRoute(app: FastifyInstance, ctx: SummaryContext) {
       deduction_cents: deduction(ctx.db, userId, from, to),
       hourly_earnings_cents:
         labelled && hours > 0 ? Math.round(labelled.earningsCents / hours) : null,
+      // A shift that spans platforms has one distance; it is not split, so only earnings are filtered.
+      ...(q.platform ? { platform_filter: 'earnings_only' } : {}),
     };
   });
 }

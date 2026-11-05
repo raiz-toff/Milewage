@@ -66,6 +66,8 @@ export interface EventMap {
     bytes: number;
     lagMaxMs: number;
   };
+  /** A typed earnings row was written or removed (18 section 4.3). */
+  'earnings.changed': { shiftId: string };
   'device.seen': { deviceId: string };
   'odometer.updated': { odometerId: string; userId: string; deleted?: boolean };
   'vehicle.updated': { vehicleId: string };

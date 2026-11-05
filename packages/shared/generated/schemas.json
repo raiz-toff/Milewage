@@ -105,6 +105,7 @@
       "type": "object",
       "description": "Read-only module flags so clients can hide screens and buttons of absent modules.",
       "required": [
+        "earnings",
         "platforms",
         "devices",
         "tracking",
@@ -122,6 +123,10 @@
         "platforms": {
           "type": "boolean",
           "description": "Platforms module registered (18 section 4.2)."
+        },
+        "earnings": {
+          "type": "boolean",
+          "description": "Earnings module registered (18 section 4.3): the driver can type a total per shift and platform."
         },
         "sync": {
           "type": "boolean"
@@ -668,6 +673,187 @@
             "null"
           ],
           "minimum": 0
+        }
+      }
+    },
+    "ShiftEarningsPut": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Omitted amounts are 0 and omitted counts are null, because the row is replaced.",
+      "properties": {
+        "gross_cents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tips_cents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bonus_cents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "orders": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "The platform's own count for the shift",
+          "typed once.": null
+        },
+        "online_min": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        }
+      }
+    },
+    "ShiftEarnings": {
+      "type": "object",
+      "required": [
+        "entries",
+        "labels",
+        "effective"
+      ],
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "platform",
+              "gross_cents",
+              "tips_cents",
+              "bonus_cents",
+              "orders",
+              "online_min",
+              "notes",
+              "source",
+              "edited_at"
+            ],
+            "properties": {
+              "platform": {
+                "type": "string"
+              },
+              "gross_cents": {
+                "type": "integer"
+              },
+              "tips_cents": {
+                "type": "integer"
+              },
+              "bonus_cents": {
+                "type": "integer"
+              },
+              "orders": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "online_min": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "notes": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "source": {
+                "enum": [
+                  "manual",
+                  "import"
+                ]
+              },
+              "edited_at": {
+                "$ref": "#/$defs/EpochMs"
+              }
+            }
+          }
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "platform",
+              "payout_cents",
+              "tip_cents",
+              "dropoffs"
+            ],
+            "properties": {
+              "platform": {
+                "type": "string"
+              },
+              "payout_cents": {
+                "type": "integer"
+              },
+              "tip_cents": {
+                "type": "integer"
+              },
+              "dropoffs": {
+                "type": "integer"
+              }
+            }
+          }
+        },
+        "effective": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "platform",
+              "gross_cents",
+              "tips_cents",
+              "bonus_cents",
+              "total_cents",
+              "orders",
+              "source"
+            ],
+            "properties": {
+              "platform": {
+                "type": "string"
+              },
+              "gross_cents": {
+                "type": "integer"
+              },
+              "tips_cents": {
+                "type": "integer"
+              },
+              "bonus_cents": {
+                "type": "integer"
+              },
+              "total_cents": {
+                "type": "integer"
+              },
+              "orders": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "source": {
+                "enum": [
+                  "labels",
+                  "entered",
+                  "mixed"
+                ]
+              }
+            }
+          }
         }
       }
     },
@@ -1888,7 +2074,9 @@
             "integer",
             "null"
           ],
-          "description": "Sum of payout plus tips over the driver's web stop labels; null when the stops setting is off or nothing was labelled."
+          "description": "Effective earnings (18 section 4.3) - the driver's typed totals",
+          "else the stop labels' payout plus tips; null when nothing was entered or labelled": null,
+          "never 0.": null
         },
         "tips_cents": {
           "type": [
@@ -1921,6 +2109,10 @@
             "null"
           ],
           "description": "earnings_cents divided by hours; null when hours is 0."
+        },
+        "platform_filter": {
+          "const": "earnings_only",
+          "description": "Present only when the platform query was given."
         }
       }
     },

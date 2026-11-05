@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ModuleSettings } from '@milewage/shared';
+import { loadCommaOptions, type CommaOptions } from './comma-options';
 
 export class ConfigError extends Error {
   override name = 'ConfigError';
@@ -21,6 +22,8 @@ export interface ServerConfig {
   backup: { onShiftEnd: boolean; download: boolean };
   /** `diagnostics.bundle` (16 section 11): the debug-bundle route; on by default. */
   diagnostics: { bundle: boolean };
+  /** Answers to the open questions of 18 section 16 (`comma` in settings.json). */
+  comma: CommaOptions;
 }
 
 /** Export formats switched on: `modules.export_<format>` in the settings file, then `MILEWAGE_MODULE_EXPORT_<FORMAT>=0|1` (08 section 16.1). */
@@ -68,6 +71,7 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): S
       onShiftEnd: flag(env.MILEWAGE_BACKUP_ON_SHIFT_END, file?.on_shift_end, 'backup.on_shift_end'),
       download: flag(env.MILEWAGE_BACKUP_DOWNLOAD, file?.download, 'backup.download'),
     },
+    comma: loadCommaOptions(settings, env),
     diagnostics: {
       bundle: flag(
         env.MILEWAGE_DIAGNOSTICS_BUNDLE,

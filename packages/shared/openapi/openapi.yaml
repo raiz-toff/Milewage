@@ -29,6 +29,7 @@ tags:
   - { name: sync }
   - { name: diagnostics }
   - { name: platforms }
+  - { name: earnings }
   - { name: system }
 
 x-modules:
@@ -92,6 +93,11 @@ x-modules:
     default: true
     dependsOn: [core]
     operations: [listPlatforms, putPlatform, deletePlatform]
+  earnings:
+    toggle: modules.earnings
+    default: true
+    dependsOn: [core]
+    operations: [listShiftEarnings, putShiftEarnings, deleteShiftEarnings]
 
 paths:
   /healthz:
@@ -916,6 +922,7 @@ paths:
       parameters:
         - { $ref: '#/components/parameters/From' }
         - { $ref: '#/components/parameters/To' }
+        - { name: platform, in: query, schema: { type: string, pattern: '^[a-z0-9_]{1,32}$' }, description: Filters earnings only; distance is not split by platform (platform_filter says so). }
       responses:
         '200':
           description: Totals for the period.
@@ -966,6 +973,57 @@ paths:
         '204': { description: Deleted or reset. }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+
+  /shifts/{ref}/earnings:
+    parameters:
+      - { $ref: '#/components/parameters/Ref' }
+    get:
+      tags: [earnings]
+      operationId: listShiftEarnings
+      summary: Typed rows, the stop-label breakdown per platform, and the effective figure per platform.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Earnings of the shift.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShiftEarnings' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /shifts/{ref}/earnings/{platform}:
+    parameters:
+      - { $ref: '#/components/parameters/Ref' }
+      - { name: platform, in: path, required: true, schema: { type: string, pattern: '^[a-z0-9_]{1,32}$' } }
+    put:
+      tags: [earnings]
+      operationId: putShiftEarnings
+      summary: Idempotent upsert of the driver's total for one platform. The shift must be ended or finalized. Replaces that platform's label sum unless the server is set to add them.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ShiftEarningsPut' }
+      responses:
+        '200':
+          description: Earnings of the shift after the change.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShiftEarnings' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    delete:
+      tags: [earnings]
+      operationId: deleteShiftEarnings
+      summary: Remove the typed row (idempotent); the platform's labels apply again.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Earnings of the shift after the change.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShiftEarnings' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /exports/{format}:
     get:
@@ -1366,9 +1424,10 @@ components:
     Modules:
       type: object
       description: Read-only module flags so clients can hide screens and buttons of absent modules.
-      required: [platforms, devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
+      required: [earnings, platforms, devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
       properties:
         platforms: { type: boolean, description: 'Platforms module registered (18 section 4.2).' }
+        earnings: { type: boolean, description: 'Earnings module registered (18 section 4.3): the driver can type a total per shift and platform.' }
         sync: { type: boolean }
         local_export: { type: boolean, description: Reserved for v1.1; false in v1. }
         devices: { type: boolean }
@@ -1492,6 +1551,60 @@ components:
         active: { type: boolean }
         sort: { type: integer, minimum: 0 }
         hourly_target_cents: { type: [integer, 'null'], minimum: 0 }
+
+    ShiftEarningsPut:
+      type: object
+      additionalProperties: false
+      description: Omitted amounts are 0 and omitted counts are null, because the row is replaced.
+      properties:
+        gross_cents: { type: integer, minimum: 0 }
+        tips_cents: { type: integer, minimum: 0 }
+        bonus_cents: { type: integer, minimum: 0 }
+        orders: { type: [integer, 'null'], minimum: 0, description: The platform's own count for the shift, typed once. }
+        online_min: { type: [integer, 'null'], minimum: 0 }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+    ShiftEarnings:
+      type: object
+      required: [entries, labels, effective]
+      properties:
+        entries:
+          type: array
+          items:
+            type: object
+            required: [platform, gross_cents, tips_cents, bonus_cents, orders, online_min, notes, source, edited_at]
+            properties:
+              platform: { type: string }
+              gross_cents: { type: integer }
+              tips_cents: { type: integer }
+              bonus_cents: { type: integer }
+              orders: { type: [integer, 'null'] }
+              online_min: { type: [integer, 'null'] }
+              notes: { type: [string, 'null'] }
+              source: { enum: [manual, import] }
+              edited_at: { $ref: '#/components/schemas/EpochMs' }
+        labels:
+          type: array
+          items:
+            type: object
+            required: [platform, payout_cents, tip_cents, dropoffs]
+            properties:
+              platform: { type: string }
+              payout_cents: { type: integer }
+              tip_cents: { type: integer }
+              dropoffs: { type: integer }
+        effective:
+          type: array
+          items:
+            type: object
+            required: [platform, gross_cents, tips_cents, bonus_cents, total_cents, orders, source]
+            properties:
+              platform: { type: string }
+              gross_cents: { type: integer }
+              tips_cents: { type: integer }
+              bonus_cents: { type: integer }
+              total_cents: { type: integer }
+              orders: { type: [integer, 'null'] }
+              source: { enum: [labels, entered, mixed] }
 
     ShiftStatus: { enum: [active, ended, finalized] }
     ShiftStart:
@@ -1819,7 +1932,7 @@ components:
         to: { type: string, format: date }
         shift_count: { type: integer }
         hours: { type: number }
-        earnings_cents: { type: [integer, 'null'], description: Sum of payout plus tips over the driver's web stop labels; null when the stops setting is off or nothing was labelled. }
+        earnings_cents: { type: [integer, 'null'], description: Effective earnings (18 section 4.3) - the driver's typed totals, else the stop labels' payout plus tips; null when nothing was entered or labelled, never 0. }
         tips_cents: { type: [integer, 'null'] }
         active_m: { type: integer }
         deadhead_m: { type: integer }
@@ -1827,6 +1940,7 @@ components:
         total_m: { type: integer }
         deduction_cents: { type: [integer, 'null'], description: null when the selected country has no registered pack. }
         hourly_earnings_cents: { type: [integer, 'null'], description: earnings_cents divided by hours; null when hours is 0. }
+        platform_filter: { const: earnings_only, description: Present only when the platform query was given. }
 
     Backup:
       type: object

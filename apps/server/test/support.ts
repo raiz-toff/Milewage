@@ -11,6 +11,7 @@ import {
   type AppOptions,
   type Db,
 } from '../src/index';
+import type { CommaOptions } from '../src/comma-options';
 import type { ExporterRegistry } from '../src/exporters/registry';
 
 export const owner = {
@@ -37,6 +38,7 @@ export function harness(
     backupOnShiftEnd?: boolean;
     backupDownload?: boolean;
     exporters?: ExporterRegistry;
+    comma?: Partial<CommaOptions>;
     diagnosticsHousekeepingMs?: number;
     enabledExportFormats?: () => readonly string[];
   } = {},
@@ -73,6 +75,7 @@ export function harness(
     backupOnShiftEnd: extra.backupOnShiftEnd ?? false,
     backupDownload: extra.backupDownload,
     exporters: extra.exporters,
+    comma: extra.comma,
     diagnosticsHousekeepingMs: extra.diagnosticsHousekeepingMs,
     enabledExportFormats: extra.enabledExportFormats,
     db,

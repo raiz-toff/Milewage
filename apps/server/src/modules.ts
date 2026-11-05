@@ -40,6 +40,7 @@ import { availableFormats, exportsRoutes } from './routes/exports';
 import { createLive } from './routes/live';
 import { createSync } from './routes/sync';
 import { replayRoutes } from './routes/replay';
+import { createEarningsPolicy, earningsRoutes } from './routes/earnings';
 import { platformsRoutes, platformKnown } from './routes/platforms';
 import { stopsRoutes } from './routes/stops';
 import { trackingRoutes } from './routes/tracking';
@@ -69,6 +70,8 @@ export const captureModule = defineModule({
 });
 /** The driver's platforms: built-ins plus their own, with overrides (18 section 4.2). */
 export const platformsModule = defineModule({ name: 'platforms', dependsOn: ['core'] });
+/** The driver's typed payout per shift and platform (18 section 4.3). */
+export const earningsModule = defineModule({ name: 'earnings', dependsOn: ['core'] });
 /** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */
 export const backupModule = defineModule({
   name: 'backup',
@@ -88,6 +91,7 @@ export const serverModules = [
   diagnosticsModule,
   captureModule,
   platformsModule,
+  earningsModule,
   backupModule,
 ] as const;
 
@@ -283,6 +287,8 @@ export function createServerModules(ctx: ServerContext) {
     reg.isEnabled('exporters')
       ? availableFormats(exporters, (m) => reg.isEnabled(m), ctx.enabledExportFormats)
       : [];
+  const earningsPolicy = (reg: ModuleRegistry) =>
+    createEarningsPolicy(ctx.db, reg, ctx.comma?.earningsOverride);
   const uploadDir = join(dirname(ctx.db.name), '.restore-upload');
   // The registry exists only once routes are registered; the processor asks it per call.
   let registry: ModuleRegistry | undefined;
@@ -356,6 +362,10 @@ export function createServerModules(ctx: ServerContext) {
       }),
     }),
     defineModule({ ...platformsModule, routes: platformsRoutes({ ...ctx, authn }) }),
+    defineModule({
+      ...earningsModule,
+      routes: earningsRoutes({ ...ctx, authn, policy: earningsPolicy }),
+    }),
     defineModule({ ...replayModule, routes: replayRoutes({ ...ctx, authn }) }),
     defineModule({
       ...syncModule,
@@ -365,7 +375,13 @@ export function createServerModules(ctx: ServerContext) {
     }),
     defineModule({
       ...exportersModule,
-      routes: exportsRoutes({ ...ctx, authn, exporters, formats: ctx.enabledExportFormats }),
+      routes: exportsRoutes({
+        ...ctx,
+        authn,
+        exporters,
+        formats: ctx.enabledExportFormats,
+        earnings: earningsPolicy,
+      }),
     }),
     defineModule({
       ...liveModule,

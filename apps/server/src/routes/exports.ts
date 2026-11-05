@@ -8,12 +8,14 @@ import {
   createShiftRepository,
   createArchiveRepository,
   createVehicleRepository,
+  createEarningsRepository,
   type Db,
   type ShiftRow,
 } from '../db';
 import { ProblemError } from '../errors';
 import type { ExporterRegistry } from '../exporters/registry';
 import { deductionOfShift } from '../processing/presenter';
+import type { EarningsPolicy } from './earnings';
 import { strictObject } from './util';
 
 const date = { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' };
@@ -41,6 +43,7 @@ export interface ExportsOptions {
   exporters: ExporterRegistry;
   /** Formats switched on (`modules.export_<format>`); default every registered one. */
   formats?: () => readonly string[];
+  earnings?: (registry: ServerRouteHost['registry']) => EarningsPolicy;
 }
 
 /** Formats that exist right now: registered, switched on, and with their required modules on. */
@@ -56,7 +59,7 @@ export function availableFormats(
 }
 
 /** `GET /exports/{format}` (08 section 11): a streamed file from a registered exporter. Web session only. */
-export function exportsRoutes({ db, authn, exporters, formats }: ExportsOptions) {
+export function exportsRoutes({ db, authn, exporters, formats, earnings }: ExportsOptions) {
   return (host: RouteHost) => {
     const { app, registry } = host as ServerRouteHost;
     const processing = createProcessingRepository(db);
@@ -151,6 +154,12 @@ export function exportsRoutes({ db, authn, exporters, formats }: ExportsOptions)
           },
           simplified: (id) => archive.hasArchive(id),
           deduction: (s) => deductionOfShift(db, s),
+          earnings: (s) =>
+            earnings
+              ? createEarningsRepository(db)
+                  .effective(userId, s.localDate, s.localDate, earnings(registry).options(userId))
+                  .filter((r) => r.shiftId === s.id)
+              : [],
         },
       });
       return reply

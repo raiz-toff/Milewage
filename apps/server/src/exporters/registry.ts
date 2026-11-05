@@ -1,3 +1,4 @@
+import type { EffectiveRow } from '../db';
 import type { Db, ShiftRow, StopLabelRow, StopRow, TripRow, VehicleRow } from '../db';
 
 /** What an exporter is given: the selected shifts and the owner's presentation settings, never the request. */
@@ -28,6 +29,8 @@ export interface ExportContext {
     /** True when the raw points were replaced by the simplified route archive (07 section 4.2). */
     simplified(shiftId: number): boolean;
     deduction(shift: ShiftRow): number | null;
+    /** The shift's effective earnings per platform (labels and typed totals); empty when none. */
+    earnings(shift: ShiftRow): EffectiveRow[];
   };
 }
 

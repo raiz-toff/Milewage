@@ -98,14 +98,22 @@ function* shiftLevel(c: ExportContext) {
     `Odometer_End_${u}`,
     'Odometer_Check',
     'Year_Odometer_Check',
+    'Bonus',
   ]);
   const odometer = createOdometerChecks(c.db, c.userId, c.timeZone);
   for (const s of c.shifts) {
     const trips = c.readers.trips(s.id);
     const labels = c.stopsOn ? c.readers.labels(s.id) : [];
     // Money and counts come only from the driver's labels; with none they stay blank, never 0.
-    const paid = labels.some((l) => l.payoutCents > 0 || l.tipCents > 0);
-    const platforms = [...new Set(labels.map((l) => l.platform).filter(Boolean))].join(';');
+    const earned = c.readers.earnings(s);
+    const paid = earned.length > 0;
+    const sum = (f: (r: (typeof earned)[number]) => number) => earned.reduce((a, r) => a + f(r), 0);
+    const platforms = [
+      ...new Set(
+        [...labels.map((l) => l.platform), ...earned.map((r) => r.platform)].filter(Boolean),
+      ),
+    ].join(';');
+    const orders = earned.some((r) => r.orders !== null) ? sum((r) => r.orders ?? 0) : null;
     const first = trips[0];
     const last = trips.at(-1);
     const dv = c.readers.deduction(s);
@@ -119,9 +127,9 @@ function* shiftLevel(c: ExportContext) {
       place(first?.startLatE7 ?? null, first?.startLonE7 ?? null),
       place(last?.endLatE7 ?? null, last?.endLonE7 ?? null),
       platforms,
-      labels.length > 0 ? labels.filter((l) => l.role === 'dropoff').length : '',
-      paid ? money(labels.reduce((a, l) => a + l.payoutCents, 0)) : '',
-      paid ? money(labels.reduce((a, l) => a + l.tipCents, 0)) : '',
+      orders ?? (labels.length > 0 ? labels.filter((l) => l.role === 'dropoff').length : ''),
+      paid ? money(sum((r) => r.grossCents)) : '',
+      paid ? money(sum((r) => r.tipsCents)) : '',
       s.activeM === null ? '' : distance(s.activeM, c.unit),
       s.deadheadM === null ? '' : distance(s.deadheadM, c.unit),
       s.totalM === null ? '' : distance(s.totalM, c.unit),
@@ -132,6 +140,7 @@ function* shiftLevel(c: ExportContext) {
       odo.endM === null ? '' : distance(odo.endM, c.unit),
       odo.check,
       odometer.year(s),
+      paid ? money(sum((r) => r.bonusCents)) : '',
     ]);
   }
 }

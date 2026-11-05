@@ -19,6 +19,7 @@ const ALL_OFF: Modules = {
   diagnostics: false,
   capture: false,
   platforms: false,
+  earnings: false,
   exporters: [],
 };
 

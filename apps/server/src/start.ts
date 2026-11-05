@@ -58,6 +58,7 @@ export async function startServer(
         backupOnShiftEnd: config.backup.onShiftEnd,
         backupDownload: config.backup.download,
         diagnosticsBundle: config.diagnostics.bundle,
+        comma: config.comma,
         log,
         diagnosticsPath: join(config.dataDir, 'diagnostics.db'),
         onDiagnosticsRecreated: (movedTo, reason) =>

@@ -635,6 +635,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/shifts/{ref}/earnings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Integer id or UUID client_id. */
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        /** Typed rows, the stop-label breakdown per platform, and the effective figure per platform. */
+        get: operations["listShiftEarnings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shifts/{ref}/earnings/{platform}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Integer id or UUID client_id. */
+                ref: components["parameters"]["Ref"];
+                platform: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Idempotent upsert of the driver's total for one platform. The shift must be ended or finalized. Replaces that platform's label sum unless the server is set to add them. */
+        put: operations["putShiftEarnings"];
+        post?: never;
+        /** Remove the typed row (idempotent); the platform's labels apply again. */
+        delete: operations["deleteShiftEarnings"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/exports/{format}": {
         parameters: {
             query?: never;
@@ -902,6 +944,8 @@ export interface components {
         Modules: {
             /** @description Platforms module registered (18 section 4.2). */
             platforms: boolean;
+            /** @description Earnings module registered (18 section 4.3): the driver can type a total per shift and platform. */
+            earnings: boolean;
             sync: boolean;
             /** @description Reserved for v1.1; false in v1. */
             local_export?: boolean;
@@ -1037,6 +1081,46 @@ export interface components {
             active?: boolean;
             sort?: number;
             hourly_target_cents?: number | null;
+        };
+        /** @description Omitted amounts are 0 and omitted counts are null, because the row is replaced. */
+        ShiftEarningsPut: {
+            gross_cents?: number;
+            tips_cents?: number;
+            bonus_cents?: number;
+            /** @description The platform's own count for the shift */
+            orders?: number | null;
+            online_min?: number | null;
+            notes?: string | null;
+        };
+        ShiftEarnings: {
+            entries: {
+                platform: string;
+                gross_cents: number;
+                tips_cents: number;
+                bonus_cents: number;
+                orders: number | null;
+                online_min: number | null;
+                notes: string | null;
+                /** @enum {unknown} */
+                source: "manual" | "import";
+                edited_at: components["schemas"]["EpochMs"];
+            }[];
+            labels: {
+                platform: string;
+                payout_cents: number;
+                tip_cents: number;
+                dropoffs: number;
+            }[];
+            effective: {
+                platform: string;
+                gross_cents: number;
+                tips_cents: number;
+                bonus_cents: number;
+                total_cents: number;
+                orders: number | null;
+                /** @enum {unknown} */
+                source: "labels" | "entered" | "mixed";
+            }[];
         };
         /** @enum {unknown} */
         ShiftStatus: "active" | "ended" | "finalized";
@@ -1336,7 +1420,7 @@ export interface components {
             to: string;
             shift_count: number;
             hours: number;
-            /** @description Sum of payout plus tips over the driver's web stop labels; null when the stops setting is off or nothing was labelled. */
+            /** @description Effective earnings (18 section 4.3) - the driver's typed totals */
             earnings_cents: number | null;
             tips_cents: number | null;
             active_m: number;
@@ -1347,6 +1431,11 @@ export interface components {
             deduction_cents: number | null;
             /** @description earnings_cents divided by hours; null when hours is 0. */
             hourly_earnings_cents: number | null;
+            /**
+             * @description Present only when the platform query was given.
+             * @constant
+             */
+            platform_filter?: "earnings_only";
         };
         Backup: {
             id: number;
@@ -2868,6 +2957,8 @@ export interface operations {
                 /** @description Local date YYYY-MM-DD in the instance timezone, inclusive. */
                 from?: components["parameters"]["From"];
                 to?: components["parameters"]["To"];
+                /** @description Filters earnings only; distance is not split by platform (platform_filter says so). */
+                platform?: string;
             };
             header?: never;
             path?: never;
@@ -2956,6 +3047,86 @@ export interface operations {
             };
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    listShiftEarnings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Integer id or UUID client_id. */
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Earnings of the shift. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftEarnings"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    putShiftEarnings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Integer id or UUID client_id. */
+                ref: components["parameters"]["Ref"];
+                platform: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShiftEarningsPut"];
+            };
+        };
+        responses: {
+            /** @description Earnings of the shift after the change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftEarnings"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    deleteShiftEarnings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Integer id or UUID client_id. */
+                ref: components["parameters"]["Ref"];
+                platform: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Earnings of the shift after the change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftEarnings"];
+                };
+            };
+            404: components["responses"]["NotFound"];
         };
     };
     exportData: {
