@@ -11,15 +11,16 @@ beforeEach(() => {
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
+const V1 = MIGRATIONS.slice(0, 1);
 const SHIFT = `INSERT INTO shifts (client_id, vehicle_id, status, segmenter, started_at, local_date, updated_at)
                VALUES (?, 3, 'ended', 'whole_shift', 1000, '2026-11-01', 1000)`;
 const version = async (db: ReturnType<typeof openNodeAppDb>) =>
   (await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version'))!.user_version;
 
 describe('app.db schema (15 section 2.2)', () => {
-  it('creates every table, at version 1, and a second open changes nothing', async () => {
+  it('creates every table, at the newest version, and a second open changes nothing', async () => {
     const db = openNodeAppDb();
-    expect(await migrate(db)).toBe(1);
+    expect(await migrate(db)).toBe(MIGRATIONS.length);
     const tables = (
       await db.getAllAsync<{ name: string }>(
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
@@ -37,7 +38,7 @@ describe('app.db schema (15 section 2.2)', () => {
       'vehicles',
     ]);
     await db.runAsync(SHIFT, 'a');
-    expect(await migrate(db)).toBe(1);
+    expect(await migrate(db)).toBe(MIGRATIONS.length);
     expect((await db.getAllAsync('SELECT * FROM shifts')).length).toBe(1);
   });
 
@@ -66,7 +67,9 @@ describe('app.db schema (15 section 2.2)', () => {
       `INSERT INTO trips (trip_key, shift_client_id, kind, original_kind, source, started_at, ended_at, distance_m, purpose)
        VALUES ('a:1:active', 'a', 'active', 'active', 'auto', 1, 2, 3, '')`,
     );
-    await db.runAsync("INSERT INTO odometer_readings VALUES ('a','shift_start',5,1,'local')");
+    await db.runAsync(
+      "INSERT INTO odometer_readings (shift_client_id, kind, reading_m, recorded_at) VALUES ('a','shift_start',5,1)",
+    );
     await db.runAsync('DELETE FROM shifts WHERE client_id = ?', 'a');
     expect(await db.getAllAsync('SELECT * FROM trips')).toEqual([]);
     expect(await db.getAllAsync('SELECT * FROM odometer_readings')).toEqual([]);
@@ -74,7 +77,7 @@ describe('app.db schema (15 section 2.2)', () => {
 
   it('upgrades a database that holds unsynced rows, keeps them, and takes the pre-migration copy first', async () => {
     const db = openNodeAppDb(join(dir, 'app.db'));
-    await migrate(db);
+    await migrate(db, { migrations: V1 });
     await db.runAsync(SHIFT, 'unsynced');
     await db.runAsync(
       "INSERT INTO outbox (kind, entity_key, body, created_at) VALUES ('shift.end','unsynced','{}',1)",
@@ -87,7 +90,7 @@ describe('app.db schema (15 section 2.2)', () => {
       sql: 'ALTER TABLE shifts ADD COLUMN extra TEXT; CREATE INDEX idx_extra ON shifts(extra);',
     };
     const to = await migrate(db, {
-      migrations: [...MIGRATIONS, v2],
+      migrations: [...V1, v2],
       beforeMigrate: async (i) => void before.push(i),
     });
     expect(to).toBe(2);
@@ -103,27 +106,27 @@ describe('app.db schema (15 section 2.2)', () => {
     const calls: unknown[] = [];
     const opts = { beforeMigrate: async (i: unknown) => void calls.push(i) };
     const fresh = openNodeAppDb();
-    await migrate(fresh, opts);
+    await migrate(fresh, { ...opts, migrations: V1 });
     expect(calls).toEqual([]);
 
     await fresh.runAsync(SHIFT, 'a');
     await fresh.runAsync("UPDATE shifts SET sync_state = 'on_server'");
     await migrate(fresh, {
       ...opts,
-      migrations: [...MIGRATIONS, { version: 2, sql: 'CREATE TABLE z (a TEXT);' }],
+      migrations: [...V1, { version: 2, sql: 'CREATE TABLE z (a TEXT);' }],
     });
     expect(calls).toEqual([]);
   });
 
   it('rolls a failing migration back completely and keeps the old version and data', async () => {
     const db = openNodeAppDb();
-    await migrate(db);
+    await migrate(db, { migrations: V1 });
     await db.runAsync(SHIFT, 'a');
     const bad = {
       version: 2,
       sql: 'CREATE TABLE half (a TEXT); INSERT INTO no_such_table VALUES (1);',
     };
-    await expect(migrate(db, { migrations: [...MIGRATIONS, bad] })).rejects.toMatchObject({
+    await expect(migrate(db, { migrations: [...V1, bad] })).rejects.toMatchObject({
       name: 'MigrationError',
       reason: 'failed',
     });
@@ -134,11 +137,11 @@ describe('app.db schema (15 section 2.2)', () => {
 
   it('does not migrate at all when the pre-migration copy fails', async () => {
     const db = openNodeAppDb();
-    await migrate(db);
+    await migrate(db, { migrations: V1 });
     await db.runAsync(SHIFT, 'a');
     await expect(
       migrate(db, {
-        migrations: [...MIGRATIONS, { version: 2, sql: 'CREATE TABLE z (a TEXT);' }],
+        migrations: [...V1, { version: 2, sql: 'CREATE TABLE z (a TEXT);' }],
         beforeMigrate: async () => {
           throw new Error('disk full');
         },

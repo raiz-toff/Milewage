@@ -69,6 +69,8 @@ export interface Flags {
   stops: boolean;
   segmenter: 'stops' | 'whole_shift';
   diagnostics: boolean;
+  /** The server's sync module: without it the phone is upload-only (15 section 13). */
+  sync: boolean;
   distanceUnit: 'km' | 'mi';
   /** IANA zone of the instance; local dates never use the device zone (15 section 10). */
   timezone: string;
@@ -83,6 +85,7 @@ export function deriveFlags(s: CachedSettings | null): Flags {
     stops,
     segmenter: stops ? 'stops' : 'whole_shift',
     diagnostics: s?.modules.diagnostics === true,
+    sync: s?.modules.sync ?? true,
     distanceUnit: s?.distance_unit ?? 'km',
     timezone: s?.timezone ?? 'UTC',
   };
@@ -148,6 +151,12 @@ export class Pairing {
     await this.d.plain.set(K_SETTINGS, JSON.stringify(settings));
     this.d.onSettings?.(settings);
     return { credential, settings };
+  }
+
+  /** Settings that arrived through the change feed replace the cached copy (and drive the flags). */
+  async storeSettings(settings: CachedSettings): Promise<void> {
+    await this.d.plain.set(K_SETTINGS, JSON.stringify(settings));
+    this.d.onSettings?.(settings);
   }
 
   async load(): Promise<PairedState | null> {

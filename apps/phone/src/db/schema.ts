@@ -121,4 +121,9 @@ CREATE TABLE conflict_log (
 );
 `;
 
-export const MIGRATIONS: Migration[] = [{ version: 1, sql: V1 }];
+const V2 = `ALTER TABLE odometer_readings ADD COLUMN server_id INTEGER;`;
+
+export const MIGRATIONS: Migration[] = [
+  { version: 1, sql: V1 },
+  { version: 2, sql: V2 },
+];

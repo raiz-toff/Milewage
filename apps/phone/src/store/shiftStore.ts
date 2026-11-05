@@ -80,6 +80,17 @@ export interface OdometerRow {
   recorded_at: number;
 }
 
+export interface ConflictRow {
+  id: number;
+  at: number;
+  entity: 'shift' | 'trip' | 'odometer';
+  entity_key: string;
+  reason: string;
+  local_json: string;
+  server_json: string | null;
+  seen: number;
+}
+
 export interface BeginShift {
   clientId: string;
   vehicleId: number;
@@ -262,6 +273,19 @@ export class ShiftStore {
       Math.round(readingM),
       recordedAt,
     );
+  }
+
+  /** Unseen differences the server made (15 section 7.4), newest first. */
+  async conflicts(clientId: string): Promise<ConflictRow[]> {
+    return this.db.getAllAsync<ConflictRow>(
+      'SELECT * FROM conflict_log WHERE seen = 0 AND (entity_key = ? OR entity_key LIKE ?) ORDER BY id DESC',
+      clientId,
+      `${clientId}:%`,
+    );
+  }
+
+  async markSeen(id: number): Promise<void> {
+    await this.db.runAsync('UPDATE conflict_log SET seen = 1 WHERE id = ?', id);
   }
 
   async setSyncState(clientId: string, state: SyncState): Promise<void> {

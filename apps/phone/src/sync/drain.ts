@@ -29,6 +29,8 @@ export interface DrainDeps {
   uploader: UploadWorker;
   feed: PointFeed;
   controller: ShiftController;
+  /** The change feed; called after a drain finished (forced when something was sent). */
+  pull?: (force: boolean) => Promise<unknown>;
   now?: () => number;
 }
 
@@ -162,6 +164,7 @@ export class SyncDrain {
       return { state: 'halted', retryInMs: null };
     }
     this.set({ phase: 'done' });
+    await this.d.pull?.(this.state.pointsSent > 0 || this.state.shiftsDone > 0);
     return { state: 'idle', retryInMs: null };
   }
 
