@@ -8,6 +8,7 @@ import { useSession, useSettings } from '../session';
 import { SortTable } from '../ui/SortTable';
 import type { Column } from '../ui/SortTable';
 import { Button, FormError } from '../ui/form';
+import { ShiftOdometer } from './ShiftOdometer';
 import { StopsPanel } from './Stops';
 import { TripsTable } from './Trips';
 
@@ -292,6 +293,8 @@ export function ShiftDetail() {
       ) : null}
 
       {settings.modules.replay ? <RouteView shiftId={shift.id} /> : null}
+
+      <ShiftOdometer shift={shift} />
 
       <section className="max-w-md space-y-2">
         <label className="block text-sm text-muted" htmlFor="notes">
