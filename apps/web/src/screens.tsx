@@ -8,6 +8,7 @@ import { ExportsPage } from './pages/Exports';
 import { Devices } from './pages/Devices';
 import { SettingsPage } from './pages/SettingsPage';
 import { LivePage } from './pages/Live';
+import { NotificationsPage } from './pages/Notifications';
 import { OdometerPage } from './pages/Odometer';
 import { ShiftsRoutes } from './pages/Shifts';
 import { GoalsPage } from './pages/Goals';
@@ -45,6 +46,12 @@ export const screens: Screen[] = [
   },
   { path: '/goals', label: 'Goals', visible: (m) => m.goals, element: <GoalsPage /> },
   { path: '/tax', label: 'Tax', visible: (m) => m.tax, element: <TaxPage /> },
+  {
+    path: '/notifications',
+    label: 'Notifications',
+    visible: (m) => m.notifications,
+    element: <NotificationsPage />,
+  },
   { path: '/vehicles', label: 'Vehicles', element: <VehiclesPage /> },
   { path: '/odometer', label: 'Odometer', element: <OdometerPage /> },
   {

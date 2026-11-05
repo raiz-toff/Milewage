@@ -6,6 +6,7 @@ import { useSession, useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
 import { Account } from './Account';
 import { ImportCard } from './Import';
+import { AlertsCard } from './Notifications';
 import { PlatformsCard } from './Platforms';
 
 type Patch = Schemas['SettingsPatch'];
@@ -235,6 +236,7 @@ export function SettingsPage() {
       <Account />
       {saved.modules.platforms ? <PlatformsCard /> : null}
       {saved.modules.import ? <ImportCard /> : null}
+      {saved.modules.notifications ? <AlertsCard /> : null}
       <ModuleFlags modules={saved.modules} />
     </section>
   );

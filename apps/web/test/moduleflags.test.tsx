@@ -99,6 +99,7 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
       'Analytics',
       'Goals',
       'Tax',
+      'Notifications',
       'Vehicles',
       'Odometer',
       'Exports',

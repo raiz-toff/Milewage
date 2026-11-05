@@ -133,4 +133,15 @@ export const signedIn = (settings: Settings = settingsFixture()): Record<string,
   'GET /setup/status': () => ({ body: { state: 'ready' } }),
   'GET /settings': () => ({ body: settings }),
   'GET /platforms': () => ({ body: [] }),
+  'GET /notifications': () => ({ body: { items: [], next_cursor: null, unread_count: 0 } }),
+  'GET /notifications/prefs': () => ({
+    body: {
+      shift_reminders: true,
+      goals: true,
+      tax_deadlines: true,
+      streak: true,
+      backup: true,
+      sync_reminder: true,
+    },
+  }),
 });

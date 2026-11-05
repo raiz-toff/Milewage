@@ -916,3 +916,10 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - **Deviations:** (1) no timer at all: the spec says the existing daily housekeeping job, but that job belongs to diagnostics (and is off with it); evaluating on read needs no timer and the inbox only matters while someone looks at it (the phone keeps its own local reminders). A consequence: nothing is added while nobody opens the web. (2) `DELETE` is a soft dismiss (`dismissed_at`, a column the spec table lacks) so that the same condition does not bring a dismissed row back on the next read. (3) Weekly digest, maintenance and insurance notices are not built (18 section 3.3).
 - Tests: 7 in `notifications.test.ts` (deadline once and only within 10 days; recurring and goal triggers; backup failure once a day and overdue; modules off emit nothing; toggles gate rows, validation and device scope; read, unread filter and count, dismissal staying dismissed, cursor pages; module off); the test harness now exposes the event bus.
 - Not done: the bell and list on the web (S9w); badge, challenge, level-up and streak rows come from `progress` (S10).
+
+
+## PR S9w — Web: notifications inbox, unread count and Alerts card (Comma-parity track)
+
+- Done: `/notifications` (navigation, `screens.tsx`, Caddyfile; hidden when `modules.notifications` is off): the list with words built from the kind and its reference (the server stores no text), mark read or unread, dismiss; the navigation link shows the unread count ("Notifications (3)"; the count request fails silently because it is a convenience); an "Alerts" card on Settings with the six toggles. With the module off there is no screen, no count, no card and no call.
+- Tests: 4 in `notifications.test.tsx` (count, text, read, dismiss; toggle; absent when off; every kind has words); the navigation list and Caddyfile test updated; the shared `signedIn` helper answers the inbox and prefs reads.
+- Not done: a bell icon (the count sits in the navigation text), phone-side local reminders (phone work), paging beyond the first 50.

@@ -5,6 +5,7 @@ import { Login } from './pages/Login';
 import { RecoveryKey } from './pages/RecoveryKey';
 import { Restore } from './pages/Restore';
 import { Setup } from './pages/Setup';
+import { useUnread } from './pages/Notifications';
 import { useSession } from './session';
 import type { Settings } from './api/client';
 
@@ -15,6 +16,7 @@ function Notice({ children }: { children: string }) {
 function Shell({ settings }: { settings: Settings }) {
   const { signOut } = useSession();
   const list = visibleScreens(settings.modules);
+  const unread = useUnread(settings.modules.notifications);
   return (
     <div className="min-h-screen">
       <header className="flex items-center gap-6 border-b border-line bg-card px-6 py-3">
@@ -27,6 +29,7 @@ function Shell({ settings }: { settings: Settings }) {
               className={({ isActive }) => (isActive ? 'text-accent' : 'text-muted hover:text-ink')}
             >
               {s.label}
+              {s.path === '/notifications' && unread > 0 ? ` (${unread})` : ''}
             </NavLink>
           ))}
         </nav>
