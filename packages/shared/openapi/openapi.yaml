@@ -28,6 +28,7 @@ tags:
   - { name: backups }
   - { name: sync }
   - { name: diagnostics }
+  - { name: platforms }
   - { name: system }
 
 x-modules:
@@ -86,6 +87,11 @@ x-modules:
     default: false
     dependsOn: [diagnostics, tracking, devices]
     operations: [createCaptureSession, listCaptureSessions, updateCaptureSession, deleteCaptureSession, downloadCaptureReplay, uploadCaptureFixes, putCaptureAnnotation, deleteCaptureAnnotation]
+  platforms:
+    toggle: modules.platforms
+    default: true
+    dependsOn: [core]
+    operations: [listPlatforms, putPlatform, deletePlatform]
 
 paths:
   /healthz:
@@ -918,6 +924,49 @@ paths:
               schema: { $ref: '#/components/schemas/Summary' }
         '422': { $ref: '#/components/responses/Unprocessable' }
 
+  /platforms:
+    get:
+      tags: [platforms]
+      operationId: listPlatforms
+      summary: Built-in platforms of the country merged with the driver's overrides and custom ones, in sort order.
+      parameters:
+        - { name: include_inactive, in: query, schema: { type: boolean, default: false } }
+      responses:
+        '200':
+          description: Platforms.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Platform' } }
+  /platforms/{slug}:
+    parameters:
+      - { name: slug, in: path, required: true, schema: { type: string, pattern: '^[a-z0-9_]{1,32}$' } }
+    put:
+      tags: [platforms]
+      operationId: putPlatform
+      summary: Create a custom platform or override a built-in's active, sort, target, colour and emoji (label only on a custom one). Idempotent.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlatformPut' }
+      responses:
+        '200':
+          description: The platform.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Platform' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    delete:
+      tags: [platforms]
+      operationId: deletePlatform
+      summary: Delete a custom platform that no label or earnings row uses (else 409 platform_in_use; deactivate instead). A built-in's override is reset.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Deleted or reset. }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
   /exports/{format}:
     get:
       tags: [exports]
@@ -1317,8 +1366,9 @@ components:
     Modules:
       type: object
       description: Read-only module flags so clients can hide screens and buttons of absent modules.
-      required: [devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
+      required: [platforms, devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
       properties:
+        platforms: { type: boolean, description: 'Platforms module registered (18 section 4.2).' }
         sync: { type: boolean }
         local_export: { type: boolean, description: Reserved for v1.1; false in v1. }
         devices: { type: boolean }
@@ -1419,6 +1469,29 @@ components:
         kind: { $ref: '#/components/schemas/OdometerKind' }
         reading_m: { type: integer, minimum: 0 }
         recorded_at: { $ref: '#/components/schemas/EpochMs' }
+
+    Platform:
+      type: object
+      required: [slug, label, custom, color, emoji, active, sort, hourly_target_cents]
+      properties:
+        slug: { type: string }
+        label: { type: string }
+        custom: { type: boolean }
+        color: { type: [string, 'null'] }
+        emoji: { type: [string, 'null'] }
+        active: { type: boolean }
+        sort: { type: integer }
+        hourly_target_cents: { type: [integer, 'null'], description: Used by analytics only. }
+    PlatformPut:
+      type: object
+      additionalProperties: false
+      properties:
+        label: { type: string, minLength: 1, maxLength: 40 }
+        color: { type: [string, 'null'], pattern: '^#[0-9a-f]{6}$' }
+        emoji: { type: [string, 'null'], maxLength: 8 }
+        active: { type: boolean }
+        sort: { type: integer, minimum: 0 }
+        hourly_target_cents: { type: [integer, 'null'], minimum: 0 }
 
     ShiftStatus: { enum: [active, ended, finalized] }
     ShiftStart:

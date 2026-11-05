@@ -598,6 +598,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/platforms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Built-in platforms of the country merged with the driver's overrides and custom ones, in sort order. */
+        get: operations["listPlatforms"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platforms/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Create a custom platform or override a built-in's active, sort, target, colour and emoji (label only on a custom one). Idempotent. */
+        put: operations["putPlatform"];
+        post?: never;
+        /** Delete a custom platform that no label or earnings row uses (else 409 platform_in_use; deactivate instead). A built-in's override is reset. */
+        delete: operations["deletePlatform"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/exports/{format}": {
         parameters: {
             query?: never;
@@ -863,6 +900,8 @@ export interface components {
         };
         /** @description Read-only module flags so clients can hide screens and buttons of absent modules. */
         Modules: {
+            /** @description Platforms module registered (18 section 4.2). */
+            platforms: boolean;
             sync: boolean;
             /** @description Reserved for v1.1; false in v1. */
             local_export?: boolean;
@@ -979,6 +1018,25 @@ export interface components {
             kind: components["schemas"]["OdometerKind"];
             reading_m: number;
             recorded_at: components["schemas"]["EpochMs"];
+        };
+        Platform: {
+            slug: string;
+            label: string;
+            custom: boolean;
+            color: string | null;
+            emoji: string | null;
+            active: boolean;
+            sort: number;
+            /** @description Used by analytics only. */
+            hourly_target_cents: number | null;
+        };
+        PlatformPut: {
+            label?: string;
+            color?: string | null;
+            emoji?: string | null;
+            active?: boolean;
+            sort?: number;
+            hourly_target_cents?: number | null;
         };
         /** @enum {unknown} */
         ShiftStatus: "active" | "ended" | "finalized";
@@ -2827,6 +2885,77 @@ export interface operations {
                 };
             };
             422: components["responses"]["Unprocessable"];
+        };
+    };
+    listPlatforms: {
+        parameters: {
+            query?: {
+                include_inactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Platforms. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Platform"][];
+                };
+            };
+        };
+    };
+    putPlatform: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatformPut"];
+            };
+        };
+        responses: {
+            /** @description The platform. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Platform"];
+                };
+            };
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    deletePlatform: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted or reset. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     exportData: {

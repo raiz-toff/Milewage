@@ -105,6 +105,7 @@
       "type": "object",
       "description": "Read-only module flags so clients can hide screens and buttons of absent modules.",
       "required": [
+        "platforms",
         "devices",
         "tracking",
         "replay",
@@ -118,6 +119,10 @@
         "countries"
       ],
       "properties": {
+        "platforms": {
+          "type": "boolean",
+          "description": "Platforms module registered (18 section 4.2)."
+        },
         "sync": {
           "type": "boolean"
         },
@@ -575,6 +580,94 @@
         },
         "recorded_at": {
           "$ref": "#/$defs/EpochMs"
+        }
+      }
+    },
+    "Platform": {
+      "type": "object",
+      "required": [
+        "slug",
+        "label",
+        "custom",
+        "color",
+        "emoji",
+        "active",
+        "sort",
+        "hourly_target_cents"
+      ],
+      "properties": {
+        "slug": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "custom": {
+          "type": "boolean"
+        },
+        "color": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "emoji": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "sort": {
+          "type": "integer"
+        },
+        "hourly_target_cents": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Used by analytics only."
+        }
+      }
+    },
+    "PlatformPut": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "color": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^#[0-9a-f]{6}$"
+        },
+        "emoji": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 8
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "sort": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "hourly_target_cents": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
         }
       }
     },

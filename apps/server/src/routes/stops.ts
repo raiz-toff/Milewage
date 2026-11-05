@@ -45,11 +45,14 @@ export function stopsRoutes({
   now,
   authn,
   processor,
+  platformOk,
 }: {
   db: Db;
   now: () => number;
   authn: Authenticator;
   processor: ShiftProcessor;
+  /** With the platforms module on: whether a slug is a built-in or the driver's own (18 section 4.2). */
+  platformOk?: (userId: number, slug: string) => boolean;
 }) {
   return (host: RouteHost) => {
     const { app, bus } = host as ServerRouteHost;
@@ -115,6 +118,11 @@ export function stopsRoutes({
         }
         if (!repo.stopsOf(shift.id).some((s) => s.stopKey === key)) {
           throw new ProblemError('not_found', 'This shift has no stop with that key.');
+        }
+        if (b.platform && platformOk && !platformOk(p.userId, b.platform)) {
+          throw new ProblemError('validation_failed', 'The request is not valid.', [
+            { path: '/platform', message: 'is not one of your platforms' },
+          ]);
         }
         const old = repo.findLabel(shift.id, key);
         // Last writer wins on the edit time; ties go to the server (08 section 4.4).

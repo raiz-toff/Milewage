@@ -26,6 +26,7 @@ export const ALL_ON: Modules = {
   stops: true,
   diagnostics: true,
   capture: false,
+  platforms: true,
   backup_download: false,
   exporters: ['csv', 'gpx', 'geojson'],
   countries: ['US', 'CA', 'GB'],

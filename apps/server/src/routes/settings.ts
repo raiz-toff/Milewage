@@ -14,6 +14,8 @@ import { str, strictObject, type AuthFn } from './util';
 
 /** Registered country packs until the pack registry exists (08 section 16.3). */
 export const DEFAULT_COUNTRIES = ['US', 'CA', 'GB'] as const;
+/** Driver admin modules (18): each is a flag in `modules` so the web can hide its screen. */
+export const COMMA_MODULES = ['platforms'];
 const VERBOSE_MS = 7 * 24 * 60 * 60 * 1000;
 
 const validZone = (tz: string) => {
@@ -57,6 +59,7 @@ export function moduleFlags(
   const flag = (names: string[]) => Object.fromEntries(names.map((n) => [n, on(n)]));
   return {
     ...flag(['sync', 'devices', 'tracking', 'replay', 'live', 'diagnostics', 'capture']),
+    ...flag(COMMA_MODULES),
     stops: on('stops') && stopsEnabled,
     // The engine is always on; this flag is the `backup.download` toggle and its routes.
     backup_download: backupDownload,

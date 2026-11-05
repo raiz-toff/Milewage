@@ -40,6 +40,7 @@ import { availableFormats, exportsRoutes } from './routes/exports';
 import { createLive } from './routes/live';
 import { createSync } from './routes/sync';
 import { replayRoutes } from './routes/replay';
+import { platformsRoutes, platformKnown } from './routes/platforms';
 import { stopsRoutes } from './routes/stops';
 import { trackingRoutes } from './routes/tracking';
 
@@ -66,6 +67,8 @@ export const captureModule = defineModule({
   dependsOn: ['diagnostics', 'tracking', 'devices'],
   defaultEnabled: false,
 });
+/** The driver's platforms: built-ins plus their own, with overrides (18 section 4.2). */
+export const platformsModule = defineModule({ name: 'platforms', dependsOn: ['core'] });
 /** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */
 export const backupModule = defineModule({
   name: 'backup',
@@ -84,6 +87,7 @@ export const serverModules = [
   exportersModule,
   diagnosticsModule,
   captureModule,
+  platformsModule,
   backupModule,
 ] as const;
 
@@ -341,7 +345,17 @@ export function createServerModules(ctx: ServerContext) {
       subscriptions: late.subscriptions,
       jobs: [late.job, archiver.job],
     }),
-    defineModule({ ...stopsModule, routes: stopsRoutes({ ...ctx, authn, processor }) }),
+    defineModule({
+      ...stopsModule,
+      routes: stopsRoutes({
+        ...ctx,
+        authn,
+        processor,
+        platformOk: (userId, slug) =>
+          !registry?.isEnabled('platforms') || platformKnown(ctx.db, userId, slug),
+      }),
+    }),
+    defineModule({ ...platformsModule, routes: platformsRoutes({ ...ctx, authn }) }),
     defineModule({ ...replayModule, routes: replayRoutes({ ...ctx, authn }) }),
     defineModule({
       ...syncModule,

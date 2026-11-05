@@ -17,6 +17,7 @@ const CATALOG = {
   shift_already_active: [409, 'A shift is already active', false],
   shift_finalized: [409, 'Shift is finalized', false],
   shift_not_ended: [409, 'Shift has not ended', false],
+  platform_in_use: [409, 'Platform is in use', false],
   trip_not_editable: [409, 'Trip cannot be edited', false],
   capture_active: [409, 'Capture session conflict', false],
   not_recomputable: [409, 'Raw points were archived; the shift cannot be recomputed', false],
