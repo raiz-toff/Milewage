@@ -34,7 +34,7 @@
 	# The web client (apps/web, built into /srv/web by the caddy image target). Only its own
 	# screens fall back to index.html, so any other unknown path is still a 404.
 	# Keep this list in step with apps/web/src/screens.tsx.
-	@spa path / /dashboard /live /shifts /shifts/* /odometer /exports /devices /backups /settings
+	@spa path / /dashboard /live /shifts /shifts/* /vehicles /odometer /exports /devices /backups /settings
 	handle @spa {
 		root * /srv/web
 		rewrite * /index.html

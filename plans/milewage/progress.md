@@ -686,3 +686,10 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 
 - Done: `plans/milewage/18-comma-parity.md`: inventory of Comma's driver functions (14 groups), what MileWage already has, 13 new or extended modules with toggle, tables (07 style DDL), API operations (08 style), web screen and CRA relevance, the guard-rails (server truth, single user, no per-delivery taps, payouts only from labels or driver entry), items not carried with reasons, build order and owner questions. Decision 1.9 added to `06` (checklist item and sign-off log); `11`, `07` (7.1, D8), `08` (section 3, 12, 16.5), `05`, `01` and the README blueprint no longer say expenses, analytics or notifications are out of scope.
 - Notes: found that payouts have no driver-entered source other than per-stop labels, so the plan adds a small `earnings` module (one typed total per shift and platform) that goals, tax and analytics depend on; Comma's weekly digest, maintenance and insurance-expiry alerts are toggles with no trigger code, so they are not carried. Item 1.8 (no Comma import) is kept: the `import` module is a generic CSV import.
+
+
+## PR C2 — Web vehicles screen (Comma-parity track)
+
+- Done: `/vehicles` screen in `apps/web` using only the existing routes (`GET /vehicles` with `include_archived`, `POST /vehicles`, `PATCH /vehicles/{id}`): add (name, type), rename, change type, archive and restore, show archived. Core screen (no module flag); added to the navigation, `screens.tsx` and the Caddy SPA path list. The odometer screen's empty state now points to it.
+- Tests: 6 in `vehicles.test.tsx`; the module-flag navigation expectations include Vehicles.
+- Not done (needs the server work in `18` §4.1): make, model, year, plate, power type, default vehicle, the extra kinds (e-bike, scooter, walking), maintenance log and per-year tax method. The API has no delete (archive only, by design).

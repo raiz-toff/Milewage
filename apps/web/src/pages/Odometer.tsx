@@ -137,7 +137,7 @@ export function OdometerPage() {
     return (
       <section className="space-y-2">
         <h1 className="font-heading text-2xl">Odometer</h1>
-        <p className="text-muted">There is no vehicle yet. Add one on the phone first.</p>
+        <p className="text-muted">There is no vehicle yet. Add one on the Vehicles screen first.</p>
       </section>
     );
 
