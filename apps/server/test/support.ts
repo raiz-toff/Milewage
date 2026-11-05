@@ -11,6 +11,7 @@ import {
   type AppOptions,
   type Db,
 } from '../src/index';
+import type { ExporterRegistry } from '../src/exporters/registry';
 
 export const owner = {
   username: 'sam',
@@ -30,6 +31,8 @@ export function harness(
     livePingMs?: number;
     backupOnShiftEnd?: boolean;
     backupDownload?: boolean;
+    exporters?: ExporterRegistry;
+    enabledExportFormats?: () => readonly string[];
   } = {},
 ) {
   const dir = mkdtempSync(join(tmpdir(), 'mw-test-'));
@@ -58,6 +61,8 @@ export function harness(
     // Off unless a test asks: a real backup after every shift end would race with the teardown.
     backupOnShiftEnd: extra.backupOnShiftEnd ?? false,
     backupDownload: extra.backupDownload,
+    exporters: extra.exporters,
+    enabledExportFormats: extra.enabledExportFormats,
     db,
     now: () => clock.t,
     diagnosticsPath: join(dir, 'diagnostics.db'),

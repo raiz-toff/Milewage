@@ -45,6 +45,7 @@ export function moduleFlags(
   stopsEnabled: boolean,
   countries: readonly string[],
   backupDownload = false,
+  exporters: string[] = [],
 ) {
   const on = (name: string) => reg.isEnabled(name);
   const flag = (names: string[]) => Object.fromEntries(names.map((n) => [n, on(n)]));
@@ -53,7 +54,7 @@ export function moduleFlags(
     stops: on('stops') && stopsEnabled,
     // The engine is always on; this flag is the `backup.download` toggle and its routes.
     backup_download: backupDownload,
-    exporters: ['csv', 'pdf', 'gpx', 'geojson'].filter((f) => on(`export_${f}`)),
+    exporters,
     countries: [...countries],
   };
 }
@@ -80,6 +81,8 @@ type ReaderContext = {
   countries: readonly string[];
   /** `backup.download`; false until the backup module says otherwise. */
   backupDownload?: boolean;
+  /** Export formats that exist right now (registered, switched on, requirements met). */
+  exportFormats?: (reg: ModuleRegistry) => string[];
 };
 
 /** The `Settings` response for a user. Also returned to a phone when it pairs. */
@@ -91,7 +94,13 @@ export function settingsReader(ctx: ReaderContext) {
     const verbose = row.diagnosticsLevel === 'verbose';
     const expired = verbose && (row.diagnosticsVerboseUntil ?? 0) <= ctx.now();
     return {
-      modules: moduleFlags(ctx.registry, row.stopsEnabled === 1, ctx.countries, ctx.backupDownload),
+      modules: moduleFlags(
+        ctx.registry,
+        row.stopsEnabled === 1,
+        ctx.countries,
+        ctx.backupDownload,
+        ctx.exportFormats?.(ctx.registry),
+      ),
       engine_version: algorithmVersion,
       country: row.country,
       distance_unit: row.distanceUnit,

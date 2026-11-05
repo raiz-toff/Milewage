@@ -67,6 +67,7 @@ export const caPack: CountryPack = {
 };
 
 /** United States: standard mileage rate for business use, flat, with dated eras (one mid-year change in 2026). */
+const US_LAST_DAY = '2026-12-31';
 const US_ERAS: { from: string; centsPerMile: number }[] = [
   { from: '2024-01-01', centsPerMile: 67 },
   { from: '2025-01-01', centsPerMile: 70 },
@@ -79,7 +80,8 @@ export const usPack: CountryPack = {
   periodStart: (d) => `${year(d)}-01-01`,
   deduction(i) {
     if (i.vehicleKind === 'bicycle') return null;
-    const era = [...US_ERAS].reverse().find((e) => e.from <= i.date);
+    // The last published era ends with its calendar year: a rate is not carried into a year nobody has announced.
+    const era = [...US_ERAS].reverse().find((e) => e.from <= i.date && i.date <= US_LAST_DAY);
     return era ? whole((i.totalM / MILE) * era.centsPerMile) : null;
   },
   sources: ['https://www.irs.gov/tax-professionals/standard-mileage-rates'],
@@ -98,7 +100,10 @@ export const gbPack: CountryPack = {
     d >= `${year(d)}-04-06` ? `${year(d)}-04-06` : `${Number(year(d)) - 1}-04-06`,
   deduction(i) {
     if (i.vehicleKind === 'bicycle') return null;
+    if (i.date < '2024-04-06' || i.date > '2027-04-05') return null;
     if (i.vehicleKind === 'motorcycle') return whole((i.totalM / MILE) * 24);
+    // Only the tax years 2024-25 to 2026-27 are registered.
+    if (i.date < '2024-04-06' || i.date > '2027-04-05') return null;
     const first = i.date >= '2026-04-06' ? 55 : 45;
     return whole(tiered(i, MILE, 10_000 * MILE, first, 25));
   },

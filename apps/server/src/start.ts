@@ -2,7 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { resolveModuleConfig } from '@milewage/shared';
 import { buildApp, type App } from './app';
-import { loadConfig } from './config';
+import { exportFormatsOn, loadConfig } from './config';
 import {
   createInstanceReader,
   loadMigrations,
@@ -53,6 +53,8 @@ export async function startServer(
         configDir: config.configDir,
         state,
         backupSchedule: state.mode === 'normal',
+        enabledExportFormats: () =>
+          exportFormatsOn(['csv', 'pdf', 'gpx', 'geojson'], config.settings, env),
         backupOnShiftEnd: config.backup.onShiftEnd,
         backupDownload: config.backup.download,
         log,

@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import type { RouteHost } from '@milewage/shared';
+import type { ModuleRegistry, RouteHost } from '@milewage/shared';
 import { API_PREFIX, type ServerRouteHost } from '../app';
 import { generateRecoveryKey, keyTail, tailCheck } from '../backup/age';
 import { fileSecrets, type SecretsStore } from '../backup/secrets';
@@ -34,6 +34,7 @@ export interface CoreContext {
   status?: Pick<StatusContext, 'state' | 'disk' | 'lastBackup' | 'diagnostics'>;
   /** `backup.download` (10 section 3.1); reported to clients as `modules.backup_download`. */
   backupDownload?: boolean;
+  exportFormats?: (reg: ModuleRegistry) => string[];
   /** The engine run at shift end (tracking module); absent in a bare core. */
   processor?: ShiftProcessor;
 }
@@ -79,6 +80,7 @@ export function coreRoutes(
     status,
     processor,
     backupDownload,
+    exportFormats,
   }: CoreContext,
   authn: Authenticator,
 ) {
@@ -98,6 +100,7 @@ export function coreRoutes(
       countries,
       emit,
       backupDownload: backupDownload !== false,
+      exportFormats,
     });
     vehicleRoutes(app, { db, now, auth, emit });
     odometerRoutes(app, { db, now, auth, emit });

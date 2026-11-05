@@ -21,6 +21,28 @@ export interface ServerConfig {
   backup: { onShiftEnd: boolean; download: boolean };
 }
 
+/** Export formats switched on: `modules.export_<format>` in the settings file, then `MILEWAGE_MODULE_EXPORT_<FORMAT>=0|1` (08 section 16.1). */
+export function exportFormatsOn(
+  formats: readonly string[],
+  settings: ModuleSettings,
+  env: Readonly<Record<string, string | undefined>>,
+): string[] {
+  return formats.filter((f) => {
+    const fromEnv = env[`MILEWAGE_MODULE_EXPORT_${f.toUpperCase()}`];
+    if (fromEnv !== undefined && fromEnv !== '') {
+      if (fromEnv !== '0' && fromEnv !== '1') {
+        throw new ConfigError(`MILEWAGE_MODULE_EXPORT_${f.toUpperCase()} must be 0 or 1.`);
+      }
+      return fromEnv === '1';
+    }
+    const fromFile = settings.modules?.[`export_${f}`];
+    if (fromFile !== undefined && typeof fromFile !== 'boolean') {
+      throw new ConfigError(`settings.modules.export_${f} must be true or false.`);
+    }
+    return fromFile ?? true;
+  });
+}
+
 export function loadConfig(env: Readonly<Record<string, string | undefined>>): ServerConfig {
   const port = Number(env.MILEWAGE_PORT ?? '8080');
   if (!Number.isInteger(port) || port < 0 || port > 65535) {

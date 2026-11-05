@@ -22,6 +22,10 @@ import { devicesRoutes } from './routes/devices';
 import { diagnosticsRoutes } from './routes/diagnostics';
 import { DEFAULT_COUNTRIES, settingsReader } from './routes/settings';
 import { createShiftProcessor } from './processing/shift-processor';
+import { csvExporter } from './exporters/csv';
+import { geojsonExporter, gpxExporter } from './exporters/geo';
+import { createExporterRegistry, type ExporterRegistry } from './exporters/registry';
+import { availableFormats, exportsRoutes } from './routes/exports';
 import { createLive } from './routes/live';
 import { createSync } from './routes/sync';
 import { replayRoutes } from './routes/replay';
@@ -42,6 +46,8 @@ export const replayModule = defineModule({ name: 'replay', dependsOn: ['tracking
 export const liveModule = defineModule({ name: 'live', dependsOn: ['core'] });
 /** The pull path for the phone (15 section 6.5): `change_log`, `overwrite_log`, `GET /sync/changes`. */
 export const syncModule = defineModule({ name: 'sync', dependsOn: ['core', 'devices'] });
+/** `GET /exports/{format}`; each format is a registered exporter (08 sections 11 and 16.3). */
+export const exportersModule = defineModule({ name: 'exporters', dependsOn: ['core'] });
 export const diagnosticsModule = defineModule({ name: 'diagnostics', dependsOn: ['core'] });
 /** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */
 export const backupModule = defineModule({
@@ -58,6 +64,7 @@ export const serverModules = [
   replayModule,
   liveModule,
   syncModule,
+  exportersModule,
   diagnosticsModule,
   backupModule,
 ] as const;
@@ -74,6 +81,10 @@ export interface ServerContext extends CoreContext {
   secrets?: SecretsStore;
   /** Start the nightly 03:30 job (off in tests). */
   backupSchedule?: boolean;
+  /** Exporters; defaults to csv, gpx and geojson. A new format registers here without other edits. */
+  exporters?: ExporterRegistry;
+  /** Formats switched on (`modules.export_<format>`); default all registered. */
+  enabledExportFormats?: () => readonly string[];
   /** `backup.on_shift_end` (default on): a verified backup after a shift ends, at most one per 15 minutes. */
   backupOnShiftEnd?: boolean;
   /** Use this service instead of building one, so setup, migration and restore share it. */
@@ -121,6 +132,7 @@ export function createServerModules(ctx: ServerContext) {
       registry: host.registry,
       countries,
       backupDownload: ctx.backupDownload !== false,
+      exportFormats,
     });
   let store: ReturnType<typeof openDiagnosticsStore> | undefined;
   const diagnosticsStore = () =>
@@ -146,6 +158,12 @@ export function createServerModules(ctx: ServerContext) {
     stopsOn: () => registry?.isEnabled('stops') ?? false,
   });
   const sync = createSync({ db: ctx.db, now: ctx.now, authn, readSettings });
+  const exporters =
+    ctx.exporters ?? createExporterRegistry([csvExporter, gpxExporter, geojsonExporter]);
+  const exportFormats = (reg: ModuleRegistry) =>
+    reg.isEnabled('exporters')
+      ? availableFormats(exporters, (m) => reg.isEnabled(m), ctx.enabledExportFormats)
+      : [];
   const uploadDir = join(dirname(ctx.db.name), '.restore-upload');
   // The registry exists only once routes are registered; the processor asks it per call.
   let registry: ModuleRegistry | undefined;
@@ -164,6 +182,7 @@ export function createServerModules(ctx: ServerContext) {
             ...ctx,
             secrets,
             processor,
+            exportFormats,
             status: {
               state: ctx.state,
               disk: ctx.disk,
@@ -188,6 +207,10 @@ export function createServerModules(ctx: ServerContext) {
       routes: sync.routes,
       subscriptions: sync.subscriptions,
       jobs: sync.jobs,
+    }),
+    defineModule({
+      ...exportersModule,
+      routes: exportsRoutes({ ...ctx, authn, exporters, formats: ctx.enabledExportFormats }),
     }),
     defineModule({
       ...liveModule,

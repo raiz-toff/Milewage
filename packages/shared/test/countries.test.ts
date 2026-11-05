@@ -24,6 +24,8 @@ describe('country packs (08 section 16.3)', () => {
     expect(d(usPack, 10_000, '2026-06-30')).toBe(Math.round((10_000 / MILE) * 72.5));
     expect(d(usPack, 10_000, '2026-07-01')).toBe(472);
     expect(d(usPack, 10_000, '2023-12-31')).toBeNull(); // no rate registered
+    expect(d(usPack, 10_000, '2027-01-01')).toBeNull(); // nor carried into an unannounced year
+    expect(d(gbPack, 10_000, '2027-04-06')).toBeNull();
     expect(d(usPack, 10_000, '2026-07-01', 0, 'bicycle')).toBeNull();
     expect(usPack.periodStart('2026-08-09')).toBe('2026-01-01');
   });
