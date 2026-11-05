@@ -571,3 +571,10 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 ## PR M7.10c — Shift odometer lookup spans a shift past midnight (Web track)
 
 - Fix to M7.10b: the shift detail's odometer lookup now runs from the shift's `local_date` to the local day it ended on, so an end reading entered after midnight is found (the M7.10b "Limits" line about this no longer applies). 1 new test; 119 web tests in total.
+
+
+## PR M3.7w — Off-site acknowledgement control and download reminder (Web track)
+
+- Done: on the Backups page, an "Off-site copy" section shown only when `modules.backup_download` is on: the last download time, and a checkbox "My backup folder is synced to another place" that sends `PUT /backups/offsite-ack {synced_elsewhere}` and shows the server's returned state ("Confirmed ..., you will be asked again after 90 days"; a confirmation older than 90 days reads as not ticked with a request to tick again). Clicking Download hides the "no copy has left this server" reminder and shows "Last download: just now" at once (the server resets the reminder when it hands the file out), without a reload. The existing Download link was already gated by the same flag. With the flag off there is no section, no checkbox and no ack call.
+- Tests: 7 new in `offsite.test.tsx` (last download, tick, untick, stale, download click, refusal, module off). 126 web tests in total.
+- Limits: the real file download through Caddy was not tried; the reminder reset on screen assumes the browser actually completes the request. Not run in a browser.

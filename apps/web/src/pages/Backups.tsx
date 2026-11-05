@@ -23,6 +23,8 @@ const DISK: Record<Status['disk_state'], string | null> = {
   writes_blocked: 'The disk is almost full. New data is refused until space is freed.',
 };
 
+const DAY = 86_400_000;
+
 const mb = (n: number) => `${(n / 1_000_000).toFixed(1)} MB`;
 
 /**
@@ -37,6 +39,8 @@ export function Backups() {
   const [status, setStatus] = useState<Status | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // The server resets the reminder when a file is handed out; show that without a reload.
+  const [downloaded, setDownloaded] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -67,6 +71,19 @@ export function Backups() {
     }
   }
 
+  async function acknowledge(synced: boolean) {
+    setError(null);
+    try {
+      const offsite = await unwrap(
+        api.PUT('/backups/offsite-ack', { body: { synced_elsewhere: synced } }),
+      );
+      setStatus((old) => (old ? { ...old, offsite } : old));
+      setDownloaded(false);
+    } catch (e) {
+      setError(describe(e));
+    }
+  }
+
   const warnings = status
     ? [
         DISK[status.disk_state],
@@ -74,7 +91,7 @@ export function Backups() {
           ? 'The server is read-only after a failed upgrade. Nothing can be saved.'
           : null,
         status.mode === 'restoring' ? 'A restore is running.' : null,
-        status.offsite.reminder_due
+        status.offsite.reminder_due && !downloaded
           ? 'No copy of your backups has left this server recently. Download one and keep it elsewhere.'
           : null,
       ].filter((w): w is string => w !== null)
@@ -123,7 +140,11 @@ export function Backups() {
                 <td className="pr-4">{b.integrity_ok ? 'passed' : 'FAILED'}</td>
                 <td className="text-right">
                   {modules.backup_download ? (
-                    <a className="text-accent" href={`/api/v1/backups/${b.id}/download`}>
+                    <a
+                      className="text-accent"
+                      href={`/api/v1/backups/${b.id}/download`}
+                      onClick={() => setDownloaded(true)}
+                    >
                       Download
                     </a>
                   ) : null}
@@ -133,6 +154,9 @@ export function Backups() {
           </tbody>
         </table>
       )}
+      {status && modules.backup_download ? (
+        <Offsite offsite={status.offsite} downloaded={downloaded} onChange={acknowledge} />
+      ) : null}
       {status ? (
         <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-4">
           <dt className="text-muted">Version</dt>
@@ -144,6 +168,55 @@ export function Backups() {
           <dt className="text-muted">Paired phones</dt>
           <dd>{status.paired_device_count}</dd>
         </dl>
+      ) : null}
+    </section>
+  );
+}
+
+/**
+ * The off-site copy (10 section 4): the last download, and a switch for a driver whose backup
+ * folder is synced somewhere else already. The switch is re-asked after 90 days.
+ */
+function Offsite({
+  offsite,
+  downloaded,
+  onChange,
+}: {
+  offsite: Status['offsite'];
+  downloaded: boolean;
+  onChange: (synced: boolean) => void;
+}) {
+  const { timezone } = useSettings();
+  const at = offsite.synced_elsewhere_at;
+  const stale = at !== null && Date.now() - at > 90 * DAY;
+  return (
+    <section
+      aria-label="Off-site copy"
+      className="space-y-2 rounded border border-line bg-card p-4"
+    >
+      <h2 className="font-heading text-lg">Off-site copy</h2>
+      <p className="text-sm text-muted">
+        Last download:{' '}
+        {downloaded
+          ? 'just now'
+          : offsite.last_download_at === null
+            ? 'never'
+            : formatDateTime(offsite.last_download_at, timezone)}
+      </p>
+      <label className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={at !== null && !stale}
+          onChange={(e) => onChange(e.target.checked)}
+        />
+        <span>My backup folder is synced to another place</span>
+      </label>
+      {at !== null ? (
+        <p className="text-sm text-muted">
+          {stale
+            ? `Confirmed ${formatDateTime(at, timezone)}. That is over 90 days ago: tick the box again if it is still true.`
+            : `Confirmed ${formatDateTime(at, timezone)}. You will be asked again after 90 days.`}
+        </p>
       ) : null}
     </section>
   );
