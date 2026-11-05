@@ -858,3 +858,10 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Done: migration `goals/0001_goals.sql`; `GET /goals` (web or device read), `POST /goals`, `PATCH/DELETE /goals/{id}` (web only). Progress is computed at read time (`goal-progress.ts`): periods use the owner's time zone and `settings.week_start`; `earnings` reads the effective earnings (typed totals, else labels) and is `null` with the note "no earnings entered", never 0; `hours` and `shifts` count ended and finalized shifts of the period (0 with none); `active_distance` is flagged `estimated: true` and is `null` when the period's shifts have no stop-based split (`whole_shift`). **No goal is seeded** (Comma's $500 a week is a fabricated number; the dashboard checklist will offer "set a weekly goal"). Event `goals.changed`.
 - Tests: 8 in `goals.test.ts` (period maths incl. Sunday starts and a leap February; CRUD and validation; device read but no write; shift and hour counts limited to the period; the week-start setting moving the boundary; earnings null then typed; active distance estimated and unknown for whole-shift; module off); the matrix covers the 404 side.
 - Not done: the phone ring through `sync` (phone work), goal-met events for notifications (S9 evaluates them where it needs them).
+
+
+## PR S7w — Web: Goals screen (Comma-parity track)
+
+- Done: `/goals` (navigation, `screens.tsx`, Caddyfile; hidden when `modules.goals` is off): add a goal (measure, period, target typed in the driver's units: currency, hours, count, km or miles, stored as cents, minutes, count, metres), progress bars with "of" text, "(estimated)" on active distance, the server's reason instead of a bar when progress is unknown, pause and resume, delete, and an empty state that says no goal is set for you. `GoalBar` is exported for the dashboard ring (done with the dashboard checklist at the end).
+- Tests: 6 in `goals.test.tsx`; navigation list and Caddyfile test updated.
+- Not done: the dashboard ring (later PR), editing a goal's numbers (pause, resume and delete only).

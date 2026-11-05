@@ -92,6 +92,7 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
       'Live map',
       'Shifts',
       'Expenses',
+      'Goals',
       'Tax',
       'Vehicles',
       'Odometer',
