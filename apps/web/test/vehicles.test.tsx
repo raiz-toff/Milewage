@@ -34,7 +34,7 @@ const car = (over: Partial<Row> = {}): Row => ({
 function server(initial: Row[] = [car()]) {
   let rows = initial;
   const table = {
-    ...signedIn(),
+    ...signedIn(settingsFixture({ modules: { tax: false } })),
     'GET /vehicles': ({ url }: { url: URL }) => ({
       body:
         url.searchParams.get('include_archived') === 'true'
@@ -153,7 +153,7 @@ describe('vehicles page', () => {
   it('shows the server message when a change is refused', async () => {
     renderApp(
       {
-        ...signedIn(),
+        ...signedIn(settingsFixture({ modules: { tax: false } })),
         'GET /vehicles': () => ({ body: [car()] }),
         'PATCH /vehicles/1': () => ({
           status: 422,

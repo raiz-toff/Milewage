@@ -9,6 +9,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { LivePage } from './pages/Live';
 import { OdometerPage } from './pages/Odometer';
 import { ShiftsRoutes } from './pages/Shifts';
+import { TaxPage } from './pages/Tax';
 import { VehiclesPage } from './pages/Vehicles';
 
 /**
@@ -34,6 +35,7 @@ export const screens: Screen[] = [
     visible: (m) => m.expenses,
     element: <ExpensesPage />,
   },
+  { path: '/tax', label: 'Tax', visible: (m) => m.tax, element: <TaxPage /> },
   { path: '/vehicles', label: 'Vehicles', element: <VehiclesPage /> },
   { path: '/odometer', label: 'Odometer', element: <OdometerPage /> },
   {

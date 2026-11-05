@@ -844,3 +844,10 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Web: the Exports screen lists the two formats (labels and hints) and runs them with the chosen period; `tax_summary` takes the year of the period's start.
 - Tests: 6 in `exports-reports.test.ts` (columns, rounding, quoting and formula guard, default year, category filter, bad ranges, tax CSV lines hand-checked, JSON, unsupported country, per-format switch and module requirement); `exports.test.ts` and `settings.test.ts` expectations of the format list updated.
 - Not done: a "Year-in-Review" image (not carried, 18 section 3.3); receipt files in the export (not wanted by the spec); the print view is the browser's print of the PDF page, which still does not exist (M9.4).
+
+
+## PR S6w — Web: Tax screen and vehicle tax-year panel (Comma-parity track)
+
+- Done: `/tax` (navigation entry, `screens.tsx`, Caddyfile; hidden when `modules.tax` is off): the estimate with its working (earnings, deductible expenses, the mileage deduction labelled "a deduction, not cash", taxable income, pension contribution, income tax at the chosen rate, total set-aside, a quarter as an instalment, sales tax owing), a visible "Unverified rates" alert while the pack is unverified, the server's notices ("estimate, not tax advice"), information-slip alerts, deadlines, the set-aside rate and the GST/HST registration inputs (with the typed collected amount), and the Tax Jar (balance against target, quick-add buttons, custom amount, delete). A country without a pack shows only the notice. On the Vehicles screen each active vehicle gets a "Deduct X in <year> by: Mileage rate / Actual expenses" choice, shown only with the module on.
+- Tests: 6 in `tax.test.tsx` (working and notices, unsupported country, rate in basis points and registration, jar add and delete, absent when off, vehicle panel on and off); navigation list and Caddyfile test updated; the vehicles tests run with the tax module off so their alert assertions stay unambiguous.
+- Not done: a year picker beyond a number field, a print view, the T4A and deadline reminders as notifications (S9), the 10-day-before-deadline alert.

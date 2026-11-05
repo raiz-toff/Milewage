@@ -5,6 +5,7 @@ import type { Schemas } from '../api/client';
 import { formatDateTime } from '../format';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
+import { VehicleTaxYear } from './VehicleTaxYear';
 
 type Vehicle = Schemas['Vehicle'];
 type Kind = Vehicle['kind'];
@@ -90,6 +91,9 @@ function VehicleRow({ vehicle, onChanged }: { vehicle: Vehicle; onChanged: () =>
             {saved.default_vehicle_id === vehicle.id ? ' (default)' : ''}
           </span>
         )}
+        {saved.modules.tax && !archived && edit === null ? (
+          <VehicleTaxYear vehicleId={vehicle.id} name={vehicle.name} />
+        ) : null}
         <FormError message={error} />
       </td>
       <td className="pr-4 text-muted">
