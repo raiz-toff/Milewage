@@ -27,6 +27,7 @@ const ALL_OFF: Modules = {
   analytics: false,
   maintenance: false,
   import: false,
+  notifications: false,
   exporters: [],
 };
 

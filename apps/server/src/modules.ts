@@ -46,6 +46,9 @@ import { createEarningsPolicy, earningsRoutes } from './routes/earnings';
 import { receiptsRoutes } from './routes/receipts';
 import { analyticsRoutes } from './routes/analytics';
 import { goalsRoutes } from './routes/goals';
+import { notificationsRoutes } from './routes/notifications';
+import { notify } from './notifications';
+import { localDate } from './time';
 import { importsRoutes } from './routes/imports';
 import { maintenanceRoutes } from './routes/maintenance';
 import { taxRoutes } from './routes/tax';
@@ -95,6 +98,8 @@ export const analyticsModule = defineModule({ name: 'analytics', dependsOn: ['co
 export const maintenanceModule = defineModule({ name: 'maintenance', dependsOn: ['core'] });
 /** Generic CSV import of the driver's own expenses and shifts, in two steps (18 section 12). */
 export const importModule = defineModule({ name: 'import', dependsOn: ['core'] });
+/** The in-app inbox and its toggles; the phone fires its own local reminders (18 section 11). */
+export const notificationsModule = defineModule({ name: 'notifications', dependsOn: ['core'] });
 /** The Tax Center: an estimate, never a filing (18 section 7). CA only until other packs are verified. */
 export const taxModule = defineModule({ name: 'tax', dependsOn: ['core'] });
 /** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */
@@ -124,6 +129,7 @@ export const serverModules = [
   analyticsModule,
   maintenanceModule,
   importModule,
+  notificationsModule,
   backupModule,
 ] as const;
 
@@ -413,6 +419,33 @@ export function createServerModules(ctx: ServerContext) {
       routes: analyticsRoutes({ ...ctx, authn, override: ctx.comma?.earningsOverride }),
     }),
     defineModule({ ...maintenanceModule, routes: maintenanceRoutes({ ...ctx, authn }) }),
+    defineModule({
+      ...notificationsModule,
+      routes: notificationsRoutes({
+        ...ctx,
+        authn,
+        taxCountries: ctx.comma?.taxCountries ?? COMMA_DEFAULTS.taxCountries,
+        override: ctx.comma?.earningsOverride,
+      }),
+      subscriptions: {
+        // A failed backup is an event, not a state that can be re-read later, so it is recorded when it happens.
+        'backup.finished'(r) {
+          if (r.ok) return;
+          const owner = createBackupRepository(ctx.db).ownerId();
+          const tz =
+            owner === undefined ? undefined : createSettingsRepository(ctx.db).get(owner)?.timezone;
+          if (owner !== undefined && tz) {
+            notify(
+              { db: ctx.db, now: ctx.now, emit: () => busEmit },
+              owner,
+              'backup_failed',
+              `backup_failed:${localDate(ctx.now(), tz)}`,
+              'backup_failed',
+            );
+          }
+        },
+      },
+    }),
     defineModule({ ...importModule, routes: importsRoutes({ ...ctx, authn }) }),
     defineModule({ ...receiptsModule, routes: receiptsRoutes({ ...ctx, authn }) }),
     defineModule({

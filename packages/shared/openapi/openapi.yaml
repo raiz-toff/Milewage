@@ -37,6 +37,7 @@ tags:
   - { name: analytics }
   - { name: maintenance }
   - { name: import }
+  - { name: notifications }
   - { name: system }
 
 x-modules:
@@ -140,6 +141,11 @@ x-modules:
     default: true
     dependsOn: [core]
     operations: [previewImport, commitImport]
+  notifications:
+    toggle: modules.notifications
+    default: true
+    dependsOn: [core]
+    operations: [listNotifications, markNotificationRead, dismissNotification, getNotificationPrefs, updateNotificationPrefs]
 
 paths:
   /healthz:
@@ -1625,6 +1631,80 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/Unprocessable' }
 
+  /notifications:
+    get:
+      tags: [notifications]
+      operationId: listNotifications
+      summary: Newest first. The time-based triggers (tax deadlines within 10 days, recurring expenses due, goals met, backup overdue) are evaluated when the list is read; the web is the only place it is looked at.
+      parameters:
+        - { name: unread, in: query, schema: { type: boolean } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationPage' }
+  /notifications/prefs:
+    get:
+      tags: [notifications]
+      operationId: getNotificationPrefs
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationPrefs' }
+    patch:
+      tags: [notifications]
+      operationId: updateNotificationPrefs
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NotificationPrefsPatch' }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationPrefs' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /notifications/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [notifications]
+      operationId: markNotificationRead
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [read]
+              additionalProperties: false
+              properties:
+                read: { type: boolean }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notification' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [notifications]
+      operationId: dismissNotification
+      summary: Hide it. The row is kept so the same condition does not bring it back.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Dismissed. }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /exports/{format}:
     get:
       tags: [exports]
@@ -2027,7 +2107,7 @@ components:
     Modules:
       type: object
       description: Read-only module flags so clients can hide screens and buttons of absent modules.
-      required: [import, maintenance, analytics, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
+      required: [notifications, import, maintenance, analytics, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
       properties:
         platforms: { type: boolean, description: 'Platforms module registered (18 section 4.2).' }
         earnings: { type: boolean, description: 'Earnings module registered (18 section 4.3): the driver can type a total per shift and platform.' }
@@ -2038,6 +2118,7 @@ components:
         analytics: { type: boolean, description: 'Analytics module registered (18 section 10.1).' }
         maintenance: { type: boolean, description: 'Maintenance module registered (18 section 6).' }
         import: { type: boolean, description: 'Import module registered (18 section 12). The expenses kind also needs the expenses module.' }
+        notifications: { type: boolean, description: 'Notifications module registered (18 section 11): the in-app inbox.' }
         sync: { type: boolean }
         local_export: { type: boolean, description: Reserved for v1.1; false in v1. }
         devices: { type: boolean }
@@ -2509,6 +2590,45 @@ components:
         duplicates: { type: integer }
         errors: { type: integer }
         error_rows: { type: array, items: { type: object, properties: { row: { type: integer }, message: { type: [string, 'null'] } } } }
+
+    Notification:
+      type: object
+      required: [id, kind, body_key, ref, created_at, read_at]
+      properties:
+        id: { type: integer }
+        kind: { enum: [badge, challenge, level_up, streak_freeze, streak_risk, goal_met, tax_deadline, shift_reminder, backup_overdue, backup_failed, recurring_expense_due] }
+        body_key: { type: string, description: 'Message id; the client builds the text. No free text and no amounts.' }
+        ref: { type: string, description: What it is about (a date or an id), from the dedupe key. }
+        created_at: { $ref: '#/components/schemas/EpochMs' }
+        read_at: { type: [integer, 'null'] }
+    NotificationPage:
+      type: object
+      required: [items, next_cursor, unread_count]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Notification' } }
+        next_cursor: { type: [string, 'null'] }
+        unread_count: { type: integer }
+    NotificationPrefs:
+      type: object
+      required: [shift_reminders, goals, tax_deadlines, streak, backup, sync_reminder]
+      properties:
+        shift_reminders: { type: boolean, description: Fired by the phone itself; the phone reads this. }
+        goals: { type: boolean }
+        tax_deadlines: { type: boolean }
+        streak: { type: boolean }
+        backup: { type: boolean }
+        sync_reminder: { type: boolean, description: Fired by the phone itself; the phone reads this. }
+    NotificationPrefsPatch:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        shift_reminders: { type: boolean }
+        goals: { type: boolean }
+        tax_deadlines: { type: boolean }
+        streak: { type: boolean }
+        backup: { type: boolean }
+        sync_reminder: { type: boolean }
 
     ShiftStatus: { enum: [active, ended, finalized] }
     ShiftStart:

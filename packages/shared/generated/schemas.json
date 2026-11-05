@@ -105,6 +105,7 @@
       "type": "object",
       "description": "Read-only module flags so clients can hide screens and buttons of absent modules.",
       "required": [
+        "notifications",
         "import",
         "maintenance",
         "analytics",
@@ -162,6 +163,10 @@
         "import": {
           "type": "boolean",
           "description": "Import module registered (18 section 12). The expenses kind also needs the expenses module."
+        },
+        "notifications": {
+          "type": "boolean",
+          "description": "Notifications module registered (18 section 11): the in-app inbox."
         },
         "sync": {
           "type": "boolean"
@@ -2105,6 +2110,138 @@
               }
             }
           }
+        }
+      }
+    },
+    "Notification": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "body_key",
+        "ref",
+        "created_at",
+        "read_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "badge",
+            "challenge",
+            "level_up",
+            "streak_freeze",
+            "streak_risk",
+            "goal_met",
+            "tax_deadline",
+            "shift_reminder",
+            "backup_overdue",
+            "backup_failed",
+            "recurring_expense_due"
+          ]
+        },
+        "body_key": {
+          "type": "string",
+          "description": "Message id; the client builds the text. No free text and no amounts."
+        },
+        "ref": {
+          "type": "string",
+          "description": "What it is about (a date or an id)",
+          "from the dedupe key.": null
+        },
+        "created_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "read_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "NotificationPage": {
+      "type": "object",
+      "required": [
+        "items",
+        "next_cursor",
+        "unread_count"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Notification"
+          }
+        },
+        "next_cursor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "unread_count": {
+          "type": "integer"
+        }
+      }
+    },
+    "NotificationPrefs": {
+      "type": "object",
+      "required": [
+        "shift_reminders",
+        "goals",
+        "tax_deadlines",
+        "streak",
+        "backup",
+        "sync_reminder"
+      ],
+      "properties": {
+        "shift_reminders": {
+          "type": "boolean",
+          "description": "Fired by the phone itself; the phone reads this."
+        },
+        "goals": {
+          "type": "boolean"
+        },
+        "tax_deadlines": {
+          "type": "boolean"
+        },
+        "streak": {
+          "type": "boolean"
+        },
+        "backup": {
+          "type": "boolean"
+        },
+        "sync_reminder": {
+          "type": "boolean",
+          "description": "Fired by the phone itself; the phone reads this."
+        }
+      }
+    },
+    "NotificationPrefsPatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "shift_reminders": {
+          "type": "boolean"
+        },
+        "goals": {
+          "type": "boolean"
+        },
+        "tax_deadlines": {
+          "type": "boolean"
+        },
+        "streak": {
+          "type": "boolean"
+        },
+        "backup": {
+          "type": "boolean"
+        },
+        "sync_reminder": {
+          "type": "boolean"
         }
       }
     },

@@ -1,4 +1,4 @@
-import type { RouteHost } from '@milewage/shared';
+import type { ModuleRegistry, RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import {
@@ -26,6 +26,55 @@ const fields = {
 const createBody = strictObject(fields, ['label', 'metric', 'period', 'target']);
 const patchBody = strictObject(fields, [], { minProperties: 1 });
 
+/** A goal with its progress now (also used by the notification triggers). */
+export function goalViewer({
+  db,
+  now,
+  registry,
+  override,
+}: {
+  db: Db;
+  now: () => number;
+  registry: ModuleRegistry;
+  override?: 'replace' | 'sum';
+}) {
+  const settings = createSettingsRepository(db);
+  const processing = createProcessingRepository(db);
+  const earnings = createEarningsRepository(db);
+  return (userId: number, g: GoalRow) => {
+    const prefs = settings.get(userId);
+    const policy = createEarningsPolicy(db, registry, override);
+    const progress = goalProgress(
+      g,
+      localDate(now(), prefs?.timezone ?? 'UTC'),
+      prefs?.weekStart ?? 1,
+      {
+        earningsCents: (from, to) => {
+          if (!policy.any(userId)) return null;
+          const rows = earnings.effective(userId, from, to, policy.options(userId));
+          return rows.length === 0 ? null : rows.reduce((a, r) => a + totalOf(r), 0);
+        },
+        shifts: (from, to) =>
+          processing.shiftsInPeriod(userId, from, to).map((s) => ({
+            ms: (s.endedAt ?? s.startedAt) - s.startedAt,
+            activeM: s.activeM,
+            segmenter: s.segmenter,
+          })),
+      },
+    );
+    return {
+      id: g.id,
+      label: g.label,
+      metric: g.metric,
+      period: g.period,
+      target: g.target,
+      active: g.active === 1,
+      created_at: g.createdAt,
+      progress,
+    };
+  };
+}
+
 /** Module `goals` (18 section 8.1). A device may read goals (the ring on the phone, later); only the web changes them. */
 export function goalsRoutes({
   db,
@@ -41,42 +90,8 @@ export function goalsRoutes({
   return (host: RouteHost) => {
     const { app, registry, bus } = host as ServerRouteHost;
     const repo = createGoalRepository(db);
-    const settings = createSettingsRepository(db);
-    const processing = createProcessingRepository(db);
-    const earnings = createEarningsRepository(db);
 
-    const view = (userId: number, g: GoalRow) => {
-      const prefs = settings.get(userId);
-      const policy = createEarningsPolicy(db, registry, override);
-      const progress = goalProgress(
-        g,
-        localDate(now(), prefs?.timezone ?? 'UTC'),
-        prefs?.weekStart ?? 1,
-        {
-          earningsCents: (from, to) => {
-            if (!policy.any(userId)) return null;
-            const rows = earnings.effective(userId, from, to, policy.options(userId));
-            return rows.length === 0 ? null : rows.reduce((a, r) => a + totalOf(r), 0);
-          },
-          shifts: (from, to) =>
-            processing.shiftsInPeriod(userId, from, to).map((s) => ({
-              ms: (s.endedAt ?? s.startedAt) - s.startedAt,
-              activeM: s.activeM,
-              segmenter: s.segmenter,
-            })),
-        },
-      );
-      return {
-        id: g.id,
-        label: g.label,
-        metric: g.metric,
-        period: g.period,
-        target: g.target,
-        active: g.active === 1,
-        created_at: g.createdAt,
-        progress,
-      };
-    };
+    const view = goalViewer({ db, now, registry, override });
     const mine = (userId: number, id: number) => {
       const g = repo.find(userId, id);
       if (!g) throw new ProblemError('not_found', 'No such goal.');

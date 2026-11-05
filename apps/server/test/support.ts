@@ -85,8 +85,9 @@ export function harness(
     configDir: join(dir, 'config'),
   });
   let app: ReturnType<typeof buildApp>['fastify'];
+  let bus: ReturnType<typeof buildApp>['bus'];
   try {
-    app = buildApp({
+    const built = buildApp({
       modules,
       enabled: { core: true, ...enabled },
       logLevel: 'silent',
@@ -95,7 +96,9 @@ export function harness(
       state,
       disk: () => disk.state(),
       ...extra,
-    }).fastify;
+    });
+    app = built.fastify;
+    bus = built.bus;
   } catch (e) {
     // An invalid module configuration is refused at start; do not leak the throwaway files.
     db.close();
@@ -111,6 +114,7 @@ export function harness(
     });
   return {
     app,
+    bus,
     db,
     dir,
     state,

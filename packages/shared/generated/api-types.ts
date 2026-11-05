@@ -1050,6 +1050,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Newest first. The time-based triggers (tax deadlines within 10 days, recurring expenses due, goals met, backup overdue) are evaluated when the list is read; the web is the only place it is looked at. */
+        get: operations["listNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/prefs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getNotificationPrefs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateNotificationPrefs"];
+        trace?: never;
+    };
+    "/notifications/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Hide it. The row is kept so the same condition does not bring it back. */
+        delete: operations["dismissNotification"];
+        options?: never;
+        head?: never;
+        patch: operations["markNotificationRead"];
+        trace?: never;
+    };
     "/exports/{format}": {
         parameters: {
             query?: never;
@@ -1333,6 +1385,8 @@ export interface components {
             maintenance: boolean;
             /** @description Import module registered (18 section 12). The expenses kind also needs the expenses module. */
             import: boolean;
+            /** @description Notifications module registered (18 section 11): the in-app inbox. */
+            notifications: boolean;
             sync: boolean;
             /** @description Reserved for v1.1; false in v1. */
             local_export?: boolean;
@@ -1826,6 +1880,40 @@ export interface components {
                 row?: number;
                 message?: string | null;
             }[];
+        };
+        Notification: {
+            id: number;
+            /** @enum {unknown} */
+            kind: "badge" | "challenge" | "level_up" | "streak_freeze" | "streak_risk" | "goal_met" | "tax_deadline" | "shift_reminder" | "backup_overdue" | "backup_failed" | "recurring_expense_due";
+            /** @description Message id; the client builds the text. No free text and no amounts. */
+            body_key: string;
+            /** @description What it is about (a date or an id) */
+            ref: string;
+            created_at: components["schemas"]["EpochMs"];
+            read_at: number | null;
+        };
+        NotificationPage: {
+            items: components["schemas"]["Notification"][];
+            next_cursor: string | null;
+            unread_count: number;
+        };
+        NotificationPrefs: {
+            /** @description Fired by the phone itself; the phone reads this. */
+            shift_reminders: boolean;
+            goals: boolean;
+            tax_deadlines: boolean;
+            streak: boolean;
+            backup: boolean;
+            /** @description Fired by the phone itself; the phone reads this. */
+            sync_reminder: boolean;
+        };
+        NotificationPrefsPatch: {
+            shift_reminders?: boolean;
+            goals?: boolean;
+            tax_deadlines?: boolean;
+            streak?: boolean;
+            backup?: boolean;
+            sync_reminder?: boolean;
         };
         /** @enum {unknown} */
         ShiftStatus: "active" | "ended" | "finalized";
@@ -4702,6 +4790,125 @@ export interface operations {
             };
             404: components["responses"]["NotFound"];
             422: components["responses"]["Unprocessable"];
+        };
+    };
+    listNotifications: {
+        parameters: {
+            query?: {
+                unread?: boolean;
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPage"];
+                };
+            };
+        };
+    };
+    getNotificationPrefs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPrefs"];
+                };
+            };
+        };
+    };
+    updateNotificationPrefs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationPrefsPatch"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPrefs"];
+                };
+            };
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    dismissNotification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dismissed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    markNotificationRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    read: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"];
+                };
+            };
+            404: components["responses"]["NotFound"];
         };
     };
     exportData: {
