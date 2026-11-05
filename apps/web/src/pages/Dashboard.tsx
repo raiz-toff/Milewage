@@ -3,6 +3,7 @@ import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { formatDistance, formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
+import { GoalRing, SetupChecklist } from './DashboardExtras';
 import { Est } from './Shifts';
 
 type Summary = Schemas['Summary'];
@@ -17,7 +18,7 @@ export function localDate(ms: number, timeZone: string): string {
 export interface Period {
   id: string;
   label: string;
-  range: (now: number, timeZone: string) => { from: string; to: string };
+  range: (now: number, timeZone: string, weekStart?: number) => { from: string; to: string };
 }
 
 export const PERIODS: Period[] = [
@@ -32,6 +33,21 @@ export const PERIODS: Period[] = [
     range: (now, tz) => {
       const to = localDate(now, tz);
       return { from: `${to.slice(0, 7)}-01`, to };
+    },
+  },
+  {
+    id: 'today',
+    label: 'Today',
+    range: (now, tz) => ({ from: localDate(now, tz), to: localDate(now, tz) }),
+  },
+  {
+    id: 'week',
+    label: 'This week',
+    range: (now, tz, weekStart = 1) => {
+      const to = localDate(now, tz);
+      const t = Date.parse(`${to}T00:00:00Z`);
+      const back = (new Date(t).getUTCDay() - weekStart + 7) % 7;
+      return { from: new Date(t - back * DAY).toISOString().slice(0, 10), to };
     },
   },
   {
@@ -76,6 +92,7 @@ export function Dashboard({ now }: { now?: number }) {
   const { from, to } = PERIODS.find((p) => p.id === period)!.range(
     now ?? Date.now(),
     settings.timezone,
+    settings.week_start,
   );
 
   useEffect(() => {
@@ -114,6 +131,8 @@ export function Dashboard({ now }: { now?: number }) {
       <p className="font-mono text-sm text-muted">
         {from} to {to}
       </p>
+      {settings.modules.goals ? <GoalRing /> : null}
+      <SetupChecklist />
       {error ? (
         <p role="alert" className="text-muted">
           {error}

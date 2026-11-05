@@ -952,3 +952,10 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Done: `/progress` (navigation, `screens.tsx`, Caddyfile; hidden while `modules.progress` is off, the default): level and XP to the next level, the streak with freezes held and a "no shift yet today" line when it is at risk, this week's challenges (a challenge with nothing entered says "nothing entered yet", not 0), and the 24-badge grid with unlock dates or "locked".
 - Tests: 2 in `progress.test.tsx`; navigation list and Caddyfile test updated.
 - Not done: a celebration on unlock, XP history.
+
+
+## PR S11w — Web: dashboard checklist, goal ring, Today and This week (Comma-parity track)
+
+- Done (18 section 13): the dashboard gets a **Finish setting up** card computed from server state (add your other apps = a custom platform exists; add a vehicle; set a weekly goal; pair the phone = a device that is not revoked; run a backup), showing only the items of modules that are on and disappearing when all of them are done (if any answer cannot be read it stays hidden rather than guess); the **goal ring** (the first active goal as a progress bar; nothing without a goal, nothing and no call with `goals` off); and "Today" and "This week" (from the week start setting) in the period picker, which call `GET /summary` with those two ranges. The three metrics are unchanged. `plans/milewage/18-comma-parity.md` section 17 now lists all eleven assumptions with how to flip each, and the build status.
+- Tests: 4 in `dashboard-extras.test.tsx` (checklist from state, items hidden for modules that are off and the card gone when done, ring with the first active goal and absent cases, the two new ranges); the existing dashboard tests pass unchanged.
+- Not done: the mileage write-off tip beyond the existing "deduction value" metric; the checklist item for the phone reads only `GET /devices`.

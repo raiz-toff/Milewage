@@ -1,0 +1,113 @@
+import { useEffect, useState } from 'react';
+import { unwrap } from '../api/client';
+import type { Schemas } from '../api/client';
+import { useSession, useSettings } from '../session';
+import { GoalBar } from './Goals';
+
+/**
+ * The goal ring of the dashboard (18 section 13): the first active goal's progress. Nothing
+ * appears without a goal; the checklist offers to set one. A failed request just hides it.
+ */
+export function GoalRing() {
+  const { api } = useSession();
+  const [goal, setGoal] = useState<Schemas['Goal'] | null>(null);
+  useEffect(() => {
+    void unwrap<Schemas['Goal'][]>(api.GET('/goals'))
+      .then((list) => setGoal(list.find((g) => g.active) ?? null))
+      .catch(() => setGoal(null));
+  }, [api]);
+  return goal ? (
+    <div role="group" aria-label="Goal" className="max-w-md">
+      <GoalBar goal={goal} />
+    </div>
+  ) : null;
+}
+
+interface Item {
+  id: string;
+  text: string;
+  visible: boolean;
+  done: () => Promise<boolean>;
+}
+
+/**
+ * "Finish setting up" (18 section 13): done or not from server state, only for the modules that
+ * are on, gone when everything visible is done. If any answer cannot be read the card stays
+ * hidden rather than guess.
+ */
+export function SetupChecklist() {
+  const { api } = useSession();
+  const { modules } = useSettings();
+  const [state, setState] = useState<{ text: string; done: boolean }[] | null>(null);
+
+  useEffect(() => {
+    const items: Item[] = [
+      {
+        id: 'platforms',
+        text: 'Add your other apps',
+        visible: modules.platforms,
+        done: async () =>
+          (
+            await unwrap<Schemas['Platform'][]>(
+              api.GET('/platforms', { params: { query: { include_inactive: true } } }),
+            )
+          ).some((p) => p.custom),
+      },
+      {
+        id: 'vehicle',
+        text: 'Add your real vehicle',
+        visible: true,
+        done: async () => (await unwrap<Schemas['Vehicle'][]>(api.GET('/vehicles'))).length > 0,
+      },
+      {
+        id: 'goal',
+        text: 'Set a weekly goal',
+        visible: modules.goals,
+        done: async () =>
+          (await unwrap<Schemas['Goal'][]>(api.GET('/goals'))).some((g) => g.period === 'weekly'),
+      },
+      {
+        id: 'phone',
+        text: 'Pair your phone',
+        visible: modules.devices,
+        done: async () =>
+          (await unwrap<Schemas['Device'][]>(api.GET('/devices'))).some(
+            (d) => d.revoked_at === null,
+          ),
+      },
+      {
+        id: 'backup',
+        text: 'Run a backup',
+        visible: true,
+        done: async () => (await unwrap<Schemas['Backup'][]>(api.GET('/backups'))).length > 0,
+      },
+    ].filter((i) => i.visible);
+    let live = true;
+    void Promise.all(items.map(async (i) => ({ text: i.text, done: await i.done() })))
+      .then((r) => live && setState(r))
+      .catch(() => live && setState(null));
+    return () => {
+      live = false;
+    };
+  }, [api, modules.platforms, modules.goals, modules.devices]);
+
+  if (!state || state.every((i) => i.done)) return null;
+  return (
+    <div
+      role="group"
+      aria-label="Finish setting up"
+      className="max-w-md space-y-1 rounded border border-line bg-card p-4"
+    >
+      <p className="font-heading">Finish setting up</p>
+      <ul className="text-sm">
+        {state.map((i) => (
+          <li key={i.text} className={i.done ? 'text-muted line-through' : ''}>
+            <span aria-hidden="true">{i.done ? '✓ ' : '○ '}</span>
+            {i.text}
+            <span className="sr-only">{i.done ? ' (done)' : ' (not done)'}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
