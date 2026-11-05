@@ -4,6 +4,7 @@ import { Backups } from './pages/Backups';
 import { Dashboard } from './pages/Dashboard';
 import { Devices } from './pages/Devices';
 import { SettingsPage } from './pages/SettingsPage';
+import { OdometerPage } from './pages/Odometer';
 import { ShiftsRoutes } from './pages/Shifts';
 
 /**
@@ -22,6 +23,7 @@ export interface Screen {
 export const screens: Screen[] = [
   { path: '/dashboard', label: 'Dashboard', element: <Dashboard /> },
   { path: '/shifts/*', label: 'Shifts', element: <ShiftsRoutes /> },
+  { path: '/odometer', label: 'Odometer', element: <OdometerPage /> },
   { path: '/devices', label: 'Devices', visible: (m) => m.devices, element: <Devices /> },
   { path: '/backups', label: 'Backups', element: <Backups /> },
   { path: '/settings', label: 'Settings', element: <SettingsPage /> },
