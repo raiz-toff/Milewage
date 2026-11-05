@@ -40,7 +40,6 @@ export function ShiftEarnings({ shift }: { shift: Schemas['Shift'] }) {
     } catch (e) {
       setError(describe(e));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api, shift.id, modules.platforms]);
   useEffect(() => {
     void load();
