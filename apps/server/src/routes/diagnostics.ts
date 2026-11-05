@@ -31,12 +31,15 @@ export function diagnosticsRoutes({
   authn,
   store,
   disk,
+  onDrop,
 }: {
   db: Db;
   now: () => number;
   authn: Authenticator;
   store: () => DiagnosticsStore;
   disk?: () => DiskState;
+  /** Counts what ingest refused or discarded, for the server's own `diag.self`. */
+  onDrop?: (reason: 'schema_reject' | 'level_off' | 'disk_low') => void;
 }) {
   return (host: RouteHost) => {
     const { app } = host as ServerRouteHost;
@@ -65,7 +68,10 @@ export function diagnosticsRoutes({
           rejected: [] as { index: number; reason: Reason }[],
         };
         events.forEach((raw, index) => {
-          const reject = (reason: Reason) => void result.rejected.push({ index, reason });
+          const reject = (reason: Reason) => {
+            result.rejected.push({ index, reason });
+            onDrop?.('schema_reject');
+          };
           const checked = validateEvent(raw);
           if (!checked.ok) return reject(reasonOf(checked.reason));
           const e = checked.event;
@@ -78,6 +84,7 @@ export function diagnosticsRoutes({
           // disk is not low (accepted and discarded, 16 section 7.2).
           const lowDisk = e.level === 'verbose' && disk !== undefined && disk() !== 'ok';
           if (level === 'off' || lowDisk || (e.level === 'verbose' && level !== 'verbose')) {
+            onDrop?.(lowDisk ? 'disk_low' : 'level_off');
             return void result.discarded++;
           }
           const stored = store().insert({

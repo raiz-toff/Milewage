@@ -32,6 +32,7 @@ export function harness(
     backupOnShiftEnd?: boolean;
     backupDownload?: boolean;
     exporters?: ExporterRegistry;
+    diagnosticsHousekeepingMs?: number;
     enabledExportFormats?: () => readonly string[];
   } = {},
 ) {
@@ -62,6 +63,7 @@ export function harness(
     backupOnShiftEnd: extra.backupOnShiftEnd ?? false,
     backupDownload: extra.backupDownload,
     exporters: extra.exporters,
+    diagnosticsHousekeepingMs: extra.diagnosticsHousekeepingMs,
     enabledExportFormats: extra.enabledExportFormats,
     db,
     now: () => clock.t,

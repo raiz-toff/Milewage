@@ -12,10 +12,12 @@ import {
   createSettingsRepository,
 } from './db';
 import type { DiskMonitor } from './disk';
+import { createDiagnosticsKeeper } from './diagnostics/keeper';
 import { openDiagnosticsStore } from './diagnostics/store';
 import { backupRoutes } from './routes/backup';
 import { restoreRoutes } from './routes/restore';
 import type { ServerRouteHost } from './app';
+import { SERVER_VERSION } from './version';
 import { createServerState, type ServerState } from './state';
 import { coreRoutes, type CoreContext } from './routes/core';
 import { devicesRoutes } from './routes/devices';
@@ -73,6 +75,10 @@ export interface ServerContext extends CoreContext {
   /** Path of diagnostics.db (16 section 7.1); `:memory:` when omitted. Opened only if the module is on. */
   diagnosticsPath?: string;
   onDiagnosticsRecreated?: (movedTo: string, reason: string) => void;
+  /** Size cap of the diagnostics events (100 MB unless a test lowers it). */
+  diagnosticsCapBytes?: number;
+  /** Interval of the retention job (a day unless a test shortens it). */
+  diagnosticsHousekeepingMs?: number;
   /** The `backups` volume (`MILEWAGE_BACKUP_DIR`). Nothing is written there until a backup runs. */
   backupDir?: string;
   /** The `config` volume (`MILEWAGE_CONFIG_DIR`), where `secrets.json` lives. */
@@ -141,6 +147,16 @@ export function createServerModules(ctx: ServerContext) {
       ctx.now,
       ctx.onDiagnosticsRecreated,
     ));
+  const keeper = createDiagnosticsKeeper({
+    store: diagnosticsStore,
+    now: ctx.now,
+    disk: ctx.disk && (() => ctx.disk!.state()),
+    owner: () => createBackupRepository(ctx.db).ownerId(),
+    version: SERVER_VERSION,
+    capBytes: ctx.diagnosticsCapBytes,
+    everyMs: ctx.diagnosticsHousekeepingMs,
+    log: ctx.log,
+  });
   const backup = ctx.backup ?? buildBackupService({ ...ctx, secrets });
   const restore = createRestoreService({
     db: ctx.db,
@@ -225,8 +241,9 @@ export function createServerModules(ctx: ServerContext) {
         authn,
         store: diagnosticsStore,
         disk: ctx.disk && (() => ctx.disk!.state()),
+        onDrop: (reason) => keeper.drop(reason),
       }),
-      jobs: [{ name: 'diagnostics-store', start: () => () => store?.close() }],
+      jobs: [{ name: 'diagnostics-store', start: () => () => store?.close() }, keeper.job()],
     }),
     defineModule({
       ...backupModule,
