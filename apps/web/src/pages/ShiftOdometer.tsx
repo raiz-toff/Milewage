@@ -3,6 +3,7 @@ import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError } from '../ui/form';
+import { localDate } from './Dashboard';
 import { toMetres } from './Odometer';
 
 type Reading = Schemas['OdometerReading'];
@@ -20,7 +21,9 @@ const inUnit = (m: number, unit: 'km' | 'mi') =>
 /** The optional start and end odometer readings of one shift (07 section 2), editable here. */
 export function ShiftOdometer({ shift }: { shift: Schemas['Shift'] }) {
   const { api } = useSession();
-  const { distance_unit: unit } = useSettings();
+  const { distance_unit: unit, timezone } = useSettings();
+  // A shift that runs past midnight can have its end reading on the next local day.
+  const lastDay = shift.ended_at ? localDate(shift.ended_at, timezone) : shift.local_date;
   const [values, setValues] = useState<Record<Kind, string> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<Kind | null>(null);
@@ -37,7 +40,7 @@ export function ShiftOdometer({ shift }: { shift: Schemas['Shift'] }) {
                 vehicle_id: shift.vehicle_id,
                 kind,
                 from: shift.local_date,
-                to: shift.local_date,
+                to: lastDay > shift.local_date ? lastDay : shift.local_date,
               },
             },
           }),
@@ -57,7 +60,7 @@ export function ShiftOdometer({ shift }: { shift: Schemas['Shift'] }) {
     return () => {
       live = false;
     };
-  }, [api, shift.id, shift.vehicle_id, shift.local_date, unit]);
+  }, [api, shift.id, shift.vehicle_id, shift.local_date, lastDay, unit]);
 
   async function save(kind: Kind) {
     const metres = toMetres(values?.[kind] ?? '', unit);

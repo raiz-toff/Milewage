@@ -46,8 +46,17 @@ describe('odometer in shift detail', () => {
     for (const q of queries) {
       expect(q).toContain('vehicle_id=1');
       expect(q).toContain('from=2023-11-14');
-      expect(q).toContain('to=2023-11-14');
+      expect(q).toContain('to=2023-11-14'); // ended the same local day
     }
+  });
+
+  it('looks through the day the shift ended on when it ran past midnight', async () => {
+    queries.length = 0;
+    // 2023-11-14 20:00 to 2023-11-15 02:00 in Toronto.
+    open([], {}, { started_at: 1_700_010_000_000, ended_at: 1_700_031_600_000 });
+    await screen.findByLabelText('Start (km)');
+    expect(queries.length).toBeGreaterThanOrEqual(2);
+    for (const q of queries) expect(q).toContain('to=2023-11-15');
   });
 
   it('saves a reading through the shift route, in metres', async () => {
