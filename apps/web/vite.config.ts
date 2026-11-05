@@ -29,6 +29,22 @@ function mapWorker(): Plugin {
 // Origin header with Host, so Host must stay the dev server's own.
 export default defineConfig({
   plugins: [react(), mapWorker()],
-  server: { proxy: { '/api': 'http://127.0.0.1:3000', '/healthz': 'http://127.0.0.1:3000' } },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:3000',
+        // Dev only: the session cookie is Secure, which a browser drops on http:// at any address
+        // but localhost. Stripping it here lets the dev server be opened by IP over the LAN.
+        configure: (proxy) => {
+          proxy.on('proxyRes', (res) => {
+            const cookies = res.headers['set-cookie'];
+            if (cookies)
+              res.headers['set-cookie'] = cookies.map((c) => c.replace(/;\s*Secure/i, ''));
+          });
+        },
+      },
+      '/healthz': 'http://127.0.0.1:3000',
+    },
+  },
   build: { outDir: 'dist', sourcemap: false },
 });
