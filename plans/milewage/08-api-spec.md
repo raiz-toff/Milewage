@@ -160,7 +160,7 @@ Auth column: **P** public, **S** web session only, **S+D** session or device, **
 
 Not in the v1 OpenAPI: `POST /sync/bundle`, the restore half of the optional `local_export` module (`15` §9.1, v1.1). Its shape is the upload API's own, so it adds no new contract.
 
-Everything else (analytics, charts, notifications, webhooks, search, tags, sharing links) is deliberately absent.
+Analytics, notifications, expenses, goals, schedule, tax and the other Comma-parity operations are specified in [`18`](./18-comma-parity.md) (decision 1.9, 2026-11-05) and join this table when each module is built. Webhooks, search, tags and sharing links remain deliberately absent.
 
 Every route belongs to exactly one module (§16). Routes of a disabled module are **not registered** and return `404 not_found`, the same as a route that never existed.
 
@@ -423,7 +423,7 @@ PDF and GPX/GeoJSON are produced with the data as it is at request time: an arch
 
 ## 12. Summary Endpoint (dashboard)
 
-`GET /summary?from=&to=` (web session) returns, for the period: `shift_count`, `hours` (sum of shift durations), `earnings_cents` (payout + tips), `tips_cents`, `active_m`, `deadhead_m`, `personal_m`, `total_m`, `deduction_cents` (computed at read time from the country registry, `07` D7) and `hourly_earnings_cents` (`earnings_cents ÷ hours`). These are exactly the three dashboard metrics `05` allows (hourly rate, deduction value, active vs deadhead split). Nothing else is exposed; additional reports are rejected under the anti-slop charter.
+`GET /summary?from=&to=` (web session) returns, for the period: `shift_count`, `hours` (sum of shift durations), `earnings_cents` (payout + tips), `tips_cents`, `active_m`, `deadhead_m`, `personal_m`, `total_m`, `deduction_cents` (computed at read time from the country registry, `07` D7) and `hourly_earnings_cents` (`earnings_cents ÷ hours`). These are exactly the three dashboard metrics `05` allows (hourly rate, deduction value, active vs deadhead split). Nothing else is exposed by this endpoint. Further reports live in the `analytics` module and the extra exporters of [`18`](./18-comma-parity.md) §10 (decision 1.9 reversed the earlier rejection).
 
 ---
 
@@ -2528,7 +2528,7 @@ An **in-process typed event emitter** defined in the shared package: `shift.star
 | **Segmenter slot** | The one real behavioural difference a toggle causes (stop-based estimate vs whole-shift mileage). |
 | **`DiagnosticsPort`** (server and JS) and **`DiagSink`** (Kotlin) | Each has a real second implementation, the no-op, which is exactly the diagnostics toggle. Core, the engine and the tracker call the port and import nothing else from the module (`16` §3.3). |
 
-Refused as slop: a plugin loader or dynamic module discovery; hot enable/disable; a feature-flag service; a message broker; a generic "provider" interface for storage backends other than the repositories above; an API gateway; per-platform plugins; any integration that reads other apps' orders, notifications or screens; a notification module (no Gate 1 driver problem needs one); any diagnostics exporter to a third party (OTLP, Prometheus `/metrics`, Sentry, hosted logging), because diagnostics stay on the owner's server (`16` §11).
+Refused as slop: a plugin loader or dynamic module discovery; hot enable/disable; a feature-flag service; a message broker; a generic "provider" interface for storage backends other than the repositories above; an API gateway; per-platform plugins; any integration that reads other apps' orders, notifications or screens; (the notification module refused here was reinstated by decision 1.9, [`18`](./18-comma-parity.md) §11); any diagnostics exporter to a third party (OTLP, Prometheus `/metrics`, Sentry, hosted logging), because diagnostics stay on the owner's server (`16` §11).
 
 ### 16.6 Test obligation
 

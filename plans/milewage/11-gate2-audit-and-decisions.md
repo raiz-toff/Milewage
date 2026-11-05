@@ -29,7 +29,7 @@ Gate 2 asked for the specs to be complete enough to build from. Four documents n
 | Odometer | One `odometer_readings` table | Serves shift and fiscal-year readings |
 | Active vs deadhead | **Estimated** from auto-detected stops (1.5b, supersedes tapped delivery windows); web-only labels; whole-shift when the `stops_enabled` setting is off | No taps while riding; total miles never depend on it |
 | Deduction value | Computed at read time | Rate fixes never leave stale data |
-| Expenses | Out of scope | Not in the vision; standard rate excludes them |
+| Expenses | ~~Out of scope~~ **Reversed by decision 1.9 (2026-11-05): module `expenses` and the other Comma-parity modules, see [`18`](./18-comma-parity.md)** | Original reason: not in the vision; standard rate excludes them. The standard-rate overlap is handled by the per-vehicle, per-year deduction method and a double-count flag (`18` §5, §7) |
 | Raw point retention | 90 days (min 7), then route archive after finalization | Covers a quarter of review; capacity effect is small |
 | Tax records | Never auto-deleted; warn under 7 years | Longer than every retention figure found |
 | Migrations | Drizzle Kit SQL, forward only, verified backup first, per-module folders | Simple, recoverable |

@@ -67,6 +67,9 @@ Gig workers (DoorDash, UberEats, Instacart, Amazon Flex, couriers) face three un
   - IRS / CRA / HMRC compliant mileage logs (PDF and CSV export).
   - Standard geospatial export (GeoJSON, GPX).
 
+- **Driver admin modules (decision 1.9, 2026-11-05)**:
+  - Every driver-facing admin function Comma has returns as a toggleable server module: expenses and receipts, maintenance, goals (and optional progress), schedule, analytics and reports, tax center, platforms, driver-entered earnings, notifications, CSV import, vehicle and profile management. Specified in [`18`](./18-comma-parity.md).
+
 ### 3.2 Explicitly Out-of-Scope (To Prevent Slop & Creep)
 - **Centralized SaaS / Cloud Subscriptions**: MileWage will never require an account on a centralized company server. It is 100% self-hosted: all data lives on the driver's own server.
 - **Invasive Screen Scraping / Account Hijacking**: MileWage will not require users to input their gig platform passwords (e.g. DoorDash credentials) to scrape data, which violates platform ToS and risks deactivation.

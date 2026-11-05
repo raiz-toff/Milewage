@@ -453,7 +453,9 @@ Assumptions: 250 shifts per year, 6 hours each, 70% of the time moving at an ave
 
 ## 7. Scope Decisions
 
-### 7.1 Expenses are out of scope
+### 7.1 Expenses are out of scope (REVERSED 2026-11-05, decision 1.9)
+
+> **Superseded by [`18`](./18-comma-parity.md).** Expenses, receipts, maintenance, goals, schedule, tax, earnings entries, platforms and notifications are now modules with their own tables (`18` §4 to §12). The text below is the original Gate 2 reasoning, kept for the record; the double-counting concern is answered in `18` §5.2 and §7.1.
 
 Comma tracked expenses; MileWage does not.
 - The vision doc (`01` §3.1) lists mileage logs, delivery tracking, and exports as in scope. Expenses appear nowhere in scope, requirements, or the export column list in `04` §2.3.
@@ -483,7 +485,7 @@ Customer names, phone numbers, full delivery addresses beyond the optional drive
 | D5 | Odometer | One `odometer_readings` table | Serves shift and fiscal-year readings once | Columns on `shifts` plus a separate yearly table |
 | D6 | Active vs deadhead | **Estimated** from auto-detected stops (1.5b); whole-shift when the setting is off | No driver taps, works offline, total miles never depend on it | Per-order taps on the phone; `delivery_id` on every point; Comma's speed rule |
 | D7 | Deduction value | Computed at read time | Rate corrections never leave stale data | Stored on `shifts` |
-| D8 | Expenses | Out of scope | Not in vision; standard-rate method excludes them | Port Comma's expenses table |
+| D8 | Expenses | ~~Out of scope~~ **Reversed (decision 1.9, `18`)** | Was: not in vision; standard-rate method excludes them | Port Comma's expenses table |
 | D9 | Raw point retention | 90 days default, configurable | Covers a quarter of review; negligible capacity effect | 30 days (`03`), keep forever |
 | D10 | Archive format | GeoJSON LineString with times | Exports directly; no decoder | Encoded polyline, custom varint blob |
 | D11 | Tax record deletion | Never automatic; warn under 7 years | Longer than every retention figure found | Auto-expire after 3, 5 or 6 years |

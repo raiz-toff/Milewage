@@ -131,7 +131,7 @@ Tables and one timeline strip, no chart library and no dashboard tiles (the §4 
 > [!CAUTION] Critical Audit Findings & Mitigations
 > 1. **Slop Dashboard Trap (Too Many Generic Charts)**:
 >    - *Audit Finding*: AI-generated dashboards often fill empty space with useless doughnut charts ("Deliveries by Day of Week", "Weather vs Tips").
->    - *Mitigation*: Only 3 core dashboard metrics are allowed on the main screen: **Hourly Earnings** ($/hr, pay plus tips divided by shift hours; expenses are out of scope, so there is nothing to net), **Deduction Value** (\$), and **Active vs Deadhead Distance Split** (miles). Everything else is tucked into dedicated reports.
+>    - *Mitigation*: Only 3 core dashboard metrics are allowed on the main screen: **Hourly Earnings** ($/hr, pay plus tips divided by shift hours; expenses were out of scope at Gate 2; decision 1.9 reinstated them, see `18`: the dashboard keeps these three metrics, and net figures live in the analytics screen), **Deduction Value** (\$), and **Active vs Deadhead Distance Split** (miles). Everything else is tucked into dedicated reports.
 > 2. **Map Tile Bandwidth Consumption**:
 >    - *Audit Finding*: Loading raster tiles continuously over slow mobile data or self-hosted connections burns driver bandwidth and can cost money.
 >    - *Mitigation*: See the basemap decision in §3.2 below. Tiles come from one self-hosted file, so there is no third-party tile traffic at all.
