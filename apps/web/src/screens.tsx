@@ -6,6 +6,7 @@ import { Dashboard } from './pages/Dashboard';
 import { ExpensesPage } from './pages/Expenses';
 import { ExportsPage } from './pages/Exports';
 import { Devices } from './pages/Devices';
+import { ProgressPage } from './pages/Progress';
 import { SchedulePage } from './pages/Schedule';
 import { SettingsPage } from './pages/SettingsPage';
 import { LivePage } from './pages/Live';
@@ -53,6 +54,7 @@ export const screens: Screen[] = [
     visible: (m) => m.notifications,
     element: <NotificationsPage />,
   },
+  { path: '/progress', label: 'Progress', visible: (m) => m.progress, element: <ProgressPage /> },
   { path: '/schedule', label: 'Schedule', visible: (m) => m.schedule, element: <SchedulePage /> },
   { path: '/vehicles', label: 'Vehicles', element: <VehiclesPage /> },
   { path: '/odometer', label: 'Odometer', element: <OdometerPage /> },
