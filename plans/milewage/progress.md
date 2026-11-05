@@ -901,3 +901,10 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Tests: 10 in `imports.test.ts` (CSV reader, amounts and zone arithmetic; expenses preview and its zero writes; commit once and again; confirmed mapping and refusals; gzip and text/plain; shift preview reasons; commit shapes: shift, trip, flag, earnings, an overnight row; the Imported column and repeat; expenses module off; import off); the matrix covers the 404 side; the shift CSV header test gains `Imported`.
 - Deviations: dates must be `YYYY-MM-DD` and times 24-hour `HH:MM` (ambiguous `MM/DD/YYYY` is refused rather than guessed); expense rows cannot carry a vehicle or tax credit; one error row does not stop the others.
 - Not done: the wizard (S8bw), reading files with another delimiter or encoding.
+
+
+## PR S8bw — Web: CSV import card (Comma-parity track)
+
+- Done: an "Import a CSV file" card on Settings (only with `modules.import` on): choose expenses (only if `modules.expenses` is on) or shifts, choose a file (5 MB), Preview, then see the counts (ready, already there, with problems), the first problem rows with reasons, a column picker per field pre-filled from the server's guess, "Check again" with the changed mapping, and "Import N rows" which writes only after that confirmation. The text under it says dates are YYYY-MM-DD and imported shifts are marked in every export. Not a route, so `screens.tsx` and the Caddyfile are unchanged.
+- Tests: 3 in `import.test.tsx` (preview before write, mapping sent, result; a refused file shows the server message; kinds offered with expenses off and the card absent with import off).
+- Not done: showing every row (first 10 problems only), saving a mapping for next time.
