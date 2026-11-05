@@ -15,7 +15,7 @@ const COUNTRIES = [
 const browserZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
 /** First run: create the owner, then show the recovery key once and ask for its last 6. */
-export function Setup() {
+export function Setup({ onRestore }: { onRestore?: () => void } = {}) {
   const { api } = useSession();
   const [form, setForm] = useState({
     username: '',
@@ -101,6 +101,11 @@ export function Setup() {
           Create account
         </Button>
       </form>
+      {onRestore ? (
+        <button type="button" className="text-sm text-muted hover:text-ink" onClick={onRestore}>
+          Restore from a backup instead
+        </button>
+      ) : null}
     </Card>
   );
 }

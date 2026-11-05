@@ -14,6 +14,7 @@ export interface Call {
   method: string;
   path: string;
   body: unknown;
+  contentType: string;
 }
 
 export const ALL_ON: Modules = {
@@ -53,9 +54,11 @@ export function fakeServer(table: Record<string, Handler>) {
   const fetchImpl = (async (req: Request) => {
     const url = new URL(req.url, 'http://localhost');
     const path = url.pathname.replace(/^\/api\/v1/, '');
-    const text = await req.text();
-    const body = text ? JSON.parse(text) : undefined;
-    calls.push({ method: req.method, path, body });
+    const contentType = req.headers.get('content-type') ?? '';
+    // jsdom's File streams never finish under Node's Request, so a multipart body is not read.
+    const text = contentType.includes('multipart') ? '' : await req.text();
+    const body = text ? (contentType.includes('json') ? JSON.parse(text) : text) : undefined;
+    calls.push({ method: req.method, path, body, contentType });
     const handler = table[`${req.method} ${path}`];
     if (!handler) {
       return problem(404, 'not_found');

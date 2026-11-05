@@ -69,17 +69,17 @@ const navNames = async () => {
 describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => {
   it('with every optional module off only the core screens remain', async () => {
     open(ALL_OFF, '/shifts');
-    expect(await navNames()).toEqual(['Shifts', 'Settings']);
+    expect(await navNames()).toEqual(['Shifts', 'Backups', 'Settings']);
   });
 
   it('with every module on, the navigation lists each screen', async () => {
     open(ALL_ON, '/shifts');
-    expect(await navNames()).toEqual(['Shifts', 'Devices', 'Settings']);
+    expect(await navNames()).toEqual(['Shifts', 'Devices', 'Backups', 'Settings']);
   });
 
   it('the screen registry: a rule exists only for module-owned screens, core has none', () => {
     const core = screens.filter((s) => !s.visible).map((s) => s.label);
-    expect(core).toEqual(['Shifts', 'Settings']);
+    expect(core).toEqual(['Shifts', 'Backups', 'Settings']);
     // Every screen with a rule disappears when all optional modules are off.
     for (const s of screens.filter((x) => x.visible)) {
       expect(s.visible!(ALL_ON), `${s.label} visible with module on`).toBe(true);

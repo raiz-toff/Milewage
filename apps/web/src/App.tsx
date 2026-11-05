@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { visibleScreens } from './screens';
 import { Login } from './pages/Login';
 import { RecoveryKey } from './pages/RecoveryKey';
+import { Restore } from './pages/Restore';
 import { Setup } from './pages/Setup';
 import { useSession } from './session';
 import type { Settings } from './api/client';
@@ -50,13 +52,18 @@ function Shell({ settings }: { settings: Settings }) {
 /** Auth shell: decides between setup, sign-in and the app from what the server says. */
 export function App() {
   const { state } = useSession();
+  const [restoring, setRestoring] = useState(false);
   switch (state.status) {
     case 'loading':
       return <Notice>Loading</Notice>;
     case 'error':
       return <Notice>{state.message}</Notice>;
     case 'needs_setup':
-      return <Setup />;
+      return restoring ? (
+        <Restore onBack={() => setRestoring(false)} />
+      ) : (
+        <Setup onRestore={() => setRestoring(true)} />
+      );
     case 'needs_confirmation':
       return <RecoveryKey />;
     case 'signed_out':
