@@ -39,6 +39,7 @@ tags:
   - { name: import }
   - { name: notifications }
   - { name: schedule }
+  - { name: progress }
   - { name: system }
 
 x-modules:
@@ -152,6 +153,11 @@ x-modules:
     default: false
     dependsOn: [core]
     operations: [listSchedule, createScheduleEntry, updateScheduleEntry, deleteScheduleEntry, createScheduleTemplate, updateScheduleTemplate, deleteScheduleTemplate, expandSchedule, putOffDay, deleteOffDay]
+  progress:
+    toggle: modules.progress
+    default: false
+    dependsOn: [goals, earnings]
+    operations: [getProgress]
 
 paths:
   /healthz:
@@ -1870,6 +1876,19 @@ paths:
       responses:
         '204': { description: Removed (idempotent). }
 
+  /progress:
+    get:
+      tags: [progress]
+      operationId: getProgress
+      summary: XP, level, streak, freezes, this week's challenges and the badge grid. Evaluates and records new unlocks (idempotent); everything else is derived.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Progress now.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Progress' }
+
   /exports/{format}:
     get:
       tags: [exports]
@@ -2272,7 +2291,7 @@ components:
     Modules:
       type: object
       description: Read-only module flags so clients can hide screens and buttons of absent modules.
-      required: [schedule, notifications, import, maintenance, analytics, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
+      required: [progress, schedule, notifications, import, maintenance, analytics, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
       properties:
         platforms: { type: boolean, description: 'Platforms module registered (18 section 4.2).' }
         earnings: { type: boolean, description: 'Earnings module registered (18 section 4.3): the driver can type a total per shift and platform.' }
@@ -2285,6 +2304,7 @@ components:
         import: { type: boolean, description: 'Import module registered (18 section 12). The expenses kind also needs the expenses module.' }
         notifications: { type: boolean, description: 'Notifications module registered (18 section 11): the in-app inbox.' }
         schedule: { type: boolean, description: 'Schedule module registered (18 section 9); off by default.' }
+        progress: { type: boolean, description: 'Progress module registered (18 section 8.2); off by default.' }
         sync: { type: boolean }
         local_export: { type: boolean, description: Reserved for v1.1; false in v1. }
         devices: { type: boolean }
@@ -2851,6 +2871,44 @@ components:
         entries: { type: array, items: { $ref: '#/components/schemas/ScheduleEntry' } }
         off_days: { type: array, items: { type: object, properties: { off_on: { type: string }, note: { type: [string, 'null'] } } } }
         templates: { type: array, items: { $ref: '#/components/schemas/ScheduleTemplate' } }
+
+    Progress:
+      type: object
+      required: [xp, level, xp_into_level, xp_per_level, streak, challenges, badges]
+      properties:
+        xp: { type: integer }
+        level: { type: integer }
+        xp_into_level: { type: integer }
+        xp_per_level: { type: integer }
+        streak:
+          type: object
+          required: [days, freezes_held, at_risk]
+          properties:
+            days: { type: integer }
+            freezes_held: { type: integer, maximum: 3 }
+            at_risk: { type: boolean }
+        challenges:
+          type: array
+          description: The weekly challenges. The labelled drop-offs challenge is absent while nothing is labelled.
+          items:
+            type: object
+            required: [id, label, value, target, done, week_start]
+            properties:
+              id: { enum: [earn, deliveries, streak5] }
+              label: { type: string }
+              value: { type: [integer, 'null'], description: null when unknown (nothing entered this week). }
+              target: { type: integer }
+              done: { type: boolean }
+              week_start: { type: string, format: date }
+        badges:
+          type: array
+          items:
+            type: object
+            required: [slug, label, unlocked_at]
+            properties:
+              slug: { type: string }
+              label: { type: string }
+              unlocked_at: { type: [integer, 'null'] }
 
     ShiftStatus: { enum: [active, ended, finalized] }
     ShiftStart:

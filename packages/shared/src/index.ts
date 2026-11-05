@@ -10,3 +10,4 @@ export * from './tokens';
 export * from './platforms';
 export * from './expense-categories';
 export * from './tax';
+export * from './badges';

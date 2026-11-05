@@ -27,6 +27,7 @@ export const COMMA_MODULES = [
   'import',
   'notifications',
   'schedule',
+  'progress',
 ];
 const VERBOSE_MS = 7 * 24 * 60 * 60 * 1000;
 

@@ -29,6 +29,7 @@ const ALL_OFF: Modules = {
   import: false,
   notifications: false,
   schedule: false,
+  progress: false,
   exporters: [],
 };
 

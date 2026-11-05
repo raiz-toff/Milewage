@@ -47,6 +47,7 @@ import { receiptsRoutes } from './routes/receipts';
 import { analyticsRoutes } from './routes/analytics';
 import { goalsRoutes } from './routes/goals';
 import { notificationsRoutes } from './routes/notifications';
+import { progressRoutes } from './routes/progress';
 import { scheduleRoutes } from './routes/schedule';
 import { notify } from './notifications';
 import { localDate } from './time';
@@ -107,6 +108,12 @@ export const scheduleModule = defineModule({
   dependsOn: ['core'],
   defaultEnabled: false,
 });
+/** XP, level, streak, weekly challenges and 24 badges, derived from what is already recorded; **off by default** (18 section 8.2). */
+export const progressModule = defineModule({
+  name: 'progress',
+  dependsOn: ['goals', 'earnings'],
+  defaultEnabled: false,
+});
 /** The Tax Center: an estimate, never a filing (18 section 7). CA only until other packs are verified. */
 export const taxModule = defineModule({ name: 'tax', dependsOn: ['core'] });
 /** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */
@@ -138,6 +145,7 @@ export const serverModules = [
   importModule,
   notificationsModule,
   scheduleModule,
+  progressModule,
   backupModule,
 ] as const;
 
@@ -453,6 +461,16 @@ export function createServerModules(ctx: ServerContext) {
           }
         },
       },
+    }),
+    defineModule({
+      ...progressModule,
+      routes: progressRoutes({
+        ...ctx,
+        authn,
+        override: ctx.comma?.earningsOverride,
+        challengeTargetCents:
+          ctx.comma?.challengeTargetCents ?? COMMA_DEFAULTS.challengeTargetCents,
+      }),
     }),
     defineModule({ ...scheduleModule, routes: scheduleRoutes({ ...ctx, authn }) }),
     defineModule({ ...importModule, routes: importsRoutes({ ...ctx, authn }) }),
