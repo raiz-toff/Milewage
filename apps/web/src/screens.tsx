@@ -25,5 +25,15 @@ export const screens: Screen[] = [
   { path: '/settings', label: 'Settings', element: <SettingsPage /> },
 ];
 
+/**
+ * URL paths that the static host must answer with index.html: "/" plus each screen, and for a
+ * pattern ending in /* the bare path too. infra/docker/Caddyfile lists them; a test keeps the
+ * two in step.
+ */
+export const spaPaths = (list: Screen[] = screens): string[] => [
+  '/',
+  ...list.flatMap((s) => (s.path.endsWith('/*') ? [s.path.slice(0, -2), s.path] : [s.path])),
+];
+
 export const visibleScreens = (modules: Modules): Screen[] =>
   screens.filter((s) => !s.visible || s.visible(modules));
