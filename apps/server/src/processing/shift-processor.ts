@@ -1,5 +1,12 @@
 import { processShift, type ShiftInput, type ShiftResult } from '@milewage/track-engine';
-import { createProcessingRepository, type Db, type ShiftPatch, type ShiftRow } from '../db';
+import {
+  createArchiveRepository,
+  createProcessingRepository,
+  type Db,
+  type ShiftPatch,
+  type ShiftRow,
+} from '../db';
+import { ProblemError } from '../errors';
 import { reconcile, reconFromStored, type PhoneSummary, type Recon } from './recon';
 
 /** Flags a driver should look at; the rest are information (14 section 8). */
@@ -54,6 +61,15 @@ export type ShiftProcessor = ReturnType<typeof createShiftProcessor>;
  */
 export function createShiftProcessor({ db, now, stopsOn }: ShiftProcessorOptions) {
   const repo = createProcessingRepository(db);
+  const archive = createArchiveRepository(db);
+  /** The engine needs the raw points; once they are archived the stored totals and trips are all there is. */
+  const assertRecomputable = (shift: ShiftRow) => {
+    if (archive.hasArchive(shift.id))
+      throw new ProblemError(
+        'not_recomputable',
+        'The raw points of this shift were archived, so it cannot be recomputed.',
+      );
+  };
 
   const inputOf = (shift: ShiftRow): ShiftInput => {
     const interruptions = shift.interruptionsJson
@@ -76,11 +92,13 @@ export function createShiftProcessor({ db, now, stopsOn }: ShiftProcessorOptions
   };
 
   return {
+    assertRecomputable,
     /**
      * Computes an ended shift and stores trips, stops, flags and totals in one transaction.
      * `phone` adds the comparison of 14 section 9.4 and the `recon_*` columns.
      */
     run(shift: ShiftRow, phone: PhoneReport = {}, extra: ShiftPatch = {}): ProcessOutcome {
+      assertRecomputable(shift);
       const result = processShift(inputOf(shift));
       const t = now();
       // Manual trips (distance typed in) are kept by the write below and count in the totals (07 section 3).

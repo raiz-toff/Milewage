@@ -186,6 +186,18 @@ export const tripOverrides = sqliteTable(
   (t) => [primaryKey({ columns: [t.shiftId, t.tripKey] })],
 );
 
+export const routeArchives = sqliteTable('route_archives', {
+  shiftId: integer('shift_id')
+    .primaryKey()
+    .references(() => shifts.id),
+  userId: userRef(),
+  geometry: text('geometry').notNull(),
+  rawPointCount: integer('raw_point_count').notNull(),
+  keptPointCount: integer('kept_point_count').notNull(),
+  toleranceM: integer('tolerance_m').notNull(),
+  archivedAt: integer('archived_at').notNull(),
+});
+
 export const shiftFlags = sqliteTable('shift_flags', {
   id: integer('id').primaryKey(),
   userId: userRef(),

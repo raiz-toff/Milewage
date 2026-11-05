@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import {
+  createArchiveRepository,
   createProcessingRepository,
   createShiftRepository,
   type Db,
@@ -55,7 +56,9 @@ export interface TripRouteDeps {
 function tripEdits({ db, now, processor, emit, trackingOn }: TripRouteDeps) {
   const shifts = createShiftRepository(db);
   const repo = createProcessingRepository(db);
+  const archiveRepo = createArchiveRepository(db);
   const since = (p: Principal) => (p.kind === 'device' ? now() - 14 * DAY : undefined);
+  const archived = (row: ShiftRow) => archiveRepo.hasArchive(row.id);
   const touch = (p: Principal): Partial<ShiftRow> =>
     p.kind === 'device' ? { deviceTouchedAt: now() } : {};
   const shiftOf = (p: Principal, r: string) => {
@@ -71,7 +74,7 @@ function tripEdits({ db, now, processor, emit, trackingOn }: TripRouteDeps) {
   /** Totals follow the edit. An active shift is computed at its end, so nothing runs yet. */
   const recompute = (p: Principal, row: ShiftRow) => {
     if (row.status === 'active') return row;
-    const done = trackingOn() ? processor.run(row).shift : processor.retotal(row);
+    const done = trackingOn() && !archived(row) ? processor.run(row).shift : processor.retotal(row);
     const mark = touch(p);
     return (p.kind === 'device' && shifts.update(done.id, mark)) || done;
   };
@@ -86,7 +89,19 @@ function tripEdits({ db, now, processor, emit, trackingOn }: TripRouteDeps) {
     if (at > now() + 5 * 60 * 1000)
       throw invalid(path, 'must not be more than 5 minutes in the future');
   };
-  return { shifts, repo, since, touch, shiftOf, open, recompute, announce, device, notFuture };
+  return {
+    processor,
+    shifts,
+    repo,
+    since,
+    touch,
+    shiftOf,
+    open,
+    recompute,
+    announce,
+    device,
+    notFuture,
+  };
 }
 
 /** Core: reclassify or re-describe a trip, add or delete a manual trip (08 section 3, 07 section 3 rule 8). */
@@ -119,6 +134,7 @@ export function tripRoutes(app: FastifyInstance, deps: TripRouteDeps) {
       });
     } else {
       // Stored apart from the derived trip so a recompute cannot erase it (07 section 2.7).
+      t.processor.assertRecomputable(shift);
       if (!trackingOn())
         throw new ProblemError(
           'trip_not_editable',
@@ -247,6 +263,7 @@ export function overrideRoutes(app: FastifyInstance, deps: TripRouteDeps) {
       const p = auth(req, 'SD');
       const path = req.params as { ref: string; trip_key: string };
       const shift = t.open(t.shiftOf(p, path.ref));
+      t.processor.assertRecomputable(shift);
       const key = path.trip_key;
       const b = req.body as { kind: Kind; purpose: string; edited_at: number };
       t.notFuture('/edited_at', b.edited_at);

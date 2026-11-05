@@ -17,7 +17,7 @@ export interface ExportContext {
     trips(shiftId: number): TripRow[];
     stops(shiftId: number): StopRow[];
     labels(shiftId: number): StopLabelRow[];
-    /** Raw points of a shift in time order, one at a time from the database. */
+    /** Points of a shift in time order: the raw ones, or the vertices of its route archive. */
     points(shiftId: number): Iterable<{
       t: number;
       latE7: number;
@@ -25,6 +25,8 @@ export interface ExportContext {
       speedDmps: number | null;
       altitudeM: number | null;
     }>;
+    /** True when the raw points were replaced by the simplified route archive (07 section 4.2). */
+    simplified(shiftId: number): boolean;
     deduction(shift: ShiftRow): number | null;
   };
 }

@@ -26,6 +26,7 @@ import { diagnosticsRoutes } from './routes/diagnostics';
 import { DEFAULT_COUNTRIES, settingsReader } from './routes/settings';
 import { createShiftProcessor } from './processing/shift-processor';
 import { createLateRecompute } from './processing/late-recompute';
+import { createArchiver } from './processing/archive';
 import { csvExporter } from './exporters/csv';
 import { geojsonExporter, gpxExporter } from './exporters/geo';
 import { createExporterRegistry, type ExporterRegistry } from './exporters/registry';
@@ -103,6 +104,8 @@ export interface ServerContext extends CoreContext {
   state?: ServerState;
   /** Test seam passed to the restore service (forces a revert). */
   restoreVerify?: (db: ServerContext['db']) => void;
+  /** Interval of the raw-point retention job (a day unless a test shortens it). */
+  archiveEveryMs?: number;
   /** Debounce of the recompute after late points (5 s unless a test shortens it). */
   lateRecomputeMs?: number;
   /** Ping interval of `GET /live`; 30 s unless a test shortens it. */
@@ -201,6 +204,13 @@ export function createServerModules(ctx: ServerContext) {
     delayMs: ctx.lateRecomputeMs,
     log: ctx.log,
   });
+  const archiver = createArchiver({
+    db: ctx.db,
+    now: ctx.now,
+    emit: () => busEmit,
+    everyMs: ctx.archiveEveryMs,
+    log: ctx.log,
+  });
   return [
     defineModule({
       ...coreModule,
@@ -235,7 +245,7 @@ export function createServerModules(ctx: ServerContext) {
         trackingRoutes({ ...ctx, authn, processor })(host);
       },
       subscriptions: late.subscriptions,
-      jobs: [late.job],
+      jobs: [late.job, archiver.job],
     }),
     defineModule({ ...stopsModule, routes: stopsRoutes({ ...ctx, authn, processor }) }),
     defineModule({ ...replayModule, routes: replayRoutes({ ...ctx, authn }) }),

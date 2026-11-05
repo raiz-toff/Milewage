@@ -18,6 +18,7 @@ const CATALOG = {
   shift_finalized: [409, 'Shift is finalized', false],
   shift_not_ended: [409, 'Shift has not ended', false],
   trip_not_editable: [409, 'Trip cannot be edited', false],
+  not_recomputable: [409, 'Raw points were archived; the shift cannot be recomputed', false],
   upgrade_required: [426, 'Upgrade required', false],
   cursor_expired: [410, 'Cursor expired', false],
   payload_too_large: [413, 'Payload too large', false],

@@ -10,15 +10,22 @@ const iso = (ms: number) => new Date(ms).toISOString().replace('.000Z', 'Z');
 
 /**
  * GPX 1.1, one track per shift (08 section 11). Points are the stored raw fixes; a shift whose raw points were
- * archived would say "simplified" in its description, but no archive exists yet, so every track is raw.
+ * archived (07 section 4.2) is written from its simplified route and says "[simplified]" in its name and the
+ * file's description.
  * Payouts, labels, places and notes are never written.
  */
 function* gpx(c: ExportContext) {
   yield '<?xml version="1.0" encoding="UTF-8"?>\n';
   yield '<gpx version="1.1" creator="MileWage" xmlns="http://www.topografix.com/GPX/1/1">\n';
-  yield '  <metadata><desc>Stored GPS fixes of the selected shifts.</desc></metadata>\n';
+  const simple = c.shifts.some((s) => c.readers.simplified(s.id));
+  yield `  <metadata><desc>${
+    simple
+      ? 'Stored GPS fixes; shifts marked [simplified] keep only the simplified route (5 m tolerance).'
+      : 'Stored GPS fixes of the selected shifts.'
+  }</desc></metadata>\n`;
   for (const s of c.shifts) {
-    yield `  <trk>\n    <name>${xml(`Shift ${s.localDate} #${s.id}`)}</name>\n    <trkseg>\n`;
+    const note = c.readers.simplified(s.id) ? ' [simplified]' : '';
+    yield `  <trk>\n    <name>${xml(`Shift ${s.localDate} #${s.id}${note}`)}</name>\n    <trkseg>\n`;
     for (const p of c.readers.points(s.id)) {
       const ele = p.altitudeM === null ? '' : `<ele>${p.altitudeM}</ele>`;
       const speed =
@@ -59,7 +66,7 @@ function* geojson(c: ExportContext) {
         deadhead_m: s.deadheadM,
         personal_m: s.personalM,
         split_estimated: s.segmenter === 'stops',
-        simplified: false,
+        simplified: c.readers.simplified(s.id),
       },
     });
     if (!c.stopsOn) continue;

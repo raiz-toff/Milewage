@@ -83,6 +83,7 @@ export function stopsRoutes({
         throw new ProblemError('shift_finalized', 'This shift is finalized.');
       if (shift.status === 'active')
         throw new ProblemError('shift_not_ended', 'Label stops after the shift has ended.');
+      processor.assertRecomputable(shift);
     };
     const recompute = (shift: ReturnType<typeof read>) => {
       const saved = processor.run(shift).shift;

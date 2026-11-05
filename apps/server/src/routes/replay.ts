@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import type { RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
-import { telemetryPoints, type Db } from '../db';
+import { createArchiveRepository, telemetryPoints, type Db } from '../db';
 import { refParam, shiftReader } from './shift-access';
 import { strictObject } from './util';
 
@@ -23,6 +23,7 @@ export function replayRoutes({
     const { app } = host as ServerRouteHost;
     const orm = drizzle(db);
     const read = shiftReader(db, now);
+    const archives = createArchiveRepository(db);
 
     app.get('/shifts/:ref/route', { schema: { params } }, async (req) => {
       const p = authn.authenticate(req, 'SD');
@@ -38,6 +39,21 @@ export function replayRoutes({
         .where(eq(telemetryPoints.shiftId, shift.id))
         .orderBy(asc(telemetryPoints.recordedAt), asc(telemetryPoints.seq))
         .all();
+      const archive = rows.length === 0 ? archives.archiveOf(shift.id) : undefined;
+      if (archive) {
+        // The raw points were replaced by the simplified route (07 section 4.2): no speeds are kept.
+        const g = JSON.parse(archive.geometry) as {
+          coordinates: [number, number][];
+          properties: { times: number[] };
+        };
+        return {
+          source: 'archive',
+          t: g.properties.times.map((s) => s * 1000),
+          lat_e7: g.coordinates.map((c) => Math.round(c[1] * 1e7)),
+          lon_e7: g.coordinates.map((c) => Math.round(c[0] * 1e7)),
+          speed_dmps: g.coordinates.map(() => null),
+        };
+      }
       return {
         source: 'raw',
         t: rows.map((r) => r.t),
