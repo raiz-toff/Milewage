@@ -1204,7 +1204,7 @@ export interface components {
             /** @description Capture module registered (16 section 8); false by default. */
             capture: boolean;
             backup_download: boolean;
-            exporters: ("csv" | "pdf" | "gpx" | "geojson")[];
+            exporters: ("csv" | "pdf" | "gpx" | "geojson" | "expenses" | "tax_summary")[];
             countries: string[];
         };
         Settings: {
@@ -4168,11 +4168,17 @@ export interface operations {
                 vehicle_id?: number;
                 /** @description CSV only. */
                 level?: "trip" | "shift";
+                /** @description Tax year for tax_summary and the default year of expenses. */
+                year?: number;
+                /** @description expenses only. */
+                category?: string;
+                /** @description tax_summary only. */
+                format?: "csv" | "json";
             };
             header?: never;
             path: {
-                /** @description Only formats whose exporter is registered and enabled exist. */
-                format: "csv" | "pdf" | "gpx" | "geojson";
+                /** @description Only formats whose exporter is registered and enabled exist. expenses and tax_summary are reports over records, not shifts: from/to are optional for expenses, year selects the tax year, format=json is for tax_summary only. */
+                format: "csv" | "pdf" | "gpx" | "geojson" | "expenses" | "tax_summary";
             };
             cookie?: never;
         };

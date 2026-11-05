@@ -13,9 +13,11 @@ import {
   type ShiftRow,
 } from '../db';
 import { ProblemError } from '../errors';
-import type { ExporterRegistry } from '../exporters/registry';
+import type { ExportContext, ExporterRegistry } from '../exporters/registry';
 import { deductionOfShift } from '../processing/presenter';
 import type { EarningsPolicy } from './earnings';
+import type { TaxReport } from '../tax-report';
+import { localDate } from '../time';
 import { strictObject } from './util';
 
 const date = { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' };
@@ -26,6 +28,9 @@ const query = strictObject(
     shift_id: { type: 'integer', minimum: 1 },
     vehicle_id: { type: 'integer', minimum: 1 },
     level: { enum: ['trip', 'shift'] },
+    year: { type: 'integer', minimum: 2000, maximum: 2100 },
+    category: { type: 'string', maxLength: 40 },
+    format: { enum: ['csv', 'json'] },
   },
   [],
 );
@@ -44,6 +49,9 @@ export interface ExportsOptions {
   /** Formats switched on (`modules.export_<format>`); default every registered one. */
   formats?: () => readonly string[];
   earnings?: (registry: ServerRouteHost['registry']) => EarningsPolicy;
+  now?: () => number;
+  /** Builds the tax report of a year; supplied when the `tax` module exists. */
+  taxReport?: (registry: ServerRouteHost['registry'], userId: number, year: number) => TaxReport;
 }
 
 /** Formats that exist right now: registered, switched on, and with their required modules on. */
@@ -59,7 +67,15 @@ export function availableFormats(
 }
 
 /** `GET /exports/{format}` (08 section 11): a streamed file from a registered exporter. Web session only. */
-export function exportsRoutes({ db, authn, exporters, formats, earnings }: ExportsOptions) {
+export function exportsRoutes({
+  db,
+  authn,
+  exporters,
+  formats,
+  earnings,
+  taxReport,
+  now = Date.now,
+}: ExportsOptions) {
   return (host: RouteHost) => {
     const { app, registry } = host as ServerRouteHost;
     const processing = createProcessingRepository(db);
@@ -80,13 +96,27 @@ export function exportsRoutes({ db, authn, exporters, formats, earnings }: Expor
         shift_id?: number;
         vehicle_id?: number;
         level?: 'trip' | 'shift';
+        year?: number;
+        category?: string;
+        format?: string;
       };
       const prefs = settings.get(userId);
       if (!prefs) throw new ProblemError('setup_incomplete', 'Finish setup first.');
 
       let shifts: ShiftRow[];
       let name: string;
-      if (q.shift_id !== undefined) {
+      if (exporter.standalone) {
+        // Reports over expenses or the tax year select no shifts; their own parameters are optional.
+        if (
+          q.from &&
+          q.to &&
+          (calendar(q.from) === undefined || calendar(q.to) === undefined || q.to < q.from)
+        ) {
+          throw bad('/from', 'give a valid from and to');
+        }
+        shifts = [];
+        name = q.from && q.to ? `${format}-${q.from}_${q.to}` : `${format}-${q.year ?? 'year'}`;
+      } else if (q.shift_id !== undefined) {
         if (q.from || q.to) throw bad('/shift_id', 'use shift_id or from and to, not both');
         const s = shiftRepo.byRef(userId, String(q.shift_id));
         if (!s) throw new ProblemError('shift_not_found', 'No such shift.');
@@ -114,7 +144,7 @@ export function exportsRoutes({ db, authn, exporters, formats, earnings }: Expor
       const points = db.prepare(
         'SELECT recorded_at AS t, lat_e7 AS latE7, lon_e7 AS lonE7, speed_dmps AS speedDmps, altitude_m AS altitudeM FROM telemetry_points WHERE shift_id = ? ORDER BY recorded_at, seq',
       );
-      const chunks = exporter.run({
+      const context: ExportContext = {
         db,
         userId,
         shifts,
@@ -123,6 +153,10 @@ export function exportsRoutes({ db, authn, exporters, formats, earnings }: Expor
         currency: prefs.currency,
         timeZone: prefs.timezone,
         level: q.level ?? 'trip',
+        query: { from: q.from, to: q.to, year: q.year, category: q.category, format: q.format },
+        today: localDate(now(), prefs.timezone),
+        enabled: (m) => registry.isEnabled(m),
+        taxReport: taxReport && ((y) => taxReport(registry, userId, y)),
         stopsOn: prefs.stopsEnabled === 1 && registry.isEnabled('stops'),
         readers: {
           trips: processing.tripsOf,
@@ -161,13 +195,12 @@ export function exportsRoutes({ db, authn, exporters, formats, earnings }: Expor
                   .filter((r) => r.shiftId === s.id)
               : [],
         },
-      });
+      };
+      const chunks = exporter.run(context);
+      const kind = exporter.describe?.(context) ?? exporter;
       return reply
-        .header('Content-Type', exporter.contentType)
-        .header(
-          'Content-Disposition',
-          `attachment; filename="milewage-${name}.${exporter.extension}"`,
-        )
+        .header('Content-Type', kind.contentType)
+        .header('Content-Disposition', `attachment; filename="milewage-${name}.${kind.extension}"`)
         .send(Readable.from(chunks, { objectMode: false }));
     });
   };

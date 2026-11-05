@@ -233,7 +233,11 @@ describe('which formats exist', () => {
 
   test('tracking off: gpx and geojson are gone, csv stays', async () => {
     await setup(TRACKING_OFF);
-    expect((await web('/settings')).json().modules.exporters).toEqual(['csv']);
+    expect((await web('/settings')).json().modules.exporters).toEqual([
+      'csv',
+      'expenses',
+      'tax_summary',
+    ]);
     expect((await web(`/exports/gpx${range}`)).statusCode).toBe(404);
     expect((await web(`/exports/geojson${range}`)).statusCode).toBe(404);
     expect((await web(`/exports/csv${range}`)).statusCode).toBe(200);

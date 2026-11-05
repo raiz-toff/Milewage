@@ -1,4 +1,5 @@
 import type { EffectiveRow } from '../db';
+import type { TaxReport } from '../tax-report';
 import type { Db, ShiftRow, StopLabelRow, StopRow, TripRow, VehicleRow } from '../db';
 
 /** What an exporter is given: the selected shifts and the owner's presentation settings, never the request. */
@@ -12,6 +13,14 @@ export interface ExportContext {
   timeZone: string;
   /** CSV only. */
   level: 'trip' | 'shift';
+  /** Query parameters of the request that the standalone report exporters read. */
+  query: { from?: string; to?: string; year?: number; category?: string; format?: string };
+  /** The owner's local date today. */
+  today: string;
+  /** Whether a module is on (a report leaves out what a switched-off module would have said). */
+  enabled(module: string): boolean;
+  /** The tax report of a year; present when the `tax` module is on. */
+  taxReport?: (year: number) => TaxReport;
   /** True when the stops module and setting are on, so stops and labels may be read. */
   stopsOn: boolean;
   readers: {
@@ -41,6 +50,10 @@ export interface Exporter {
   extension: string;
   /** Modules that must be on for this format to exist (08 section 11), besides `exporters` and core. */
   requires: readonly string[];
+  /** A report over records other than shifts (expenses, tax): the route selects no shifts for it. */
+  standalone?: boolean;
+  /** Content type and extension that depend on the request (`tax_summary` is CSV or JSON). */
+  describe?(c: ExportContext): { contentType: string; extension: string };
   /** Chunks of the file; produced lazily so a year of data never sits in memory. */
   run(ctx: ExportContext): Iterable<string>;
 }

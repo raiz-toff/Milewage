@@ -8,12 +8,22 @@ import { localDate } from './Dashboard';
 type Format = Modules['exporters'][number];
 
 const DAY = 86_400_000;
-const LABEL: Record<Format, string> = { csv: 'CSV', pdf: 'PDF', gpx: 'GPX', geojson: 'GeoJSON' };
+const LABEL: Record<Format, string> = {
+  csv: 'CSV',
+  pdf: 'PDF',
+  gpx: 'GPX',
+  geojson: 'GeoJSON',
+  expenses: 'Expenses CSV',
+  tax_summary: 'Tax summary',
+};
 const HINT: Record<Format, string> = {
   csv: 'Trips or shifts as a spreadsheet file.',
   pdf: 'A summary page and the trip log.',
   gpx: 'The recorded route. No payouts, labels or notes.',
   geojson: 'Routes and detected stops. No payouts, labels or notes.',
+  expenses: 'Your expenses in the period for your accountant. No receipt files.',
+  tax_summary:
+    'The estimate of the period\u2019s year with its working: an estimate, not tax advice.',
 };
 
 /** Hands a downloaded file to the browser's save dialog. */

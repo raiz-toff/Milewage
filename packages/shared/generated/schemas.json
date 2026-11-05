@@ -184,7 +184,9 @@
               "csv",
               "pdf",
               "gpx",
-              "geojson"
+              "geojson",
+              "expenses",
+              "tax_summary"
             ]
           }
         },

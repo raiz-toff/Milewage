@@ -54,7 +54,11 @@ export async function startServer(
         state,
         backupSchedule: state.mode === 'normal',
         enabledExportFormats: () =>
-          exportFormatsOn(['csv', 'pdf', 'gpx', 'geojson'], config.settings, env),
+          exportFormatsOn(
+            ['csv', 'pdf', 'gpx', 'geojson', 'expenses', 'tax_summary'],
+            config.settings,
+            env,
+          ),
         backupOnShiftEnd: config.backup.onShiftEnd,
         backupDownload: config.backup.download,
         diagnosticsBundle: config.diagnostics.bundle,

@@ -35,6 +35,8 @@ import { createLateRecompute } from './processing/late-recompute';
 import { createArchiver } from './processing/archive';
 import { csvExporter } from './exporters/csv';
 import { geojsonExporter, gpxExporter } from './exporters/geo';
+import { expensesExporter, taxSummaryExporter } from './exporters/reports';
+import { taxReport } from './tax-report';
 import { createExporterRegistry, type ExporterRegistry } from './exporters/registry';
 import { availableFormats, exportsRoutes } from './routes/exports';
 import { createLive } from './routes/live';
@@ -298,7 +300,14 @@ export function createServerModules(ctx: ServerContext) {
   });
   const sync = createSync({ db: ctx.db, now: ctx.now, authn, readSettings });
   const exporters =
-    ctx.exporters ?? createExporterRegistry([csvExporter, gpxExporter, geojsonExporter]);
+    ctx.exporters ??
+    createExporterRegistry([
+      csvExporter,
+      gpxExporter,
+      geojsonExporter,
+      expensesExporter,
+      taxSummaryExporter,
+    ]);
   const exportFormats = (reg: ModuleRegistry) =>
     reg.isEnabled('exporters')
       ? availableFormats(exporters, (m) => reg.isEnabled(m), ctx.enabledExportFormats)
@@ -408,6 +417,17 @@ export function createServerModules(ctx: ServerContext) {
         exporters,
         formats: ctx.enabledExportFormats,
         earnings: earningsPolicy,
+        taxReport: (reg, userId, year) =>
+          taxReport(
+            {
+              db: ctx.db,
+              registry: reg,
+              countries: ctx.comma?.taxCountries ?? COMMA_DEFAULTS.taxCountries,
+              override: ctx.comma?.earningsOverride,
+            },
+            userId,
+            year,
+          ),
       }),
     }),
     defineModule({

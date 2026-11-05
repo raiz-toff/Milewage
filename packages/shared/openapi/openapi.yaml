@@ -75,7 +75,7 @@ x-modules:
     default: true
     dependsOn: [core]
     operations: [exportData]
-    registry: { csv: [core], pdf: [core], gpx: [core, tracking], geojson: [core, tracking] }
+    registry: { csv: [core], pdf: [core], gpx: [core, tracking], geojson: [core, tracking], expenses: [expenses], tax_summary: [tax] }
   backup:
     toggle: engine is not toggleable; backup.on_shift_end, backup.download
     default: true
@@ -1419,12 +1419,15 @@ paths:
       summary: Download a file from a registered exporter (v1 ships csv, pdf, gpx, geojson). A disabled or unknown format returns 404.
       security: [{ sessionCookie: [] }]
       parameters:
-        - { name: format, in: path, required: true, schema: { enum: [csv, pdf, gpx, geojson] }, description: Only formats whose exporter is registered and enabled exist. }
+        - { name: format, in: path, required: true, schema: { enum: [csv, pdf, gpx, geojson, expenses, tax_summary] }, description: 'Only formats whose exporter is registered and enabled exist. expenses and tax_summary are reports over records, not shifts: from/to are optional for expenses, year selects the tax year, format=json is for tax_summary only.' }
         - { $ref: '#/components/parameters/From' }
         - { $ref: '#/components/parameters/To' }
         - { name: shift_id, in: query, schema: { type: integer }, description: Alternative to from/to. }
         - { name: vehicle_id, in: query, schema: { type: integer } }
         - { name: level, in: query, description: "CSV only.", schema: { enum: [trip, shift], default: trip } }
+        - { name: year, in: query, schema: { type: integer }, description: Tax year for tax_summary and the default year of expenses. }
+        - { name: category, in: query, schema: { type: string }, description: expenses only. }
+        - { name: format, in: query, schema: { enum: [csv, json], default: csv }, description: tax_summary only. }
       responses:
         '200':
           description: The file, streamed.
@@ -1828,7 +1831,7 @@ components:
         diagnostics: { type: boolean, description: 'Diagnostics module registered (16). When false the phone behaves as level off and the web hides the Diagnostics screens.' }
         capture: { type: boolean, description: 'Capture module registered (16 section 8); false by default.' }
         backup_download: { type: boolean }
-        exporters: { type: array, items: { enum: [csv, pdf, gpx, geojson] } }
+        exporters: { type: array, items: { enum: [csv, pdf, gpx, geojson, expenses, tax_summary] } }
         countries: { type: array, items: { type: string, minLength: 2, maxLength: 2 } }
     Settings:
       type: object
