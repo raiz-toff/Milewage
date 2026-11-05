@@ -263,3 +263,58 @@ describe('odometer (08 section 3, 07 section 2.2)', () => {
     expect((await h.call('GET', '/odometer')).json().code).toBe('auth_required');
   });
 });
+
+describe('deduction value from the country pack (07 section 3)', () => {
+  const shiftOf = async (n: number) => (await web('GET', `/shifts/${n}`)).json();
+
+  test('a shift and a period are valued with the rate of their own date; nothing is stored', async () => {
+    seedShift(1, { local_date: '2026-03-01', total_m: 10_000 });
+    seedShift(2, { local_date: '2026-07-02', total_m: 10_000, started_at: 5_000 });
+    expect((await shiftOf(1)).deduction_cents).toBe(450); // US 72.5 c/mi until 30 June 2026
+    expect((await shiftOf(2)).deduction_cents).toBe(472); // 76 c/mi from 1 July
+    const body = (await web('GET', '/summary?from=2026-01-01&to=2026-12-31')).json();
+    expect(body.deduction_cents).toBe(450 + 472);
+    expect(
+      (await web('GET', '/shifts'))
+        .json()
+        .items.map((i: { deduction_cents: number }) => i.deduction_cents),
+    ).toEqual([472, 450]);
+    expect(
+      h.db
+        .prepare("SELECT count(*) FROM pragma_table_info('shifts') WHERE name LIKE '%deduction%'")
+        .pluck()
+        .get(),
+    ).toBe(0);
+  });
+
+  test('no rate for the date, or an active shift, gives null', async () => {
+    seedShift(1, { local_date: '2023-03-01', total_m: 10_000 });
+    seedShift(2, { status: 'active', ended_at: null, total_m: null, local_date: '2026-03-01' });
+    expect((await shiftOf(1)).deduction_cents).toBeNull();
+    expect((await shiftOf(2)).deduction_cents).toBeNull();
+    expect(
+      (await web('GET', '/summary?from=2023-01-01&to=2023-12-31')).json().deduction_cents,
+    ).toBeNull();
+  });
+
+  test('Canada: the 5,000 km tier is shared by the shifts of a year, in start order', async () => {
+    await web('PATCH', '/settings', { country: 'CA', distance_unit: 'km' });
+    seedShift(1, { local_date: '2026-02-01', total_m: 4_000_000, started_at: 1_000 });
+    seedShift(2, { local_date: '2026-02-02', total_m: 2_000_000, started_at: 2_000 });
+    expect((await shiftOf(1)).deduction_cents).toBe(4000 * 73);
+    expect((await shiftOf(2)).deduction_cents).toBe(1000 * 73 + 1000 * 67);
+    // A period that starts later still counts the year's earlier kilometres.
+    expect(
+      (await web('GET', '/summary?from=2026-02-02&to=2026-02-02')).json().deduction_cents,
+    ).toBe(140_000);
+  });
+
+  test('a country without a pack gets null, not a guess', async () => {
+    h.db.prepare("UPDATE settings SET country = 'FR'").run();
+    seedShift(1, { local_date: '2026-03-01', total_m: 10_000 });
+    expect((await shiftOf(1)).deduction_cents).toBeNull();
+    expect(
+      (await web('GET', '/summary?from=2026-01-01&to=2026-12-31')).json().deduction_cents,
+    ).toBeNull();
+  });
+});

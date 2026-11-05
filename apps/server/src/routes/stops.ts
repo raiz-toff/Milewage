@@ -11,7 +11,7 @@ import {
 import { ProblemError } from '../errors';
 import type { ShiftProcessor } from '../processing/shift-processor';
 import { refParam, shiftReader } from './shift-access';
-import { shiftView } from './shifts';
+import { presentShift } from '../processing/presenter';
 import { snakeKeys, str, strictObject } from './util';
 
 const params = strictObject({ ref: refParam, stop_key: str(1, 200) }, ['ref', 'stop_key']);
@@ -85,11 +85,10 @@ export function stopsRoutes({
         throw new ProblemError('shift_not_ended', 'Label stops after the shift has ended.');
     };
     const recompute = (shift: ReturnType<typeof read>) => {
-      const flags = (id: number) => repo.flagsOf([id]).get(id);
       const saved = processor.run(shift).shift;
       bus.emit('shift.updated', { shiftId: String(shift.id) });
       bus.emit('stops.derived', { shiftId: String(shift.id) });
-      return shiftView(saved, flags(saved.id));
+      return presentShift(db, saved);
     };
 
     app.put(
@@ -121,7 +120,7 @@ export function stopsRoutes({
         if (old && b.edited_at <= old.editedAt) {
           return reply.header('X-MileWage-Applied', 'false').send({
             stop: withLabel(shift.id, key),
-            shift: shiftView(shift, repo.flagsOf([shift.id]).get(shift.id)),
+            shift: presentShift(db, shift),
           });
         }
         if (old) {

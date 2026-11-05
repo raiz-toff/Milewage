@@ -11,6 +11,7 @@ import {
   type TripRow,
 } from '../db';
 import { ProblemError } from '../errors';
+import { presentShift, presentShifts } from '../processing/presenter';
 import { localDate } from '../time';
 import type { EventEmit } from '../events';
 import type { ShiftProcessor } from '../processing/shift-processor';
@@ -163,7 +164,7 @@ export function shiftRoutes(
   const shifts = shiftRepo(db);
   const processing = processingRepo(db);
   /** One shift with its flags, the way every route returns it. */
-  const view = (r: ShiftRow) => shiftView(r, processing.flagsOf([r.id]).get(r.id));
+  const view = (r: ShiftRow) => presentShift(db, r);
   const odometer = odometerRepo(db);
   const vehicles = vehicleRepo(db);
   const device = (p: Principal) => p.kind === 'device';
@@ -257,9 +258,8 @@ export function shiftRoutes(
     const last = rows[limit - 1];
     const next = rows.length > limit && last ? [last.startedAt, last.id] : null;
     const page = rows.slice(0, limit);
-    const flags = processing.flagsOf(page.map((r) => r.id));
     return {
-      items: page.map((r) => shiftView(r, flags.get(r.id))),
+      items: presentShifts(db, page),
       next_cursor: next && Buffer.from(JSON.stringify(next)).toString('base64url'),
     };
   });

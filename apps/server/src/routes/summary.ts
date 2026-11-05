@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { createProcessingRepository, createSettingsRepository, type Db } from '../db';
 import { ProblemError } from '../errors';
+import { deductionOfShift } from '../processing/presenter';
 import { localDate } from '../time';
 import { strictObject, type AuthFn } from './util';
 
@@ -12,14 +13,21 @@ const valid = (d: string) => {
   return Number.isFinite(t) && new Date(t).toISOString().startsWith(d);
 };
 
+/** Sum of the shifts' deduction values (each from the pack of its own date); null without a pack or a rate. */
+function deduction(db: Db, userId: number, from: string, to: string): number | null {
+  const values = createProcessingRepository(db)
+    .shiftsInPeriod(userId, from, to)
+    .map((s) => deductionOfShift(db, s))
+    .filter((v): v is number => v !== null);
+  return values.length === 0 ? null : values.reduce((a, b) => a + b, 0);
+}
+
 export interface SummaryContext {
   db: Db;
   now: () => number;
   auth: AuthFn;
   /** Whether payout and tip sums are available (the `stops` module is on). */
   labelsOn?: () => boolean;
-  /** Deduction value in cents for a business total, or null when the country has no pack (country packs, M9.2). */
-  deduction?: (country: string, totalM: number, from: string) => number | null;
 }
 
 /**
@@ -66,7 +74,7 @@ export function summaryRoute(app: FastifyInstance, ctx: SummaryContext) {
       deadhead_m: totals.deadhead_m,
       personal_m: totals.personal_m,
       total_m: totals.total_m,
-      deduction_cents: ctx.deduction?.(prefs.country, totals.total_m, from) ?? null,
+      deduction_cents: deduction(ctx.db, userId, from, to),
       hourly_earnings_cents:
         labelled && hours > 0 ? Math.round(labelled.earningsCents / hours) : null,
     };

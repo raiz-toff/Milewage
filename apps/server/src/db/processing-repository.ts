@@ -136,6 +136,21 @@ export function createProcessingRepository(db: Db) {
         total_m: number;
       };
     },
+    /** Ended and finalized shifts of the period, oldest first. */
+    shiftsInPeriod: (userId: number, from: string, to: string) =>
+      orm
+        .select()
+        .from(shifts)
+        .where(
+          and(
+            eq(shifts.userId, userId),
+            inArray(shifts.status, ['ended', 'finalized']),
+            gte(shifts.localDate, from),
+            lte(shifts.localDate, to),
+          ),
+        )
+        .orderBy(asc(shifts.startedAt), asc(shifts.id))
+        .all(),
     /** Payout and tips over the driver's labels for the same shifts; null when nothing was labelled. */
     labelEarnings(userId: number, from: string, to: string) {
       const r = db

@@ -1,4 +1,5 @@
 export const name = '@milewage/shared';
+export * from './countries';
 export * from './events';
 export * from './module';
 export * from './registry';

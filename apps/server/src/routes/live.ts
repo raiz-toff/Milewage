@@ -13,7 +13,7 @@ import {
   type Db,
 } from '../db';
 import { ProblemError } from '../errors';
-import { shiftView } from './shifts';
+import { presentShift } from '../processing/presenter';
 import { stopView } from './stops';
 
 /** A phone is "online" if it called the API within 3 upload intervals of 60 s (08 section 6). */
@@ -73,7 +73,7 @@ export function createLive({
   const shiftFrame = (event: string) => (p: { shiftId: string }) => {
     const row = shiftById(p.shiftId);
     if (!row || clients.size === 0) return;
-    const view = shiftView(row, processing.flagsOf([row.id]).get(row.id));
+    const view = presentShift(db, row);
     broadcast(row.userId, { type: 'shift', event, shift: view });
   };
 
@@ -135,9 +135,7 @@ export function createLive({
     return {
       type: 'hello',
       server_time: now(),
-      active_shift: active
-        ? shiftView(active, processing.flagsOf([active.id]).get(active.id))
-        : null,
+      active_shift: active ? presentShift(db, active) : null,
       device_online: Object.fromEntries(states.map((d) => [d.id, online(d.lastSeenAt)])),
     };
   };

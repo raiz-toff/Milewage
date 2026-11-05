@@ -13,7 +13,8 @@ import {
 } from '../db';
 import { ProblemError } from '../errors';
 import { odometerView } from './odometer';
-import { shiftView, tripView } from './shifts';
+import { presentShift } from '../processing/presenter';
+import { tripView } from './shifts';
 import { strictObject } from './util';
 import { vehicleView } from './vehicles';
 
@@ -103,7 +104,7 @@ export function createSync({ db, now, authn, readSettings }: SyncOptions) {
       switch (row.entity) {
         case 'shift': {
           const s = shifts.byClientId(userId, row.key);
-          return s ? shiftView(s, processing.flagsOf([s.id]).get(s.id)) : null;
+          return s ? presentShift(db, s) : null;
         }
         case 'trip': {
           const t = processing.tripByKey(userId, row.key);
