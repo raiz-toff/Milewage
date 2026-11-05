@@ -819,3 +819,10 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Tests: 8 in `receipts.test.ts` (GPS removal on a hand-built Exif JPEG, unreadable Exif, upload and download with matching hash, replace and delete leave one file, expense delete removes the file, refusals incl. 415/422/413/404/401, 507 on a nearly full disk, backup then restore on a fresh host with identical bytes and the scratch table gone, module off with expenses on); the matrix covers the off side.
 - Not verified: JPEGs from real phones (only a hand-built big-endian Exif block was used; little-endian files go through the same code but are untested); a receipt directory on a full disk during restore; a backup of thousands of receipts (memory: one file at a time, but the database copy grows by their size, so the 2x-database-size disk rule of 10 section 11.3 now includes the receipts).
 - Not done: the web upload control (S5w), a phone camera upload (device scope has no access, by design), the text of `10` itself (the amendment is recorded here and in `18` section 17).
+
+
+## PR S5w — Web: receipt upload on the Expenses screen (Comma-parity track)
+
+- Done: when `modules.receipts` is on the expense list gets a Receipt column: a file picker (JPEG, PNG, WebP, PDF; refused above 10 MB before any call) that sends the raw file with its own content type, and for an expense that has one a "View receipt" link (same-origin, opens the stored file) and a Remove button. With the module off there is no column and no call. The footer says photos lose their location data.
+- Tests: 2 new in `expenses.test.tsx` (attach sends the file with `application/pdf` and shows view/remove; no column when the module is off).
+- Not done: image preview inside the page (the link opens the file), drag and drop, a progress bar.

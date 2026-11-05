@@ -47,10 +47,10 @@ const totals = {
   by_category: [],
 };
 
-function open(rows = [expense()], due: object[] = [], enabled = true) {
+function open(rows: object[] = [expense()], due: object[] = [], enabled = true, receipts = true) {
   return renderApp(
     {
-      ...signedIn(settingsFixture({ modules: { expenses: enabled } })),
+      ...signedIn(settingsFixture({ modules: { expenses: enabled, receipts } })),
       'GET /expenses': () => ({ body: { items: rows, next_cursor: null } }),
       'GET /expenses/totals': () => ({ body: totals }),
       'GET /expenses/due': () => ({ body: due }),
@@ -62,6 +62,8 @@ function open(rows = [expense()], due: object[] = [], enabled = true) {
       'POST /expenses/9/occurrences': () => ({ status: 201, body: expense({ id: 3 }) }),
       'PUT /expenses/9/snooze': () => ({ body: expense({ id: 9 }) }),
       'DELETE /expenses/1': () => ({ status: 204 }),
+      'PUT /expenses/1/receipt': () => ({ status: 201, body: { expense_id: 1 } }),
+      'DELETE /expenses/2/receipt': () => ({ status: 204 }),
     },
     '/expenses',
   );
@@ -127,6 +129,37 @@ describe('expenses screen (module expenses)', () => {
     await waitFor(() => expect(s.calls.some((c) => c.path === '/expenses/9/snooze')).toBe(true));
     fireEvent.click(screen.getByRole('button', { name: /Delete Shell/ }));
     await waitFor(() => expect(s.calls.some((c) => c.method === 'DELETE')).toBe(true));
+  });
+
+  it('attaches a receipt as the raw file with its own content type, and shows view and remove', async () => {
+    const s = open([expense(), expense({ id: 2, merchant: 'Esso', has_receipt: true })]);
+    const input = (await screen.findByLabelText(/Attach receipt to Shell/)) as HTMLInputElement;
+    const file = new File(['%PDF-1.4'], 'r.pdf', { type: 'application/pdf' });
+    fireEvent.change(input, { target: { files: [file] } });
+    await waitFor(() =>
+      expect(s.calls.some((c) => c.method === 'PUT' && c.path === '/expenses/1/receipt')).toBe(
+        true,
+      ),
+    );
+    expect(s.calls.find((c) => c.path === '/expenses/1/receipt')?.contentType).toBe(
+      'application/pdf',
+    );
+    expect(screen.getByRole('link', { name: 'View receipt' }).getAttribute('href')).toBe(
+      '/api/v1/expenses/2/receipt',
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Remove receipt of Esso/ }));
+    await waitFor(() =>
+      expect(s.calls.some((c) => c.method === 'DELETE' && c.path === '/expenses/2/receipt')).toBe(
+        true,
+      ),
+    );
+  });
+
+  it('has no receipt column when the receipts module is off', async () => {
+    open([expense()], [], true, false);
+    await screen.findByText('Shell');
+    expect(screen.queryByRole('columnheader', { name: 'Receipt' })).toBeNull();
+    expect(screen.queryByLabelText(/Attach receipt/)).toBeNull();
   });
 
   it('is absent when the module is off: no navigation entry, and the URL leads elsewhere', async () => {

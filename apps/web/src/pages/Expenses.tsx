@@ -64,7 +64,7 @@ export function bodyOf(d: Draft): Schemas['ExpenseCreate'] {
  */
 export function ExpensesPage() {
   const { api } = useSession();
-  const { currency } = useSettings();
+  const { currency, modules } = useSettings();
   const [items, setItems] = useState<Expense[] | null>(null);
   const [totals, setTotals] = useState<Schemas['ExpenseTotals'] | null>(null);
   const [due, setDue] = useState<Expense[]>([]);
@@ -168,6 +168,19 @@ export function ExpensesPage() {
     } catch (err) {
       setError(describe(err));
     }
+  }
+  async function attach(id: number, file: File) {
+    if (file.size > 10 * 1024 * 1024) return setError('A receipt can be 10 MB at most.');
+    await act(() =>
+      unwrap(
+        api.PUT('/expenses/{id}/receipt', {
+          params: { path: { id } },
+          body: file as never,
+          bodySerializer: (b: unknown) => b as never,
+          headers: { 'Content-Type': file.type },
+        } as never),
+      ),
+    );
   }
   const today = new Date().toISOString().slice(0, 10);
   const money = (c: number) => formatMoney(c, currency);
@@ -405,6 +418,7 @@ export function ExpensesPage() {
               <th className="font-normal">Merchant</th>
               <th className="font-normal">Amount</th>
               <th className="font-normal">Deductible</th>
+              {modules.receipts ? <th className="font-normal">Receipt</th> : null}
               <th />
             </tr>
           </thead>
@@ -418,6 +432,49 @@ export function ExpensesPage() {
                 <td className="pr-3">
                   {x.double_counts ? 'covered by the mileage rate' : money(x.deductible_cents)}
                 </td>
+                {modules.receipts ? (
+                  <td className="pr-3">
+                    {x.has_receipt ? (
+                      <span className="space-x-2">
+                        <a
+                          className="text-accent"
+                          href={`/api/v1/expenses/${x.id}/receipt`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          View receipt
+                        </a>
+                        <button
+                          type="button"
+                          className="text-muted hover:text-ink"
+                          aria-label={`Remove receipt of ${x.merchant || x.category} ${x.spent_on}`}
+                          onClick={() =>
+                            void act(() =>
+                              unwrap(
+                                api.DELETE('/expenses/{id}/receipt', {
+                                  params: { path: { id: x.id } },
+                                }),
+                              ),
+                            )
+                          }
+                        >
+                          Remove
+                        </button>
+                      </span>
+                    ) : (
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,application/pdf"
+                        aria-label={`Attach receipt to ${x.merchant || x.category} ${x.spent_on}`}
+                        className="max-w-48 text-sm"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) void attach(x.id, f);
+                        }}
+                      />
+                    )}
+                  </td>
+                ) : null}
                 <td className="space-x-3 text-right">
                   <button
                     type="button"
@@ -449,6 +506,7 @@ export function ExpensesPage() {
         </table>
       )}
       <p className="max-w-xl text-sm text-muted">
+        {modules.receipts ? 'Photos lose their location data when they are stored. ' : ''}
         Deductible amounts are estimates to bring to an accountant, not tax advice.
       </p>
     </section>
