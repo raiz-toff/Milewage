@@ -12,6 +12,7 @@ import { createExpoSecureBackend, SecureKeyValueStore } from './storage/secureSt
 import { openExpoDb, SqliteKeyValueStore } from './storage/sqliteStore';
 import { ShiftController } from './shift/controller';
 import { PUMP_LIMIT, PointFeed } from './shift/feed';
+import { PhoneEdits } from './store/edits';
 import { ShiftStore, type ServerRecon, type ServerShift } from './store/shiftStore';
 import { SyncDrain } from './sync/drain';
 import { ConnectionMonitor } from './sync/connection';
@@ -46,6 +47,8 @@ export interface Services {
   /** Shifts, trips and results on the phone (`app.db`). */
   shifts: ShiftStore;
   outbox: Outbox;
+  /** Trip, odometer and notes edits made on the phone. */
+  edits: PhoneEdits;
   runner: OutboxRunner;
   /** Backlog drain: shifts oldest first, with progress, cancel and the live shift first (15 section 6). */
   sync: SyncDrain;
@@ -114,6 +117,14 @@ export function createServices(p: Parts): Services {
   const session = () => pairing.session();
   const shifts = new ShiftStore(appDb, p.now);
   const outbox = new Outbox(appDb, p.now);
+  const edits = new PhoneEdits({
+    db: appDb,
+    store: shifts,
+    outbox,
+    gnssOffsetMs: () => p.tracker.gnssOffsetMs(),
+    now: p.now,
+    newId: p.newId,
+  });
   const runner = new OutboxRunner({
     outbox,
     session,
@@ -232,6 +243,7 @@ export function createServices(p: Parts): Services {
     shift,
     shifts,
     outbox,
+    edits,
     runner,
     sync,
     puller,

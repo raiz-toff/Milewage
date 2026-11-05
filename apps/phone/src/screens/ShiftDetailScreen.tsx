@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text } from 'react-native';
-import { formatClock, formatDistance, totalsCaption } from '../format';
+import { Pressable, ScrollView, Text, TextInput } from 'react-native';
+import { M_PER_UNIT, formatClock, formatDistance, totalsCaption } from '../format';
 import type { ScreenProps } from '../navigation';
 import { deriveFlags } from '../pairing/pairing';
 import { useServices } from '../services';
@@ -31,12 +31,16 @@ export function describe(d: ConflictRow, unit: 'km' | 'mi'): string {
   return 'A change on the server replaced your unsent edit. Tap to dismiss.';
 }
 
+const NEXT = { active: 'deadhead', deadhead: 'personal', personal: 'active' } as const;
 const KIND = { active: 'Active', deadhead: 'Deadhead', personal: 'Personal' } as const;
 
 /** One shift from `app.db`: totals, the estimated split, trips and the route. No connection needed. */
 export function ShiftDetailScreen({ route }: ScreenProps<'ShiftDetail'>) {
   const theme = useTheme();
-  const { shifts, pairing } = useServices();
+  const { shifts, pairing, edits, shift: controller } = useServices();
+  const [distance, setDistance] = useState('');
+  const [odo, setOdo] = useState('');
+  const [note, setNote] = useState<string | null>(null);
   const [shift, setShift] = useState<ShiftRow | null>(null);
   const [trips, setTrips] = useState<TripRow[]>([]);
   const [diffs, setDiffs] = useState<ConflictRow[]>([]);
@@ -54,7 +58,15 @@ export function ShiftDetailScreen({ route }: ScreenProps<'ShiftDetail'>) {
     })();
   }, [shifts, pairing, route.params.clientId]);
 
+  const reload = async () => {
+    setShift(await shifts.get(route.params.clientId));
+    setTrips(await shifts.trips(route.params.clientId));
+    void controller.sync();
+  };
+  const fail = (r: { ok: boolean }) => setNote(r.ok ? null : 'This could not be saved.');
+
   if (!shift) return <Screen title="Shift" />;
+  const editable = shift.status === 'ended';
   const muted = { color: theme.textMuted };
   const estimated = shift.segmenter === 'stops';
   return (
@@ -97,8 +109,99 @@ export function ShiftDetailScreen({ route }: ScreenProps<'ShiftDetail'>) {
           <Text key={t.trip_key} style={{ color: theme.text, paddingVertical: 4 }}>
             {formatClock(t.started_at, zone)} {KIND[t.kind]} {formatDistance(t.distance_m, unit)}
             {estimated && t.source === 'auto' ? ' (estimated)' : ''}
+            {t.source === 'manual' ? ' (added by you)' : ''}
           </Text>
         ))}
+        {editable &&
+          trips.map((t) => (
+            <Pressable
+              key={`edit-${t.trip_key}`}
+              accessibilityRole="button"
+              accessibilityLabel={`Change type of trip at ${formatClock(t.started_at, zone)}`}
+              onPress={async () => {
+                fail(await edits.editTrip(t.trip_key, { kind: NEXT[t.kind] }));
+                await reload();
+              }}
+            >
+              <Text style={{ color: theme.accent, paddingVertical: 4 }}>
+                {formatClock(t.started_at, zone)}: change to {KIND[NEXT[t.kind]]}
+              </Text>
+            </Pressable>
+          ))}
+        {editable && (
+          <>
+            <TextInput
+              accessibilityLabel="Trip distance"
+              placeholder={`Add a trip (${unit})`}
+              placeholderTextColor={theme.textMuted}
+              keyboardType="decimal-pad"
+              value={distance}
+              onChangeText={setDistance}
+              style={{
+                color: theme.text,
+                borderColor: theme.border,
+                borderWidth: 1,
+                padding: 8,
+                marginTop: 8,
+              }}
+            />
+            <Pressable
+              accessibilityRole="button"
+              onPress={async () => {
+                const m = Math.round(Number(distance.replace(',', '.')) * M_PER_UNIT[unit]);
+                fail(
+                  await edits.addManualTrip(shift.client_id, {
+                    kind: 'active',
+                    startedAt: shift.ended_at ?? shift.started_at,
+                    endedAt: shift.ended_at ?? shift.started_at,
+                    distanceM: m,
+                    purpose: '',
+                  }),
+                );
+                setDistance('');
+                await reload();
+              }}
+            >
+              <Text style={{ color: theme.accent, paddingVertical: 4 }}>Add trip</Text>
+            </Pressable>
+            <TextInput
+              accessibilityLabel="End odometer"
+              placeholder={`End odometer (${unit})`}
+              placeholderTextColor={theme.textMuted}
+              keyboardType="decimal-pad"
+              value={odo}
+              onChangeText={setOdo}
+              style={{
+                color: theme.text,
+                borderColor: theme.border,
+                borderWidth: 1,
+                padding: 8,
+                marginTop: 8,
+              }}
+            />
+            <Pressable
+              accessibilityRole="button"
+              onPress={async () => {
+                fail(
+                  await edits.setOdometer(
+                    shift.client_id,
+                    'shift_end',
+                    Number(odo.replace(',', '.')) * M_PER_UNIT[unit],
+                  ),
+                );
+                setOdo('');
+                await reload();
+              }}
+            >
+              <Text style={{ color: theme.accent, paddingVertical: 4 }}>Save end odometer</Text>
+            </Pressable>
+          </>
+        )}
+        {note && (
+          <Text accessibilityRole="alert" style={{ color: theme.text }}>
+            {note}
+          </Text>
+        )}
       </ScrollView>
     </Screen>
   );
