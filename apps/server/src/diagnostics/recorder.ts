@@ -106,6 +106,6 @@ export function createServerRecorder(o: RecorderOptions) {
         lag_max_ms: p.lagMaxMs,
       }),
   };
-  return { port, record, subscriptions };
+  return { port, record, subscriptions, version: o.version, ready: () => o.owner() !== undefined };
 }
 export type ServerRecorder = ReturnType<typeof createServerRecorder>;

@@ -31,6 +31,7 @@ export function harness(
     livePingMs?: number;
     lateRecomputeMs?: number;
     archiveEveryMs?: number;
+    diagnosticsSampleMs?: number;
     backupOnShiftEnd?: boolean;
     backupDownload?: boolean;
     exporters?: ExporterRegistry;
@@ -63,6 +64,7 @@ export function harness(
     livePingMs: extra.livePingMs,
     lateRecomputeMs: extra.lateRecomputeMs,
     archiveEveryMs: extra.archiveEveryMs,
+    diagnosticsSampleMs: extra.diagnosticsSampleMs,
     // Off unless a test asks: a real backup after every shift end would race with the teardown.
     backupOnShiftEnd: extra.backupOnShiftEnd ?? false,
     backupDownload: extra.backupDownload,

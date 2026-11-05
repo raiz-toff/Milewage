@@ -14,7 +14,9 @@ import {
 } from './db';
 import type { DiskMonitor } from './disk';
 import { createDiagnosticsKeeper } from './diagnostics/keeper';
+import { createServerMetrics } from './diagnostics/metrics';
 import { createServerRecorder, effectiveLevel } from './diagnostics/recorder';
+import { statSync } from 'node:fs';
 import { openDiagnosticsStore } from './diagnostics/store';
 import { backupRoutes } from './routes/backup';
 import { restoreRoutes } from './routes/restore';
@@ -82,6 +84,8 @@ export interface ServerContext extends CoreContext {
   onDiagnosticsRecreated?: (movedTo: string, reason: string) => void;
   /** Size cap of the diagnostics events (100 MB unless a test lowers it). */
   diagnosticsCapBytes?: number;
+  /** Interval of `server.sample` and `api.window` (15 minutes unless a test shortens it). */
+  diagnosticsSampleMs?: number;
   /** Interval of the retention job (a day unless a test shortens it). */
   diagnosticsHousekeepingMs?: number;
   /** The `backups` volume (`MILEWAGE_BACKUP_DIR`). Nothing is written there until a backup runs. */
@@ -167,6 +171,7 @@ export function createServerModules(ctx: ServerContext) {
     log: ctx.log,
   });
   const backup = ctx.backup ?? buildBackupService({ ...ctx, secrets });
+  const diagFile = ctx.diagnosticsPath ?? ':memory:';
   backup.onFinished((r) => busEmit?.('backup.finished', r));
   const recorder = createServerRecorder({
     store: diagnosticsStore,
@@ -185,6 +190,41 @@ export function createServerModules(ctx: ServerContext) {
     state: ctx.state ?? createServerState(),
     verify: ctx.restoreVerify,
     log: ctx.log,
+  });
+  const metrics = createServerMetrics({
+    recorder,
+    now: ctx.now,
+    disk: ctx.disk,
+    everyMs: ctx.diagnosticsSampleMs,
+    paths: () => ({
+      db: ctx.db.name,
+      diag: diagFile,
+      bytes: (f) => {
+        try {
+          return statSync(f).size;
+        } catch {
+          return 0;
+        }
+      },
+    }),
+    modules: () =>
+      Object.fromEntries(
+        [
+          'devices',
+          'tracking',
+          'stops',
+          'replay',
+          'live',
+          'sync',
+          'exporters',
+          'diagnostics',
+          'capture',
+        ].map((m) => [m, registry?.isEnabled(m) ?? false]),
+      ),
+    schemaVersion: () =>
+      String(ctx.db.prepare('SELECT count(*) FROM schema_migrations').pluck().get()),
+    sqliteVersion: () => String(ctx.db.prepare('SELECT sqlite_version()').pluck().get()),
+    markerPath: diagFile === ':memory:' ? undefined : `${diagFile}.running`,
   });
   const live = createLive({
     db: ctx.db,
@@ -287,9 +327,15 @@ export function createServerModules(ctx: ServerContext) {
         store: diagnosticsStore,
         disk: ctx.disk && (() => ctx.disk!.state()),
         onDrop: (reason) => keeper.drop(reason),
+        observe: metrics.install,
+        lastBackupAt: () => backup.list().find((r) => r.integrityOk === 1)?.createdAt,
       }),
-      subscriptions: recorder.subscriptions,
-      jobs: [{ name: 'diagnostics-store', start: () => () => store?.close() }, keeper.job()],
+      subscriptions: { ...recorder.subscriptions, ...metrics.subscriptions },
+      jobs: [
+        { name: 'diagnostics-store', start: () => () => store?.close() },
+        keeper.job(),
+        metrics.job,
+      ],
     }),
     defineModule({
       ...backupModule,

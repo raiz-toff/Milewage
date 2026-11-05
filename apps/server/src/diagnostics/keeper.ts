@@ -83,6 +83,7 @@ export function createDiagnosticsKeeper(o: KeeperOptions) {
       if (o.disk?.() === 'writes_blocked') return { paused: true as const };
       const t = o.now();
       const store = o.store();
+      store.rollUp(t); // before the raw events expire
       const expired = store.pruneExpired(t);
       const capped = store.enforceCap(o.capBytes ?? EVENT_CAP_BYTES);
       const reported = selfReport(t);

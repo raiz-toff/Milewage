@@ -7,6 +7,7 @@ import type { DiskState } from '../disk';
 import { effectiveLevel } from '../diagnostics/recorder';
 import type { DiagnosticsStore } from '../diagnostics/store';
 import { ProblemError } from '../errors';
+import { deviceHealth, serverHealth } from '../diagnostics/health';
 import { strictObject } from './util';
 
 // Each event is validated on its own, so a bad one is listed in `rejected` and never fails the batch.
@@ -49,6 +50,8 @@ export function diagnosticsRoutes({
   store,
   disk,
   onDrop,
+  observe,
+  lastBackupAt,
 }: {
   db: Db;
   now: () => number;
@@ -57,10 +60,15 @@ export function diagnosticsRoutes({
   disk?: () => DiskState;
   /** Counts what ingest refused or discarded, for the server's own `diag.self`. */
   onDrop?: (reason: 'schema_reject' | 'level_off' | 'disk_low') => void;
+  /** Creation time of the newest verified backup, for check S3. */
+  lastBackupAt?: () => number | undefined;
+  /** Installs the request counters of `api.window` on the app. */
+  observe?: (app: ServerRouteHost['app']) => void;
 }) {
   return (host: RouteHost) => {
     const { app } = host as ServerRouteHost;
     const settings = createSettingsRepository(db);
+    observe?.(app);
 
     app.get('/diagnostics/events', { schema: { querystring: listQuery } }, async (req) => {
       const p = authn.authenticate(req, 'S');
@@ -121,6 +129,52 @@ export function diagnosticsRoutes({
             ? Buffer.from(JSON.stringify([last.at, last.id])).toString('base64url')
             : null,
       };
+    });
+
+    app.get('/diagnostics/health', async (req) => {
+      const p = authn.authenticate(req, 'S');
+      const t = now();
+      const day = t - 24 * 3600_000;
+      const devices = db
+        .prepare(
+          'SELECT id, name FROM devices WHERE user_id = ? AND revoked_at IS NULL ORDER BY id',
+        )
+        .all(p.userId) as { id: number; name: string }[];
+      const kinds = [
+        'track.window',
+        'service.event',
+        'upload.window',
+        'perm.state',
+        'shift.summary',
+      ];
+      const recon = store().list(p.userId, { kinds: ['recon.result'], src: 'server', limit: 500 });
+      const out = devices.map((d) => {
+        const h = deviceHealth(
+          store().list(p.userId, { deviceId: d.id, kinds, limit: 5000 }),
+          recon,
+        );
+        return {
+          device_id: d.id,
+          name: d.name,
+          shifts_considered: h.shiftsConsidered,
+          score: h.score,
+          state: h.state,
+          checks: h.checks,
+        };
+      });
+      const last = lastBackupAt?.();
+      const server = serverHealth(
+        store().list(p.userId, {
+          kinds: ['server.sample'],
+          src: 'server',
+          fromAt: day,
+          limit: 200,
+        }),
+        store().list(p.userId, { kinds: ['api.window'], src: 'server', fromAt: day, limit: 1000 }),
+        last === undefined ? null : t - last,
+        disk?.() ?? 'ok',
+      );
+      return { generated_at: t, devices: out, server };
     });
 
     app.post(

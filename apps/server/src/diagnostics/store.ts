@@ -48,6 +48,20 @@ export interface DiagnosticsStore {
   count(): number;
   /** Newest first by (at, id); returns up to `limit + 1` rows so the caller can tell whether more exist. */
   list(userId: number, f: EventFilter): EventRow[];
+  /**
+   * Rolls the raw events of every complete UTC day before `now`'s day into `diag_daily` (replacing earlier rows
+   * of those days, so it is safe to repeat) and drops rollup rows older than 2 years. Returns rows written.
+   */
+  rollUp(now: number): number;
+  /** The daily rollup rows, for tests and the trend views. */
+  daily(): {
+    day: string;
+    device_id: number;
+    metric: string;
+    n: number;
+    sum: number;
+    max: number;
+  }[];
   /** Events written since the store was opened (for `diag.self.writes_per_h`). */
   written(): number;
   /** Deletes events past `expires_at`, in transactions of at most `batch` rows; returns how many. */
@@ -195,6 +209,95 @@ export function openDiagnosticsStore(
       }).changes === 1
     ),
     count: () => db.prepare('SELECT count(*) FROM diag_events').pluck().get() as number,
+    daily: () =>
+      db
+        .prepare(
+          'SELECT day, device_id, metric, n, sum, max FROM diag_daily ORDER BY day, device_id, metric',
+        )
+        .all() as never,
+    rollUp(now) {
+      const today = new Date(now).toISOString().slice(0, 10);
+      const rows = db
+        .prepare(
+          `SELECT date(at / 1000, 'unixepoch') AS day, coalesce(device_id, 0) AS dev, kind, data
+             FROM diag_events
+            WHERE kind IN ('engine.run','recon.result','server.sample','api.window','service.event','upload.window','track.window','shift.summary')
+              AND date(at / 1000, 'unixepoch') < ?`,
+        )
+        .all(today) as { day: string; dev: number; kind: string; data: string }[];
+      const acc = new Map<
+        string,
+        { day: string; dev: number; metric: string; n: number; sum: number; max: number }
+      >();
+      const add = (day: string, dev: number, metric: string, value: number, count = 1) => {
+        const key = `${day}|${dev}|${metric}`;
+        const a = acc.get(key) ?? { day, dev, metric, n: 0, sum: 0, max: -Infinity };
+        a.n += count;
+        a.sum += value;
+        a.max = Math.max(a.max, value);
+        acc.set(key, a);
+      };
+      for (const r of rows) {
+        const d = JSON.parse(r.data) as Record<string, number | string>;
+        const num = (k: string) => Number(d[k] ?? 0);
+        switch (r.kind) {
+          case 'engine.run':
+            add(r.day, 0, 'engine_ms', num('ms'));
+            break;
+          case 'recon.result':
+            add(r.day, 0, 'recon_diff_m', Math.abs(num('diff_m')));
+            break;
+          case 'server.sample':
+            add(r.day, 0, 'rss_mb_max', num('rss_mb'));
+            add(r.day, 0, 'lag_p95_ms_max', num('lag_p95_ms'));
+            break;
+          case 'api.window':
+            add(r.day, 0, 'api_5xx', num('s5xx'));
+            break;
+          case 'service.event':
+            if (d.event === 'restarted') add(r.day, r.dev, 'service_restarts', 1);
+            break;
+          case 'upload.window':
+            add(
+              r.day,
+              r.dev,
+              'upload_fail_pct',
+              num('fail_net') +
+                num('fail_4xx') +
+                num('fail_5xx') +
+                num('fail_429') +
+                num('fail_507'),
+              0,
+            );
+            add(r.day, r.dev, 'upload_fail_pct', 0, num('attempts'));
+            break;
+          case 'track.window':
+            add(r.day, r.dev, 'fixes_per_h', num('fixes') * 6);
+            break;
+          case 'shift.summary':
+            if (num('duration_s') > 0)
+              add(
+                r.day,
+                r.dev,
+                'battery_pct_per_h',
+                ((num('battery_start') - num('battery_end')) / num('duration_s')) * 3600,
+              );
+            break;
+        }
+      }
+      const days = [...new Set([...acc.values()].map((a) => a.day))];
+      const put = db.prepare(
+        'INSERT OR REPLACE INTO diag_daily (day, device_id, metric, n, sum, max) VALUES (?, ?, ?, ?, ?, ?)',
+      );
+      db.transaction(() => {
+        for (const day of days) db.prepare('DELETE FROM diag_daily WHERE day = ?').run(day);
+        for (const a of acc.values())
+          put.run(a.day, a.dev, a.metric, a.n, a.sum, a.max === -Infinity ? 0 : a.max);
+        const cutoff = new Date(now - 730 * 24 * 3600_000).toISOString().slice(0, 10);
+        db.prepare('DELETE FROM diag_daily WHERE day < ?').run(cutoff);
+      })();
+      return acc.size;
+    },
     list(userId, f) {
       const where = ['user_id = @userId'];
       const args: Record<string, unknown> = { userId, limit: f.limit + 1 };

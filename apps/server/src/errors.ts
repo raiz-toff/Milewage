@@ -64,6 +64,7 @@ export function newRequestId(now = Date.now()): string {
 }
 
 export function sendProblem(reply: FastifyReply, request: FastifyRequest, error: ProblemError) {
+  (request as { problemCode?: string }).problemCode = error.code; // read by the api.window counters
   const body: Record<string, unknown> = {
     type: `https://milewage.dev/errors/${error.code}`,
     title: error.title,
