@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'vitest';
-import { caPack, createCountryRegistry, gbPack, usPack, type CountryPack } from '../src/countries';
+import {
+  caPack,
+  createCountryRegistry,
+  gbPack,
+  usPack,
+  type CountryPack,
+  type VehicleKind,
+} from '../src/countries';
 
 const MILE = 1609.344;
 const d = (
@@ -7,7 +14,7 @@ const d = (
   totalM: number,
   date: string,
   priorM = 0,
-  vehicleKind = 'car' as const,
+  vehicleKind: VehicleKind = 'car',
 ) => pack.deduction({ totalM, priorM, date, vehicleKind });
 
 describe('country packs (08 section 16.3)', () => {
@@ -35,7 +42,7 @@ describe('country packs (08 section 16.3)', () => {
     expect(gbPack.periodStart('2026-04-06')).toBe('2026-04-06');
     expect(d(gbPack, 15_000 * MILE, '2026-05-01')).toBe(10_000 * 55 + 5_000 * 25);
     expect(d(gbPack, 15_000 * MILE, '2026-03-01')).toBe(10_000 * 45 + 5_000 * 25);
-    expect(d(gbPack, MILE, '2026-05-01', 0, 'motorcycle' as never)).toBe(24);
+    expect(d(gbPack, MILE, '2026-05-01', 0, 'motorcycle')).toBe(24);
     expect(d(gbPack, MILE, '2026-05-01', 0, 'bicycle')).toBeNull();
     expect(gbPack.verified).toBe(false);
     expect(gbPack.notes.join(' ')).toContain('UNVERIFIED');
