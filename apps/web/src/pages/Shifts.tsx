@@ -8,6 +8,7 @@ import { useSession, useSettings } from '../session';
 import { SortTable } from '../ui/SortTable';
 import type { Column } from '../ui/SortTable';
 import { Button, FormError } from '../ui/form';
+import { TripsTable } from './Trips';
 
 type Shift = Schemas['Shift'];
 
@@ -275,6 +276,11 @@ export function ShiftDetail() {
         ) : (
           <p className="text-muted">None.</p>
         )}
+      </section>
+
+      <section aria-label="Trips" className="space-y-2">
+        <h2 className="font-heading text-lg">Trips</h2>
+        <TripsTable shift={shift} split={split} reloadKey={shift.calculated_at ?? 0} />
       </section>
 
       {settings.modules.replay ? <RouteView shiftId={shift.id} /> : null}

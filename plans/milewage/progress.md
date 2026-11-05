@@ -509,3 +509,10 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 
 - Done: `spaPaths()` in `screens.tsx` derives the index.html path list from the screen registry (`/` plus each screen, and the bare path for a `/*` pattern); `test/caddy.test.ts` reads `infra/docker/Caddyfile` and fails when its `@spa path` line differs. A new screen whose path is missing in the Caddyfile (or the reverse) now fails `npm run verify` instead of 404ing in production.
 - Deviation: the roadmap note suggested generating the list at build. I chose a check, not generation: the Caddyfile stays a plain file Caddy can read and the Docker build is unchanged. 2 tests; 80 web tests in total.
+
+
+## PR M7.5b — Trips table in shift detail (Web track)
+
+- Done: `pages/Trips.tsx` (`TripsTable`, `kindLabel`) reads `GET /shifts/{ref}/trips` (core, always present) and shows start, end, distance in the driver's unit, kind, purpose and source in the shared sortable table (keyboard, CSV copy). Auto trips of a stops-segmented shift read `active (estimated)` / `deadhead (estimated)`; manual and personal trips carry no marker. With the stops module/setting off, or a shift not segmented by stops, active and deadhead read `business`, so the split never leaks. A failed read says so in place and does not break the page. Trips are read again when the shift's `calculated_at` changes (a stop label recompute, next PR). Test fixtures moved to `test/support/fixtures.ts`.
+- Tests: 5 new in `trips.test.tsx` (estimated markers, manual/personal unmarked, sort, stops off, empty and failed). 85 web tests in total.
+- Not done: trip editing (kind/purpose PATCH, manual trip add/delete) has no screen; it is not in the M7 table. Not run in a browser.
