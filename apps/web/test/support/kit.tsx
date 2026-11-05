@@ -75,7 +75,7 @@ export function fakeServer(table: Record<string, Handler>) {
     if (r.body === undefined) return new Response(null, { status: status === 200 ? 204 : status });
     return new Response(JSON.stringify(r.body), {
       status,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...r.headers },
     });
   }) as typeof fetch;
   return { fetchImpl, calls, api: createApi(fetchImpl) };

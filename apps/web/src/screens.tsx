@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { Modules } from './api/client';
 import { Backups } from './pages/Backups';
 import { Dashboard } from './pages/Dashboard';
+import { ExportsPage } from './pages/Exports';
 import { Devices } from './pages/Devices';
 import { SettingsPage } from './pages/SettingsPage';
 import { OdometerPage } from './pages/Odometer';
@@ -24,6 +25,12 @@ export const screens: Screen[] = [
   { path: '/dashboard', label: 'Dashboard', element: <Dashboard /> },
   { path: '/shifts/*', label: 'Shifts', element: <ShiftsRoutes /> },
   { path: '/odometer', label: 'Odometer', element: <OdometerPage /> },
+  {
+    path: '/exports',
+    label: 'Exports',
+    visible: (m) => m.exporters.length > 0,
+    element: <ExportsPage />,
+  },
   { path: '/devices', label: 'Devices', visible: (m) => m.devices, element: <Devices /> },
   { path: '/backups', label: 'Backups', element: <Backups /> },
   { path: '/settings', label: 'Settings', element: <SettingsPage /> },

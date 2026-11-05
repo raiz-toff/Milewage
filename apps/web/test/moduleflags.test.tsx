@@ -78,6 +78,7 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
       'Dashboard',
       'Shifts',
       'Odometer',
+      'Exports',
       'Devices',
       'Backups',
       'Settings',
