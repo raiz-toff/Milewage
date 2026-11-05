@@ -86,9 +86,10 @@ export function coreRoutes(
     const limiter = new FailureLimiter(5, 15 * 60 * 1000, now);
     const dummy = hashPassword('no-such-user');
     const auth = authn.authenticate;
-    settingsRoutes(app, { db, now, auth, registry, countries });
-    vehicleRoutes(app, { db, now, auth });
-    odometerRoutes(app, { db, now, auth });
+    const emit = (host as ServerRouteHost).bus.emit;
+    settingsRoutes(app, { db, now, auth, registry, countries, emit });
+    vehicleRoutes(app, { db, now, auth, emit });
+    odometerRoutes(app, { db, now, auth, emit });
     summaryRoute(app, { db, now, auth, labelsOn: () => registry.isEnabled('stops') });
     statusRoute(app, { db, now, auth, registry, ...status });
     shiftRoutes(app, {
@@ -96,7 +97,7 @@ export function coreRoutes(
       now,
       auth,
       processor,
-      emit: (host as ServerRouteHost).bus.emit,
+      emit,
       trackingOn: () => registry.isEnabled('tracking'),
       stopsOn: () => registry.isEnabled('stops'),
     });

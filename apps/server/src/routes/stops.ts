@@ -124,6 +124,14 @@ export function stopsRoutes({
             shift: shiftView(shift, repo.flagsOf([shift.id]).get(shift.id)),
           });
         }
+        if (old) {
+          bus.emit('edit.overwritten', {
+            userId: String(p.userId),
+            entity: 'stop_label',
+            key: `${shift.clientId}/${key}`,
+            superseded: labelView(old),
+          });
+        }
         repo.putLabel({
           userId: p.userId,
           shiftId: shift.id,

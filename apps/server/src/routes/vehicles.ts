@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { createVehicleRepository, type Db, type VehicleRow } from '../db';
 import { ProblemError } from '../errors';
+import type { EventEmit } from '../events';
 import { idParams, str, strictObject, type AuthFn } from './util';
 
 const kind = { enum: ['car', 'motorcycle', 'van', 'bicycle'] };
@@ -9,7 +10,7 @@ const update = strictObject({ name: str(1, 64), kind, archived: { type: 'boolean
   minProperties: 1,
 });
 const query = strictObject({ include_archived: { type: 'boolean' } }, []);
-const view = (v: VehicleRow) => ({
+export const vehicleView = (v: VehicleRow) => ({
   id: v.id,
   name: v.name,
   kind: v.kind,
@@ -20,19 +21,20 @@ const view = (v: VehicleRow) => ({
 /** Vehicles are archived, never deleted (07 section 2.2). */
 export function vehicleRoutes(
   app: FastifyInstance,
-  { db, now, auth }: { db: Db; now: () => number; auth: AuthFn },
+  { db, now, auth, emit = () => {} }: { db: Db; now: () => number; auth: AuthFn; emit?: EventEmit },
 ) {
   const repo = createVehicleRepository(db);
 
   app.get('/vehicles', { schema: { querystring: query } }, async (req) => {
     const all = (req.query as { include_archived?: boolean }).include_archived === true;
-    return repo.list(auth(req, 'SD').userId, all).map(view);
+    return repo.list(auth(req, 'SD').userId, all).map(vehicleView);
   });
 
   app.post('/vehicles', { schema: { body: create } }, async (req, reply) => {
     const b = req.body as { name: string; kind: VehicleRow['kind'] };
     const row = repo.create({ ...b, userId: auth(req, 'S').userId, createdAt: now() });
-    return reply.status(201).send(view(row));
+    emit('vehicle.updated', { vehicleId: String(row.id) });
+    return reply.status(201).send(vehicleView(row));
   });
 
   app.patch('/vehicles/:id', { schema: { params: idParams, body: update } }, async (req) => {
@@ -43,6 +45,8 @@ export function vehicleRoutes(
     if (!current) throw new ProblemError('not_found', 'No such vehicle.');
     const archivedAt =
       archived === undefined ? {} : { archivedAt: archived ? (current.archivedAt ?? now()) : null };
-    return view(repo.update(userId, id, { ...b, ...archivedAt }) ?? current);
+    const saved = repo.update(userId, id, { ...b, ...archivedAt }) ?? current;
+    emit('vehicle.updated', { vehicleId: String(id) });
+    return vehicleView(saved);
   });
 }

@@ -3,6 +3,7 @@ import type { ModuleRegistry } from '@milewage/shared';
 import { algorithmVersion } from '@milewage/track-engine';
 import { createSettingsRepository, type Db, type SettingsRow } from '../db';
 import { ProblemError } from '../errors';
+import type { EventEmit } from '../events';
 import { str, strictObject, type AuthFn } from './util';
 
 /** Registered country packs until the pack registry exists (08 section 16.3). */
@@ -104,7 +105,10 @@ export function settingsReader(ctx: ReaderContext) {
   };
 }
 
-export function settingsRoutes(app: FastifyInstance, ctx: ReaderContext & { auth: AuthFn }) {
+export function settingsRoutes(
+  app: FastifyInstance,
+  ctx: ReaderContext & { auth: AuthFn; emit?: EventEmit },
+) {
   const repo = createSettingsRepository(ctx.db);
   const read = settingsReader(ctx);
 
@@ -127,6 +131,7 @@ export function settingsRoutes(app: FastifyInstance, ctx: ReaderContext & { auth
       patch.diagnosticsVerboseUntil = b.diagnostics_level === 'verbose' ? now + VERBOSE_MS : null;
     }
     repo.update(userId, patch);
+    ctx.emit?.('settings.updated', { userId: String(userId) });
     return read(userId);
   });
 }

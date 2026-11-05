@@ -89,6 +89,12 @@ export function createProcessingRepository(db: Db) {
         .where(eq(trips.shiftId, shiftId))
         .orderBy(asc(trips.startedAt), asc(trips.id))
         .all(),
+    tripByKey: (userId: number, tripKey: string): TripRow | undefined =>
+      orm
+        .select()
+        .from(trips)
+        .where(and(eq(trips.userId, userId), eq(trips.tripKey, tripKey)))
+        .get(),
     stopsOf: (shiftId: number): StopRow[] =>
       orm
         .select()

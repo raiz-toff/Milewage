@@ -19,6 +19,7 @@ const CATALOG = {
   shift_not_ended: [409, 'Shift has not ended', false],
   trip_not_editable: [409, 'Trip cannot be edited', false],
   upgrade_required: [426, 'Upgrade required', false],
+  cursor_expired: [410, 'Cursor expired', false],
   payload_too_large: [413, 'Payload too large', false],
   unsupported_media_type: [415, 'Unsupported media type', false],
   validation_failed: [422, 'Validation failed', false],

@@ -8,6 +8,7 @@ import {
   type OdometerRow,
 } from '../db';
 import { ProblemError } from '../errors';
+import type { EventEmit } from '../events';
 import { localDate } from '../time';
 import { idParams, snakeKeys, strictObject, type AuthFn } from './util';
 
@@ -37,7 +38,7 @@ export const odometerView = (r: OdometerRow) => snakeKeys(r, 'userId');
 /** The odometer review and the fiscal-year readings the CRA asks for (08 section 3, 07 section 2.2). Web session only. */
 export function odometerRoutes(
   app: FastifyInstance,
-  { db, now, auth }: { db: Db; now: () => number; auth: AuthFn },
+  { db, now, auth, emit = () => {} }: { db: Db; now: () => number; auth: AuthFn; emit?: EventEmit },
 ) {
   const readings = createOdometerRepository(db);
   const vehicles = createVehicleRepository(db);
@@ -90,6 +91,7 @@ export function odometerRoutes(
       readingM: b.reading_m,
       recordedAt: b.recorded_at,
     });
+    emit('odometer.updated', { odometerId: String(row.id), userId: String(userId) });
     return reply.status(201).send(odometerView(row));
   });
 
@@ -103,6 +105,7 @@ export function odometerRoutes(
       throw new ProblemError('shift_finalized', 'This shift is finalized.');
     }
     readings.remove(row.id);
+    emit('odometer.updated', { odometerId: String(row.id), userId: String(userId), deleted: true });
     return reply.status(204).send();
   });
 }

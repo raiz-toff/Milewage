@@ -9,6 +9,17 @@ export interface EventMap {
   'trip.updated': { shiftId: string; tripId: string };
   'telemetry.accepted': { shiftId: string; deviceId: string; count: number };
   'device.seen': { deviceId: string };
+  'odometer.updated': { odometerId: string; userId: string; deleted?: boolean };
+  'vehicle.updated': { vehicleId: string };
+  'settings.updated': { userId: string };
+  /** A newer edit replaced a value (08 section 4.4); `superseded` is the old value in its API shape. */
+  'edit.overwritten': {
+    userId: string;
+    entity: string;
+    key: string;
+    superseded: unknown;
+    deviceId?: string;
+  };
 }
 
 export type EventName = keyof EventMap;

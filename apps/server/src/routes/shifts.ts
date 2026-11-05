@@ -286,6 +286,16 @@ export function shiftRoutes(
     if (b.notes !== undefined) set.notes = b.notes;
     if (b.vehicle_id !== undefined) set.vehicleId = b.vehicle_id;
     const saved = shifts.update(row.id, set) ?? row;
+    // A value replaced by a newer edit is kept in the overwrite log (15 section 8.2).
+    if (row.notes !== saved.notes || row.vehicleId !== saved.vehicleId) {
+      emit('edit.overwritten', {
+        userId: String(p.userId),
+        entity: 'shift',
+        key: row.clientId,
+        superseded: { notes: row.notes, vehicle_id: row.vehicleId, updated_at: row.updatedAt },
+        ...(p.kind === 'device' ? { deviceId: String(p.deviceId) } : {}),
+      });
+    }
     emit('shift.updated', { shiftId: String(row.id) });
     return reply.header('X-MileWage-Applied', 'true').send(view(saved));
   });
@@ -383,6 +393,16 @@ export function shiftRoutes(
         recordedAt: b.recorded_at,
       });
       if (device(p)) shifts.update(row.id, touch(p));
+      if (old && old.readingM !== saved.readingM) {
+        emit('edit.overwritten', {
+          userId: String(p.userId),
+          entity: 'odometer',
+          key: String(saved.id),
+          superseded: { reading_m: old.readingM, recorded_at: old.recordedAt },
+          ...(p.kind === 'device' ? { deviceId: String(p.deviceId) } : {}),
+        });
+      }
+      emit('odometer.updated', { odometerId: String(saved.id), userId: String(p.userId) });
       return reply.header('X-MileWage-Applied', 'true').send(view(saved));
     },
   );

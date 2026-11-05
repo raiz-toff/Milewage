@@ -23,6 +23,7 @@ import { diagnosticsRoutes } from './routes/diagnostics';
 import { DEFAULT_COUNTRIES, settingsReader } from './routes/settings';
 import { createShiftProcessor } from './processing/shift-processor';
 import { createLive } from './routes/live';
+import { createSync } from './routes/sync';
 import { replayRoutes } from './routes/replay';
 import { stopsRoutes } from './routes/stops';
 import { trackingRoutes } from './routes/tracking';
@@ -39,6 +40,8 @@ export const stopsModule = defineModule({
 export const replayModule = defineModule({ name: 'replay', dependsOn: ['tracking'] });
 /** The WebSocket feed for the web map (08 section 6). */
 export const liveModule = defineModule({ name: 'live', dependsOn: ['core'] });
+/** The pull path for the phone (15 section 6.5): `change_log`, `overwrite_log`, `GET /sync/changes`. */
+export const syncModule = defineModule({ name: 'sync', dependsOn: ['core', 'devices'] });
 export const diagnosticsModule = defineModule({ name: 'diagnostics', dependsOn: ['core'] });
 /** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */
 export const backupModule = defineModule({
@@ -54,6 +57,7 @@ export const serverModules = [
   stopsModule,
   replayModule,
   liveModule,
+  syncModule,
   diagnosticsModule,
   backupModule,
 ] as const;
@@ -134,6 +138,7 @@ export function createServerModules(ctx: ServerContext) {
     pingMs: ctx.livePingMs,
     stopsOn: () => registry?.isEnabled('stops') ?? false,
   });
+  const sync = createSync({ db: ctx.db, now: ctx.now, authn, readSettings });
   const uploadDir = join(dirname(ctx.db.name), '.restore-upload');
   // The registry exists only once routes are registered; the processor asks it per call.
   let registry: ModuleRegistry | undefined;
@@ -171,6 +176,12 @@ export function createServerModules(ctx: ServerContext) {
     defineModule({ ...trackingModule, routes: trackingRoutes({ ...ctx, authn }) }),
     defineModule({ ...stopsModule, routes: stopsRoutes({ ...ctx, authn, processor }) }),
     defineModule({ ...replayModule, routes: replayRoutes({ ...ctx, authn }) }),
+    defineModule({
+      ...syncModule,
+      routes: sync.routes,
+      subscriptions: sync.subscriptions,
+      jobs: sync.jobs,
+    }),
     defineModule({
       ...liveModule,
       routes: live.routes,
