@@ -4,7 +4,7 @@ import { M_PER_UNIT, formatClock, formatDistance, totalsCaption } from '../forma
 import type { ScreenProps } from '../navigation';
 import { deriveFlags } from '../pairing/pairing';
 import { useServices } from '../services';
-import type { ConflictRow, ShiftRow, TripRow } from '../store/shiftStore';
+import type { ConflictRow, ShiftRow, StopRow, TripRow } from '../store/shiftStore';
 import { useTheme } from '../theme/theme';
 import { RouteView } from './RouteView';
 import { Screen } from './Screen';
@@ -46,12 +46,16 @@ export function ShiftDetailScreen({ route }: ScreenProps<'ShiftDetail'>) {
   const [diffs, setDiffs] = useState<ConflictRow[]>([]);
   const [unit, setUnit] = useState<'km' | 'mi'>('km');
   const [zone, setZone] = useState('UTC');
+  const [stopsOn, setStopsOn] = useState(false);
+  const [stops, setStops] = useState<StopRow[]>([]);
 
   useEffect(() => {
     void (async () => {
       const flags = deriveFlags((await pairing.load())?.settings ?? null);
       setUnit(flags.distanceUnit);
       setZone(flags.timezone);
+      setStopsOn(flags.stops);
+      setStops(await shifts.stops(route.params.clientId));
       setShift(await shifts.get(route.params.clientId));
       setTrips(await shifts.trips(route.params.clientId));
       setDiffs(await shifts.conflicts(route.params.clientId));
@@ -68,7 +72,9 @@ export function ShiftDetailScreen({ route }: ScreenProps<'ShiftDetail'>) {
   if (!shift) return <Screen title="Shift" />;
   const editable = shift.status === 'ended';
   const muted = { color: theme.textMuted };
-  const estimated = shift.segmenter === 'stops';
+  // Stops and the estimated split follow the server's `stops_enabled` and the shift's own segmenter:
+  // with the setting off, or for a shift recorded without stops, only the one total is shown.
+  const estimated = stopsOn && shift.segmenter === 'stops';
   return (
     <Screen title={shift.local_date}>
       <ScrollView>
@@ -91,23 +97,40 @@ export function ShiftDetailScreen({ route }: ScreenProps<'ShiftDetail'>) {
         <Text style={muted}>
           {shift.status === 'active' ? 'In progress' : totalsCaption(shift)}
         </Text>
-        {shift.total_m !== null && shift.active_m !== null && shift.deadhead_m !== null && (
-          <Text style={{ color: theme.text, marginTop: 8 }}>
-            Active {formatDistance(shift.active_m, unit)} · Deadhead{' '}
-            {formatDistance(shift.deadhead_m, unit)}
-            {estimated ? ' (estimated)' : ''}
-          </Text>
-        )}
+        {estimated &&
+          shift.total_m !== null &&
+          shift.active_m !== null &&
+          shift.deadhead_m !== null && (
+            <Text style={{ color: theme.text, marginTop: 8 }}>
+              Active {formatDistance(shift.active_m, unit)} · Deadhead{' '}
+              {formatDistance(shift.deadhead_m, unit)} (estimated)
+            </Text>
+          )}
         <Text style={{ ...muted, marginTop: 4 }}>
           {formatClock(shift.started_at, zone)}
           {shift.ended_at !== null ? ` to ${formatClock(shift.ended_at, zone)}` : ''}
         </Text>
         <RouteView geojson={shift.route_geojson} width={320} height={220} />
+        {estimated && (
+          <>
+            <Text style={{ ...muted, marginTop: 12 }}>Stops (estimated, labelled on the web)</Text>
+            {stops.length === 0 && <Text style={muted}>No stops detected.</Text>}
+            {stops.map((st) => (
+              <Text key={st.stop_key} style={{ color: theme.text, paddingVertical: 2 }}>
+                {formatClock(st.started_at, zone)} · {Math.round(st.dwell_s / 60)} min ·{' '}
+                {st.confidence} confidence
+                {st.est_role !== 'none' ? ` · looks like a ${st.est_role}` : ''}
+              </Text>
+            ))}
+          </>
+        )}
         <Text style={{ ...muted, marginTop: 12 }}>Trips</Text>
         {trips.length === 0 && <Text style={muted}>No trips.</Text>}
         {trips.map((t) => (
           <Text key={t.trip_key} style={{ color: theme.text, paddingVertical: 4 }}>
-            {formatClock(t.started_at, zone)} {KIND[t.kind]} {formatDistance(t.distance_m, unit)}
+            {formatClock(t.started_at, zone)}{' '}
+            {estimated || t.kind === 'personal' || t.source === 'manual' ? `${KIND[t.kind]} ` : ''}
+            {formatDistance(t.distance_m, unit)}
             {estimated && t.source === 'auto' ? ' (estimated)' : ''}
             {t.source === 'manual' ? ' (added by you)' : ''}
           </Text>
