@@ -46,6 +46,7 @@ import { createEarningsPolicy, earningsRoutes } from './routes/earnings';
 import { receiptsRoutes } from './routes/receipts';
 import { analyticsRoutes } from './routes/analytics';
 import { goalsRoutes } from './routes/goals';
+import { maintenanceRoutes } from './routes/maintenance';
 import { taxRoutes } from './routes/tax';
 import { COMMA_DEFAULTS } from './comma-options';
 import { receiptsDirOf } from './receipts/store';
@@ -89,6 +90,8 @@ export const receiptsModule = defineModule({ name: 'receipts', dependsOn: ['expe
 export const goalsModule = defineModule({ name: 'goals', dependsOn: ['core'] });
 /** Period groups over shifts, earnings and expenses; owns no table (18 section 10.1). */
 export const analyticsModule = defineModule({ name: 'analytics', dependsOn: ['core'] });
+/** Per-vehicle service record; a cost becomes a linked expense (18 section 6). */
+export const maintenanceModule = defineModule({ name: 'maintenance', dependsOn: ['core'] });
 /** The Tax Center: an estimate, never a filing (18 section 7). CA only until other packs are verified. */
 export const taxModule = defineModule({ name: 'tax', dependsOn: ['core'] });
 /** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */
@@ -116,6 +119,7 @@ export const serverModules = [
   taxModule,
   goalsModule,
   analyticsModule,
+  maintenanceModule,
   backupModule,
 ] as const;
 
@@ -404,6 +408,7 @@ export function createServerModules(ctx: ServerContext) {
       ...analyticsModule,
       routes: analyticsRoutes({ ...ctx, authn, override: ctx.comma?.earningsOverride }),
     }),
+    defineModule({ ...maintenanceModule, routes: maintenanceRoutes({ ...ctx, authn }) }),
     defineModule({ ...receiptsModule, routes: receiptsRoutes({ ...ctx, authn }) }),
     defineModule({
       ...taxModule,

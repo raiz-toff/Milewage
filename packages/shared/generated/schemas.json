@@ -105,6 +105,7 @@
       "type": "object",
       "description": "Read-only module flags so clients can hide screens and buttons of absent modules.",
       "required": [
+        "maintenance",
         "analytics",
         "goals",
         "tax",
@@ -152,6 +153,10 @@
         "analytics": {
           "type": "boolean",
           "description": "Analytics module registered (18 section 10.1)."
+        },
+        "maintenance": {
+          "type": "boolean",
+          "description": "Maintenance module registered (18 section 6)."
         },
         "sync": {
           "type": "boolean"
@@ -1816,6 +1821,158 @@
               ]
             }
           }
+        }
+      }
+    },
+    "MaintenanceCreate": {
+      "type": "object",
+      "required": [
+        "kind",
+        "serviced_on"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "oil_change",
+            "tires",
+            "brakes",
+            "other"
+          ]
+        },
+        "serviced_on": {
+          "type": "string",
+          "format": "date"
+        },
+        "odometer_m": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "cost_cents": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        },
+        "record_expense": {
+          "type": "boolean"
+        }
+      }
+    },
+    "MaintenancePatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "kind": {
+          "enum": [
+            "oil_change",
+            "tires",
+            "brakes",
+            "other"
+          ]
+        },
+        "serviced_on": {
+          "type": "string",
+          "format": "date"
+        },
+        "odometer_m": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "cost_cents": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        }
+      }
+    },
+    "MaintenanceLog": {
+      "type": "object",
+      "required": [
+        "id",
+        "vehicle_id",
+        "kind",
+        "serviced_on",
+        "odometer_m",
+        "cost_cents",
+        "expense_id",
+        "double_counts",
+        "notes",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "vehicle_id": {
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "oil_change",
+            "tires",
+            "brakes",
+            "other"
+          ]
+        },
+        "serviced_on": {
+          "type": "string",
+          "format": "date"
+        },
+        "odometer_m": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "cost_cents": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "expense_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "double_counts": {
+          "type": "boolean",
+          "description": "The linked expense is covered by the vehicle's standard mileage rate."
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "created_at": {
+          "$ref": "#/$defs/EpochMs"
         }
       }
     },

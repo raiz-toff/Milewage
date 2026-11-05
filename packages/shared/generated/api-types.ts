@@ -968,6 +968,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vehicles/{id}/maintenance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        /** Service entries of a vehicle, newest first. The cost of a linked entry is read from its expense. */
+        get: operations["listMaintenance"];
+        put?: never;
+        /** Add a service entry. With the expenses module on and a cost, record_expense (default true) creates a maintenance expense for the vehicle and links it. */
+        post: operations["createMaintenance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/maintenance/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete the entry. A linked expense is kept; it is a tax record. */
+        delete: operations["deleteMaintenance"];
+        options?: never;
+        head?: never;
+        patch: operations["updateMaintenance"];
+        trace?: never;
+    };
     "/exports/{format}": {
         parameters: {
             query?: never;
@@ -1247,6 +1286,8 @@ export interface components {
             goals: boolean;
             /** @description Analytics module registered (18 section 10.1). */
             analytics: boolean;
+            /** @description Maintenance module registered (18 section 6). */
+            maintenance: boolean;
             sync: boolean;
             /** @description Reserved for v1.1; false in v1. */
             local_export?: boolean;
@@ -1673,6 +1714,40 @@ export interface components {
                 estimated: boolean;
                 note: string | null;
             };
+        };
+        MaintenanceCreate: {
+            /** @enum {unknown} */
+            kind: "oil_change" | "tires" | "brakes" | "other";
+            /** Format: date */
+            serviced_on: string;
+            odometer_m?: number | null;
+            cost_cents?: number | null;
+            notes?: string | null;
+            record_expense?: boolean;
+        };
+        MaintenancePatch: {
+            /** @enum {unknown} */
+            kind?: "oil_change" | "tires" | "brakes" | "other";
+            /** Format: date */
+            serviced_on?: string;
+            odometer_m?: number | null;
+            cost_cents?: number | null;
+            notes?: string | null;
+        };
+        MaintenanceLog: {
+            id: number;
+            vehicle_id: number;
+            /** @enum {unknown} */
+            kind: "oil_change" | "tires" | "brakes" | "other";
+            /** Format: date */
+            serviced_on: string;
+            odometer_m: number | null;
+            cost_cents: number | null;
+            expense_id: number | null;
+            /** @description The linked expense is covered by the vehicle's standard mileage rate. */
+            double_counts: boolean;
+            notes: string | null;
+            created_at: components["schemas"]["EpochMs"];
         };
         /** @enum {unknown} */
         ShiftStatus: "active" | "ended" | "finalized";
@@ -4387,6 +4462,106 @@ export interface operations {
                     };
                 };
             };
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    listMaintenance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaintenanceLog"][];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createMaintenance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaintenanceCreate"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaintenanceLog"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    deleteMaintenance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateMaintenance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaintenancePatch"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaintenanceLog"];
+                };
+            };
+            404: components["responses"]["NotFound"];
             422: components["responses"]["Unprocessable"];
         };
     };

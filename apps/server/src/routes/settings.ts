@@ -23,6 +23,7 @@ export const COMMA_MODULES = [
   'tax',
   'goals',
   'analytics',
+  'maintenance',
 ];
 const VERBOSE_MS = 7 * 24 * 60 * 60 * 1000;
 

@@ -25,6 +25,7 @@ const ALL_OFF: Modules = {
   tax: false,
   goals: false,
   analytics: false,
+  maintenance: false,
   exporters: [],
 };
 
