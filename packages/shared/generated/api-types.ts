@@ -837,6 +837,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tax/{year}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                year: number;
+            };
+            cookie?: never;
+        };
+        /** The estimate for a tax year with its working, deadlines, slip alerts and the jar balance. supported=false for a country without a pack. */
+        get: operations["getTaxYear"];
+        put: operations["updateTaxYear"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tax/{year}/jar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                year: number;
+            };
+            cookie?: never;
+        };
+        get: operations["getTaxJar"];
+        put?: never;
+        /** Add to or take from the manual set-aside ledger. Nothing moves real money. */
+        post: operations["addTaxJarEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tax/jar/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteTaxJarEntry"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vehicles/{id}/tax-years/{year}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                year: number;
+            };
+            cookie?: never;
+        };
+        /** How the vehicle is deducted in the year. Without a saved row the country default (standard mileage) applies. */
+        get: operations["getVehicleTaxYear"];
+        /** Choose standard mileage or actual expenses. actual_expenses makes the mileage deduction value null for the vehicle and year. The rate fields are stored and returned but not applied. */
+        put: operations["putVehicleTaxYear"];
+        post?: never;
+        /** Return to the country default. */
+        delete: operations["deleteVehicleTaxYear"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/exports/{format}": {
         parameters: {
             query?: never;
@@ -1110,6 +1188,8 @@ export interface components {
             expenses: boolean;
             /** @description Receipts module registered (18 section 5.4); needs expenses. */
             receipts: boolean;
+            /** @description Tax module registered (18 section 7). The estimate itself exists only for countries whose pack is verified or switched on. */
+            tax: boolean;
             sync: boolean;
             /** @description Reserved for v1.1; false in v1. */
             local_export?: boolean;
@@ -1401,6 +1481,98 @@ export interface components {
             bytes: number;
             sha256: string;
             created_at: components["schemas"]["EpochMs"];
+        };
+        VehicleTaxYear: {
+            vehicle_id: number;
+            tax_year: number;
+            /** @enum {unknown} */
+            method: "standard_mileage" | "actual_expenses";
+            /** @enum {unknown} */
+            source: "saved" | "default";
+            rate1_milli: number | null;
+            rate2_milli: number | null;
+            threshold_m: number | null;
+        };
+        TaxJar: {
+            year: number;
+            balance_cents: number;
+            /** @description Gross earnings times the set-aside rate; null without earnings. */
+            target_cents: number | null;
+            entries: {
+                id: number;
+                amount_cents: number;
+                /** Format: date */
+                entered_on: string;
+                note: string | null;
+            }[];
+        };
+        TaxYear: {
+            year: number;
+            country: string;
+            region: string | null;
+            /** @description False when the country has no switched-on pack; then income */
+            supported: boolean;
+            /** @description True while the pack's figures have not been compared with the primary publications; the screen shows an "unverified rates" notice. */
+            unverified: boolean;
+            set_aside_bp: number;
+            sales_tax_registered: boolean;
+            notices: string[];
+            /** @description Effective earnings of the year; null when none were entered or labelled. */
+            income: {
+                gross_cents?: number;
+                tips_cents?: number;
+                bonus_cents?: number;
+                total_cents?: number;
+                by_platform?: {
+                    platform?: string;
+                    total_cents?: number;
+                }[];
+            } | null;
+            deductions: {
+                /** @description null when the expenses module is off. */
+                expenses_cents?: number | null;
+                double_counted_cents?: number | null;
+                /** @description A deduction */
+                mileage_cents?: number | null;
+                vehicles?: {
+                    vehicle_id?: number;
+                    /** @enum {unknown} */
+                    method?: "standard_mileage" | "actual_expenses";
+                }[];
+            } | null;
+            estimate: {
+                net_income_cents?: number;
+                taxable_income_cents?: number;
+                cpp_cents?: number | null;
+                cpp2_cents?: number | null;
+                pension_note?: string | null;
+                income_tax_cents?: number;
+                total_set_aside_cents?: number;
+                instalment_cents?: number;
+                sales_tax?: {
+                    collected_cents?: number;
+                    credits_cents?: number;
+                    owing_cents?: number;
+                    rate_bp?: number;
+                } | null;
+            } | null;
+            deadlines: {
+                /** Format: date */
+                date?: string;
+                /** @enum {unknown} */
+                kind?: "instalment" | "balance" | "filing";
+                label?: string;
+            }[];
+            slip_alerts: {
+                platform?: string;
+                total_cents?: number;
+                threshold_cents?: number;
+                slip?: string;
+            }[];
+            jar: {
+                balance_cents?: number;
+                target_cents?: number | null;
+            };
         };
         /** @enum {unknown} */
         ShiftStatus: "active" | "ended" | "finalized";
@@ -3764,6 +3936,218 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Removed (idempotent). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getTaxYear: {
+        parameters: {
+            query?: {
+                /** @description Sales tax the driver collected */
+                collected_cents?: number;
+            };
+            header?: never;
+            path: {
+                year: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxYear"];
+                };
+            };
+        };
+    };
+    updateTaxYear: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                year: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    set_aside_bp?: number;
+                    sales_tax_registered?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxYear"];
+                };
+            };
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    getTaxJar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                year: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxJar"];
+                };
+            };
+        };
+    };
+    addTaxJarEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                year: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Positive = set aside */
+                    amount_cents: number;
+                    /** Format: date */
+                    entered_on?: string;
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The jar after the entry. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxJar"];
+                };
+            };
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    deleteTaxJarEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getVehicleTaxYear: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                year: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VehicleTaxYear"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    putVehicleTaxYear: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                year: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {unknown} */
+                    method: "standard_mileage" | "actual_expenses";
+                    rate1_milli?: number | null;
+                    rate2_milli?: number | null;
+                    threshold_m?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VehicleTaxYear"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    deleteVehicleTaxYear: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                year: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reset. */
             204: {
                 headers: {
                     [name: string]: unknown;

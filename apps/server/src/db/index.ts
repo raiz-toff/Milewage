@@ -14,6 +14,7 @@ export * from './repositories';
 export * from './schema';
 export * from './shift-repository';
 export * from './sync-repository';
+export * from './tax-repository';
 export * from './telemetry-repository';
 export * from './upgrade';
 

@@ -32,6 +32,7 @@ tags:
   - { name: earnings }
   - { name: expenses }
   - { name: receipts }
+  - { name: tax }
   - { name: system }
 
 x-modules:
@@ -110,6 +111,11 @@ x-modules:
     default: true
     dependsOn: [expenses]
     operations: [putExpenseReceipt, getExpenseReceipt, deleteExpenseReceipt]
+  tax:
+    toggle: modules.tax
+    default: true
+    dependsOn: [core]
+    operations: [getTaxYear, updateTaxYear, getTaxJar, addTaxJarEntry, deleteTaxJarEntry, getVehicleTaxYear, putVehicleTaxYear, deleteVehicleTaxYear]
 
 paths:
   /healthz:
@@ -1270,6 +1276,142 @@ paths:
         '204': { description: Removed (idempotent). }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /tax/{year}:
+    parameters:
+      - { name: year, in: path, required: true, schema: { type: integer, minimum: 2000, maximum: 2100 } }
+    get:
+      tags: [tax]
+      operationId: getTaxYear
+      summary: The estimate for a tax year with its working, deadlines, slip alerts and the jar balance. supported=false for a country without a pack.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: collected_cents, in: query, schema: { type: integer, minimum: 0 }, description: Sales tax the driver collected, typed (nothing is inferred). }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TaxYear' }
+    put:
+      tags: [tax]
+      operationId: updateTaxYear
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              properties:
+                set_aside_bp: { type: integer, minimum: 0, maximum: 10000 }
+                sales_tax_registered: { type: boolean }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TaxYear' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /tax/{year}/jar:
+    parameters:
+      - { name: year, in: path, required: true, schema: { type: integer, minimum: 2000, maximum: 2100 } }
+    get:
+      tags: [tax]
+      operationId: getTaxJar
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TaxJar' }
+    post:
+      tags: [tax]
+      operationId: addTaxJarEntry
+      summary: Add to or take from the manual set-aside ledger. Nothing moves real money.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount_cents]
+              additionalProperties: false
+              properties:
+                amount_cents: { type: integer, description: Positive = set aside, negative = withdrawn; not zero. }
+                entered_on: { type: string, format: date }
+                note: { type: [string, 'null'], maxLength: 200 }
+      responses:
+        '201':
+          description: The jar after the entry.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TaxJar' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /tax/jar/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    delete:
+      tags: [tax]
+      operationId: deleteTaxJarEntry
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Deleted. }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /vehicles/{id}/tax-years/{year}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+      - { name: year, in: path, required: true, schema: { type: integer, minimum: 2000, maximum: 2100 } }
+    get:
+      tags: [tax]
+      operationId: getVehicleTaxYear
+      summary: How the vehicle is deducted in the year. Without a saved row the country default (standard mileage) applies.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VehicleTaxYear' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [tax]
+      operationId: putVehicleTaxYear
+      summary: Choose standard mileage or actual expenses. actual_expenses makes the mileage deduction value null for the vehicle and year. The rate fields are stored and returned but not applied.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [method]
+              additionalProperties: false
+              properties:
+                method: { enum: [standard_mileage, actual_expenses] }
+                rate1_milli: { type: [integer, 'null'], minimum: 0 }
+                rate2_milli: { type: [integer, 'null'], minimum: 0 }
+                threshold_m: { type: [integer, 'null'], minimum: 0 }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VehicleTaxYear' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    delete:
+      tags: [tax]
+      operationId: deleteVehicleTaxYear
+      summary: Return to the country default.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Reset. }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /exports/{format}:
     get:
       tags: [exports]
@@ -1669,12 +1811,13 @@ components:
     Modules:
       type: object
       description: Read-only module flags so clients can hide screens and buttons of absent modules.
-      required: [receipts, expenses, earnings, platforms, devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
+      required: [tax, receipts, expenses, earnings, platforms, devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
       properties:
         platforms: { type: boolean, description: 'Platforms module registered (18 section 4.2).' }
         earnings: { type: boolean, description: 'Earnings module registered (18 section 4.3): the driver can type a total per shift and platform.' }
         expenses: { type: boolean, description: 'Expenses module registered (18 section 5).' }
         receipts: { type: boolean, description: 'Receipts module registered (18 section 5.4); needs expenses.' }
+        tax: { type: boolean, description: 'Tax module registered (18 section 7). The estimate itself exists only for countries whose pack is verified or switched on.' }
         sync: { type: boolean }
         local_export: { type: boolean, description: Reserved for v1.1; false in v1. }
         devices: { type: boolean }
@@ -1956,6 +2099,88 @@ components:
         bytes: { type: integer }
         sha256: { type: string }
         created_at: { $ref: '#/components/schemas/EpochMs' }
+
+    VehicleTaxYear:
+      type: object
+      required: [vehicle_id, tax_year, method, source, rate1_milli, rate2_milli, threshold_m]
+      properties:
+        vehicle_id: { type: integer }
+        tax_year: { type: integer }
+        method: { enum: [standard_mileage, actual_expenses] }
+        source: { enum: [saved, default] }
+        rate1_milli: { type: [integer, 'null'] }
+        rate2_milli: { type: [integer, 'null'] }
+        threshold_m: { type: [integer, 'null'] }
+    TaxJar:
+      type: object
+      required: [year, balance_cents, target_cents, entries]
+      properties:
+        year: { type: integer }
+        balance_cents: { type: integer }
+        target_cents: { type: [integer, 'null'], description: Gross earnings times the set-aside rate; null without earnings. }
+        entries:
+          type: array
+          items:
+            type: object
+            required: [id, amount_cents, entered_on, note]
+            properties:
+              id: { type: integer }
+              amount_cents: { type: integer }
+              entered_on: { type: string, format: date }
+              note: { type: [string, 'null'] }
+    TaxYear:
+      type: object
+      required: [year, country, region, supported, unverified, set_aside_bp, sales_tax_registered, notices, income, deductions, estimate, deadlines, slip_alerts, jar]
+      properties:
+        year: { type: integer }
+        country: { type: string }
+        region: { type: [string, 'null'] }
+        supported: { type: boolean, description: False when the country has no switched-on pack; then income, deductions and estimate are null. }
+        unverified: { type: boolean, description: True while the pack's figures have not been compared with the primary publications; the screen shows an "unverified rates" notice. }
+        set_aside_bp: { type: integer }
+        sales_tax_registered: { type: boolean }
+        notices: { type: array, items: { type: string } }
+        income:
+          type: [object, 'null']
+          description: Effective earnings of the year; null when none were entered or labelled.
+          properties:
+            gross_cents: { type: integer }
+            tips_cents: { type: integer }
+            bonus_cents: { type: integer }
+            total_cents: { type: integer }
+            by_platform: { type: array, items: { type: object, properties: { platform: { type: string }, total_cents: { type: integer } } } }
+        deductions:
+          type: [object, 'null']
+          properties:
+            expenses_cents: { type: [integer, 'null'], description: null when the expenses module is off. }
+            double_counted_cents: { type: [integer, 'null'] }
+            mileage_cents: { type: [integer, 'null'], description: A deduction, never cash. }
+            vehicles: { type: array, items: { type: object, properties: { vehicle_id: { type: integer }, method: { enum: [standard_mileage, actual_expenses] } } } }
+        estimate:
+          type: [object, 'null']
+          properties:
+            net_income_cents: { type: integer }
+            taxable_income_cents: { type: integer }
+            cpp_cents: { type: [integer, 'null'] }
+            cpp2_cents: { type: [integer, 'null'] }
+            pension_note: { type: [string, 'null'] }
+            income_tax_cents: { type: integer }
+            total_set_aside_cents: { type: integer }
+            instalment_cents: { type: integer }
+            sales_tax:
+              type: [object, 'null']
+              properties:
+                collected_cents: { type: integer }
+                credits_cents: { type: integer }
+                owing_cents: { type: integer }
+                rate_bp: { type: integer }
+        deadlines: { type: array, items: { type: object, properties: { date: { type: string, format: date }, kind: { enum: [instalment, balance, filing] }, label: { type: string } } } }
+        slip_alerts: { type: array, items: { type: object, properties: { platform: { type: string }, total_cents: { type: integer }, threshold_cents: { type: integer }, slip: { type: string } } } }
+        jar:
+          type: object
+          properties:
+            balance_cents: { type: integer }
+            target_cents: { type: [integer, 'null'] }
 
     ShiftStatus: { enum: [active, ended, finalized] }
     ShiftStart:

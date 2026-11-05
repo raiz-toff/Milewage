@@ -6,6 +6,7 @@ import {
   type Db,
   type ShiftRow,
 } from '../db';
+import { deductionMethodFor } from '../deduction-method';
 import { shiftView } from '../routes/shifts';
 
 /**
@@ -18,6 +19,12 @@ export function deductionOfShift(db: Db, r: ShiftRow): number | null {
   const country = createSettingsRepository(db).get(r.userId)?.country;
   const pack = country ? countryPacks.get(country) : undefined;
   if (!pack) return null;
+  // A vehicle deducted through its expenses has no mileage deduction value (18 section 7.1).
+  if (
+    deductionMethodFor(db, r.userId, r.vehicleId, Number(r.localDate.slice(0, 4))) ===
+    'actual_expenses'
+  )
+    return null;
   const kind = createVehicleRepository(db).find(r.userId, r.vehicleId)?.kind ?? 'car';
   const prior = db
     .prepare(

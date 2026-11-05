@@ -1,9 +1,4 @@
-import {
-  EXPENSE_CATEGORIES,
-  expenseCategory,
-  notAutomobile,
-  type RouteHost,
-} from '@milewage/shared';
+import { EXPENSE_CATEGORIES, expenseCategory, type RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import {
@@ -15,7 +10,7 @@ import {
   type ExpenseRow,
   type NewExpense,
 } from '../db';
-import { deductionMethodFor } from '../deduction-method';
+import { deductibleCents, doubleCounts as doubleCountsOf } from '../expense-math';
 import { ProblemError } from '../errors';
 import { rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -65,11 +60,6 @@ const calendar = (d: string) => {
 const invalid = (path: string, message: string) =>
   new ProblemError('validation_failed', 'The request is not valid.', [{ path, message }]);
 
-/** Round half up, in cents (18 section 5.2). */
-export const deductibleCents = (
-  e: Pick<ExpenseRow, 'amountCents' | 'businessPct' | 'deductible'>,
-) => (e.deductible === 1 ? Math.floor((e.amountCents * e.businessPct + 50) / 100) : 0);
-
 /** Module `expenses` (18 section 5). */
 export function expensesRoutes({
   db,
@@ -88,17 +78,7 @@ export function expensesRoutes({
     const shifts = createShiftRepository(db);
     const today = (userId: number) => localDate(now(), settings.get(userId)?.timezone ?? 'UTC');
 
-    /** The standard rate already pays for fuel, maintenance and insurance of an automobile (18 section 5.2). */
-    const doubleCounts = (userId: number, e: ExpenseRow) => {
-      if (e.vehicleId === null || !expenseCategory(e.category)?.covered_by_standard_rate)
-        return false;
-      const kind = vehicles.find(userId, e.vehicleId)?.kind;
-      if (!kind || notAutomobile(kind)) return false;
-      return (
-        deductionMethodFor(db, userId, e.vehicleId, Number(e.spentOn.slice(0, 4))) ===
-        'standard_mileage'
-      );
-    };
+    const doubleCounts = (userId: number, e: ExpenseRow) => doubleCountsOf(db, userId, e);
     const view = (userId: number, e: ExpenseRow) => ({
       id: e.id,
       spent_on: e.spentOn,

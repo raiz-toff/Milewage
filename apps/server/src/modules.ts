@@ -42,6 +42,8 @@ import { createSync } from './routes/sync';
 import { replayRoutes } from './routes/replay';
 import { createEarningsPolicy, earningsRoutes } from './routes/earnings';
 import { receiptsRoutes } from './routes/receipts';
+import { taxRoutes } from './routes/tax';
+import { COMMA_DEFAULTS } from './comma-options';
 import { receiptsDirOf } from './receipts/store';
 import { expensesRoutes } from './routes/expenses';
 import { platformsRoutes, platformKnown } from './routes/platforms';
@@ -79,6 +81,8 @@ export const earningsModule = defineModule({ name: 'earnings', dependsOn: ['core
 export const expensesModule = defineModule({ name: 'expenses', dependsOn: ['core'] });
 /** One receipt photo or PDF per expense, kept on the volume and in every backup (18 section 5.4). */
 export const receiptsModule = defineModule({ name: 'receipts', dependsOn: ['expenses'] });
+/** The Tax Center: an estimate, never a filing (18 section 7). CA only until other packs are verified. */
+export const taxModule = defineModule({ name: 'tax', dependsOn: ['core'] });
 /** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */
 export const backupModule = defineModule({
   name: 'backup',
@@ -101,6 +105,7 @@ export const serverModules = [
   earningsModule,
   expensesModule,
   receiptsModule,
+  taxModule,
   backupModule,
 ] as const;
 
@@ -375,6 +380,15 @@ export function createServerModules(ctx: ServerContext) {
     defineModule({ ...platformsModule, routes: platformsRoutes({ ...ctx, authn }) }),
     defineModule({ ...expensesModule, routes: expensesRoutes({ ...ctx, authn }) }),
     defineModule({ ...receiptsModule, routes: receiptsRoutes({ ...ctx, authn }) }),
+    defineModule({
+      ...taxModule,
+      routes: taxRoutes({
+        ...ctx,
+        authn,
+        countries: ctx.comma?.taxCountries ?? COMMA_DEFAULTS.taxCountries,
+        override: ctx.comma?.earningsOverride,
+      }),
+    }),
     defineModule({
       ...earningsModule,
       routes: earningsRoutes({ ...ctx, authn, policy: earningsPolicy }),
