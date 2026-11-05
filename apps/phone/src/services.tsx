@@ -13,6 +13,7 @@ import { openExpoDb, SqliteKeyValueStore } from './storage/sqliteStore';
 import { ShiftController } from './shift/controller';
 import { PUMP_LIMIT, PointFeed } from './shift/feed';
 import { ShiftStore, type ServerRecon, type ServerShift } from './store/shiftStore';
+import { SyncDrain } from './sync/drain';
 import { Outbox, shiftOf } from './sync/outbox';
 import { OutboxRunner } from './sync/runner';
 import { createLazyNativeTracker } from './tracker/native';
@@ -43,6 +44,8 @@ export interface Services {
   shifts: ShiftStore;
   outbox: Outbox;
   runner: OutboxRunner;
+  /** Backlog drain: shifts oldest first, with progress, cancel and the live shift first (15 section 6). */
+  sync: SyncDrain;
   uploader: UploadWorker;
   diagnostics: PhoneDiagnostics;
   /** Loads the diagnostics ring, applies the cached level and records `app.start` (once). */
@@ -144,6 +147,15 @@ export function createServices(p: Parts): Services {
     rand: p.rand,
   });
   late.uploader = uploader;
+  const sync = new SyncDrain({
+    store: shifts,
+    outbox,
+    runner,
+    uploader,
+    feed,
+    controller: shift,
+    now: p.now,
+  });
 
   let started = false;
   const startDiagnostics = async () => {
@@ -180,6 +192,7 @@ export function createServices(p: Parts): Services {
     shifts,
     outbox,
     runner,
+    sync,
     uploader,
     diagnostics,
     startDiagnostics,

@@ -322,7 +322,7 @@ export class ShiftController {
    */
   async sync(): Promise<boolean> {
     if (this.active && this.active.endedAt !== null) await this.handOff();
-    const live = this.active ? await this.syncLive() : true;
+    const live = this.active ? await this.syncRunning() : true;
     return (await this.flushOutbox()) && live;
   }
 
@@ -341,7 +341,8 @@ export class ShiftController {
     return c.pending === 0 && c.parked === 0;
   }
 
-  private async syncLive(): Promise<boolean> {
+  /** The running shift's create and start odometer (its points go through the upload worker). */
+  async syncRunning(): Promise<boolean> {
     let shift = this.active;
     if (!shift) return true;
     const s = await this.d.session();

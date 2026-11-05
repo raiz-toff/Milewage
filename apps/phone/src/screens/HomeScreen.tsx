@@ -25,6 +25,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   const {
     shift: controller,
     uploader,
+    sync,
     startDiagnostics,
     diagnosticsWindow,
     autoUpload = true,
@@ -44,6 +45,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   const [ready, setReady] = useState(false);
   const [paired, setPaired] = useState(false);
   const [uploadState, setUploadState] = useState(uploader.lastState);
+  const [progress, setProgress] = useState(sync.progress);
 
   useEffect(() => {
     void (async () => {
@@ -76,16 +78,18 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
 
   useEffect(() => {
     if (!paired || !autoUpload) return;
-    uploader.start();
+    sync.start();
+    const unsubscribe = sync.subscribe(setProgress);
     void startDiagnostics();
     const diagTimer = setInterval(() => void diagnosticsWindow(), DIAG_WINDOW_MS);
     const timer = setInterval(() => setUploadState(uploader.lastState), refreshMs);
     return () => {
-      uploader.stop();
+      sync.stop();
+      unsubscribe();
       clearInterval(diagTimer);
       clearInterval(timer);
     };
-  }, [paired, autoUpload, uploader, refreshMs, startDiagnostics, diagnosticsWindow]);
+  }, [paired, autoUpload, uploader, sync, refreshMs, startDiagnostics, diagnosticsWindow]);
 
   const toMeters = (text: string) => {
     const n = Number(text.replace(',', '.'));
@@ -278,6 +282,17 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
           <Text style={{ color: theme.textMuted }}>
             Continuing the server shift drops the miles recorded in this phone's own shift.
           </Text>
+        </>
+      )}
+      {progress.phase === 'running' && progress.shiftsTotal > 0 && (
+        <>
+          <Text accessibilityLabel="Sending progress" style={{ color: theme.text, marginTop: 12 }}>
+            Sending {progress.pointsSent} of {progress.pointsTotal} points, shift{' '}
+            {Math.min(progress.shiftsDone + 1, progress.shiftsTotal)} of {progress.shiftsTotal}
+          </Text>
+          <Pressable accessibilityRole="button" onPress={() => sync.cancel()} style={button}>
+            <Text style={{ color: theme.accent }}>Stop sending</Text>
+          </Pressable>
         </>
       )}
       {(uploadState === 'repair' || uploadState === 'auth_problem') && (

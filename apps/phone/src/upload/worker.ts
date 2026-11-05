@@ -23,7 +23,20 @@ export type UploadState =
   | 'repair'
   | 'auth_problem'
   | 'not_paired'
-  | 'tracking_off';
+  | 'tracking_off'
+  | 'cancelled';
+
+/** What a drain may be told (the backlog drain in `sync/drain.ts` uses all of it). */
+export interface DrainOptions {
+  /** Only this shift's points. */
+  shift?: string;
+  /** First batch size; 100 for live uploads, 500 for a backlog (15 section 6.3). */
+  size?: number;
+  /** Stop after this many accepted batches, so the caller can look at the live shift in between. */
+  maxBatches?: number;
+  /** Checked before every request; true ends the drain with `cancelled`. Nothing needs cleaning up. */
+  shouldStop?: () => boolean;
+}
 
 export interface DrainResult {
   state: UploadState;
@@ -137,11 +150,11 @@ export class UploadWorker {
   }
 
   /** Uploads everything pending, oldest shift first, until empty, halted or a retryable failure. */
-  async drain(): Promise<DrainResult> {
+  async drain(opts: DrainOptions = {}): Promise<DrainResult> {
     if (this.busy) return { state: this.lastState, uploaded: 0, rejected: 0, retryInMs: null };
     this.busy = true;
     try {
-      return await this.run();
+      return await this.run(opts);
     } finally {
       this.busy = false;
     }
@@ -174,11 +187,16 @@ export class UploadWorker {
     return { state, uploaded, rejected, retryInMs };
   }
 
-  private async run(): Promise<DrainResult> {
+  private async run(opts: DrainOptions): Promise<DrainResult> {
     let uploaded = 0;
     let rejected = 0;
-    let size = LIVE_BATCH;
+    let batches = 0;
+    let size = opts.size ?? LIVE_BATCH;
     for (;;) {
+      if (opts.shouldStop?.()) return this.done('cancelled', uploaded, rejected, null);
+      if (opts.maxBatches !== undefined && batches >= opts.maxBatches) {
+        return this.done('idle', uploaded, rejected, null);
+      }
       const session = await this.d.session();
       if (!session) return this.done('not_paired', uploaded, rejected, null);
       if (!session.flags.tracking) return this.done('tracking_off', uploaded, rejected, null);
@@ -186,7 +204,10 @@ export class UploadWorker {
 
       const pending = this.d.feed
         .readPending(PUMP_LIMIT)
-        .filter((p) => !this.parked.has(p.shiftClientId));
+        .filter(
+          (p) =>
+            !this.parked.has(p.shiftClientId) && (!opts.shift || p.shiftClientId === opts.shift),
+        );
       if (pending.length === 0) {
         this.d.tracker.evictUploaded(this.now() - LOCAL_RAW_DAYS * 86_400_000);
         const parked = this.parked.size > 0;
@@ -215,6 +236,7 @@ export class UploadWorker {
         if (bad.size > 0) this.d.tracker.markRejected([...bad]);
         uploaded += good.length;
         rejected += bad.size;
+        batches++;
         this.backoff.reset();
         this.notFound.delete(shiftId);
         this.lastSuccessAt = this.now();
