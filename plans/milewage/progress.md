@@ -693,3 +693,10 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Done: `/vehicles` screen in `apps/web` using only the existing routes (`GET /vehicles` with `include_archived`, `POST /vehicles`, `PATCH /vehicles/{id}`): add (name, type), rename, change type, archive and restore, show archived. Core screen (no module flag); added to the navigation, `screens.tsx` and the Caddy SPA path list. The odometer screen's empty state now points to it.
 - Tests: 6 in `vehicles.test.tsx`; the module-flag navigation expectations include Vehicles.
 - Not done (needs the server work in `18` §4.1): make, model, year, plate, power type, default vehicle, the extra kinds (e-bike, scooter, walking), maintenance log and per-year tax method. The API has no delete (archive only, by design).
+
+
+## PR C3 — Web password change (Comma-parity track)
+
+- Done: a "Change password" card on the Settings screen calling the existing `POST /auth/password` (`changePassword`): current password, new password twice, 10 character minimum checked before the call, server errors shown. The server ends the owner's other sessions; this one stays.
+- Tests: 3 in `account.test.tsx` (success and the exact body, short and mismatched passwords make no call, wrong current password shows the error).
+- Not done: a display name and region need the settings fields of `18` §4.1; there is no route to change the username (none specified).

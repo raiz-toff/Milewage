@@ -4,6 +4,7 @@ import { describe, unwrap } from '../api/client';
 import type { Schemas, Settings } from '../api/client';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
+import { Account } from './Account';
 
 type Patch = Schemas['SettingsPatch'];
 
@@ -172,6 +173,7 @@ export function SettingsPage() {
           Save
         </Button>
       </form>
+      <Account />
       <ModuleFlags modules={saved.modules} />
     </section>
   );
