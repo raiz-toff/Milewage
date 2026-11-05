@@ -4,6 +4,7 @@ import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import { createSettingsRepository, type Db } from '../db';
 import type { DiskState } from '../disk';
+import { effectiveLevel } from '../diagnostics/recorder';
 import type { DiagnosticsStore } from '../diagnostics/store';
 import { ProblemError } from '../errors';
 import { strictObject } from './util';
@@ -135,9 +136,7 @@ export function diagnosticsRoutes({
         const events = (req.body as { events: unknown[] }).events;
         const t = now();
         const row = settings.get(principal.userId);
-        const setting = row?.diagnosticsLevel ?? 'basic';
-        const level =
-          setting === 'verbose' && (row?.diagnosticsVerboseUntil ?? 0) <= t ? 'basic' : setting;
+        const level = effectiveLevel(row, t);
         const result = {
           accepted: 0,
           duplicates: 0,

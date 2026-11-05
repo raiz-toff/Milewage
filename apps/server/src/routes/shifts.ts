@@ -421,6 +421,7 @@ export function shiftRoutes(
           personalM: phone.personal_m,
           tripsCount: phone.trips_count,
         },
+        reason: 'shift_end',
       },
       ended,
     );

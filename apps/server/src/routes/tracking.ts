@@ -134,6 +134,16 @@ export function trackingRoutes({
         }
         const inserted = telemetry.insert(rows);
         shifts.update(shift.id, { deviceTouchedAt: t });
+        const rejects: Record<string, number> = {};
+        for (const r of rejected) rejects[r.code] = (rejects[r.code] ?? 0) + 1;
+        bus.emit('telemetry.batch', {
+          shiftId: String(shift.id),
+          deviceId: String(device.deviceId),
+          received: b.points.length,
+          inserted,
+          duplicates: rows.length - inserted,
+          rejected: rejects,
+        });
         if (inserted > 0) {
           bus.emit('telemetry.accepted', {
             shiftId: String(shift.id),

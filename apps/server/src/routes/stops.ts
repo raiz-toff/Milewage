@@ -86,7 +86,7 @@ export function stopsRoutes({
       processor.assertRecomputable(shift);
     };
     const recompute = (shift: ReturnType<typeof read>) => {
-      const saved = processor.run(shift).shift;
+      const saved = processor.run(shift, { reason: 'label' }).shift;
       bus.emit('shift.updated', { shiftId: String(shift.id) });
       bus.emit('stops.derived', { shiftId: String(shift.id) });
       return presentShift(db, saved);

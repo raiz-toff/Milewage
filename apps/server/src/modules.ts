@@ -10,9 +10,11 @@ import {
   createInstanceReader,
   createSessionRepository,
   createSettingsRepository,
+  createShiftRepository,
 } from './db';
 import type { DiskMonitor } from './disk';
 import { createDiagnosticsKeeper } from './diagnostics/keeper';
+import { createServerRecorder, effectiveLevel } from './diagnostics/recorder';
 import { openDiagnosticsStore } from './diagnostics/store';
 import { backupRoutes } from './routes/backup';
 import { restoreRoutes } from './routes/restore';
@@ -165,6 +167,17 @@ export function createServerModules(ctx: ServerContext) {
     log: ctx.log,
   });
   const backup = ctx.backup ?? buildBackupService({ ...ctx, secrets });
+  backup.onFinished((r) => busEmit?.('backup.finished', r));
+  const recorder = createServerRecorder({
+    store: diagnosticsStore,
+    now: ctx.now,
+    owner: () => createBackupRepository(ctx.db).ownerId(),
+    level: (userId) => effectiveLevel(createSettingsRepository(ctx.db).get(userId), ctx.now()),
+    disk: ctx.disk && (() => ctx.disk!.state()),
+    version: SERVER_VERSION,
+    shiftClientId: (id) => createShiftRepository(ctx.db).byId(id)?.clientId,
+    drop: (reason) => keeper.drop(reason),
+  });
   const restore = createRestoreService({
     db: ctx.db,
     backup,
@@ -190,12 +203,13 @@ export function createServerModules(ctx: ServerContext) {
   const uploadDir = join(dirname(ctx.db.name), '.restore-upload');
   // The registry exists only once routes are registered; the processor asks it per call.
   let registry: ModuleRegistry | undefined;
+  let busEmit: EventEmit | undefined;
   const processor = createShiftProcessor({
     db: ctx.db,
     now: ctx.now,
     stopsOn: () => registry?.isEnabled('stops') ?? false,
+    emit: () => busEmit,
   });
-  let busEmit: EventEmit | undefined;
   const late = createLateRecompute({
     db: ctx.db,
     processor,
@@ -274,6 +288,7 @@ export function createServerModules(ctx: ServerContext) {
         disk: ctx.disk && (() => ctx.disk!.state()),
         onDrop: (reason) => keeper.drop(reason),
       }),
+      subscriptions: recorder.subscriptions,
       jobs: [{ name: 'diagnostics-store', start: () => () => store?.close() }, keeper.job()],
     }),
     defineModule({

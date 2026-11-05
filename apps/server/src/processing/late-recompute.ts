@@ -39,7 +39,7 @@ export function createLateRecompute({
     try {
       const shift = shifts.byId(shiftId);
       if (!shift || shift.status !== 'ended') return;
-      processor.run(shift, { latePoints: true });
+      processor.run(shift, { latePoints: true, reason: 'late_points' });
       emit()?.('shift.updated', { shiftId: String(shiftId) });
       if (stopsOn()) emit()?.('stops.derived', { shiftId: String(shiftId) });
     } catch (e) {

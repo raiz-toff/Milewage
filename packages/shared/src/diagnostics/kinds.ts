@@ -1,4 +1,4 @@
-import { PATTERNS, bool, int, ints, obj, oneOf, str, strs, type Shape } from './schema';
+import { PATTERNS, bool, int, ints, obj, objs, oneOf, str, strs, type Shape } from './schema';
 
 // Catalogue of 16 section 3.2, A-rig set (section 9.3) plus `diag.self`. No free-text fields:
 // `msg` is gated by class (validate.ts).
@@ -36,6 +36,23 @@ const ENGINE_STATS = [
   'fixes_used',
   'gap_m',
 ];
+
+// Module flags as bools; a module that does not exist in a build is simply absent.
+const MODULE_FLAGS: Shape = Object.fromEntries(
+  [
+    'devices',
+    'tracking',
+    'stops',
+    'replay',
+    'live',
+    'sync',
+    'exporters',
+    'diagnostics',
+    'capture',
+  ].map((m) => [m, bool(true)]),
+);
+const DISK_STATES = ['ok', 'warning', 'backup_skipped', 'writes_blocked'];
+const SIGNED = int(-1_000_000_000, 1_000_000_000);
 
 export const diagKinds = {
   'service.event': {
@@ -129,6 +146,240 @@ export const diagKinds = {
       total_m: COUNT,
       active_m: COUNT,
       deadhead_m: COUNT,
+    },
+  },
+  'activity.transition': {
+    level: 'verbose',
+    src: ['phone_native'],
+    data: {
+      type: oneOf(['STILL', 'IN_VEHICLE', 'ON_BICYCLE', 'WALKING', 'RUNNING', 'UNKNOWN']),
+      edge: oneOf(['enter', 'exit']),
+      gating_acted: bool(),
+    },
+  },
+  'perm.state': {
+    level: 'basic',
+    src: ['phone_js'],
+    data: {
+      fine: bool(),
+      background: oneOf(['all_time', 'while_in_use', 'denied']),
+      activity_recognition: bool(),
+      notifications: bool(),
+      battery_opt_ignored: bool(),
+      standby_bucket: oneOf([
+        'active',
+        'working_set',
+        'frequent',
+        'rare',
+        'restricted',
+        'never',
+        'unknown',
+      ]),
+      power_save: bool(),
+    },
+  },
+  'upload.drain': {
+    level: 'basic',
+    src: ['phone_js'],
+    data: { shifts: COUNT, points: COUNT, batches: COUNT, bytes_gz: BIG, wall_ms: BIG, ok: bool() },
+  },
+  'upload.failure': {
+    level: 'verbose',
+    src: ['phone_js'],
+    data: {
+      class: oneOf([
+        'net',
+        'timeout',
+        'tls',
+        'http_4xx',
+        'http_5xx',
+        'http_429',
+        'http_507',
+        'unknown',
+      ]),
+      status: int(0, 599),
+      bytes: BIG,
+      dur_ms: BIG,
+      attempt: COUNT,
+    },
+  },
+  'sync.state': {
+    level: 'basic',
+    src: ['phone_js'],
+    data: {
+      state: oneOf([
+        'reachable',
+        'unreachable',
+        'unauthorized',
+        'revoked',
+        'wrong_instance',
+        'restored',
+        'api_too_old',
+      ]),
+      since_s: COUNT,
+    },
+  },
+  'sync.pull': {
+    level: 'basic',
+    src: ['phone_js'],
+    data: { applied: COUNT, conflicts_logged: COUNT, full_window: bool() },
+  },
+  'settings.applied': {
+    level: 'basic',
+    src: ['phone_js'],
+    data: {
+      level: oneOf(['off', 'basic', 'verbose']),
+      stops_enabled: bool(),
+      modules: obj(MODULE_FLAGS),
+      engine_version: VERSION,
+    },
+  },
+  'storage.state': {
+    level: 'basic',
+    src: ['phone_js'],
+    data: {
+      free_mb_bucket: oneOf(['lt20', 'lt50', 'lt200', 'lt1000', 'ge1000']),
+      state: oneOf(['normal', 'low', 'critical']),
+      tracker_db_mb: COUNT,
+      app_db_mb: COUNT,
+      unsynced_shifts: COUNT,
+      pending_points: COUNT,
+      quarantine_rows: COUNT,
+    },
+  },
+  'stops.stats': {
+    level: 'basic',
+    src: ['phone_js', 'server'],
+    data: {
+      detected: COUNT,
+      by_conf: ints(3, 0, 1_000_000),
+      dwell_hist: ints(5, 0, 1_000_000),
+      merged: COUNT,
+      wake_used: COUNT,
+      fallback: bool(),
+    },
+  },
+  'stop.detected': {
+    level: 'verbose',
+    src: ['phone_js', 'server'],
+    data: {
+      stop_key: str(PATTERNS.stopKey),
+      dwell_s: COUNT,
+      conf: oneOf(['low', 'medium', 'high']),
+      role_est: oneOf(['pickup', 'dropoff', 'none']),
+      radius_max_dm: COUNT,
+    },
+  },
+  'server.start': {
+    level: 'basic',
+    src: ['server'],
+    data: {
+      app_v: VERSION,
+      schema_v: VERSION,
+      sqlite_v: VERSION,
+      node_v: VERSION,
+      arch: VERSION,
+      mem_limit_mb: COUNT,
+      modules: obj(MODULE_FLAGS),
+      unclean_shutdown: bool(),
+    },
+  },
+  'server.sample': {
+    level: 'basic',
+    src: ['server'],
+    data: {
+      rss_mb: COUNT,
+      heap_mb: COUNT,
+      lag_p95_ms: MS,
+      lag_max_ms: MS,
+      cpu_pct: int(0, 100_000),
+      db_bytes: BIG,
+      wal_bytes: BIG,
+      diag_db_bytes: BIG,
+      disk_free_mb: BIG,
+      disk_state: oneOf(DISK_STATES),
+    },
+  },
+  'api.window': {
+    level: 'basic',
+    src: ['server'],
+    data: {
+      group: oneOf(['telemetry', 'shifts', 'sync', 'stops', 'exports', 'diagnostics', 'other']),
+      n: COUNT,
+      s2xx: COUNT,
+      s4xx: COUNT,
+      s5xx: COUNT,
+      p50_ms: MS,
+      p95_ms: MS,
+      p99_ms: MS,
+      codes: objs({ code: str(PATTERNS.code), n: COUNT }, 8),
+      ingest: obj(
+        {
+          points_in: COUNT,
+          inserted: COUNT,
+          duplicates: COUNT,
+          rejected: obj({
+            invalid_coordinate: COUNT,
+            future_timestamp: COUNT,
+            outside_shift_window: COUNT,
+          }),
+        },
+        true,
+      ),
+    },
+  },
+  'recon.result': {
+    level: 'basic',
+    src: ['server'],
+    data: {
+      status: oneOf(['match', 'differs', 'phone_missing']),
+      reasons: strs(PATTERNS.code, 6),
+      diff_m: SIGNED,
+      digest_equal: bool(),
+      phone_calc_v: int(0, 10_000),
+      server_calc_v: int(0, 10_000),
+    },
+  },
+  'backup.run': {
+    level: 'basic',
+    src: ['server'],
+    data: {
+      trigger: oneOf(['nightly', 'shift_end', 'manual', 'pre_migration', 'pre_restore']),
+      ok: bool(),
+      ms: BIG,
+      bytes: BIG,
+      lag_max_ms: MS,
+    },
+  },
+  'migration.run': {
+    level: 'basic',
+    src: ['server'],
+    data: { from_v: COUNT, to_v: COUNT, ms: BIG, pre_backup_ok: bool(), ok: bool() },
+  },
+  'restore.run': {
+    level: 'basic',
+    src: ['server'],
+    data: {
+      from_v: COUNT,
+      to_v: COUNT,
+      ms: BIG,
+      pre_backup_ok: bool(),
+      ok: bool(),
+      counts_match: bool(),
+    },
+  },
+  'disk.state': {
+    level: 'basic',
+    src: ['server'],
+    data: { from: oneOf(DISK_STATES), to: oneOf(DISK_STATES) },
+  },
+  'capture.state': {
+    level: 'basic',
+    src: ['server'],
+    data: {
+      event: oneOf(['created', 'started', 'ended', 'expired', 'purged']),
+      profile: oneOf(['dense']),
+      shifts_done: COUNT,
     },
   },
   crash: {

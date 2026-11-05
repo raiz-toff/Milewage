@@ -1,3 +1,4 @@
+import { performance } from 'node:perf_hooks';
 import { processShift, type ShiftInput, type ShiftResult } from '@milewage/track-engine';
 import {
   createArchiveRepository,
@@ -7,6 +8,7 @@ import {
   type ShiftRow,
 } from '../db';
 import { ProblemError } from '../errors';
+import type { EventEmit } from '../events';
 import { reconcile, reconFromStored, type PhoneSummary, type Recon } from './recon';
 
 /** Flags a driver should look at; the rest are information (14 section 8). */
@@ -66,6 +68,8 @@ export interface PhoneReport {
   result?: PhoneSummary & { segmenter: 'stops' | 'whole_shift'; tripsCount: number };
   /** The run is caused by points that arrived after the shift ended (recon reason `late_points`). */
   latePoints?: boolean;
+  /** Why the engine runs, for the `engine.ran` event; `recalc` unless the caller says otherwise. */
+  reason?: 'shift_end' | 'late_points' | 'label' | 'recalc';
 }
 
 export interface ProcessOutcome {
@@ -80,6 +84,8 @@ export interface ShiftProcessorOptions {
   now: () => number;
   /** Whether the `stops` module is on; stops and labels are only read and written then. */
   stopsOn: () => boolean;
+  /** The event bus, once the routes exist; the diagnostics module listens to what is announced here. */
+  emit?: () => EventEmit | undefined;
 }
 
 export type ShiftProcessor = ReturnType<typeof createShiftProcessor>;
@@ -89,7 +95,7 @@ export type ShiftProcessor = ReturnType<typeof createShiftProcessor>;
  * 14 section 9.4). The server's result is the one that counts. The segmenter is the one captured at
  * shift start, never the current setting.
  */
-export function createShiftProcessor({ db, now, stopsOn }: ShiftProcessorOptions) {
+export function createShiftProcessor({ db, now, stopsOn, emit }: ShiftProcessorOptions) {
   const repo = createProcessingRepository(db);
   const archive = createArchiveRepository(db);
   /** The engine needs the raw points; once they are archived the stored totals and trips are all there is. */
@@ -103,6 +109,58 @@ export function createShiftProcessor({ db, now, stopsOn }: ShiftProcessorOptions
 
   const inputOf = (shift: ShiftRow): ShiftInput => buildShiftInput(repo, shift, stopsOn());
 
+  /** Facts for the bus (08 section 16.4); a listener's failure never reaches the shift request. */
+  const announce = (
+    shift: ShiftRow,
+    result: ShiftResult,
+    ms: number,
+    phone: PhoneReport,
+    recon: Recon | undefined,
+    stored: { calcVersion: number; inputDigest: string } | undefined,
+  ) => {
+    const bus = emit?.();
+    if (!bus) return;
+    const id = String(shift.id);
+    const reason = phone.reason ?? (phone.latePoints ? 'late_points' : 'recalc');
+    bus('engine.ran', {
+      shiftId: id,
+      reason,
+      ms,
+      calcVersion: result.algorithmVersion,
+      segmenter: shift.segmenter,
+      inputDigest: result.inputDigest,
+      stats: result.stats,
+      flags: [...new Set(result.flags.map((f) => f.code))],
+      trips: result.trips.length,
+      stops: result.stops.length,
+      totalM: result.totals.totalM,
+      activeM: result.totals.activeM,
+      deadheadM: result.totals.deadheadM,
+    });
+    const theirs = phone.result ?? stored;
+    if (recon && theirs) {
+      bus('shift.reconciled', {
+        shiftId: id,
+        status: recon.status,
+        reasons: recon.reasons,
+        diffM: recon.diffM,
+        digestEqual: result.inputDigest === theirs.inputDigest,
+        phoneCalcV: theirs.calcVersion,
+        serverCalcV: result.algorithmVersion,
+      });
+    } else if (!recon && reason === 'shift_end' && shift.reconStatus === 'phone_missing') {
+      bus('shift.reconciled', {
+        shiftId: id,
+        status: 'phone_missing',
+        reasons: [],
+        diffM: 0,
+        digestEqual: false,
+        phoneCalcV: 0,
+        serverCalcV: result.algorithmVersion,
+      });
+    }
+  };
+
   return {
     assertRecomputable,
     /**
@@ -111,7 +169,9 @@ export function createShiftProcessor({ db, now, stopsOn }: ShiftProcessorOptions
      */
     run(shift: ShiftRow, phone: PhoneReport = {}, extra: ShiftPatch = {}): ProcessOutcome {
       assertRecomputable(shift);
+      const started = performance.now();
       const result = processShift(inputOf(shift));
+      const ms = Math.round(performance.now() - started);
       const t = now();
       // Manual trips (distance typed in) are kept by the write below and count in the totals (07 section 3).
       const manual = repo.tripsOf(shift.id).filter((x) => x.source === 'manual');
@@ -220,6 +280,7 @@ export function createShiftProcessor({ db, now, stopsOn }: ShiftProcessorOptions
             }))
           : undefined,
       });
+      announce(shift, result, ms, phone, recon, stored);
       return { shift: saved ?? shift, result, recon };
     },
     /**

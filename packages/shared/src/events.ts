@@ -17,6 +17,49 @@ export interface EventMap {
   'stop_label.updated': { shiftId: string; stopId: string };
   'trip.updated': { shiftId: string; tripId: string; tripKey?: string; deleted?: boolean };
   'telemetry.accepted': { shiftId: string; deviceId: string; count: number };
+  /** Every telemetry batch for a known shift, duplicates and rejects included (the ingest counters of `api.window`). */
+  'telemetry.batch': {
+    shiftId: string;
+    deviceId: string;
+    received: number;
+    inserted: number;
+    duplicates: number;
+    rejected: Record<string, number>;
+  };
+  /** The shared engine ran on the server's stored points (16 section 3.2 `engine.run`). */
+  'engine.ran': {
+    shiftId: string;
+    reason: 'shift_end' | 'late_points' | 'label' | 'recalc';
+    ms: number;
+    calcVersion: number;
+    segmenter: 'stops' | 'whole_shift';
+    inputDigest: string;
+    stats: Record<string, number>;
+    flags: string[];
+    trips: number;
+    stops: number;
+    totalM: number;
+    activeM: number;
+    deadheadM: number;
+  };
+  /** The server's result was compared with the phone's (16 section 3.2 `recon.result`). */
+  'shift.reconciled': {
+    shiftId: string;
+    status: 'match' | 'differs' | 'phone_missing';
+    reasons: string[];
+    diffM: number;
+    digestEqual: boolean;
+    phoneCalcV: number;
+    serverCalcV: number;
+  };
+  /** A backup run ended, verified or not (16 section 3.2 `backup.run`). */
+  'backup.finished': {
+    trigger: 'nightly' | 'shift_end' | 'manual' | 'pre_migration' | 'pre_restore';
+    ok: boolean;
+    ms: number;
+    bytes: number;
+    lagMaxMs: number;
+  };
   'device.seen': { deviceId: string };
   'odometer.updated': { odometerId: string; userId: string; deleted?: boolean };
   'vehicle.updated': { vehicleId: string };

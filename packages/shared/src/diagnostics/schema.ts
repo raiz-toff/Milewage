@@ -9,7 +9,8 @@ export type Field =
   | { t: 'str'; re: RegExp; opt?: true }
   | { t: 'ints'; len: number; min: number; max: number; opt?: true }
   | { t: 'strs'; re: RegExp; maxLen: number; opt?: true }
-  | { t: 'obj'; fields: Shape; opt?: true };
+  | { t: 'obj'; fields: Shape; opt?: true }
+  | { t: 'objs'; fields: Shape; maxLen: number; opt?: true };
 
 export type Shape = Readonly<Record<string, Field>>;
 
@@ -21,6 +22,7 @@ export const PATTERNS = {
   version: /^[0-9A-Za-z._+-]{1,40}$/,
   code: /^[a-z0-9_]{1,40}$/,
   clientId: /^[0-9a-f-]{36}$/,
+  stopKey: /^[0-9a-f-]{36}:[0-9]{10,13}:stop$/,
   printable: /^[\x20-\x7e]{1,120}$/,
 } as const;
 
@@ -48,12 +50,16 @@ export const ints = (len: number, min: number, max: number): Field => ({
 });
 export const strs = (re: RegExp, maxLen: number): Field => ({ t: 'strs', re, maxLen });
 export const obj = (fields: Shape, opt?: true): Field => ({ t: 'obj', fields, opt });
+export const objs = (fields: Shape, maxLen: number): Field => ({ t: 'objs', fields, maxLen });
 
 const isInt = (v: unknown, min: number, max: number): boolean =>
   typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
 
 function checkString(v: unknown, re: RegExp): boolean {
-  return typeof v === 'string' && re.test(v) && !looksLikeCoordinate(v);
+  if (typeof v !== 'string' || !re.test(v)) return false;
+  // A stop key carries the epoch ms of its first fix (a time of 10 to 13 numerals): not a coordinate.
+  const text = re === PATTERNS.stopKey ? v.replace(/:[0-9]{10,13}:/, ':t:') : v;
+  return !looksLikeCoordinate(text);
 }
 
 /** Returns an error naming the path, or null when the value fits the field. */
@@ -82,6 +88,15 @@ export function checkField(field: Field, value: unknown, path: string): string |
         : bad('not an allowed string array');
     case 'obj':
       return checkShape(field.fields, value, path);
+    case 'objs': {
+      if (!Array.isArray(value) || value.length > field.maxLen)
+        return bad('not an allowed object array');
+      for (const [i, item] of value.entries()) {
+        const error = checkShape(field.fields, item, `${path}[${i}]`);
+        if (error) return error;
+      }
+      return null;
+    }
   }
 }
 
