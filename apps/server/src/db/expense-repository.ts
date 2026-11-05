@@ -158,7 +158,16 @@ export function createExpenseRepository(db: Db) {
              AND (snoozed_until IS NULL OR snoozed_until <= ?) ORDER BY next_due, id`,
         )
         .all(userId, today, today) as ExpenseRow[],
-    /** The year's ordinary spending per category. */
+    receiptFile: (expenseId: number): string | undefined => {
+      try {
+        return db
+          .prepare('SELECT file FROM expense_receipts WHERE expense_id = ?')
+          .pluck()
+          .get(expenseId) as string | undefined;
+      } catch {
+        return undefined;
+      }
+    },
     hasReceipt: (expenseId: number): boolean => {
       try {
         return (

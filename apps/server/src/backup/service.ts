@@ -32,6 +32,7 @@ export interface BackupServiceOptions {
   /** See BackupEngineOptions.codec. */
   codec: BackupEngineOptions['codec'];
   disk?: BackupEngineOptions['disk'];
+  receiptsDir?: BackupEngineOptions['receiptsDir'];
 }
 
 /**

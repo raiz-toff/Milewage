@@ -105,6 +105,7 @@
       "type": "object",
       "description": "Read-only module flags so clients can hide screens and buttons of absent modules.",
       "required": [
+        "receipts",
         "expenses",
         "earnings",
         "platforms",
@@ -132,6 +133,10 @@
         "expenses": {
           "type": "boolean",
           "description": "Expenses module registered (18 section 5)."
+        },
+        "receipts": {
+          "type": "boolean",
+          "description": "Receipts module registered (18 section 5.4); needs expenses."
         },
         "sync": {
           "type": "boolean"
@@ -1236,6 +1241,38 @@
               }
             }
           }
+        }
+      }
+    },
+    "Receipt": {
+      "type": "object",
+      "required": [
+        "expense_id",
+        "mime",
+        "bytes",
+        "sha256",
+        "created_at"
+      ],
+      "properties": {
+        "expense_id": {
+          "type": "integer"
+        },
+        "mime": {
+          "enum": [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "application/pdf"
+          ]
+        },
+        "bytes": {
+          "type": "integer"
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "created_at": {
+          "$ref": "#/$defs/EpochMs"
         }
       }
     },

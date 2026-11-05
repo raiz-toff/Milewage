@@ -17,6 +17,9 @@ import {
 } from '../db';
 import { deductionMethodFor } from '../deduction-method';
 import { ProblemError } from '../errors';
+import { rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { receiptsDirOf } from '../receipts/store';
 import { addInterval, localDate } from '../time';
 import { idParams, str, strictObject } from './util';
 
@@ -329,7 +332,9 @@ export function expensesRoutes({
       const { userId } = authn.authenticate(req, 'S');
       const id = (req.params as { id: number }).id;
       mine(userId, id);
+      const file = repo.receiptFile(id);
       repo.delete(userId, id);
+      if (file) rmSync(join(receiptsDirOf(db), file), { force: true }); // evidence goes with its expense
       bus.emit('expense.changed', { expenseId: String(id) });
       return reply.status(204).send();
     });

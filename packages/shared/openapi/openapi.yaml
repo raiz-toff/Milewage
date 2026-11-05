@@ -31,6 +31,7 @@ tags:
   - { name: platforms }
   - { name: earnings }
   - { name: expenses }
+  - { name: receipts }
   - { name: system }
 
 x-modules:
@@ -104,6 +105,11 @@ x-modules:
     default: true
     dependsOn: [core]
     operations: [listExpenses, createExpense, getExpense, updateExpense, deleteExpense, getExpenseTotals, listExpenseMerchants, getDueExpenses, confirmDueExpense, snoozeExpense, listExpenseCategories]
+  receipts:
+    toggle: modules.receipts
+    default: true
+    dependsOn: [expenses]
+    operations: [putExpenseReceipt, getExpenseReceipt, deleteExpenseReceipt]
 
 paths:
   /healthz:
@@ -1212,6 +1218,58 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/Unprocessable' }
 
+  /expenses/{id}/receipt:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    put:
+      tags: [receipts]
+      operationId: putExpenseReceipt
+      summary: Upload or replace the one receipt of an expense (JPEG, PNG, WebP or PDF, 10 MB at most). The server removes GPS data from a JPEG and checks the bytes against the declared type. Web session only.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          image/jpeg: { schema: { type: string, format: binary } }
+          image/png: { schema: { type: string, format: binary } }
+          image/webp: { schema: { type: string, format: binary } }
+          application/pdf: { schema: { type: string, format: binary } }
+      responses:
+        '200':
+          description: Replaced.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Receipt' }
+        '201':
+          description: Stored.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Receipt' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '413': { $ref: '#/components/responses/TooLarge' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '507': { $ref: '#/components/responses/InsufficientStorage' }
+    get:
+      tags: [receipts]
+      operationId: getExpenseReceipt
+      summary: The receipt file, streamed with its stored type.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: The file.
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+            image/webp: { schema: { type: string, format: binary } }
+            application/pdf: { schema: { type: string, format: binary } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [receipts]
+      operationId: deleteExpenseReceipt
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Removed (idempotent). }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /exports/{format}:
     get:
       tags: [exports]
@@ -1611,11 +1669,12 @@ components:
     Modules:
       type: object
       description: Read-only module flags so clients can hide screens and buttons of absent modules.
-      required: [expenses, earnings, platforms, devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
+      required: [receipts, expenses, earnings, platforms, devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
       properties:
         platforms: { type: boolean, description: 'Platforms module registered (18 section 4.2).' }
         earnings: { type: boolean, description: 'Earnings module registered (18 section 4.3): the driver can type a total per shift and platform.' }
         expenses: { type: boolean, description: 'Expenses module registered (18 section 5).' }
+        receipts: { type: boolean, description: 'Receipts module registered (18 section 5.4); needs expenses.' }
         sync: { type: boolean }
         local_export: { type: boolean, description: Reserved for v1.1; false in v1. }
         devices: { type: boolean }
@@ -1887,6 +1946,16 @@ components:
               total_cents: { type: integer }
               deductible_cents: { type: integer }
               double_counts_cents: { type: integer }
+
+    Receipt:
+      type: object
+      required: [expense_id, mime, bytes, sha256, created_at]
+      properties:
+        expense_id: { type: integer }
+        mime: { enum: [image/jpeg, image/png, image/webp, application/pdf] }
+        bytes: { type: integer }
+        sha256: { type: string }
+        created_at: { $ref: '#/components/schemas/EpochMs' }
 
     ShiftStatus: { enum: [active, ended, finalized] }
     ShiftStart:

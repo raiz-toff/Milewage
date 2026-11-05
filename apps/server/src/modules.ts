@@ -41,6 +41,8 @@ import { createLive } from './routes/live';
 import { createSync } from './routes/sync';
 import { replayRoutes } from './routes/replay';
 import { createEarningsPolicy, earningsRoutes } from './routes/earnings';
+import { receiptsRoutes } from './routes/receipts';
+import { receiptsDirOf } from './receipts/store';
 import { expensesRoutes } from './routes/expenses';
 import { platformsRoutes, platformKnown } from './routes/platforms';
 import { stopsRoutes } from './routes/stops';
@@ -75,6 +77,8 @@ export const platformsModule = defineModule({ name: 'platforms', dependsOn: ['co
 export const earningsModule = defineModule({ name: 'earnings', dependsOn: ['core'] });
 /** Expenses, categories and recurring reminders (18 section 5). */
 export const expensesModule = defineModule({ name: 'expenses', dependsOn: ['core'] });
+/** One receipt photo or PDF per expense, kept on the volume and in every backup (18 section 5.4). */
+export const receiptsModule = defineModule({ name: 'receipts', dependsOn: ['expenses'] });
 /** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */
 export const backupModule = defineModule({
   name: 'backup',
@@ -96,6 +100,7 @@ export const serverModules = [
   platformsModule,
   earningsModule,
   expensesModule,
+  receiptsModule,
   backupModule,
 ] as const;
 
@@ -157,6 +162,7 @@ export function buildBackupService(
     now: ctx.now,
     disk: ctx.disk,
     codec: secretsCodec(ctx.secrets ?? fileSecrets(ctx.configDir ?? 'config')),
+    receiptsDir: receiptsDirOf(ctx.db),
     // Scheduled backups wait for the recovery key to be confirmed (08 section 2.3).
     ready: () => instance()?.setupConfirmedAt != null,
     timeZone: () => {
@@ -230,6 +236,7 @@ export function createServerModules(ctx: ServerContext) {
     secrets,
     state: ctx.state ?? createServerState(),
     verify: ctx.restoreVerify,
+    receiptsDir: receiptsDirOf(ctx.db),
     log: ctx.log,
   });
   const metrics = createServerMetrics({
@@ -367,6 +374,7 @@ export function createServerModules(ctx: ServerContext) {
     }),
     defineModule({ ...platformsModule, routes: platformsRoutes({ ...ctx, authn }) }),
     defineModule({ ...expensesModule, routes: expensesRoutes({ ...ctx, authn }) }),
+    defineModule({ ...receiptsModule, routes: receiptsRoutes({ ...ctx, authn }) }),
     defineModule({
       ...earningsModule,
       routes: earningsRoutes({ ...ctx, authn, policy: earningsPolicy }),

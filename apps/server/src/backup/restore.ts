@@ -7,6 +7,7 @@ import { createUserRepository, loadMigrations, migrate, MIGRATIONS_DIR, type Db 
 import { ProblemError } from '../errors';
 import type { ServerState } from '../state';
 import { decryptStream, recipientOf } from './age';
+import { checkBlobs, extractReceipts } from '../receipts/store';
 import type { SecretsStore } from './secrets';
 import type { BackupService } from './service';
 
@@ -29,6 +30,8 @@ export interface RestoreOptions {
   backup: BackupService;
   secrets: SecretsStore;
   state: ServerState;
+  /** Where receipt files live; the files embedded in the backup are written back here. */
+  receiptsDir?: string;
   /** Scratch space for the decrypted copy; default: next to the database file. */
   workDir?: string;
   /** Test seam: runs inside the swap transaction after the built-in checks; throw to force a revert. */
@@ -133,6 +136,12 @@ export function createRestoreService(o: RestoreOptions) {
       // An older backup is brought to the current schema in this scratch copy, so the live swap
       // below copies identical columns and the original backup file stays untouched.
       migrate(copy, loadMigrations(MIGRATIONS_DIR));
+      copy.close();
+      try {
+        checkBlobs(restored); // each receipt file against its recorded sha256, before anything is touched
+      } catch (e) {
+        throw bad('/file', `The backup's receipts failed verification: ${(e as Error).message}.`);
+      }
       return restored;
     } finally {
       copy.close();
@@ -235,6 +244,11 @@ export function createRestoreService(o: RestoreOptions) {
             'internal_error',
             'The restored data failed verification; nothing was changed.',
           );
+        }
+        if (o.receiptsDir) {
+          const missing = extractReceipts(restored, o.receiptsDir);
+          if (missing.length > 0)
+            o.log?.('restore: receipt files not in the backup', { count: missing.length });
         }
         // A fresh host has no key yet: later backups must be readable with the card the driver holds.
         if (!o.secrets.read()?.age_public_key) o.secrets.write({ age_public_key: recipient });

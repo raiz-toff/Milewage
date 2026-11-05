@@ -226,7 +226,7 @@ describe('double counting with the standard mileage rate', () => {
 
 describe('module off', () => {
   test('without the module there are no routes and the flag is false', async () => {
-    const off = harness({ expenses: false });
+    const off = harness({ expenses: false, receipts: false });
     try {
       const { cookie: c } = await off.signUp();
       expect((await off.call('GET', '/expenses', undefined, { cookie: c })).statusCode).toBe(404);

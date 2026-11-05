@@ -21,6 +21,7 @@ const ALL_OFF: Modules = {
   platforms: false,
   earnings: false,
   expenses: false,
+  receipts: false,
   exporters: [],
 };
 

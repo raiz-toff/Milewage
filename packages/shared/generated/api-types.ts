@@ -817,6 +817,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/expenses/{id}/receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        /** The receipt file, streamed with its stored type. */
+        get: operations["getExpenseReceipt"];
+        /** Upload or replace the one receipt of an expense (JPEG, PNG, WebP or PDF, 10 MB at most). The server removes GPS data from a JPEG and checks the bytes against the declared type. Web session only. */
+        put: operations["putExpenseReceipt"];
+        post?: never;
+        delete: operations["deleteExpenseReceipt"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/exports/{format}": {
         parameters: {
             query?: never;
@@ -1088,6 +1108,8 @@ export interface components {
             earnings: boolean;
             /** @description Expenses module registered (18 section 5). */
             expenses: boolean;
+            /** @description Receipts module registered (18 section 5.4); needs expenses. */
+            receipts: boolean;
             sync: boolean;
             /** @description Reserved for v1.1; false in v1. */
             local_export?: boolean;
@@ -1371,6 +1393,14 @@ export interface components {
                 deductible_cents: number;
                 double_counts_cents: number;
             }[];
+        };
+        Receipt: {
+            expense_id: number;
+            /** @enum {unknown} */
+            mime: "image/jpeg" | "image/png" | "image/webp" | "application/pdf";
+            bytes: number;
+            sha256: string;
+            created_at: components["schemas"]["EpochMs"];
         };
         /** @enum {unknown} */
         ShiftStatus: "active" | "ended" | "finalized";
@@ -3652,6 +3682,95 @@ export interface operations {
             };
             404: components["responses"]["NotFound"];
             422: components["responses"]["Unprocessable"];
+        };
+    };
+    getExpenseReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": string;
+                    "image/png": string;
+                    "image/webp": string;
+                    "application/pdf": string;
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    putExpenseReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "image/jpeg": string;
+                "image/png": string;
+                "image/webp": string;
+                "application/pdf": string;
+            };
+        };
+        responses: {
+            /** @description Replaced. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Receipt"];
+                };
+            };
+            /** @description Stored. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Receipt"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            413: components["responses"]["TooLarge"];
+            422: components["responses"]["Unprocessable"];
+            507: components["responses"]["InsufficientStorage"];
+        };
+    };
+    deleteExpenseReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed (idempotent). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
         };
     };
     exportData: {

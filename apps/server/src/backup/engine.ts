@@ -15,6 +15,7 @@ import { pipeline } from 'node:stream/promises';
 import { createGzip } from 'node:zlib';
 import type { Db } from '../db';
 import type { DiskMonitor } from '../disk';
+import { embedReceipts } from '../receipts/store';
 
 export type BackupTrigger = 'nightly' | 'shift_end' | 'manual' | 'pre_migration' | 'pre_restore';
 
@@ -56,6 +57,8 @@ export interface BackupEngineOptions {
   codec: () => BackupCodec | Promise<BackupCodec>;
   /** A backup is skipped when free space is below twice the database size (10 section 11.3). */
   disk?: DiskMonitor;
+  /** The receipts directory; its files are copied into the backup copy (18 section 5.4). */
+  receiptsDir?: string;
 }
 
 // Tables compared live-vs-copy (10 section 3.1 step 3); telemetry differs by writes during the copy.
@@ -94,6 +97,7 @@ export function createBackupEngine({
   now,
   codec: chooseCodec,
   disk,
+  receiptsDir,
 }: BackupEngineOptions) {
   const tmpDir = join(dir, '.tmp');
   const cleanTemp = () => {
@@ -151,6 +155,7 @@ export function createBackupEngine({
         mkdirSync(targetDir, { recursive: true });
         const start = counts(db);
         await db.backup(tmpDb, { progress: () => PAGES_PER_STEP });
+        if (receiptsDir) embedReceipts(tmpDb, receiptsDir);
         const verified = verifyCopy(tmpDb, start);
 
         const hash = createHash('sha256');
