@@ -31,6 +31,7 @@ export const ALL_ON: Modules = {
   expenses: true,
   receipts: true,
   tax: true,
+  goals: true,
   backup_download: false,
   exporters: ['csv', 'gpx', 'geojson'],
   countries: ['US', 'CA', 'GB'],

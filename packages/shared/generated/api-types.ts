@@ -915,6 +915,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/goals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Goals with their progress for the current period (computed now, never stored). */
+        get: operations["listGoals"];
+        put?: never;
+        /** No goal is created for you; a default target would be an invented number. */
+        post: operations["createGoal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/goals/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteGoal"];
+        options?: never;
+        head?: never;
+        patch: operations["updateGoal"];
+        trace?: never;
+    };
     "/exports/{format}": {
         parameters: {
             query?: never;
@@ -1190,6 +1226,8 @@ export interface components {
             receipts: boolean;
             /** @description Tax module registered (18 section 7). The estimate itself exists only for countries whose pack is verified or switched on. */
             tax: boolean;
+            /** @description Goals module registered (18 section 8.1). */
+            goals: boolean;
             sync: boolean;
             /** @description Reserved for v1.1; false in v1. */
             local_export?: boolean;
@@ -1572,6 +1610,49 @@ export interface components {
             jar: {
                 balance_cents?: number;
                 target_cents?: number | null;
+            };
+        };
+        GoalCreate: {
+            label: string;
+            /** @enum {unknown} */
+            metric: "earnings" | "hours" | "shifts" | "active_distance";
+            /** @enum {unknown} */
+            period: "daily" | "weekly" | "monthly" | "yearly";
+            /** @description Cents, minutes, a count or metres, by metric. */
+            target: number;
+            active?: boolean;
+        };
+        GoalPatch: {
+            label?: string;
+            /** @enum {unknown} */
+            metric?: "earnings" | "hours" | "shifts" | "active_distance";
+            /** @enum {unknown} */
+            period?: "daily" | "weekly" | "monthly" | "yearly";
+            target?: number;
+            active?: boolean;
+        };
+        Goal: {
+            id: number;
+            label: string;
+            /** @enum {unknown} */
+            metric: "earnings" | "hours" | "shifts" | "active_distance";
+            /** @enum {unknown} */
+            period: "daily" | "weekly" | "monthly" | "yearly";
+            target: number;
+            active: boolean;
+            created_at: components["schemas"]["EpochMs"];
+            progress: {
+                /** @description null when it cannot be known (no earnings entered, no stop-based split), never 0. */
+                value: number | null;
+                target: number;
+                ratio: number | null;
+                /** Format: date */
+                period_from: string;
+                /** Format: date */
+                period_to: string;
+                /** @description True for active distance, the stop-based estimate of 14 section 6. */
+                estimated: boolean;
+                note: string | null;
             };
         };
         /** @enum {unknown} */
@@ -4155,6 +4236,100 @@ export interface operations {
                 content?: never;
             };
             404: components["responses"]["NotFound"];
+        };
+    };
+    listGoals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Goal"][];
+                };
+            };
+        };
+    };
+    createGoal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoalCreate"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Goal"];
+                };
+            };
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    deleteGoal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateGoal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoalPatch"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Goal"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     exportData: {

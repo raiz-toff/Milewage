@@ -44,6 +44,7 @@ import { createSync } from './routes/sync';
 import { replayRoutes } from './routes/replay';
 import { createEarningsPolicy, earningsRoutes } from './routes/earnings';
 import { receiptsRoutes } from './routes/receipts';
+import { goalsRoutes } from './routes/goals';
 import { taxRoutes } from './routes/tax';
 import { COMMA_DEFAULTS } from './comma-options';
 import { receiptsDirOf } from './receipts/store';
@@ -83,6 +84,8 @@ export const earningsModule = defineModule({ name: 'earnings', dependsOn: ['core
 export const expensesModule = defineModule({ name: 'expenses', dependsOn: ['core'] });
 /** One receipt photo or PDF per expense, kept on the volume and in every backup (18 section 5.4). */
 export const receiptsModule = defineModule({ name: 'receipts', dependsOn: ['expenses'] });
+/** Income, hours, shifts or active-distance goals with progress at read time (18 section 8.1). */
+export const goalsModule = defineModule({ name: 'goals', dependsOn: ['core'] });
 /** The Tax Center: an estimate, never a filing (18 section 7). CA only until other packs are verified. */
 export const taxModule = defineModule({ name: 'tax', dependsOn: ['core'] });
 /** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */
@@ -108,6 +111,7 @@ export const serverModules = [
   expensesModule,
   receiptsModule,
   taxModule,
+  goalsModule,
   backupModule,
 ] as const;
 
@@ -388,6 +392,10 @@ export function createServerModules(ctx: ServerContext) {
     }),
     defineModule({ ...platformsModule, routes: platformsRoutes({ ...ctx, authn }) }),
     defineModule({ ...expensesModule, routes: expensesRoutes({ ...ctx, authn }) }),
+    defineModule({
+      ...goalsModule,
+      routes: goalsRoutes({ ...ctx, authn, override: ctx.comma?.earningsOverride }),
+    }),
     defineModule({ ...receiptsModule, routes: receiptsRoutes({ ...ctx, authn }) }),
     defineModule({
       ...taxModule,
