@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { Modules } from './api/client';
 import { Backups } from './pages/Backups';
 import { Dashboard } from './pages/Dashboard';
+import { ExpensesPage } from './pages/Expenses';
 import { ExportsPage } from './pages/Exports';
 import { Devices } from './pages/Devices';
 import { SettingsPage } from './pages/SettingsPage';
@@ -27,6 +28,12 @@ export const screens: Screen[] = [
   { path: '/dashboard', label: 'Dashboard', element: <Dashboard /> },
   { path: '/live', label: 'Live map', visible: (m) => m.live, element: <LivePage /> },
   { path: '/shifts/*', label: 'Shifts', element: <ShiftsRoutes /> },
+  {
+    path: '/expenses',
+    label: 'Expenses',
+    visible: (m) => m.expenses,
+    element: <ExpensesPage />,
+  },
   { path: '/vehicles', label: 'Vehicles', element: <VehiclesPage /> },
   { path: '/odometer', label: 'Odometer', element: <OdometerPage /> },
   {
