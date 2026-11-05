@@ -5,7 +5,14 @@ import { renderApp, signedIn } from './support/kit';
 
 afterEach(cleanup);
 
-const car = (over: object = {}) => ({
+interface Row {
+  id: number;
+  name: string;
+  kind: string;
+  created_at: number;
+  archived_at: number | null;
+}
+const car = (over: Partial<Row> = {}): Row => ({
   id: 1,
   name: 'Corolla',
   kind: 'car',
@@ -14,7 +21,7 @@ const car = (over: object = {}) => ({
   ...over,
 });
 
-function server(initial: ReturnType<typeof car>[] = [car()]) {
+function server(initial: Row[] = [car()]) {
   let rows = initial;
   const table = {
     ...signedIn(),
