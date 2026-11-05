@@ -38,6 +38,7 @@ export function createShiftRepository(db: Db) {
         : eq(shifts.clientId, ref.toLowerCase());
       return one(and(visible(userId, since), key));
     },
+    byId: (id: number): ShiftRow | undefined => one(eq(shifts.id, id)),
     byClientId: (userId: number, clientId: string) =>
       one(and(eq(shifts.userId, userId), eq(shifts.clientId, clientId))),
     active: (userId: number) => one(and(eq(shifts.userId, userId), eq(shifts.status, 'active'))),

@@ -12,6 +12,7 @@ import {
 } from '../db';
 import { ProblemError } from '../errors';
 import { localDate } from '../time';
+import type { EventEmit } from '../events';
 import type { ShiftProcessor } from '../processing/shift-processor';
 import { snakeKeys, str, strictObject, type AuthFn, type Principal } from './util';
 
@@ -143,6 +144,7 @@ export function shiftRoutes(
     now,
     auth,
     processor,
+    emit = () => {},
     trackingOn = () => false,
     stopsOn = () => false,
   }: {
@@ -151,6 +153,8 @@ export function shiftRoutes(
     auth: AuthFn;
     /** Runs the engine at shift end; used only while `trackingOn()` (there are no points otherwise). */
     processor?: ShiftProcessor;
+    /** Publishes facts on the event bus (08 section 16.4); the live feed listens. */
+    emit?: EventEmit;
     trackingOn?: () => boolean;
     /** Whether the `stops` module is on; a new shift is only given the stops segmenter then. */
     stopsOn?: () => boolean;
@@ -222,6 +226,7 @@ export function shiftRoutes(
       updatedAt: b.started_at, // the edit clock starts at capture time, so offline edits made later still win
       ...touch(p),
     });
+    emit('shift.started', { shiftId: String(row.id) });
     return reply.status(201).send(view(row));
   });
 
@@ -280,7 +285,9 @@ export function shiftRoutes(
     const set: Partial<ShiftRow> = { updatedAt: b.updated_at ?? now(), ...touch(p) };
     if (b.notes !== undefined) set.notes = b.notes;
     if (b.vehicle_id !== undefined) set.vehicleId = b.vehicle_id;
-    return reply.header('X-MileWage-Applied', 'true').send(view(shifts.update(row.id, set) ?? row));
+    const saved = shifts.update(row.id, set) ?? row;
+    emit('shift.updated', { shiftId: String(row.id) });
+    return reply.header('X-MileWage-Applied', 'true').send(view(saved));
   });
 
   // End: status and time, then (tracking on) the shared engine on the stored points, one transaction.
@@ -322,7 +329,9 @@ export function shiftRoutes(
       reconStatus: b.phone_result ? ('pending' as const) : ('phone_missing' as const),
     };
     if (!processor || !trackingOn()) {
-      return view(shifts.update(row.id, ended) ?? row);
+      const saved = shifts.update(row.id, ended) ?? row;
+      emit('shift.ended', { shiftId: String(row.id) });
+      return view(saved);
     }
     const phone = b.phone_result;
     const outcome = processor.run(
@@ -346,6 +355,8 @@ export function shiftRoutes(
       },
       ended,
     );
+    emit('shift.ended', { shiftId: String(row.id) });
+    if (stopsOn()) emit('stops.derived', { shiftId: String(row.id) });
     const sent = reconView(outcome.shift);
     return { ...view(outcome.shift), ...(sent ? { recon: sent } : {}) };
   });

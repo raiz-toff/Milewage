@@ -25,19 +25,20 @@ test('GET /settings returns the preferences, engine version and diagnostics', as
 });
 
 test('the modules object follows the registry: registered is true, absent is false', async () => {
-  const flagsOf = async (live: boolean) => {
+  const flagsOf = async (capture: boolean) => {
     const modules = [
       ...createServerModules({ db: h.db, now: () => h.clock.t }),
-      defineModule({ name: 'live', dependsOn: ['core'] }),
+      defineModule({ name: 'capture', dependsOn: ['core'] }),
     ];
-    const app = buildApp({ modules, enabled: { core: true, live }, logLevel: 'silent' });
+    const app = buildApp({ modules, enabled: { core: true, capture }, logLevel: 'silent' });
     const res = await app.fastify.inject({ url: '/api/v1/settings', headers: { cookie } });
     await app.fastify.close();
     return res.json().modules;
   };
-  expect((await flagsOf(true)).live).toBe(true);
+  expect((await flagsOf(true)).capture).toBe(true);
   expect(await flagsOf(false)).toMatchObject({
-    live: false,
+    capture: false,
+    live: true,
     tracking: true,
     stops: true,
     backup_download: false,

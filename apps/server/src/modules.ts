@@ -22,6 +22,7 @@ import { devicesRoutes } from './routes/devices';
 import { diagnosticsRoutes } from './routes/diagnostics';
 import { DEFAULT_COUNTRIES, settingsReader } from './routes/settings';
 import { createShiftProcessor } from './processing/shift-processor';
+import { createLive } from './routes/live';
 import { replayRoutes } from './routes/replay';
 import { stopsRoutes } from './routes/stops';
 import { trackingRoutes } from './routes/tracking';
@@ -36,6 +37,8 @@ export const stopsModule = defineModule({
 });
 /** The route for the map and the replay scrubber (08 section 3). */
 export const replayModule = defineModule({ name: 'replay', dependsOn: ['tracking'] });
+/** The WebSocket feed for the web map (08 section 6). */
+export const liveModule = defineModule({ name: 'live', dependsOn: ['core'] });
 export const diagnosticsModule = defineModule({ name: 'diagnostics', dependsOn: ['core'] });
 /** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */
 export const backupModule = defineModule({
@@ -50,6 +53,7 @@ export const serverModules = [
   trackingModule,
   stopsModule,
   replayModule,
+  liveModule,
   diagnosticsModule,
   backupModule,
 ] as const;
@@ -74,6 +78,8 @@ export interface ServerContext extends CoreContext {
   state?: ServerState;
   /** Test seam passed to the restore service (forces a revert). */
   restoreVerify?: (db: ServerContext['db']) => void;
+  /** Ping interval of `GET /live`; 30 s unless a test shortens it. */
+  livePingMs?: number;
   log?: (message: string, fields?: object) => void;
 }
 
@@ -121,6 +127,13 @@ export function createServerModules(ctx: ServerContext) {
     verify: ctx.restoreVerify,
     log: ctx.log,
   });
+  const live = createLive({
+    db: ctx.db,
+    now: ctx.now,
+    authn,
+    pingMs: ctx.livePingMs,
+    stopsOn: () => registry?.isEnabled('stops') ?? false,
+  });
   const uploadDir = join(dirname(ctx.db.name), '.restore-upload');
   // The registry exists only once routes are registered; the processor asks it per call.
   let registry: ModuleRegistry | undefined;
@@ -158,6 +171,12 @@ export function createServerModules(ctx: ServerContext) {
     defineModule({ ...trackingModule, routes: trackingRoutes({ ...ctx, authn }) }),
     defineModule({ ...stopsModule, routes: stopsRoutes({ ...ctx, authn, processor }) }),
     defineModule({ ...replayModule, routes: replayRoutes({ ...ctx, authn }) }),
+    defineModule({
+      ...liveModule,
+      routes: live.routes,
+      subscriptions: live.subscriptions,
+      jobs: live.jobs,
+    }),
     defineModule({
       ...diagnosticsModule,
       routes: diagnosticsRoutes({

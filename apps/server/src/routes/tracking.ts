@@ -53,7 +53,7 @@ export function trackingRoutes({
   authn: Authenticator;
 }) {
   return (host: RouteHost) => {
-    const { app } = host as ServerRouteHost;
+    const { app, bus } = host as ServerRouteHost;
     const shifts = createShiftRepository(db);
     const telemetry = createTelemetryRepository(db);
 
@@ -120,6 +120,13 @@ export function trackingRoutes({
         }
         const inserted = telemetry.insert(rows);
         shifts.update(shift.id, { deviceTouchedAt: t });
+        if (inserted > 0) {
+          bus.emit('telemetry.accepted', {
+            shiftId: String(shift.id),
+            deviceId: String(device.deviceId),
+            count: inserted,
+          });
+        }
         // Only sizes and the outcome are logged, never coordinates (10 section 11.2).
         req.log.info(
           { points: b.points.length, inserted, rejected: rejected.length },

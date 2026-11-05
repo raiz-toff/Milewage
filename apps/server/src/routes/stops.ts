@@ -31,7 +31,7 @@ const labelBody = strictObject(
 );
 
 const labelView = (l: StopLabelRow) => snakeKeys(l, 'userId');
-const stopView = (s: StopRow, label: StopLabelRow | undefined) => ({
+export const stopView = (s: StopRow, label: StopLabelRow | undefined) => ({
   ...snakeKeys(s, 'id', 'userId'),
   label: label ? labelView(label) : null,
 });
@@ -52,7 +52,7 @@ export function stopsRoutes({
   processor: ShiftProcessor;
 }) {
   return (host: RouteHost) => {
-    const { app } = host as ServerRouteHost;
+    const { app, bus } = host as ServerRouteHost;
     const repo = createProcessingRepository(db);
     const settings = createSettingsRepository(db);
     const read = shiftReader(db, now);
@@ -87,6 +87,8 @@ export function stopsRoutes({
     const recompute = (shift: ReturnType<typeof read>) => {
       const flags = (id: number) => repo.flagsOf([id]).get(id);
       const saved = processor.run(shift).shift;
+      bus.emit('shift.updated', { shiftId: String(shift.id) });
+      bus.emit('stops.derived', { shiftId: String(shift.id) });
       return shiftView(saved, flags(saved.id));
     };
 

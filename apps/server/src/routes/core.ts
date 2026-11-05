@@ -96,6 +96,7 @@ export function coreRoutes(
       now,
       auth,
       processor,
+      emit: (host as ServerRouteHost).bus.emit,
       trackingOn: () => registry.isEnabled('tracking'),
       stopsOn: () => registry.isEnabled('stops'),
     });

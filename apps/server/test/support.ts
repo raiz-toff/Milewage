@@ -25,7 +25,7 @@ const site = { host: 'mw.test', origin: 'http://mw.test' };
 /** A server on a throwaway database with an injectable clock. Call `close()` in afterEach. */
 export function harness(
   enabled: Record<string, boolean> = {},
-  extra: Partial<AppOptions> & { restoreVerify?: (db: Db) => void } = {},
+  extra: Partial<AppOptions> & { restoreVerify?: (db: Db) => void; livePingMs?: number } = {},
 ) {
   const dir = mkdtempSync(join(tmpdir(), 'mw-test-'));
   const db = openAndMigrate(join(dir, 'milewage.db'));
@@ -49,6 +49,7 @@ export function harness(
     state,
     disk,
     restoreVerify: extra.restoreVerify,
+    livePingMs: extra.livePingMs,
     db,
     now: () => clock.t,
     diagnosticsPath: join(dir, 'diagnostics.db'),

@@ -21,6 +21,8 @@ export const API_PREFIX = '/api/v1';
 export interface ServerRouteHost extends RouteHost {
   readonly app: FastifyInstance;
   readonly registry: ModuleRegistry;
+  /** The in-process event bus (08 section 16.4); modules emit facts, other modules subscribe. */
+  readonly bus: EventBus;
 }
 
 export interface AppOptions {
@@ -104,6 +106,7 @@ export function buildApp(options: AppOptions): App {
       const host: ServerRouteHost = {
         app: api,
         registry,
+        bus,
         route(method, path, handler) {
           api.route({
             method: method as never,
