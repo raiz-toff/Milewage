@@ -9,6 +9,7 @@ import { useServices } from '../services';
 import type { ActiveShift, ServerShift, Vehicle } from '../shift/controller';
 import { useTheme } from '../theme/theme';
 import { Screen } from './Screen';
+import { HomeSummary } from './HomeSummary';
 import { SyncBanner } from './SyncBanner';
 
 const DIAG_WINDOW_MS = 10 * 60 * 1000;
@@ -285,6 +286,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
           </Text>
         </>
       )}
+      {paired && <HomeSummary refreshKey={shift?.endedAt ?? shift?.clientId} />}
       {paired && <SyncBanner onSettings={() => navigation.navigate('Settings')} />}
       {progress.phase === 'running' && progress.shiftsTotal > 0 && (
         <>

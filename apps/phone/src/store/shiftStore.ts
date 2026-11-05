@@ -288,6 +288,14 @@ export class ShiftStore {
     await this.db.runAsync('UPDATE conflict_log SET seen = 1 WHERE id = ?', id);
   }
 
+  /** Vehicle kinds by server id (the cached `vehicles` table); empty until the first pull. */
+  async vehicleKinds(): Promise<Map<number, string>> {
+    const rows = await this.db.getAllAsync<{ server_id: number; kind: string }>(
+      'SELECT server_id, kind FROM vehicles',
+    );
+    return new Map(rows.map((r) => [r.server_id, r.kind]));
+  }
+
   async setSyncState(clientId: string, state: SyncState): Promise<void> {
     await this.db.runAsync('UPDATE shifts SET sync_state = ? WHERE client_id = ?', state, clientId);
   }
