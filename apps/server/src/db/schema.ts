@@ -24,6 +24,13 @@ export const settings = sqliteTable('settings', {
   diagnosticsVerboseUntil: integer('diagnostics_verbose_until'),
   offsiteLastDownloadAt: integer('offsite_last_download_at'),
   offsiteSyncedElsewhereAt: integer('offsite_synced_elsewhere_at'),
+  displayName: text('display_name'),
+  region: text('region'),
+  weekStart: integer('week_start').notNull().default(1),
+  timeFormat: text('time_format', { enum: ['12h', '24h'] })
+    .notNull()
+    .default('24h'),
+  defaultVehicleId: integer('default_vehicle_id'),
   updatedAt: integer('updated_at').notNull(),
 });
 
@@ -40,7 +47,14 @@ export const vehicles = sqliteTable('vehicles', {
     .notNull()
     .references(() => users.id),
   name: text('name').notNull(),
-  kind: text('kind', { enum: ['car', 'motorcycle', 'van', 'bicycle'] }).notNull(),
+  kind: text('kind', {
+    enum: ['car', 'motorcycle', 'van', 'bicycle', 'ebike', 'scooter', 'walking'],
+  }).notNull(),
+  make: text('make'),
+  model: text('model'),
+  year: integer('year'),
+  plate: text('plate'),
+  power: text('power', { enum: ['gas', 'hybrid', 'ev', 'other'] }),
   createdAt: integer('created_at').notNull(),
   archivedAt: integer('archived_at'),
 });

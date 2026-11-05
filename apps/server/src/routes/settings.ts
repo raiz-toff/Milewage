@@ -1,7 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import type { ModuleRegistry } from '@milewage/shared';
+import { countryPacks } from '@milewage/shared';
 import { algorithmVersion } from '@milewage/track-engine';
-import { createSettingsRepository, type Db, type SettingsRow } from '../db';
+import {
+  createSettingsRepository,
+  createVehicleRepository,
+  type Db,
+  type SettingsRow,
+} from '../db';
 import { ProblemError } from '../errors';
 import type { EventEmit } from '../events';
 import { str, strictObject, type AuthFn } from './util';
@@ -68,11 +74,16 @@ const patchSchema = strictObject(
     raw_retention_days: { type: 'integer', minimum: 7 },
     stops_enabled: { type: 'boolean' },
     diagnostics_level: { enum: ['off', 'basic', 'verbose'] },
+    display_name: { type: ['string', 'null'], maxLength: 64 },
+    region: { type: ['string', 'null'], minLength: 2, maxLength: 3 },
+    week_start: { enum: [0, 1] },
+    time_format: { enum: ['12h', '24h'] },
+    default_vehicle_id: { type: ['integer', 'null'], minimum: 1 },
   },
   [],
   { minProperties: 1 },
 );
-type Patch = Partial<Record<string, string | number | boolean>>;
+type Patch = Partial<Record<string, string | number | boolean | null>>;
 
 type ReaderContext = {
   db: Db;
@@ -110,6 +121,11 @@ export function settingsReader(ctx: ReaderContext) {
       timezone: row.timezone,
       raw_retention_days: row.rawRetentionDays,
       stops_enabled: row.stopsEnabled === 1,
+      display_name: row.displayName,
+      region: row.region,
+      week_start: row.weekStart,
+      time_format: row.timeFormat,
+      default_vehicle_id: row.defaultVehicleId,
       diagnostics: {
         level: expired ? 'basic' : row.diagnosticsLevel,
         verbose_until: verbose && !expired ? row.diagnosticsVerboseUntil : null,
@@ -133,10 +149,48 @@ export function settingsRoutes(
 
   app.patch('/settings', { schema: { body: patchSchema } }, async (req) => {
     const { userId } = ctx.auth(req, 'S');
-    const b = req.body as Patch & { country?: string; currency?: string; timezone?: string };
+    const b = req.body as Patch & {
+      country?: string;
+      currency?: string;
+      timezone?: string;
+      display_name?: string | null;
+      region?: string | null;
+    };
     checkPrefs(b, ctx.countries);
     const now = ctx.now();
     const patch: Partial<SettingsRow> = { updatedAt: now };
+    const prefs = repo.get(userId);
+    const country = (b.country ?? prefs?.country ?? '').toUpperCase();
+    const region = b.region === undefined ? prefs?.region : b.region;
+    if (b.display_name !== undefined) patch.displayName = b.display_name?.trim() || null;
+    if (b.week_start !== undefined) patch.weekStart = Number(b.week_start);
+    if (b.time_format) patch.timeFormat = b.time_format as '12h' | '24h';
+    if (b.region !== undefined || b.country) {
+      // A region belongs to its country: a new country clears a region it does not have.
+      const known = countryPacks.get(country)?.regions;
+      const ok = region == null || (known?.includes(region.toUpperCase()) ?? false);
+      if (!ok && b.region != null) {
+        throw new ProblemError('validation_failed', 'Settings are not valid.', [
+          {
+            path: '/region',
+            message: `must be one of ${known?.join(', ') ?? 'none for this country'}`,
+          },
+        ]);
+      }
+      patch.region = ok && region ? region.toUpperCase() : null;
+    }
+    if (b.default_vehicle_id !== undefined) {
+      const v =
+        b.default_vehicle_id === null
+          ? undefined
+          : createVehicleRepository(ctx.db).find(userId, Number(b.default_vehicle_id));
+      if (b.default_vehicle_id !== null && (!v || v.archivedAt !== null)) {
+        throw new ProblemError('validation_failed', 'Settings are not valid.', [
+          { path: '/default_vehicle_id', message: 'must be one of your active vehicles' },
+        ]);
+      }
+      patch.defaultVehicleId = b.default_vehicle_id === null ? null : Number(b.default_vehicle_id);
+    }
     if (b.country) patch.country = b.country.toUpperCase();
     if (b.currency) patch.currency = b.currency.toUpperCase();
     if (b.timezone) patch.timezone = b.timezone;

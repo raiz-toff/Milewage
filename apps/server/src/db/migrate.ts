@@ -34,6 +34,7 @@ export interface MigrateOptions {
   lockPath?: string;
 }
 
+const REBUILD_MARK = /^-- migrate: foreign_keys=off\s*$/m;
 const key = (m: { module: string; id: string }) => `${m.module}/${m.id}`;
 
 /**
@@ -77,15 +78,25 @@ export function migrate(
     const record = db.prepare(
       'INSERT INTO schema_migrations (module, id, applied_at) VALUES (?, ?, ?)',
     );
+    // A migration that rebuilds a table other tables point at starts with `-- migrate: foreign_keys=off`.
+    // SQLite ignores that PRAGMA inside a transaction, so it is set around the whole run and the
+    // rows are re-checked before the commit.
+    const rebuild = pending.some((m) => REBUILD_MARK.test(m.sql));
+    if (rebuild) db.pragma('foreign_keys = OFF');
     try {
       db.transaction(() => {
         for (const m of pending) {
           db.exec(m.sql);
           record.run(m.module, m.id, Date.now());
         }
+        if (rebuild && (db.pragma('foreign_key_check') as unknown[]).length > 0) {
+          throw new Error('a table rebuild left rows that break a foreign key');
+        }
       })();
     } catch (e) {
       throw new MigrationError(`Migration failed and was rolled back: ${(e as Error).message}`);
+    } finally {
+      if (rebuild) db.pragma('foreign_keys = ON');
     }
     return pending.map(key);
   } finally {

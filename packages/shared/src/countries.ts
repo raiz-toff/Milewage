@@ -2,7 +2,12 @@
 // The deduction is NEVER stored; it is computed at read time from total_m and the pack for the shift's date.
 // Nothing here is a compliance claim: a rate is a published figure, not advice (17 R9).
 
-export type VehicleKind = 'car' | 'motorcycle' | 'van' | 'bicycle';
+export type VehicleKind =
+  'car' | 'motorcycle' | 'van' | 'bicycle' | 'ebike' | 'scooter' | 'walking';
+
+/** Not an automobile: no mileage allowance rate applies (18 section 4.1). */
+export const notAutomobile = (kind: VehicleKind) =>
+  kind === 'bicycle' || kind === 'ebike' || kind === 'scooter' || kind === 'walking';
 
 export interface DeductionInput {
   /** Business metres of the trip, shift or period slice being valued. */
@@ -20,6 +25,8 @@ export interface CountryPack {
   unit: 'km' | 'mi';
   /** First day of the rate period that contains `date` (tiers restart there). */
   periodStart(date: string): string;
+  /** Subdivision codes (without the country) a driver may set as the region. */
+  regions: readonly string[];
   /** Cents, or null when the pack has no published rate for that date or vehicle. */
   deduction(input: DeductionInput): number | null;
   /** Where the figures come from, and what has not been checked by a person. */
@@ -50,10 +57,11 @@ const CA_RATES: Record<string, [number, number]> = {
 export const caPack: CountryPack = {
   code: 'CA',
   unit: 'km',
+  regions: ['AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'],
   periodStart: (d) => `${year(d)}-01-01`,
   deduction(i) {
     const r = CA_RATES[year(i.date)];
-    return r && i.vehicleKind !== 'bicycle' ? whole(tiered(i, KM, 5000 * KM, r[0], r[1])) : null;
+    return r && !notAutomobile(i.vehicleKind) ? whole(tiered(i, KM, 5000 * KM, r[0], r[1])) : null;
   },
   sources: [
     'https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/payroll/benefits-allowances/automobile/automobile-motor-vehicle-allowances.html',
@@ -77,9 +85,14 @@ const US_ERAS: { from: string; centsPerMile: number }[] = [
 export const usPack: CountryPack = {
   code: 'US',
   unit: 'mi',
+  regions: [
+    ...'AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(
+      ' ',
+    ),
+  ],
   periodStart: (d) => `${year(d)}-01-01`,
   deduction(i) {
-    if (i.vehicleKind === 'bicycle') return null;
+    if (notAutomobile(i.vehicleKind)) return null;
     // The last published era ends with its calendar year: a rate is not carried into a year nobody has announced.
     const era = [...US_ERAS].reverse().find((e) => e.from <= i.date && i.date <= US_LAST_DAY);
     return era ? whole((i.totalM / MILE) * era.centsPerMile) : null;
@@ -96,10 +109,11 @@ export const usPack: CountryPack = {
 export const gbPack: CountryPack = {
   code: 'GB',
   unit: 'mi',
+  regions: ['ENG', 'NIR', 'SCT', 'WLS'],
   periodStart: (d) =>
     d >= `${year(d)}-04-06` ? `${year(d)}-04-06` : `${Number(year(d)) - 1}-04-06`,
   deduction(i) {
-    if (i.vehicleKind === 'bicycle') return null;
+    if (notAutomobile(i.vehicleKind)) return null;
     if (i.date < '2024-04-06' || i.date > '2027-04-05') return null;
     if (i.vehicleKind === 'motorcycle') return whole((i.totalM / MILE) * 24);
     // Only the tax years 2024-25 to 2026-27 are registered.

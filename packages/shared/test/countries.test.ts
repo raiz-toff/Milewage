@@ -18,6 +18,16 @@ const d = (
 ) => pack.deduction({ totalM, priorM, date, vehicleKind });
 
 describe('country packs (08 section 16.3)', () => {
+  test('bicycles, e-bikes, scooters and walking are not automobiles in any pack (18 section 4.1)', () => {
+    for (const pack of [caPack, usPack, gbPack]) {
+      for (const kind of ['bicycle', 'ebike', 'scooter', 'walking'] as const) {
+        expect(d(pack, 10_000, '2026-03-01', 0, kind), `${pack.code} ${kind}`).toBeNull();
+      }
+    }
+    expect(d(caPack, 10_000, '2026-03-01', 0, 'van')).toBe(730);
+    expect(caPack.regions).toContain('QC');
+  });
+
   test('US: the rate of the shift date, including the mid-year change of 2026', () => {
     expect(d(usPack, 10_000, '2024-06-01')).toBe(Math.round((10_000 / MILE) * 67));
     expect(d(usPack, 10_000, '2025-06-01')).toBe(435);
@@ -63,6 +73,7 @@ describe('country packs (08 section 16.3)', () => {
       unit: 'km',
       periodStart: (x) => `${x.slice(0, 4)}-01-01`,
       deduction: (i) => i.totalM,
+      regions: [],
       sources: [],
       verified: false,
       notes: [],

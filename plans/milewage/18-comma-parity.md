@@ -653,3 +653,18 @@ Smaller first, each PR at most 400 lines (`17` §5), tests with every PR, server
 4. Opt in to the Year-in-Review image and the three untriggered notifications (weekly digest, maintenance, insurance expiry)?
 5. Tax pack numbers (CPP/CPP2 ceilings and rates, HST rates, deadlines, T4A threshold) must be checked against CRA publications before S6 ships; US and GB tax estimates stay off until their numbers are checked.
 6. Default currency symbol and the weekly-challenge target ($500 in Comma) when the currency is not CAD.
+
+---
+
+## 17. Assumptions Made Without Owner Answers (Comma-modules agent)
+
+The owner has not answered section 16. The modules were built on the defaults written in this document. Each row says where to flip it (a config value or a module flag, never a code change). The same list is in `progress.md`.
+
+| # | Question | Assumption used | How to flip it |
+|---|---|---|---|
+| 1 | `progress` and `schedule` defaults | Both **off** (`defaultEnabled: false`) | `modules.progress` / `modules.schedule` in `config/settings.json`, or `MILEWAGE_MODULE_PROGRESS=1` / `MILEWAGE_MODULE_SCHEDULE=1` |
+| 2 | Full reset | CLI-only; no web button was built | nothing to flip; a future `milewage reset` command |
+| 3 | `shift_earnings` against labels | The typed platform total **replaces** that platform's label sum | `comma.earnings_override` = `"sum"` in `config/settings.json` (or `MILEWAGE_EARNINGS_OVERRIDE=sum`) |
+| 4 | Year-in-Review, weekly digest, maintenance and insurance notices | Not built | would be new work |
+| 5 | Tax pack numbers | **CA only** is on; US and GB return `supported: false`; every CRA figure carries `verified: false` and the UI shows an "unverified rates" notice | `comma.tax_countries` in `config/settings.json` (default `["CA"]`) |
+| 6 | Currency and the weekly challenge target | The challenge target is 50 000 minor units of the settings currency (CAD 500 in Comma) | `comma.challenge_target_cents` |

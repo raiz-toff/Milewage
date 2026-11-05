@@ -182,6 +182,11 @@
         "timezone",
         "raw_retention_days",
         "stops_enabled",
+        "display_name",
+        "region",
+        "week_start",
+        "time_format",
+        "default_vehicle_id",
         "engine_version",
         "diagnostics",
         "modules"
@@ -216,6 +221,42 @@
         "stops_enabled": {
           "type": "boolean",
           "description": "Driver-facing toggle for auto-detected stops, the estimated active/deadhead split and web labelling (decision 1.5b). Default true. Captured per shift at shift start (Shift.segmenter), so changing it never alters an existing shift."
+        },
+        "display_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Greeting and export header."
+        },
+        "region": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Subdivision code without the country (CA: ON, QC ...); validated by the country pack."
+        },
+        "week_start": {
+          "enum": [
+            0,
+            1
+          ],
+          "description": "0 Sunday",
+          "1 Monday. Changes week boundaries": null,
+          "so the phone reads it.": null
+        },
+        "time_format": {
+          "enum": [
+            "12h",
+            "24h"
+          ]
+        },
+        "default_vehicle_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Preselected when a shift starts; always an active vehicle."
         },
         "diagnostics": {
           "$ref": "#/$defs/DiagnosticsSettings"
@@ -260,6 +301,41 @@
             "verbose"
           ],
           "description": "verbose reverts to basic after 7 days (16 section 5)."
+        },
+        "display_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 64
+        },
+        "region": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 2,
+          "maxLength": 3,
+          "description": "A new country clears a region it does not have."
+        },
+        "week_start": {
+          "enum": [
+            0,
+            1
+          ]
+        },
+        "time_format": {
+          "enum": [
+            "12h",
+            "24h"
+          ]
+        },
+        "default_vehicle_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
         }
       }
     },
@@ -318,7 +394,19 @@
         "car",
         "motorcycle",
         "van",
-        "bicycle"
+        "bicycle",
+        "ebike",
+        "scooter",
+        "walking"
+      ],
+      "description": "bicycle, ebike, scooter and walking are not automobiles: no mileage allowance rate applies (18 section 4.1)."
+    },
+    "VehiclePower": {
+      "enum": [
+        "gas",
+        "hybrid",
+        "ev",
+        "other"
       ]
     },
     "VehicleCreate": {
@@ -335,6 +423,46 @@
         },
         "kind": {
           "$ref": "#/$defs/VehicleKind"
+        },
+        "make": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 64
+        },
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 64
+        },
+        "year": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1900,
+          "maximum": 2100
+        },
+        "plate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 16,
+          "description": "The driver's own record; never exported unless the driver ticks it."
+        },
+        "power": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/VehiclePower"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -344,6 +472,11 @@
         "id",
         "name",
         "kind",
+        "make",
+        "model",
+        "year",
+        "plate",
+        "power",
         "created_at",
         "archived_at"
       ],
@@ -356,6 +489,40 @@
         },
         "kind": {
           "$ref": "#/$defs/VehicleKind"
+        },
+        "make": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "year": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "plate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "power": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/VehiclePower"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "created_at": {
           "$ref": "#/$defs/EpochMs"

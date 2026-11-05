@@ -245,7 +245,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Rename or archive/unarchive. Vehicles are never deleted. */
+        /** Rename, edit details, or archive/unarchive. Vehicles are never deleted. Archiving the default vehicle clears the default. */
         patch: operations["updateVehicle"];
         trace?: never;
     };
@@ -892,6 +892,19 @@ export interface components {
             raw_retention_days: number;
             /** @description Driver-facing toggle for auto-detected stops, the estimated active/deadhead split and web labelling (decision 1.5b). Default true. Captured per shift at shift start (Shift.segmenter), so changing it never alters an existing shift. */
             stops_enabled: boolean;
+            /** @description Greeting and export header. */
+            display_name: string | null;
+            /** @description Subdivision code without the country (CA: ON, QC ...); validated by the country pack. */
+            region: string | null;
+            /**
+             * @description 0 Sunday
+             * @enum {unknown}
+             */
+            week_start: 0 | 1;
+            /** @enum {unknown} */
+            time_format: "12h" | "24h";
+            /** @description Preselected when a shift starts; always an active vehicle. */
+            default_vehicle_id: number | null;
             diagnostics: components["schemas"]["DiagnosticsSettings"];
         };
         SettingsPatch: {
@@ -907,6 +920,14 @@ export interface components {
              * @enum {unknown}
              */
             diagnostics_level?: "off" | "basic" | "verbose";
+            display_name?: string | null;
+            /** @description A new country clears a region it does not have. */
+            region?: string | null;
+            /** @enum {unknown} */
+            week_start?: 0 | 1;
+            /** @enum {unknown} */
+            time_format?: "12h" | "24h";
+            default_vehicle_id?: number | null;
         };
         Device: {
             id: number;
@@ -920,16 +941,32 @@ export interface components {
             /** @description Last observed phone-minus-server clock difference; in memory only. */
             clock_skew_ms?: number | null;
         };
+        /**
+         * @description bicycle, ebike, scooter and walking are not automobiles: no mileage allowance rate applies (18 section 4.1).
+         * @enum {unknown}
+         */
+        VehicleKind: "car" | "motorcycle" | "van" | "bicycle" | "ebike" | "scooter" | "walking";
         /** @enum {unknown} */
-        VehicleKind: "car" | "motorcycle" | "van" | "bicycle";
+        VehiclePower: "gas" | "hybrid" | "ev" | "other";
         VehicleCreate: {
             name: string;
             kind: components["schemas"]["VehicleKind"];
+            make?: string | null;
+            model?: string | null;
+            year?: number | null;
+            /** @description The driver's own record; never exported unless the driver ticks it. */
+            plate?: string | null;
+            power?: components["schemas"]["VehiclePower"] | null;
         };
         Vehicle: {
             id: number;
             name: string;
             kind: components["schemas"]["VehicleKind"];
+            make: string | null;
+            model: string | null;
+            year: number | null;
+            plate: string | null;
+            power: components["schemas"]["VehiclePower"] | null;
             created_at: components["schemas"]["EpochMs"];
             archived_at: number | null;
         };
@@ -2041,6 +2078,11 @@ export interface operations {
                     name?: string;
                     kind?: components["schemas"]["VehicleKind"];
                     archived?: boolean;
+                    make?: string | null;
+                    model?: string | null;
+                    year?: number | null;
+                    plate?: string | null;
+                    power?: components["schemas"]["VehiclePower"] | null;
                 };
             };
         };
