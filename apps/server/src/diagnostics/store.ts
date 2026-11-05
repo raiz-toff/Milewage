@@ -7,6 +7,33 @@ import { loadMigrations, migrate, type Db } from '../db';
 const MIGRATIONS_DIR = fileURLToPath(new URL('./diagnostics-migrations', import.meta.url));
 const DAY = 24 * 60 * 60 * 1000;
 
+export interface EventFilter {
+  fromAt?: number;
+  toAt?: number;
+  kinds?: readonly string[];
+  src?: string;
+  deviceId?: number;
+  shift?: string;
+  level?: string;
+  /** Keyset position of the last row of the previous page. */
+  after?: { at: number; id: number };
+  limit: number;
+}
+export interface EventRow {
+  id: number;
+  src: string;
+  deviceId: number | null;
+  seq: number | null;
+  at: number;
+  receivedAt: number;
+  level: 'basic' | 'verbose';
+  kind: string;
+  shift: string | null;
+  cap: number | null;
+  v: string | null;
+  data: Record<string, unknown>;
+}
+
 export interface StoredEvent {
   userId: number;
   deviceId: number | null;
@@ -19,6 +46,8 @@ export interface DiagnosticsStore {
   /** Inserts one event; returns false for a duplicate `(device, src, seq)`. */
   insert(e: StoredEvent): boolean;
   count(): number;
+  /** Newest first by (at, id); returns up to `limit + 1` rows so the caller can tell whether more exist. */
+  list(userId: number, f: EventFilter): EventRow[];
   /** Events written since the store was opened (for `diag.self.writes_per_h`). */
   written(): number;
   /** Deletes events past `expires_at`, in transactions of at most `batch` rows; returns how many. */
@@ -166,6 +195,38 @@ export function openDiagnosticsStore(
       }).changes === 1
     ),
     count: () => db.prepare('SELECT count(*) FROM diag_events').pluck().get() as number,
+    list(userId, f) {
+      const where = ['user_id = @userId'];
+      const args: Record<string, unknown> = { userId, limit: f.limit + 1 };
+      const add = (sql: string, key: string, value: unknown) => {
+        if (value === undefined) return;
+        where.push(sql);
+        args[key] = value;
+      };
+      add('at >= @fromAt', 'fromAt', f.fromAt);
+      add('at <= @toAt', 'toAt', f.toAt);
+      add('src = @src', 'src', f.src);
+      add('device_id = @deviceId', 'deviceId', f.deviceId);
+      add('shift_client_id = @shift', 'shift', f.shift);
+      add('level = @level', 'level', f.level);
+      if (f.kinds && f.kinds.length > 0) {
+        where.push(`kind IN (${f.kinds.map((_, i) => `@k${i}`).join(', ')})`);
+        f.kinds.forEach((k, i) => (args[`k${i}`] = k));
+      }
+      if (f.after) {
+        where.push('(at < @afterAt OR (at = @afterAt AND id < @afterId))');
+        args.afterAt = f.after.at;
+        args.afterId = f.after.id;
+      }
+      const rows = db
+        .prepare(
+          `SELECT id, src, device_id AS deviceId, seq, at, received_at AS receivedAt, level, kind,
+                  shift_client_id AS shift, capture_id AS cap, app_v AS v, data
+             FROM diag_events WHERE ${where.join(' AND ')} ORDER BY at DESC, id DESC LIMIT @limit`,
+        )
+        .all(args) as (Omit<EventRow, 'data'> & { data: string })[];
+      return rows.map((r) => ({ ...r, data: JSON.parse(r.data) as Record<string, unknown> }));
+    },
     bytes: () => [path, `${path}-wal`].reduce((n, f) => n + fileSize(f), 0),
     close: () => void db.close(),
   };

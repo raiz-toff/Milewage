@@ -5,12 +5,28 @@ import type { Authenticator } from '../auth/authenticator';
 import { createSettingsRepository, type Db } from '../db';
 import type { DiskState } from '../disk';
 import type { DiagnosticsStore } from '../diagnostics/store';
+import { ProblemError } from '../errors';
 import { strictObject } from './util';
 
 // Each event is validated on its own, so a bad one is listed in `rejected` and never fails the batch.
 const ingestBody = strictObject(
   { events: { type: 'array', minItems: 1, maxItems: 200, items: {} } },
   ['events'],
+);
+
+const listQuery = strictObject(
+  {
+    from_at: { type: 'integer', minimum: 0 },
+    to_at: { type: 'integer', minimum: 0 },
+    kind: { type: 'array', items: { type: 'string', maxLength: 40 }, maxItems: 20 },
+    src: { enum: ['phone_native', 'phone_js', 'server', 'web'] },
+    device_id: { type: 'integer', minimum: 1 },
+    shift: { type: 'string', format: 'uuid' },
+    level: { enum: ['basic', 'verbose'] },
+    limit: { type: 'integer', minimum: 1, maximum: 200 },
+    cursor: { type: 'string', minLength: 1, maxLength: 200 },
+  },
+  [],
 );
 
 type Reason = 'unknown_kind' | 'schema' | 'pattern' | 'level' | 'scope' | 'seq_required';
@@ -44,6 +60,67 @@ export function diagnosticsRoutes({
   return (host: RouteHost) => {
     const { app } = host as ServerRouteHost;
     const settings = createSettingsRepository(db);
+
+    app.get('/diagnostics/events', { schema: { querystring: listQuery } }, async (req) => {
+      const p = authn.authenticate(req, 'S');
+      const q = req.query as {
+        from_at?: number;
+        to_at?: number;
+        kind?: string[];
+        src?: string;
+        device_id?: number;
+        shift?: string;
+        level?: string;
+        limit?: number;
+        cursor?: string;
+      };
+      let after: { at: number; id: number } | undefined;
+      if (q.cursor) {
+        try {
+          const [at, id] = JSON.parse(Buffer.from(q.cursor, 'base64url').toString()) as number[];
+          if (!Number.isInteger(at) || !Number.isInteger(id)) throw new Error('shape');
+          after = { at: at!, id: id! };
+        } catch {
+          throw new ProblemError('validation_failed', 'The request is not valid.', [
+            { path: '/cursor', message: 'is not a cursor from this server' },
+          ]);
+        }
+      }
+      const limit = q.limit ?? 50;
+      const rows = store().list(p.userId, {
+        fromAt: q.from_at,
+        toAt: q.to_at,
+        kinds: q.kind,
+        src: q.src,
+        deviceId: q.device_id,
+        shift: q.shift?.toLowerCase(),
+        level: q.level,
+        after,
+        limit,
+      });
+      const page = rows.slice(0, limit);
+      const last = page.at(-1);
+      return {
+        items: page.map((r) => ({
+          id: r.id,
+          src: r.src,
+          device_id: r.deviceId,
+          seq: r.seq,
+          at: r.at,
+          received_at: r.receivedAt,
+          level: r.level,
+          kind: r.kind,
+          shift: r.shift,
+          cap: r.cap,
+          v: r.v,
+          data: r.data,
+        })),
+        next_cursor:
+          rows.length > limit && last
+            ? Buffer.from(JSON.stringify([last.at, last.id])).toString('base64url')
+            : null,
+      };
+    });
 
     app.post(
       '/diagnostics/events',
