@@ -34,6 +34,7 @@ tags:
   - { name: receipts }
   - { name: tax }
   - { name: goals }
+  - { name: analytics }
   - { name: system }
 
 x-modules:
@@ -122,6 +123,11 @@ x-modules:
     default: true
     dependsOn: [core]
     operations: [listGoals, createGoal, updateGoal, deleteGoal]
+  analytics:
+    toggle: modules.analytics
+    default: true
+    dependsOn: [core]
+    operations: [getAnalytics]
 
 paths:
   /healthz:
@@ -1474,6 +1480,34 @@ paths:
         '204': { description: Deleted. }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /analytics:
+    get:
+      tags: [analytics]
+      operationId: getAnalytics
+      summary: One group of period figures. Unknown is null, never 0. The platform filter applies to earnings only.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/From' }
+        - { $ref: '#/components/parameters/To' }
+        - { name: group, in: query, schema: { enum: [trends, rhythm, sources, outlook, efficiency, order_economics, cards], default: cards } }
+        - { name: bucket, in: query, schema: { enum: [day, week, month], default: day }, description: trends only. }
+        - { name: platform, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: The group. The shape of data depends on the group (see 18 section 10.1).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [from, to, group, data]
+                properties:
+                  from: { type: string, format: date }
+                  to: { type: string, format: date }
+                  group: { enum: [trends, rhythm, sources, outlook, efficiency, order_economics, cards] }
+                  platform_filter: { const: earnings_only }
+                  data: { type: [object, array, 'null'] }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
   /exports/{format}:
     get:
       tags: [exports]
@@ -1876,7 +1910,7 @@ components:
     Modules:
       type: object
       description: Read-only module flags so clients can hide screens and buttons of absent modules.
-      required: [goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
+      required: [analytics, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
       properties:
         platforms: { type: boolean, description: 'Platforms module registered (18 section 4.2).' }
         earnings: { type: boolean, description: 'Earnings module registered (18 section 4.3): the driver can type a total per shift and platform.' }
@@ -1884,6 +1918,7 @@ components:
         receipts: { type: boolean, description: 'Receipts module registered (18 section 5.4); needs expenses.' }
         tax: { type: boolean, description: 'Tax module registered (18 section 7). The estimate itself exists only for countries whose pack is verified or switched on.' }
         goals: { type: boolean, description: 'Goals module registered (18 section 8.1).' }
+        analytics: { type: boolean, description: 'Analytics module registered (18 section 10.1).' }
         sync: { type: boolean }
         local_export: { type: boolean, description: Reserved for v1.1; false in v1. }
         devices: { type: boolean }

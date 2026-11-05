@@ -105,6 +105,7 @@
       "type": "object",
       "description": "Read-only module flags so clients can hide screens and buttons of absent modules.",
       "required": [
+        "analytics",
         "goals",
         "tax",
         "receipts",
@@ -147,6 +148,10 @@
         "goals": {
           "type": "boolean",
           "description": "Goals module registered (18 section 8.1)."
+        },
+        "analytics": {
+          "type": "boolean",
+          "description": "Analytics module registered (18 section 10.1)."
         },
         "sync": {
           "type": "boolean"

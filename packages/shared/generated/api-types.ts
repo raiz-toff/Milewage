@@ -951,6 +951,23 @@ export interface paths {
         patch: operations["updateGoal"];
         trace?: never;
     };
+    "/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One group of period figures. Unknown is null, never 0. The platform filter applies to earnings only. */
+        get: operations["getAnalytics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/exports/{format}": {
         parameters: {
             query?: never;
@@ -1228,6 +1245,8 @@ export interface components {
             tax: boolean;
             /** @description Goals module registered (18 section 8.1). */
             goals: boolean;
+            /** @description Analytics module registered (18 section 10.1). */
+            analytics: boolean;
             sync: boolean;
             /** @description Reserved for v1.1; false in v1. */
             local_export?: boolean;
@@ -4329,6 +4348,45 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    getAnalytics: {
+        parameters: {
+            query?: {
+                /** @description Local date YYYY-MM-DD in the instance timezone, inclusive. */
+                from?: components["parameters"]["From"];
+                to?: components["parameters"]["To"];
+                group?: "trends" | "rhythm" | "sources" | "outlook" | "efficiency" | "order_economics" | "cards";
+                /** @description trends only. */
+                bucket?: "day" | "week" | "month";
+                platform?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The group. The shape of data depends on the group (see 18 section 10.1). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: date */
+                        from: string;
+                        /** Format: date */
+                        to: string;
+                        /** @enum {unknown} */
+                        group: "trends" | "rhythm" | "sources" | "outlook" | "efficiency" | "order_economics" | "cards";
+                        /** @constant */
+                        platform_filter?: "earnings_only";
+                        data: Record<string, never> | unknown[] | null;
+                    };
+                };
+            };
             422: components["responses"]["Unprocessable"];
         };
     };
