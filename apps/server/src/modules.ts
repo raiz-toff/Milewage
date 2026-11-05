@@ -47,6 +47,7 @@ import { receiptsRoutes } from './routes/receipts';
 import { analyticsRoutes } from './routes/analytics';
 import { goalsRoutes } from './routes/goals';
 import { notificationsRoutes } from './routes/notifications';
+import { scheduleRoutes } from './routes/schedule';
 import { notify } from './notifications';
 import { localDate } from './time';
 import { importsRoutes } from './routes/imports';
@@ -100,6 +101,12 @@ export const maintenanceModule = defineModule({ name: 'maintenance', dependsOn: 
 export const importModule = defineModule({ name: 'import', dependsOn: ['core'] });
 /** The in-app inbox and its toggles; the phone fires its own local reminders (18 section 11). */
 export const notificationsModule = defineModule({ name: 'notifications', dependsOn: ['core'] });
+/** Planned shifts, repeating templates and off days; **off by default** (18 section 9, 16 item 1). */
+export const scheduleModule = defineModule({
+  name: 'schedule',
+  dependsOn: ['core'],
+  defaultEnabled: false,
+});
 /** The Tax Center: an estimate, never a filing (18 section 7). CA only until other packs are verified. */
 export const taxModule = defineModule({ name: 'tax', dependsOn: ['core'] });
 /** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */
@@ -130,6 +137,7 @@ export const serverModules = [
   maintenanceModule,
   importModule,
   notificationsModule,
+  scheduleModule,
   backupModule,
 ] as const;
 
@@ -446,6 +454,7 @@ export function createServerModules(ctx: ServerContext) {
         },
       },
     }),
+    defineModule({ ...scheduleModule, routes: scheduleRoutes({ ...ctx, authn }) }),
     defineModule({ ...importModule, routes: importsRoutes({ ...ctx, authn }) }),
     defineModule({ ...receiptsModule, routes: receiptsRoutes({ ...ctx, authn }) }),
     defineModule({

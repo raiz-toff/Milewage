@@ -38,6 +38,7 @@ tags:
   - { name: maintenance }
   - { name: import }
   - { name: notifications }
+  - { name: schedule }
   - { name: system }
 
 x-modules:
@@ -146,6 +147,11 @@ x-modules:
     default: true
     dependsOn: [core]
     operations: [listNotifications, markNotificationRead, dismissNotification, getNotificationPrefs, updateNotificationPrefs]
+  schedule:
+    toggle: modules.schedule
+    default: false
+    dependsOn: [core]
+    operations: [listSchedule, createScheduleEntry, updateScheduleEntry, deleteScheduleEntry, createScheduleTemplate, updateScheduleTemplate, deleteScheduleTemplate, expandSchedule, putOffDay, deleteOffDay]
 
 paths:
   /healthz:
@@ -1705,6 +1711,165 @@ paths:
         '204': { description: Dismissed. }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /schedule:
+    get:
+      tags: [schedule]
+      operationId: listSchedule
+      summary: Planned shifts, off days and templates for a window of at most a year. A planned day with a worked shift is linked to it by date.
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Schedule' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /schedule/entries:
+    post:
+      tags: [schedule]
+      operationId: createScheduleEntry
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ScheduleEntryInput' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleEntry' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /schedule/entries/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [schedule]
+      operationId: updateScheduleEntry
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ScheduleEntryInput' }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleEntry' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    delete:
+      tags: [schedule]
+      operationId: deleteScheduleEntry
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Deleted. }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /schedule/templates:
+    post:
+      tags: [schedule]
+      operationId: createScheduleTemplate
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ScheduleTemplateInput' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleTemplate' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /schedule/templates/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [schedule]
+      operationId: updateScheduleTemplate
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ScheduleTemplateInput' }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleTemplate' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    delete:
+      tags: [schedule]
+      operationId: deleteScheduleTemplate
+      summary: Delete the template; the entries it made stay, unlinked.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Deleted. }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /schedule/expand:
+    post:
+      tags: [schedule]
+      operationId: expandSchedule
+      summary: Create entries from the active templates for from..to, skipping off days and entries that exist. Never run by a job.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [from, to]
+              additionalProperties: false
+              properties:
+                from: { type: string, format: date }
+                to: { type: string, format: date }
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema: { type: object, properties: { created: { type: integer } } }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /schedule/off-days/{date}:
+    parameters:
+      - { name: date, in: path, required: true, schema: { type: string, format: date } }
+    put:
+      tags: [schedule]
+      operationId: putOffDay
+      summary: Mark a non-delivery day (idempotent). Body may be empty object or carry a note.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                note: { type: [string, 'null'], maxLength: 200 }
+      responses:
+        '200':
+          description: The off day.
+          content:
+            application/json:
+              schema: { type: object, properties: { off_on: { type: string }, note: { type: [string, 'null'] } } }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    delete:
+      tags: [schedule]
+      operationId: deleteOffDay
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Removed (idempotent). }
+
   /exports/{format}:
     get:
       tags: [exports]
@@ -2107,7 +2272,7 @@ components:
     Modules:
       type: object
       description: Read-only module flags so clients can hide screens and buttons of absent modules.
-      required: [notifications, import, maintenance, analytics, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
+      required: [schedule, notifications, import, maintenance, analytics, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
       properties:
         platforms: { type: boolean, description: 'Platforms module registered (18 section 4.2).' }
         earnings: { type: boolean, description: 'Earnings module registered (18 section 4.3): the driver can type a total per shift and platform.' }
@@ -2119,6 +2284,7 @@ components:
         maintenance: { type: boolean, description: 'Maintenance module registered (18 section 6).' }
         import: { type: boolean, description: 'Import module registered (18 section 12). The expenses kind also needs the expenses module.' }
         notifications: { type: boolean, description: 'Notifications module registered (18 section 11): the in-app inbox.' }
+        schedule: { type: boolean, description: 'Schedule module registered (18 section 9); off by default.' }
         sync: { type: boolean }
         local_export: { type: boolean, description: Reserved for v1.1; false in v1. }
         devices: { type: boolean }
@@ -2629,6 +2795,62 @@ components:
         streak: { type: boolean }
         backup: { type: boolean }
         sync_reminder: { type: boolean }
+
+    ScheduleEntryInput:
+      type: object
+      additionalProperties: false
+      description: planned_on, start_time and end_time are required on create.
+      properties:
+        planned_on: { type: string, format: date }
+        start_time: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        end_time: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        platform: { type: [string, 'null'] }
+        vehicle_id: { type: [integer, 'null'] }
+        remind: { type: boolean }
+    ScheduleEntry:
+      type: object
+      required: [id, planned_on, start_time, end_time, platform, vehicle_id, template_id, shift_id, remind]
+      properties:
+        id: { type: integer }
+        planned_on: { type: string, format: date }
+        start_time: { type: string }
+        end_time: { type: string }
+        platform: { type: [string, 'null'] }
+        vehicle_id: { type: [integer, 'null'] }
+        template_id: { type: [integer, 'null'] }
+        shift_id: { type: [integer, 'null'], description: Set when the driver worked that day (matched by date). }
+        remind: { type: boolean }
+    ScheduleTemplateInput:
+      type: object
+      additionalProperties: false
+      description: label, weekdays, start_time and end_time are required on create.
+      properties:
+        label: { type: string, minLength: 1, maxLength: 60 }
+        weekdays: { type: integer, minimum: 1, maximum: 127, description: 'Bit 0 Monday ... bit 6 Sunday.' }
+        start_time: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        end_time: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        platform: { type: [string, 'null'] }
+        vehicle_id: { type: [integer, 'null'] }
+        active: { type: boolean }
+    ScheduleTemplate:
+      type: object
+      required: [id, label, weekdays, start_time, end_time, platform, vehicle_id, active]
+      properties:
+        id: { type: integer }
+        label: { type: string }
+        weekdays: { type: integer }
+        start_time: { type: string }
+        end_time: { type: string }
+        platform: { type: [string, 'null'] }
+        vehicle_id: { type: [integer, 'null'] }
+        active: { type: boolean }
+    Schedule:
+      type: object
+      required: [entries, off_days, templates]
+      properties:
+        entries: { type: array, items: { $ref: '#/components/schemas/ScheduleEntry' } }
+        off_days: { type: array, items: { type: object, properties: { off_on: { type: string }, note: { type: [string, 'null'] } } } }
+        templates: { type: array, items: { $ref: '#/components/schemas/ScheduleTemplate' } }
 
     ShiftStatus: { enum: [active, ended, finalized] }
     ShiftStart:
