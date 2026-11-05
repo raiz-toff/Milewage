@@ -4,6 +4,15 @@ export interface EventMap {
   'shift.ended': { shiftId: string };
   'shift.updated': { shiftId: string; flags?: string[] };
   'shift.finalized': { shiftId: string };
+  /** A shift and everything under it was purged (web only); the keys let the pull path write tombstones. */
+  'shift.deleted': {
+    shiftId: string;
+    userId: string;
+    clientId: string;
+    tripKeys: string[];
+    overrideKeys: string[];
+    odometerIds: string[];
+  };
   'stops.derived': { shiftId: string };
   'stop_label.updated': { shiftId: string; stopId: string };
   'trip.updated': { shiftId: string; tripId: string; tripKey?: string; deleted?: boolean };

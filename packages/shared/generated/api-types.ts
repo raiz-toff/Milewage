@@ -313,7 +313,7 @@ export interface paths {
         get: operations["getShift"];
         put?: never;
         post?: never;
-        /** Permanently delete a shift and everything under it (web only). */
+        /** Permanently delete a shift and everything under it (web only). An active shift is 409 shift_not_ended; a shift under 7 years old without confirm_recent=true is 422. */
         delete: operations["purgeShift"];
         options?: never;
         head?: never;
@@ -2260,6 +2260,7 @@ export interface operations {
             };
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     updateShift: {

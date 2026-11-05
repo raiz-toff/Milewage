@@ -76,6 +76,15 @@ export function createSync({ db, now, authn, readSettings }: SyncOptions) {
       const shift = shifts.byId(Number(p.shiftId));
       if (shift) log.record(shift.userId, 'trip', p.tripKey, 'delete', now());
     },
+    'shift.deleted'(p) {
+      // The rows are gone: tombstones for the shift and for everything the phone may hold under it.
+      const userId = Number(p.userId);
+      const t = now();
+      log.record(userId, 'shift', p.clientId, 'delete', t);
+      for (const key of p.tripKeys) log.record(userId, 'trip', key, 'delete', t);
+      for (const key of p.overrideKeys) log.record(userId, 'override', key, 'delete', t);
+      for (const id of p.odometerIds) log.record(userId, 'odometer', id, 'delete', t);
+    },
     'shift.started': (p) => logShift(p.shiftId),
     'shift.ended': (p) => logShift(p.shiftId),
     'shift.updated': (p) => logShift(p.shiftId),
@@ -170,7 +179,10 @@ export function createSync({ db, now, authn, readSettings }: SyncOptions) {
       const since = p.kind === 'device' ? now() - 14 * DAY : undefined;
       const visible = (row: ChangeRow) => {
         const client = since === undefined ? undefined : shiftOf(p.userId, row);
-        return client === undefined || shifts.byRef(p.userId, client, since) !== undefined;
+        if (client === undefined || shifts.byRef(p.userId, client, since) !== undefined)
+          return true;
+        // A purged shift is gone from the table: its tombstones must still reach the phone.
+        return row.op === 'delete' && shifts.byClientId(p.userId, client) === undefined;
       };
       const kept: ChangeRow[] = [];
       let cursor = after;

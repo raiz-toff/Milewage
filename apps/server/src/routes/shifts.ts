@@ -300,6 +300,40 @@ export function shiftRoutes(
     return reply.header('X-MileWage-Applied', 'true').send(view(saved));
   });
 
+  const purgeQuery = strictObject({ confirm_recent: { type: 'boolean' } }, []);
+  app.delete(
+    '/shifts/:ref',
+    { schema: { params: refParams, querystring: purgeQuery } },
+    async (req, reply) => {
+      const p = auth(req, 'S');
+      const row = load(p, refOf(req), false);
+      if (row.status === 'active')
+        throw new ProblemError('shift_not_ended', 'End the shift before deleting it.');
+      // The retention rules keep evidence for 7 years, so a younger shift needs a deliberate yes (07 section 4.2).
+      const evidence = new Date(now());
+      evidence.setUTCFullYear(evidence.getUTCFullYear() - 7);
+      if (
+        row.startedAt > evidence.getTime() &&
+        (req.query as { confirm_recent?: boolean }).confirm_recent !== true
+      ) {
+        throw invalid('/confirm_recent', 'is required (true) to delete a shift under 7 years old');
+      }
+      const tripKeys = processing.tripsOf(row.id).map((t) => t.tripKey);
+      const overrideKeys = processing.overridesOf(row.id).map((o) => o.tripKey);
+      const odometerIds = odometer.idsOfShift(row.id).map(String);
+      shifts.purge(row.id);
+      emit('shift.deleted', {
+        shiftId: String(row.id),
+        userId: String(p.userId),
+        clientId: row.clientId,
+        tripKeys,
+        overrideKeys,
+        odometerIds,
+      });
+      return reply.status(204).send();
+    },
+  );
+
   // End: status and time, then (tracking on) the shared engine on the stored points, one transaction.
   app.post('/shifts/:ref/end', { schema: { params: refParams, body: end } }, async (req) => {
     const p = auth(req, 'SD');

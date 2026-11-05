@@ -44,6 +44,16 @@ export function createShiftRepository(db: Db) {
     active: (userId: number) => one(and(eq(shifts.userId, userId), eq(shifts.status, 'active'))),
     insert: (row: typeof shifts.$inferInsert): ShiftRow =>
       orm.insert(shifts).values(row).returning().get(),
+    /** Deletes the shift; its points, trips, stops, labels, overrides, flags and readings go with it (ON DELETE CASCADE). */
+    purge(id: number) {
+      orm.transaction((tx) => {
+        tx.update(shifts)
+          .set({ overlapsShiftId: null })
+          .where(eq(shifts.overlapsShiftId, id))
+          .run();
+        tx.delete(shifts).where(eq(shifts.id, id)).run();
+      });
+    },
     update: (id: number, set: Partial<ShiftRow>): ShiftRow | undefined =>
       orm.update(shifts).set(set).where(eq(shifts.id, id)).returning().get(),
     /** Newest first, by (started_at, id). Returns up to `limit + 1` rows so the caller can tell if more exist. */
@@ -84,6 +94,13 @@ export function createOdometerRepository(db: Db) {
       .get();
   return {
     find,
+    idsOfShift: (shiftId: number): number[] =>
+      orm
+        .select({ id: odometerReadings.id })
+        .from(odometerReadings)
+        .where(eq(odometerReadings.shiftId, shiftId))
+        .all()
+        .map((r) => r.id),
     byId: (userId: number, id: number): OdometerRow | undefined =>
       orm
         .select()

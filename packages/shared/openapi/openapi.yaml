@@ -567,7 +567,7 @@ paths:
     delete:
       tags: [shifts]
       operationId: purgeShift
-      summary: Permanently delete a shift and everything under it (web only).
+      summary: Permanently delete a shift and everything under it (web only). An active shift is 409 shift_not_ended; a shift under 7 years old without confirm_recent=true is 422.
       security: [{ sessionCookie: [] }]
       parameters:
         - name: confirm_recent
@@ -578,6 +578,7 @@ paths:
         '204': { description: Deleted. }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
   /shifts/{ref}/end:
     post:
       tags: [shifts]
