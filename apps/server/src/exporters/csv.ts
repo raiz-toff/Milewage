@@ -1,4 +1,5 @@
 import { localDate } from '../time';
+import { createOdometerChecks } from './odometer';
 import type { ExportContext, Exporter } from './registry';
 
 const CRLF = '\r\n';
@@ -93,7 +94,12 @@ function* shiftLevel(c: ExportContext) {
     'Deduction_Value',
     'Split_Estimated',
     'Notes',
+    `Odometer_Start_${u}`,
+    `Odometer_End_${u}`,
+    'Odometer_Check',
+    'Year_Odometer_Check',
   ]);
+  const odometer = createOdometerChecks(c.db, c.userId, c.timeZone);
   for (const s of c.shifts) {
     const trips = c.readers.trips(s.id);
     const labels = c.stopsOn ? c.readers.labels(s.id) : [];
@@ -103,6 +109,7 @@ function* shiftLevel(c: ExportContext) {
     const first = trips[0];
     const last = trips.at(-1);
     const dv = c.readers.deduction(s);
+    const odo = odometer.shift(s);
     yield row([
       s.localDate,
       s.id,
@@ -121,6 +128,10 @@ function* shiftLevel(c: ExportContext) {
       dv === null ? '' : money(dv),
       s.segmenter === 'stops' ? 'yes' : 'no',
       s.notes,
+      odo.startM === null ? '' : distance(odo.startM, c.unit),
+      odo.endM === null ? '' : distance(odo.endM, c.unit),
+      odo.check,
+      odometer.year(s),
     ]);
   }
 }
