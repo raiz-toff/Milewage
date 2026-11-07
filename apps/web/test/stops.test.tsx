@@ -198,7 +198,7 @@ describe('stops module off', () => {
   it('has no stops section and asks the server for no stops', async () => {
     const { calls } = open([stop(1)], {}, settingsFixture({ modules: { stops: false } }));
     await screen.findByRole('heading', { name: /Nov 14, 2023/ });
-    await screen.findByRole('region', { name: 'Trips' });
+    await screen.findByRole('region', { name: 'Timeline' });
     expect(screen.queryByRole('region', { name: 'Stops' })).toBeNull();
     expect(screen.queryByText(/Stacked orders/)).toBeNull();
     expect(calls.some((c) => c.path.endsWith('/stops'))).toBe(false);

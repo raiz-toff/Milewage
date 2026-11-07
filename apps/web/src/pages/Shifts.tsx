@@ -19,14 +19,18 @@ import { ShiftEarnings } from './ShiftEarnings';
 import { ShiftChecks, ShiftFigures, useVehicleName } from './ShiftFacts';
 import type { EarnedSummary } from './ShiftFacts';
 import { ShiftOdometer } from './ShiftOdometer';
+import { ShiftTimeline } from './ShiftTimeline';
+import type { Picked } from './ShiftTimeline';
 import { StopsPanel } from './Stops';
-import { TripsTable } from './Trips';
+import { useShiftTrips } from './Trips';
 
 type Shift = Schemas['Shift'];
 
 /** The split is shown only while stops are on and only for a shift that was segmented by stops. */
 export const showsSplit = (s: Shift, settings: Settings) =>
   settings.modules.stops && s.segmenter === 'stops';
+
+const count = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** An estimate always carries its marker (05 section 3.1a). Totals never do. */
 export function Est() {
@@ -408,6 +412,8 @@ export function ShiftDetail() {
   const [saved, setSaved] = useState(false);
   const [earned, setEarned] = useState<EarnedSummary | null>(null);
   const vehicle = useVehicleName(shift?.vehicle_id ?? 0);
+  const [picked, setPicked] = useState<Picked>(null);
+  const { trips, error: tripsError } = useShiftTrips(shift?.id ?? 0, shift?.calculated_at ?? 0);
 
   useEffect(() => {
     let live = true;
@@ -496,10 +502,42 @@ export function ShiftDetail() {
         ) : null}
       </div>
 
-      {settings.modules.replay ? <RouteView shiftId={shift.id} /> : null}
-      <Section label="Trips" title="Trips">
-        <TripsTable shift={shift} split={split} reloadKey={shift.calculated_at ?? 0} />
-      </Section>
+      <div className="grid items-start gap-6 @3xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="min-w-0">
+          {settings.modules.replay ? (
+            <RouteView shiftId={shift.id} />
+          ) : (
+            <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+              The route map is off on this server, so the shift is shown as a list only.
+            </p>
+          )}
+        </div>
+        <Section
+          label="Timeline"
+          title="Timeline"
+          description={trips ? count(trips.length, 'trip') : undefined}
+        >
+          {tripsError ? (
+            <p className="text-muted-foreground">Trips could not be loaded. {tripsError}</p>
+          ) : trips === null ? (
+            <p className="text-muted-foreground">Loading trips</p>
+          ) : (
+            <div className="@3xl:max-h-[30rem] @3xl:overflow-y-auto">
+              {trips.length === 0 ? (
+                <p className="mb-2 text-muted-foreground">No trips were recorded.</p>
+              ) : null}
+              <ShiftTimeline
+                shift={shift}
+                trips={trips}
+                split={split}
+                est={<Est />}
+                picked={picked}
+                onPick={setPicked}
+              />
+            </div>
+          )}
+        </Section>
+      </div>
 
       <div className="grid items-start gap-6 @3xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 space-y-6">

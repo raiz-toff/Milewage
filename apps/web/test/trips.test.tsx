@@ -19,17 +19,26 @@ const open = (
     '/shifts/1',
   );
 
-const tripsTable = async () =>
-  within(await screen.findByRole('region', { name: 'Trips' })).findByRole('table');
+const timeline = async () =>
+  within(await screen.findByRole('region', { name: 'Timeline' })).findByRole('list', {
+    name: 'Timeline',
+  });
+const rows = (list: HTMLElement) =>
+  within(list)
+    .getAllByRole('listitem')
+    .map((li) => li.textContent);
 
-describe('trips table in shift detail', () => {
-  it('lists trips with distance in the driver unit and auto kinds marked estimated', async () => {
+describe('timeline in shift detail', () => {
+  it('lists trips in time order, between start and end, with the estimate marked', async () => {
     open();
-    const table = await tripsTable();
-    expect(within(table).getByText('active (estimated)')).toBeTruthy();
-    expect(within(table).getByText('deadhead (estimated)')).toBeTruthy();
-    expect(within(table).getByText('2.0 km')).toBeTruthy();
-    expect(within(table).getAllByRole('row').length).toBe(3);
+    const list = await timeline();
+    expect(rows(list)).toEqual([
+      '17:13Shift started',
+      '17:23Trip · 1.0 km · active*17:23 – 17:28 · 5 min',
+      '17:33Trip · 2.0 km · deadhead*17:33 – 17:38 · 5 min',
+      '18:13Shift ended',
+    ]);
+    expect(screen.getByText('2 trips')).toBeTruthy();
   });
 
   it('a manual trip and a personal trip carry no estimate marker', async () => {
@@ -37,20 +46,24 @@ describe('trips table in shift detail', () => {
       trip(1, { source: 'manual', purpose: 'Bank run' }),
       trip(2, { kind: 'personal' }),
     ]);
-    const table = await tripsTable();
-    expect(within(table).getByText('active')).toBeTruthy();
-    expect(within(table).getByText('personal')).toBeTruthy();
-    expect(within(table).getByText('Bank run')).toBeTruthy();
-    expect(within(table).queryByText(/estimated/)).toBeNull();
+    const list = await timeline();
+    expect(rows(list).slice(1, 3)).toEqual([
+      '17:23Trip · 1.0 km · active17:23 – 17:28 · 5 min · Bank run · edited',
+      '17:33Trip · 2.0 km · personal17:33 – 17:38 · 5 min',
+    ]);
   });
 
-  it('sorts by distance on a click', async () => {
+  it('picks one entry at a time, and lets go on a second press', async () => {
     open();
-    const table = await tripsTable();
-    fireEvent.click(within(table).getByRole('button', { name: 'Distance' }));
-    fireEvent.click(within(table).getByRole('button', { name: 'Distance' }));
-    const first = within(table).getAllByRole('row')[1]!;
-    expect(within(first).getByText('2.0 km')).toBeTruthy();
+    const list = await timeline();
+    const [first, second] = within(list).getAllByRole('button');
+    fireEvent.click(first!);
+    expect(first!.getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(second!);
+    expect(first!.getAttribute('aria-pressed')).toBe('false');
+    expect(second!.getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(second!);
+    expect(second!.getAttribute('aria-pressed')).toBe('false');
   });
 
   it('with stops off the kinds read business or personal, never estimated', async () => {
@@ -59,10 +72,11 @@ describe('trips table in shift detail', () => {
       trip(2, { kind: 'deadhead' }),
       trip(3, { kind: 'personal' }),
     ]);
-    const table = await tripsTable();
-    expect(within(table).getAllByText('business').length).toBe(2);
-    expect(within(table).getByText('personal')).toBeTruthy();
-    expect(within(table).queryByText(/estimated|deadhead/)).toBeNull();
+    const list = await timeline();
+    expect(within(list).getAllByText(/business/).length).toBe(2);
+    expect(within(list).getByText(/personal/)).toBeTruthy();
+    expect(within(list).queryByText(/\*|deadhead/)).toBeNull();
+    expect(screen.getByText('3 trips')).toBeTruthy();
   });
 
   it('says so when the shift has no trips, and when trips cannot be read', async () => {
@@ -71,5 +85,11 @@ describe('trips table in shift detail', () => {
     cleanup();
     renderApp({ ...signedIn(), 'GET /shifts/1': () => ({ body: shift() }) }, '/shifts/1');
     expect(await screen.findByText(/Trips could not be loaded/)).toBeTruthy();
+  });
+
+  it('says in one line why there is no map when the route module is off', async () => {
+    open(settingsFixture({ modules: { replay: false } }));
+    await timeline();
+    expect(screen.getByText(/route map is off on this server/)).toBeTruthy();
   });
 });
