@@ -98,6 +98,12 @@ export const caCountry: CountryModule = {
         self2Bp: cpp('Self-employed rate, second band (CPP2)', 'bp', 800, 800),
       },
     },
+    logbook: {
+      readings: 'The CRA asks for the odometer reading at the start and end of each fiscal year.',
+      notes: [
+        'A full 12-month logbook can serve as a base year; a 3-month sample can then be used while your use stays within 10% of the base year. MileWage stores the readings but has no base-year or sample mode. Check the rules with the CRA.',
+      ],
+    },
     platforms: offer(
       'doordash',
       'ubereats',
@@ -119,6 +125,7 @@ export const caCountry: CountryModule = {
     'Provincial rates; the territories have a higher rate that is not used.',
     'Rates fetched from the CRA page on 2026-11-05 and not yet compared by a person.',
     'The allowance rate is not the same thing as a motor vehicle expense deduction; no claim is made about which method applies.',
+    'The odometer note (logbook) was written without a checked CRA page; a person must check it.',
     'Sales tax and CPP figures were written from memory of the CRA publications and have not been compared with them by a person.',
   ],
 };

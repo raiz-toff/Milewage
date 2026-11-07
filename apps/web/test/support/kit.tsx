@@ -135,6 +135,7 @@ export function settingsFixture(
     stops_enabled: true,
     display_name: null,
     region: null,
+    logbook: null,
     week_start: 1,
     time_format: '24h',
     default_vehicle_id: null,

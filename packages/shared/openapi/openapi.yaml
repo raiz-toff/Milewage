@@ -2302,7 +2302,7 @@ components:
         countries: { type: array, items: { type: string, minLength: 2, maxLength: 2 } }
     Settings:
       type: object
-      required: [country, distance_unit, currency, timezone, raw_retention_days, stops_enabled, display_name, region, week_start, time_format, default_vehicle_id, engine_version, diagnostics, modules]
+      required: [country, distance_unit, currency, timezone, raw_retention_days, stops_enabled, display_name, region, logbook, week_start, time_format, default_vehicle_id, engine_version, diagnostics, modules]
       properties:
         modules: { $ref: '#/components/schemas/Modules' }
         engine_version: { type: integer, description: The server's track-engine algorithmVersion (14 section 11). A phone with a lower number still shows its own result until sync. }
@@ -2314,6 +2314,13 @@ components:
         stops_enabled: { type: boolean, description: 'Driver-facing toggle for auto-detected stops, the estimated active/deadhead split and web labelling (decision 1.5b). Default true. Captured per shift at shift start (Shift.segmenter), so changing it never alters an existing shift.' }
         display_name: { type: [string, 'null'], description: Greeting and export header. }
         region: { type: [string, 'null'], description: 'Subdivision code without the country (CA: ON, QC ...); validated by the country pack.' }
+        logbook:
+          type: [object, 'null']
+          description: What the tax office of the driver's country and region asks of odometer records (plan 21 logbook slot), for the Odometer screen. null when the country has no such rule; readings are then optional.
+          required: [readings, notes]
+          properties:
+            readings: { type: string }
+            notes: { type: array, items: { type: string } }
         week_start: { enum: [0, 1], description: 0 Sunday, 1 Monday. Changes week boundaries, so the phone reads it. }
         time_format: { enum: [12h, 24h] }
         default_vehicle_id: { type: [integer, 'null'], description: Preselected when a shift starts; always an active vehicle. }

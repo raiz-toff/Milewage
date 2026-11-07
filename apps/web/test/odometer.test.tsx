@@ -38,10 +38,18 @@ const reading = (
 const JAN_1 = Date.parse('2026-01-01T05:00:00Z'); // midnight in Toronto
 const DEC_31 = Date.parse('2025-12-31T14:00:00Z');
 
+// What the server sends for a Canadian driver (the CA `logbook` slot).
+const CA_LOGBOOK = {
+  readings: 'The CRA asks for the odometer reading at the start and end of each fiscal year.',
+  notes: [
+    'A full 12-month logbook can serve as a base year; a 3-month sample then while within 10%.',
+  ],
+};
+
 function open(
   rows: ReturnType<typeof reading>[] = [],
   extra: Record<string, Handler> = {},
-  settings = settingsFixture(),
+  settings = settingsFixture({ logbook: CA_LOGBOOK }),
   vehicles = [vehicle(1, 'Corolla')],
 ) {
   return renderApp(
@@ -157,10 +165,23 @@ describe('odometer logbook', () => {
     await screen.findByText('12480.0 km');
     expect(screen.getByRole('note').textContent).not.toContain('no year-start reading');
     cleanup();
-    open([], {}, settingsFixture({ country: 'US' }));
+    open([], {}, settingsFixture({ country: 'US', logbook: null }));
     await screen.findByLabelText('Odometer (km)');
     expect(screen.queryByRole('note')).toBeNull();
     expect(screen.queryByText(/CRA/)).toBeNull();
+  });
+
+  it('the note comes from the logbook data, never from the country code', async () => {
+    const ours = { readings: 'Some office asks for readings.', notes: ['Keep them.'] };
+    open([], {}, settingsFixture({ country: 'US', logbook: ours }));
+    expect((await screen.findByRole('note')).textContent).toContain(
+      'Some office asks for readings.',
+    );
+    expect(screen.getByText('Keep them.')).toBeTruthy();
+    cleanup();
+    open([], {}, settingsFixture({ country: 'CA', logbook: null }));
+    expect(await screen.findByText(/Readings are optional/)).toBeTruthy();
+    expect(screen.queryByRole('note')).toBeNull();
   });
 
   it('says so when there is no vehicle', async () => {

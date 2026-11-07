@@ -1545,6 +1545,11 @@ export interface components {
             display_name: string | null;
             /** @description Subdivision code without the country (CA: ON, QC ...); validated by the country pack. */
             region: string | null;
+            /** @description What the tax office of the driver's country and region asks of odometer records (plan 21 logbook slot), for the Odometer screen. null when the country has no such rule; readings are then optional. */
+            logbook: {
+                readings: string;
+                notes: string[];
+            } | null;
             /**
              * @description 0 Sunday
              * @enum {unknown}

@@ -242,6 +242,7 @@
         "stops_enabled",
         "display_name",
         "region",
+        "logbook",
         "week_start",
         "time_format",
         "default_vehicle_id",
@@ -293,6 +294,28 @@
             "null"
           ],
           "description": "Subdivision code without the country (CA: ON, QC ...); validated by the country pack."
+        },
+        "logbook": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "What the tax office of the driver's country and region asks of odometer records (plan 21 logbook slot), for the Odometer screen. null when the country has no such rule; readings are then optional.",
+          "required": [
+            "readings",
+            "notes"
+          ],
+          "properties": {
+            "readings": {
+              "type": "string"
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
         },
         "week_start": {
           "enum": [

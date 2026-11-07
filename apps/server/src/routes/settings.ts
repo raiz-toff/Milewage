@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ModuleRegistry } from '@milewage/shared';
-import { countryModules } from '@milewage/shared';
+import { countryModules, resolvePlace } from '@milewage/shared';
 import { algorithmVersion } from '@milewage/track-engine';
 import {
   createSettingsRepository,
@@ -112,6 +112,13 @@ type ReaderContext = {
   captureFor?: (userId: number, deviceId: number) => object | null;
 };
 
+/** The odometer note of the driver's place (plan 21 `logbook` slot), or null. */
+function logbookOf(country: string, region: string | null) {
+  const c = countryModules.get(country);
+  const l = c && resolvePlace(c, region).data.logbook;
+  return l ? { readings: l.readings, notes: [...l.notes] } : null;
+}
+
 /** The `Settings` response for a user. Also returned to a phone when it pairs. */
 export function settingsReader(ctx: ReaderContext) {
   const repo = createSettingsRepository(ctx.db);
@@ -137,6 +144,7 @@ export function settingsReader(ctx: ReaderContext) {
       stops_enabled: row.stopsEnabled === 1,
       display_name: row.displayName,
       region: row.region,
+      logbook: logbookOf(row.country, row.region),
       week_start: row.weekStart,
       time_format: row.timeFormat,
       default_vehicle_id: row.defaultVehicleId,
