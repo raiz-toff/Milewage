@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { rangeOf } from '../src/pages/Analytics';
-import { renderApp, settingsFixture, signedIn } from './support/kit';
+import { renderApp, settingsFixture, signedIn, DASHBOARD } from './support/kit';
 
 afterEach(cleanup);
 
@@ -133,7 +133,7 @@ describe('analytics screen (module analytics)', () => {
 
   it('is absent when the module is off', async () => {
     const s = open({}, false);
-    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: DASHBOARD })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Analytics' })).toBeNull();
     expect(s.calls.some((c) => c.path === '/analytics')).toBe(false);
   });

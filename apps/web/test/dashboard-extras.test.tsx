@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PERIODS } from '../src/pages/Dashboard';
-import { renderApp, settingsFixture, signedIn, pick } from './support/kit';
+import { renderApp, settingsFixture, signedIn, DASHBOARD } from './support/kit';
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
@@ -106,7 +106,7 @@ describe('dashboard checklist and goal ring (18 section 13)', () => {
     ).toBeTruthy();
     cleanup();
     renderApp({ ...signedIn(settingsFixture({ region: 'ON' })) }, '/dashboard');
-    await screen.findByRole('heading', { name: 'Dashboard' });
+    await screen.findByRole('heading', { name: DASHBOARD });
     expect(screen.queryByText(/Set your province/)).toBeNull();
   });
 
@@ -139,14 +139,15 @@ describe('dashboard checklist and goal ring (18 section 13)', () => {
     expect(off.calls.some((c) => c.path === '/goals')).toBe(false);
   });
 
-  it('the Today and This week periods ask /summary for one day and for the week from the week start', async () => {
+  it('the Today and Week tabs ask /summary for one day and for the week from the week start', async () => {
     const s = open({});
-    await screen.findByLabelText(/Period/);
-    pick(screen.getByLabelText(/Period/), 'week');
-    await screen.findByText('2027-01-11 to 2027-01-15');
-    pick(screen.getByLabelText(/Period/), 'today');
-    await screen.findByText('2027-01-15 to 2027-01-15');
-    expect(s.calls.filter((c) => c.path === '/summary').length).toBe(3);
+    await screen.findByRole('region', { name: 'Earned' });
+    expect(screen.getByText('Jan 11 – 15, 2027')).toBeTruthy();
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Today' }));
+    await screen.findByText('Friday, Jan 15');
+    const asked = s.calls.filter((c) => c.path === '/summary').map((c) => c.query);
+    expect(asked).toContain('?from=2027-01-11&to=2027-01-15');
+    expect(asked).toContain('?from=2027-01-15&to=2027-01-15');
     expect(
       PERIODS.find((p) => p.id === 'week')!.range(Date.parse('2027-01-17T12:00:00Z'), 'UTC', 0),
     ).toEqual({ from: '2027-01-17', to: '2027-01-17' });

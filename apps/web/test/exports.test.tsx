@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fileNameOf, spanDays } from '../src/pages/Exports';
 import type { Modules } from '../src/api/client';
 import { shift } from './support/fixtures';
-import { renderApp, settingsFixture, signedIn, pick } from './support/kit';
+import { renderApp, settingsFixture, signedIn, pick, DASHBOARD } from './support/kit';
 import type { Handler } from './support/kit';
 
 const saved: { name: string; blob: Blob }[] = [];
@@ -188,7 +188,7 @@ describe('exporters module off', () => {
 
   it('its URL leads to the first visible screen', async () => {
     open({ exporters: [] });
-    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: DASHBOARD })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Exports' })).toBeNull();
   });
 

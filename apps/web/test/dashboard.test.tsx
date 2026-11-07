@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { cleanup, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PERIODS, localDate } from '../src/pages/Dashboard';
-import { renderApp, settingsFixture, signedIn, pick } from './support/kit';
+import { renderApp, settingsFixture, signedIn } from './support/kit';
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
@@ -33,6 +33,9 @@ function open(body: object, settings = settingsFixture()) {
   return renderApp({ ...signedIn(settings), 'GET /summary': () => ({ body }) }, '/dashboard');
 }
 const metric = async (name: string) => within(await screen.findByRole('region', { name }));
+const tab = (name: string) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
+const asked = (calls: { path: string; query: string }[]) =>
+  calls.filter((c) => c.path === '/summary').map((c) => c.query);
 
 describe('dashboard', () => {
   it('shows exactly the three metrics, the split marked as an estimate', async () => {
@@ -43,26 +46,71 @@ describe('dashboard', () => {
     expect(split.getByText(/120\.0 km/).textContent).toContain('80.0 km');
     expect(split.getByText(/120\.0 km/).textContent).toContain('*');
     expect(screen.getByText('* estimated from detected stops')).toBeTruthy();
-    expect(screen.getAllByRole('region').length).toBe(3);
+    expect(screen.getAllByRole('region').length).toBe(4); // with the Earned hero
     expect(screen.getByText(/4 shifts, 20\.5 hours, 200\.0 km in total/)).toBeTruthy();
   });
 
-  it('asks for the last 30 days in the instance time zone, then for another period', async () => {
+  it('greets the driver in their time zone, by name when there is one', async () => {
+    open(summary(), settingsFixture({ display_name: 'Sam' }));
+    // 15:00 UTC is 11:00 in Toronto.
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Good morning, Sam' }),
+    ).toBeTruthy();
+    expect(screen.getByText('Sunday, March 15')).toBeTruthy();
+    cleanup();
+    vi.setSystemTime(new Date('2026-03-15T23:30:00Z'));
+    open(summary());
+    expect(await screen.findByRole('heading', { level: 1, name: 'Good evening' })).toBeTruthy();
+  });
+
+  it('leads with this week earned and today on the line under it; Today shows the week there', async () => {
+    const { calls } = renderApp(
+      {
+        ...signedIn(),
+        'GET /summary': ({ url }) => ({
+          body:
+            url.searchParams.get('from') === url.searchParams.get('to')
+              ? summary({ shift_count: 1, earnings_cents: 9_000 })
+              : summary(),
+        }),
+      },
+      '/dashboard',
+    );
+    const hero = await metric('Earned');
+    expect(screen.getByRole('tab', { name: 'Week', selected: true })).toBeTruthy();
+    expect(screen.getByText('Mar 9 – 15, 2026')).toBeTruthy();
+    expect(hero.getByText('$410.00')).toBeTruthy();
+    expect(hero.getByText('$90.00 today · 4 shifts this week')).toBeTruthy();
+    expect(asked(calls)).toContain('?from=2026-03-09&to=2026-03-15');
+    expect(asked(calls)).toContain('?from=2026-03-15&to=2026-03-15');
+    tab('Today');
+    expect(await screen.findByText('Sunday, Mar 15')).toBeTruthy();
+    expect(
+      (await metric('Earned')).getByText('$410.00 this week · 4 shifts this week'),
+    ).toBeTruthy();
+  });
+
+  it('keeps the longer periods as tabs, for the hero and the metrics', async () => {
     const { calls } = open(summary());
     await metric('Hourly earnings');
-    const first = calls.find((c) => c.path === '/summary')!;
-    expect(first).toBeTruthy();
-    expect(screen.getByText('2026-02-14 to 2026-03-15')).toBeTruthy();
-    pick(screen.getByLabelText(/Period/), 'year');
-    expect(await screen.findByText('2026-01-01 to 2026-03-15')).toBeTruthy();
-    expect(calls.filter((c) => c.path === '/summary').length).toBe(2);
+    tab('Year');
+    expect(await screen.findByText('Jan 1 – Mar 15, 2026')).toBeTruthy();
+    tab('30 days');
+    expect(await screen.findByText('Feb 14 – Mar 15, 2026')).toBeTruthy();
+    expect(asked(calls)).toContain('?from=2026-01-01&to=2026-03-15');
+    expect(asked(calls)).toContain('?from=2026-02-14&to=2026-03-15');
   });
 
   it('reads "not entered", never zero, when nothing was labelled', async () => {
     open(summary({ earnings_cents: null, tips_cents: null, hourly_earnings_cents: null }));
     const m = await metric('Hourly earnings');
     expect(m.getByText('not entered')).toBeTruthy();
+    expect((await metric('Earned')).getByText('Not entered')).toBeTruthy();
+    expect(screen.getByText('Enter what the apps paid on a shift to see it here.')).toBeTruthy();
     expect(screen.queryByText(/\$0\.00/)).toBeNull();
+    cleanup();
+    open(summary({ shift_count: 0, hours: 0, earnings_cents: null, hourly_earnings_cents: null }));
+    expect((await metric('Earned')).getByText('$0.00')).toBeTruthy(); // no shift: nothing to enter
   });
 
   it('reads "not available" when the country has no rate pack', async () => {
@@ -81,15 +129,20 @@ describe('dashboard', () => {
     expect(screen.queryByText(/estimated/)).toBeNull();
   });
 
-  it('shows a server refusal', async () => {
+  it('shows a server refusal, and the hero can try again', async () => {
+    let fail = true;
     renderApp(
       {
         ...signedIn(),
-        'GET /summary': () => ({ status: 422, body: { code: 'validation_failed' } }),
+        'GET /summary': () =>
+          fail ? { status: 422, body: { code: 'validation_failed' } } : { body: summary() },
       },
       '/dashboard',
     );
-    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect((await screen.findAllByRole('alert')).length).toBeGreaterThan(0);
+    fail = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await metric('Earned')).toBeTruthy();
   });
 
   it('computes period bounds in the given zone', () => {

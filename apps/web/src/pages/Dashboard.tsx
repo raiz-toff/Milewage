@@ -7,9 +7,9 @@ import { GoalRing, RegionPrompt, SetupChecklist } from './DashboardExtras';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Picker } from '../ui/form';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState, PageHeader, Section } from '../ui/layout';
+import { DashboardHero } from './DashboardHero';
 import { Est, ShiftCard } from './Shifts';
 
 type Summary = Schemas['Summary'];
@@ -30,12 +30,12 @@ export interface Period {
 export const PERIODS: Period[] = [
   {
     id: '30d',
-    label: 'Last 30 days',
+    label: '30 days',
     range: (now, tz) => ({ from: localDate(now - 29 * DAY, tz), to: localDate(now, tz) }),
   },
   {
     id: 'month',
-    label: 'This month',
+    label: 'Month',
     range: (now, tz) => {
       const to = localDate(now, tz);
       return { from: `${to.slice(0, 7)}-01`, to };
@@ -48,7 +48,7 @@ export const PERIODS: Period[] = [
   },
   {
     id: 'week',
-    label: 'This week',
+    label: 'Week',
     range: (now, tz, weekStart = 1) => {
       const to = localDate(now, tz);
       const t = Date.parse(`${to}T00:00:00Z`);
@@ -58,7 +58,7 @@ export const PERIODS: Period[] = [
   },
   {
     id: 'year',
-    label: 'This year',
+    label: 'Year',
     range: (now, tz) => {
       const to = localDate(now, tz);
       return { from: `${to.slice(0, 4)}-01-01`, to };
@@ -126,6 +126,26 @@ function RecentShifts() {
   );
 }
 
+/** "Good afternoon, Sam" and the date, both in the driver's time zone (Comma's header). */
+function Greeting({ now }: { now: number }) {
+  const { display_name: name, timezone } = useSettings();
+  const hour = Number(
+    new Intl.DateTimeFormat('en-GB', {
+      timeZone: timezone,
+      hour: 'numeric',
+      hourCycle: 'h23',
+    }).format(now),
+  );
+  const part = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
+  const date = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  }).format(now);
+  return <PageHeader title={`Good ${part}${name ? `, ${name}` : ''}`} description={date} />;
+}
+
 /**
  * The three dashboard metrics of 05 section 4 and nothing else: hourly earnings, deduction
  * value, and the active/deadhead split. Earnings come from the driver's own stop labels, so
@@ -134,11 +154,12 @@ function RecentShifts() {
 export function Dashboard({ now }: { now?: number }) {
   const { api } = useSession();
   const settings = useSettings();
-  const [period, setPeriod] = useState(PERIODS[0]!.id);
+  const at = now ?? Date.now();
+  const [period, setPeriod] = useState('week');
   const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { from, to } = PERIODS.find((p) => p.id === period)!.range(
-    now ?? Date.now(),
+    at,
     settings.timezone,
     settings.week_start,
   );
@@ -159,26 +180,9 @@ export function Dashboard({ now }: { now?: number }) {
   const unit = settings.distance_unit;
   return (
     <section className="space-y-6">
-      <PageHeader
-        title="Dashboard"
-        description={
-          <span className="tabular-nums">
-            {from} to {to}
-          </span>
-        }
-      >
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <label htmlFor="dashboard-period">Period</label>
-          <Picker
-            id="dashboard-period"
-            className="w-auto min-w-32"
-            value={period}
-            onChange={setPeriod}
-            options={PERIODS.map((p) => ({ value: p.id, label: p.label }))}
-          />
-        </div>
-      </PageHeader>
+      <Greeting now={at} />
       <RegionPrompt />
+      <DashboardHero now={at} period={period} onPeriod={setPeriod} />
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}

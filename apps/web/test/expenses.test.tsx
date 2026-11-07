@@ -3,7 +3,7 @@ import { File as NodeFile } from 'node:buffer';
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { bodyOf } from '../src/pages/Expenses';
-import { renderApp, settingsFixture, signedIn, menu } from './support/kit';
+import { renderApp, settingsFixture, signedIn, menu, DASHBOARD } from './support/kit';
 
 afterEach(cleanup);
 
@@ -166,7 +166,7 @@ describe('expenses screen (module expenses)', () => {
 
   it('is absent when the module is off: no navigation entry, and the URL leads elsewhere', async () => {
     const s = open([expense()], [], false);
-    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: DASHBOARD })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Expenses' })).toBeNull();
     expect(s.calls.some((c) => c.path.startsWith('/expenses'))).toBe(false);
   });

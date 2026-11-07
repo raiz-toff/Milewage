@@ -3,7 +3,7 @@ import { cleanup, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Modules } from '../src/api/client';
 import { screens, visibleScreens } from '../src/screens';
-import { ALL_ON, renderApp, settingsFixture, signedIn } from './support/kit';
+import { ALL_ON, renderApp, settingsFixture, signedIn, DASHBOARD } from './support/kit';
 
 afterEach(cleanup);
 
@@ -147,7 +147,7 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
   it('devices off: not in the navigation, and its URL leads to the first visible screen', async () => {
     open({ devices: false }, '/devices');
     expect(await navNames()).not.toContain('Devices');
-    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: DASHBOARD })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Pair a phone' })).toBeNull();
   });
 

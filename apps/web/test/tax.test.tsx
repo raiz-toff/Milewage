@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { renderApp, settingsFixture, signedIn, pick } from './support/kit';
+import { renderApp, settingsFixture, signedIn, pick, DASHBOARD } from './support/kit';
 
 afterEach(cleanup);
 
@@ -183,7 +183,7 @@ describe('tax screen (module tax)', () => {
 
   it('is absent when the module is off', async () => {
     const s = open(report(), false);
-    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: DASHBOARD })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Tax' })).toBeNull();
     expect(s.calls.some((c) => c.path.startsWith('/tax'))).toBe(false);
   });
