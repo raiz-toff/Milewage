@@ -331,8 +331,8 @@ After M3 exits, `milewage-spikes/B` is deleted or archived outside the repo with
 | M7.5 | Shifts list + shift detail (totals, trips table, flags) | web | table sorting; flag display | 380 | M7.2, M2.6 |
 | M7.6s | Server: `GET /shifts/{ref}/route` columnar route (`replay`) | replay | columnar format; off = 404 | 250 | M1.5, M2.7 |
 | M7.6 | Map and replay scrubber (MapLibre, plain background) | web | scrubber maths; no-basemap fallback | 390 | M7.5, M7.6s |
-| M7.7s | Server: `GET /live` WebSocket (`live`) | live | frame schemas; off = 404 | 300 | M2.7 |
-| M7.7 | Live map | web | reconnect; module off hides screen | 330 | M7.7s, M7.6 |
+| M7.7s | ~~Server: `GET /live` WebSocket (`live`)~~ **Removed by decision 1.10 (2026-11-07).** | live | frame schemas; off = 404 | 300 | M2.7 |
+| M7.7 | ~~Live map~~ **Removed by decision 1.10 (2026-11-07).** | web | reconnect; module off hides screen | 330 | M7.7s, M7.6 |
 | M7.8 | Stops table and labelling UI, estimated markers, warnings | web, stops | label → recompute; warning conditions | 390 | M6.3, M7.5 |
 | M7.9s | Server: `GET /summary` (three dashboard metrics) | core | metrics vs fixtures | 200 | M5.3 |
 | M7.9 | Dashboard: net hourly earnings, deduction value, active/deadhead split | web | "not entered" not zero; estimate marker | 300 | M7.9s |

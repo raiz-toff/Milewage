@@ -14,7 +14,6 @@ const ALL_OFF: Modules = {
   devices: false,
   tracking: false,
   replay: false,
-  live: false,
   stops: false,
   diagnostics: false,
   capture: false,
@@ -115,7 +114,6 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
     open(ALL_ON, '/shifts');
     expect(await navNames()).toEqual([
       'Dashboard',
-      'Live map',
       'Shifts',
       'Schedule',
       'Analytics',

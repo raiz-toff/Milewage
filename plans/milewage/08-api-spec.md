@@ -14,7 +14,7 @@ This document is a specification, not code. The OpenAPI document in §13 is the 
 
 | Topic | Rule |
 |---|---|
-| Base path | `/api/v1`. Two routes live outside it: `GET /healthz` (`10` §11.1) and the WebSocket upgrade at `GET /api/v1/live`. |
+| Base path | `/api/v1`. One route lives outside it: `GET /healthz` (`10` §11.1). (`GET /api/v1/live` was removed by decision 1.10.) |
 | Transport | HTTPS from the phone's point of view (Tailscale `serve` or Caddy, `10` §8). Caddy to API is plain HTTP on the Docker network. HTTP/1.1 is enough; no HTTP/2-specific features are used. |
 | Format | JSON (`application/json`), UTF-8, `snake_case` field names. Errors are `application/problem+json`. **No protobuf, no gRPC** (`00` listed them as options): a driver produces about 1 point per 3 s, and gzip-compressed JSON is a few KB per batch. |
 | Units and shapes | Exactly the storage conventions in `07` §1: timestamps are UTC epoch **milliseconds** in fields ending `_at`; distances are integer **metres** (`*_m`); money is integer **cents** (`*_cents`); coordinates are integer degrees × 10⁷ (`lat_e7`, `lon_e7`); speed is decimetres per second (`speed_dmps`). The API never converts to km, miles or decimal degrees. Display conversion is the client's job, using `GET /settings`. |
@@ -50,7 +50,7 @@ A device is deliberately less powerful than a web session. A stolen unlocked pho
 | `GET /settings`, `GET /vehicles` | Yes | Yes (read only) |
 | Read stops; label or clear a stop's label | Yes (stops module on) | **No** (decision 1.5b: the phone has no stop or order UI) |
 | Change settings, vehicles, password; finalize, recalculate or purge shifts | Yes | No |
-| Exports, backups, devices, pairing tokens, system status, summary, live WebSocket | Yes | No |
+| Exports, backups, devices, pairing tokens, system status, summary | Yes | No |
 | Send diagnostics events and capture fixes (`16`) | Web errors only | **Yes** (its own phone events and fixes) |
 | Read diagnostics events, health, bundle; manage capture sessions, replay, annotations | Yes | No |
 
@@ -143,7 +143,7 @@ Auth column: **P** public, **S** web session only, **S+D** session or device, **
 | `GET /shifts/{ref}/stops` | S | The shift's auto-detected stops with confidence, estimated role and any web label (stops module). |
 | `PUT /shifts/{ref}/stop-labels/{stop_key}` · `DELETE /shifts/{ref}/stop-labels/{stop_key}` | S | Optional, web only: label a detected stop (pickup, dropoff, other, platform, payout, tip, place, notes) or clear the label. Idempotent; recomputes the shift (stops module). `stop_key` contains `:` and must be URL-encoded. |
 | `POST /telemetry/batch` | D | Upload breadcrumb points (the hot path). |
-| `GET /live` | S | WebSocket: live position and events for the web map. |
+| ~~`GET /live`~~ | S | **Removed by decision 1.10 (2026-11-07).** |
 | `GET /summary` | S | Totals for the dashboard's three metrics. |
 | `GET /exports/{format}` | S | `csv`, `pdf`, `gpx`, `geojson` (§11). |
 | `GET /backups` · `POST /backups` · `GET /backups/{id}/download` · `PUT /backups/offsite-ack` | S | List, run now, download the encrypted file, record the off-site reminder state (`10` §6). |
@@ -242,7 +242,7 @@ Everything here is an optional field or header, so the frozen phone contract (§
    A bad point goes into `rejected` with a `code`; **it does not fail the batch.** `accuracy_m` is never a reason to reject: poor fixes are stored and ignored later by the ≤ 50 m filter in the mileage calculation (`07` §3), so the raw record stays complete.
 5. Insert the valid points in **one transaction** with `INSERT ... ON CONFLICT (device_id, seq) DO NOTHING`. `inserted` counts new rows, `duplicates` counts conflicts. If the transaction itself fails, nothing is stored and the response is `500` (retryable); the phone resends the same batch.
 6. If the shift is `ended` (late upload), schedule a recompute of its trips and totals with the shared `track-engine` (`14`), debounced by 5 seconds, so late points are not silently left out. The recompute publishes `shift.updated` with the flags and, when the totals change, a `change_log` row (reason `late_points`). A shift in `active` is computed at its end.
-7. Publish the newest accepted point to live WebSocket clients (§6).
+7. ~~Publish the newest accepted point to live WebSocket clients (§6).~~ **Removed by decision 1.10 (2026-11-07).**
 
 **Response `200`:**
 
@@ -258,6 +258,8 @@ Everything here is an optional field or header, so the frozen phone contract (§
 ---
 
 ## 6. Live WebSocket (`GET /live`)
+
+> **Removed by decision 1.10 (2026-11-07).** The module, the route, the `Ws*` frames and the web screen are deleted. `upload_hint_s` is a fixed 60 s. The text below is kept for the record.
 
 Web session only (cookie; the server checks the `Origin` header equals the site origin on upgrade, `10`/§10 below). The phone does not connect to it in v1. One JSON object per text frame, always with a `type`.
 
@@ -2494,7 +2496,7 @@ Inconsistencies found while writing this document. "Wins" says which document is
 | **devices** | `createPairingToken`, `redeemPairingToken`, `listDevices`, `renameDevice`, `revokeDevice` | Device-bearer authentication (an `authenticate` branch); `device.seen` event | core | `modules.devices` (**on**) | No QR pairing, no device tokens. The system is web-only: the driver logs shifts and manual trips in the browser. | Drop the module registration. Table `devices` and `pairing_tokens` stay empty. |
 | **tracking** | `uploadTelemetryBatch` | Ingest endpoint; subscribes to `shift.ended` and to its own late-point event to derive trips and totals; owns the raw-point retention and archive job; consumes the **segmenter** | core, devices | `modules.tracking` (**on**) | No telemetry upload, no automatic trips, no archive job. A shift ends with no auto trips; the driver adds manual trips. | Drop the registration. `telemetry_points` and `route_archives` stay; export routes that need routes (`gpx`, `geojson`) must also be off (graph check). |
 | **replay** | `getShiftRoute` | `GET /shifts/{ref}/route` columnar format (`Route` schema) | tracking | `modules.replay` (**on**) | No route map or scrubber in the web UI. GPX and GeoJSON exports still work (they read the route data, not this endpoint). | Drop the registration; no data owned. |
-| **live** | `connectLive` | The WebSocket frame schemas `Ws*` (§13); subscribes to all events; supplies `upload_hint_s` | core | `modules.live` (**on**) | No live map. `upload_hint_s` is a fixed 60. The web UI still shows finished shifts. | Drop the registration; no data owned. |
+| ~~**live**~~ (**Removed by decision 1.10 (2026-11-07).**) | `connectLive` | The WebSocket frame schemas `Ws*` (§13); subscribes to all events; supplies `upload_hint_s` | core | `modules.live` (**on**) | No live map. `upload_hint_s` is a fixed 60. The web UI still shows finished shifts. | Drop the registration; no data owned. |
 | **stops** | `listShiftStops`, `putStopLabel`, `deleteStopLabel` | Stop and label routes; publishes `stops.derived` and `stop_label.updated`; registers the **stop-based segmenter** into core's segmenter slot (the engine's stage 5, `14` §6) | core, tracking | `settings.stops_enabled` (**on**), a runtime driver setting; see §16.1 | No stop routes (404), no stop markers, no estimated split, no labelling screen. New shifts use the **whole-shift segmenter** (one `active` segment, `deadhead_m` = 0, `Business driving`); total business distance is unchanged. `GET /summary` returns `earnings_cents`, `tips_cents` and `hourly_earnings_cents` as `null`. Existing shifts, stops and labels are untouched. | Drop the registration. `stops` and `stop_labels` stay. |
 | **exporters** | `exportData` (one route, driven by the registry) | `Exporter { format, contentType, fileExtension, stream(query, ctx) }`, registered with `registerExporter()`. `/exports/{format}` is generated from the registry; an unregistered format returns `404` | core. `gpx` and `geojson` also require **tracking**. | One switch per exporter: `modules.export_csv`, `export_pdf`, `export_gpx`, `export_geojson` (**all on**) | That format disappears from the route and from the web UI. | Delete the exporter file and its registration line. No other module references it. |
 | **country packs** | none (used by `getSettings`, `getSummary`, `exportData`) | `CountryPack { code, ratesFor(year), deduction(total_m, year) → cents or null, pdfTemplate, logElements }`, registered with `registerCountry()` | core | `countries = ["us","ca","gb"]` in settings (**US, CA, GB on**) | A country not in the list is not selectable in setup. An already-selected country that was removed falls back to the generic PDF layout and a `null` deduction value. | Delete the pack file and its registration. |

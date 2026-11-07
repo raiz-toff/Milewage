@@ -67,11 +67,6 @@ x-modules:
     default: true
     dependsOn: [tracking]
     operations: [getShiftRoute]
-  live:
-    toggle: modules.live
-    default: true
-    dependsOn: [core]
-    operations: [connectLive]
   stops:
     toggle: settings.stops_enabled   # the one runtime toggle: a driver-facing setting, not a restart-time config switch (section 16.1)
     default: true
@@ -962,17 +957,6 @@ paths:
         '429': { $ref: '#/components/responses/RateLimited' }
         '503': { $ref: '#/components/responses/Unavailable' }
         '507': { $ref: '#/components/responses/InsufficientStorage' }
-
-  /live:
-    get:
-      tags: [telemetry]
-      operationId: connectLive
-      summary: WebSocket upgrade for the live map. Message schemas are in components/schemas/Ws*.
-      security: [{ sessionCookie: [] }]
-      responses:
-        '101': { description: Switching protocols. Server sends hello, position, shift, stops, device and ping messages. }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
 
   /summary:
     get:
@@ -2291,7 +2275,7 @@ components:
     Modules:
       type: object
       description: Read-only module flags so clients can hide screens and buttons of absent modules.
-      required: [progress, schedule, notifications, import, maintenance, analytics, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, live, stops, sync, diagnostics, capture, backup_download, exporters, countries]
+      required: [progress, schedule, notifications, import, maintenance, analytics, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, stops, sync, diagnostics, capture, backup_download, exporters, countries]
       properties:
         platforms: { type: boolean, description: 'Platforms module registered (18 section 4.2).' }
         earnings: { type: boolean, description: 'Earnings module registered (18 section 4.3): the driver can type a total per shift and platform.' }
@@ -2310,7 +2294,6 @@ components:
         devices: { type: boolean }
         tracking: { type: boolean }
         replay: { type: boolean }
-        live: { type: boolean }
         stops: { type: boolean, description: 'Effective flag: the stops module is registered AND settings.stops_enabled is true. When false the phone and the web hide every stop and estimated-split element.' }
         diagnostics: { type: boolean, description: 'Diagnostics module registered (16). When false the phone behaves as level off and the web hides the Diagnostics screens.' }
         capture: { type: boolean, description: 'Capture module registered (16 section 8); false by default.' }
@@ -3166,67 +3149,7 @@ components:
               seq: { type: integer }
               code: { enum: [invalid_coordinate, future_timestamp, outside_shift_window] }
         server_time: { $ref: '#/components/schemas/EpochMs' }
-        upload_hint_s: { type: integer, minimum: 10, maximum: 300, description: Suggested seconds until the next upload (15 while a web client is watching, else 60). }
-
-    WsHello:
-      type: object
-      required: [type, server_time, active_shift]
-      properties:
-        type: { const: hello }
-        server_time: { $ref: '#/components/schemas/EpochMs' }
-        active_shift: { oneOf: [{ $ref: '#/components/schemas/Shift' }, { type: 'null' }] }
-    WsPosition:
-      type: object
-      required: [type, shift_id, seq, recorded_at, lat_e7, lon_e7]
-      properties:
-        type: { const: position }
-        shift_id: { type: integer }
-        seq: { type: integer }
-        recorded_at: { $ref: '#/components/schemas/EpochMs' }
-        lat_e7: { type: integer }
-        lon_e7: { type: integer }
-        speed_dmps: { type: [integer, 'null'] }
-        bearing_deg: { type: [integer, 'null'] }
-        accuracy_m: { type: integer }
-    WsShift:
-      type: object
-      required: [type, event, shift]
-      properties:
-        type: { const: shift }
-        event: { enum: [started, ended, updated, finalized] }
-        shift: { $ref: '#/components/schemas/Shift' }
-    WsStops:
-      type: object
-      required: [type, shift_id, stops]
-      properties:
-        type: { const: stops }
-        shift_id: { type: integer }
-        stops: { type: array, items: { $ref: '#/components/schemas/Stop' } }
-    WsDevice:
-      type: object
-      required: [type, device_id, state, last_seen_at]
-      properties:
-        type: { const: device }
-        device_id: { type: integer }
-        state: { enum: [online, offline] }
-        last_seen_at: { type: [integer, 'null'] }
-        clock_skew_ms: { type: [integer, 'null'] }
-    WsPing:
-      type: object
-      required: [type, server_time]
-      properties:
-        type: { const: ping }
-        server_time: { $ref: '#/components/schemas/EpochMs' }
-    WsServerMessage:
-      description: Any frame sent by the server. The client replies to ping with {"type":"pong"}.
-      oneOf:
-        - { $ref: '#/components/schemas/WsHello' }
-        - { $ref: '#/components/schemas/WsPosition' }
-        - { $ref: '#/components/schemas/WsShift' }
-        - { $ref: '#/components/schemas/WsStops' }
-        - { $ref: '#/components/schemas/WsDevice' }
-        - { $ref: '#/components/schemas/WsPing' }
-      discriminator: { propertyName: type }
+        upload_hint_s: { type: integer, minimum: 10, maximum: 300, description: Suggested seconds until the next upload (60). }
 
     Summary:
       type: object

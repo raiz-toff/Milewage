@@ -254,7 +254,6 @@ export function diagnosticsRoutes({
                 'tracking',
                 'stops',
                 'replay',
-                'live',
                 'sync',
                 'exporters',
                 'diagnostics',

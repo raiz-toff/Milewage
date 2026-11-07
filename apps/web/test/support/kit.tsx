@@ -103,7 +103,6 @@ export const ALL_ON: Modules = {
   devices: true,
   tracking: true,
   replay: true,
-  live: true,
   stops: true,
   diagnostics: true,
   capture: false,

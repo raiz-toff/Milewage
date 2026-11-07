@@ -145,7 +145,7 @@ Every screen is owned by an API module and is hidden when that module is off (th
 | Screen or control | Owning module | When the module is off |
 |---|---|---|
 | Detected stops, stop labelling screen, estimated active/deadhead split (web and phone) | `stops` (the `stops_enabled` setting) | Hidden. Mileage is one business total; earnings show as unavailable (`08` §16.2). |
-| Live map | `live` | Hidden. Finished shifts still show. |
+| ~~Live map~~ | ~~`live`~~ | **Removed by decision 1.10 (2026-11-07).** |
 | Route map, timeline scrubber | `replay` (and `tracking`) | Hidden. |
 | Export buttons, one per format | one `exporters` switch per format | That button disappears. |
 | Backup download, off-site reminder | `backup.download` | Hidden; the driver collects backups from the volume. |

@@ -565,23 +565,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/live": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** WebSocket upgrade for the live map. Message schemas are in components/schemas/Ws*. */
-        get: operations["connectLive"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/summary": {
         parameters: {
             query?: never;
@@ -1536,7 +1519,6 @@ export interface components {
             devices: boolean;
             tracking: boolean;
             replay: boolean;
-            live: boolean;
             /** @description Effective flag: the stops module is registered AND settings.stops_enabled is true. When false the phone and the web hide every stop and estimated-split element. */
             stops: boolean;
             /** @description Diagnostics module registered (16). When false the phone behaves as level off and the web hides the Diagnostics screens. */
@@ -2361,74 +2343,9 @@ export interface components {
                 code: "invalid_coordinate" | "future_timestamp" | "outside_shift_window";
             }[];
             server_time: components["schemas"]["EpochMs"];
-            /** @description Suggested seconds until the next upload (15 while a web client is watching */
+            /** @description Suggested seconds until the next upload (60). */
             upload_hint_s: number;
         };
-        WsHello: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "WsHello";
-            server_time: components["schemas"]["EpochMs"];
-            active_shift: components["schemas"]["Shift"] | null;
-        };
-        WsPosition: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "WsPosition";
-            shift_id: number;
-            seq: number;
-            recorded_at: components["schemas"]["EpochMs"];
-            lat_e7: number;
-            lon_e7: number;
-            speed_dmps?: number | null;
-            bearing_deg?: number | null;
-            accuracy_m?: number;
-        };
-        WsShift: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "WsShift";
-            /** @enum {unknown} */
-            event: "started" | "ended" | "updated" | "finalized";
-            shift: components["schemas"]["Shift"];
-        };
-        WsStops: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "WsStops";
-            shift_id: number;
-            stops: components["schemas"]["Stop"][];
-        };
-        WsDevice: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "WsDevice";
-            device_id: number;
-            /** @enum {unknown} */
-            state: "online" | "offline";
-            last_seen_at: number | null;
-            clock_skew_ms?: number | null;
-        };
-        WsPing: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "WsPing";
-            server_time: components["schemas"]["EpochMs"];
-        };
-        /** @description Any frame sent by the server. The client replies to ping with {"type":"pong"}. */
-        WsServerMessage: components["schemas"]["WsHello"] | components["schemas"]["WsPosition"] | components["schemas"]["WsShift"] | components["schemas"]["WsStops"] | components["schemas"]["WsDevice"] | components["schemas"]["WsPing"];
         Summary: {
             /** Format: date */
             from: string;
@@ -3945,26 +3862,6 @@ export interface operations {
             429: components["responses"]["RateLimited"];
             503: components["responses"]["Unavailable"];
             507: components["responses"]["InsufficientStorage"];
-        };
-    };
-    connectLive: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Switching protocols. Server sends hello */
-            101: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
         };
     };
     getSummary: {

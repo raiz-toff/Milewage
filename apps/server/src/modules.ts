@@ -39,7 +39,6 @@ import { expensesExporter, taxSummaryExporter } from './exporters/reports';
 import { taxReport } from './tax-report';
 import { createExporterRegistry, type ExporterRegistry } from './exporters/registry';
 import { availableFormats, exportsRoutes } from './routes/exports';
-import { createLive } from './routes/live';
 import { createSync } from './routes/sync';
 import { replayRoutes } from './routes/replay';
 import { createEarningsPolicy, earningsRoutes } from './routes/earnings';
@@ -72,7 +71,6 @@ export const stopsModule = defineModule({
 /** The route for the map and the replay scrubber (08 section 3). */
 export const replayModule = defineModule({ name: 'replay', dependsOn: ['tracking'] });
 /** The WebSocket feed for the web map (08 section 6). */
-export const liveModule = defineModule({ name: 'live', dependsOn: ['core'] });
 /** The pull path for the phone (15 section 6.5): `change_log`, `overwrite_log`, `GET /sync/changes`. */
 export const syncModule = defineModule({ name: 'sync', dependsOn: ['core', 'devices'] });
 /** `GET /exports/{format}`; each format is a registered exporter (08 sections 11 and 16.3). */
@@ -129,7 +127,6 @@ export const serverModules = [
   trackingModule,
   stopsModule,
   replayModule,
-  liveModule,
   syncModule,
   exportersModule,
   diagnosticsModule,
@@ -189,8 +186,6 @@ export interface ServerContext extends CoreContext {
   archiveEveryMs?: number;
   /** Debounce of the recompute after late points (5 s unless a test shortens it). */
   lateRecomputeMs?: number;
-  /** Ping interval of `GET /live`; 30 s unless a test shortens it. */
-  livePingMs?: number;
   log?: (message: string, fields?: object) => void;
 }
 
@@ -307,7 +302,6 @@ export function createServerModules(ctx: ServerContext) {
           'tracking',
           'stops',
           'replay',
-          'live',
           'sync',
           'exporters',
           'diagnostics',
@@ -328,13 +322,6 @@ export function createServerModules(ctx: ServerContext) {
     purgeEveryMs: ctx.captureHousekeepingMs,
     announce: (event, session, shiftsDone) =>
       busEmit?.('capture.state', { event, profile: session.profile, shiftsDone }),
-  });
-  const live = createLive({
-    db: ctx.db,
-    now: ctx.now,
-    authn,
-    pingMs: ctx.livePingMs,
-    stopsOn: () => registry?.isEnabled('stops') ?? false,
   });
   const sync = createSync({ db: ctx.db, now: ctx.now, authn, readSettings });
   const exporters =
@@ -515,12 +502,6 @@ export function createServerModules(ctx: ServerContext) {
             year,
           ),
       }),
-    }),
-    defineModule({
-      ...liveModule,
-      routes: live.routes,
-      subscriptions: live.subscriptions,
-      jobs: live.jobs,
     }),
     defineModule({
       ...diagnosticsModule,

@@ -39,17 +39,9 @@ const ENGINE_STATS = [
 
 // Module flags as bools; a module that does not exist in a build is simply absent.
 const MODULE_FLAGS: Shape = Object.fromEntries(
-  [
-    'devices',
-    'tracking',
-    'stops',
-    'replay',
-    'live',
-    'sync',
-    'exporters',
-    'diagnostics',
-    'capture',
-  ].map((m) => [m, bool(true)]),
+  ['devices', 'tracking', 'stops', 'replay', 'sync', 'exporters', 'diagnostics', 'capture'].map(
+    (m) => [m, bool(true)],
+  ),
 );
 const DISK_STATES = ['ok', 'warning', 'backup_skipped', 'writes_blocked'];
 const SIGNED = int(-1_000_000_000, 1_000_000_000);

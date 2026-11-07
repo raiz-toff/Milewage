@@ -9,7 +9,6 @@ import {
   Gauge,
   Landmark,
   LayoutDashboard,
-  Map as MapIcon,
   Receipt,
   Settings,
   Smartphone,
@@ -27,7 +26,6 @@ import { Devices } from './pages/Devices';
 import { ProgressPage } from './pages/Progress';
 import { SchedulePage } from './pages/Schedule';
 import { SettingsPage } from './pages/SettingsPage';
-import { LivePage } from './pages/Live';
 import { NotificationsPage } from './pages/Notifications';
 import { OdometerPage } from './pages/Odometer';
 import { ShiftsRoutes } from './pages/Shifts';
@@ -66,13 +64,6 @@ export const screens: Screen[] = [
     label: 'Dashboard',
     element: <Dashboard />,
     nav: { icon: LayoutDashboard, group: 'overview' },
-  },
-  {
-    path: '/live',
-    label: 'Live map',
-    visible: (m) => m.live,
-    element: <LivePage />,
-    nav: { icon: MapIcon, group: 'overview' },
   },
   {
     path: '/shifts/*',

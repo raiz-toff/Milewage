@@ -1,9 +1,9 @@
 import type { StyleSpecification } from 'maplibre-gl';
 
-/** Map colours from the MileWage palette (src/index.css): card surface, Lane yellow route, Signal blue live position. */
+/** Map colours from the MileWage palette (src/index.css): card surface and Lane yellow route. */
 const palette = {
-  dark: { canvas: '#181b1e', route: '#ffc21f', live: '#4c8dff' },
-  light: { canvas: '#ffffff', route: '#ffc21f', live: '#2f6fe0' },
+  dark: { canvas: '#181b1e', route: '#ffc21f' },
+  light: { canvas: '#ffffff', route: '#ffc21f' },
 } as const;
 
 /**
@@ -29,9 +29,6 @@ export function chooseStyle(url: string | undefined, dark: boolean): string | St
 }
 
 export const routeColor = (dark: boolean) => (dark ? palette.dark : palette.light).route;
-
-/** Signal blue is kept for the live position only. */
-export const liveColor = (dark: boolean) => (dark ? palette.dark : palette.light).live;
 
 /** The app's theme (the `.dark` class set by src/theme.ts), not the OS setting. */
 export const isDarkTheme = () =>

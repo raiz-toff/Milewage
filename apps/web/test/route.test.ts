@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { boundsOf, lineOf, positionAt, speedIn, stepOf, timeAt, toPoints } from '../src/map/route';
-import { blankStyle, chooseStyle, liveColor, routeColor } from '../src/map/style';
+import { blankStyle, chooseStyle, routeColor } from '../src/map/style';
 
 const route = {
   source: 'raw' as const,
@@ -84,6 +84,5 @@ describe('map style', () => {
     expect(bg(true)).toBe('#181b1e');
     expect(bg(false)).toBe('#ffffff');
     expect(routeColor(true)).toBe('#ffc21f');
-    expect(liveColor(true)).toBe('#4c8dff');
   });
 });

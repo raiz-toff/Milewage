@@ -40,7 +40,6 @@ test('the modules object follows the registry: registered is true, absent is fal
   expect((await flagsOf(true)).capture).toBe(true);
   expect(await flagsOf(false)).toMatchObject({
     capture: false,
-    live: true,
     tracking: true,
     stops: true,
     backup_download: true,

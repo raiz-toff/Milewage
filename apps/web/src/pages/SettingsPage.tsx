@@ -72,7 +72,6 @@ function ModuleFlags({ modules }: { modules: Settings['modules'] }) {
       'devices',
       'tracking',
       'replay',
-      'live',
       'stops',
       'diagnostics',
       'capture',

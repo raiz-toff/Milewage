@@ -32,7 +32,7 @@ AI agents left unconstrained frequently introduce "slop": speculative features, 
 
 MileWage is **modular from the ground up**. Any capability should be switchable on or off, or replaceable, without reworking the rest of the system.
 
-1. **Module boundary:** Every capability (tracking, stops, route replay, each export format, each country's tax rules, auth, backup targets, storage, map tiles, notifications, the live view, diagnostics) is a module with a named public interface. No module imports another module's internals.
+1. **Module boundary:** Every capability (tracking, stops, route replay, each export format, each country's tax rules, auth, backup targets, storage, map tiles, notifications, diagnostics) is a module with a named public interface. No module imports another module's internals.
 2. **Toggle by configuration:** Every optional module has a config switch and a documented default. Turning it off removes its routes, screens and background jobs, and nothing else breaks.
 3. **Attach, don't edit:** Adding a new export format, country, delivery platform or backup target means adding a module and registering it, not changing existing modules.
 4. **Swappable at the seams:** Storage sits behind a repository interface (so SQLite could later become Postgres), and the phone's location source sits behind a tracker interface (so iOS can get its own native module). The same applies to anything else with a plausible replacement.

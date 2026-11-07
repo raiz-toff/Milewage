@@ -29,7 +29,6 @@ export function harness(
   enabled: Record<string, boolean> = {},
   extra: Partial<AppOptions> & {
     restoreVerify?: (db: Db) => void;
-    livePingMs?: number;
     lateRecomputeMs?: number;
     archiveEveryMs?: number;
     diagnosticsSampleMs?: number;
@@ -65,7 +64,6 @@ export function harness(
     state,
     disk,
     restoreVerify: extra.restoreVerify,
-    livePingMs: extra.livePingMs,
     lateRecomputeMs: extra.lateRecomputeMs,
     archiveEveryMs: extra.archiveEveryMs,
     diagnosticsSampleMs: extra.diagnosticsSampleMs,

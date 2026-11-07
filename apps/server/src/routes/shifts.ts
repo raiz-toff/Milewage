@@ -154,7 +154,7 @@ export function shiftRoutes(
     auth: AuthFn;
     /** Runs the engine at shift end; used only while `trackingOn()` (there are no points otherwise). */
     processor?: ShiftProcessor;
-    /** Publishes facts on the event bus (08 section 16.4); the live feed listens. */
+    /** Publishes facts on the event bus (08 section 16.4). */
     emit?: EventEmit;
     trackingOn?: () => boolean;
     /** Whether the `stops` module is on; a new shift is only given the stops segmenter then. */

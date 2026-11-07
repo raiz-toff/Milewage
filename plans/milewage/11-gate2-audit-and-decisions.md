@@ -48,7 +48,7 @@ Gate 2 asked for the specs to be complete enough to build from. Four documents n
 | Batch failure | Per-point `rejected` list | One bad point must not block 99 good ones |
 | Acknowledgement | All points not in `rejected` are stored | Safe with gaps and out-of-order retries |
 | Stop labels | One web `PUT` of the full label per `stop_key`, last write wins (replaces phone delivery writes, 1.5b) | No phone order UI; no per-field merge |
-| Upload cadence | 60 s, 15 s while the web map is open | Live map without constant radio wake-ups |
+| Upload cadence | 60 s (the 15 s while the web map was open went with the live map, decision 1.10) | No constant radio wake-ups |
 | Live channel | WebSocket server → web only | Single user, smallest protocol |
 | Clock skew | Never rewrite; warn above 2 min | Preserves the contemporaneous record |
 | Versioning | `/api/v1`, additive only, 12-month overlap for `v2` | Old phones can always upload |
