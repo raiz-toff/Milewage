@@ -28,7 +28,7 @@ const zz: CountryModule = {
   currency: 'EUR',
   unit: 'km',
   labels: { region: 'province', city: 'city' },
-  data: { salesTax: [tax('vat', 500)], pension: { plan: 'ZPP' } },
+  data: { salesTax: [tax('vat', 500)], pension: { plan: 'ZPP', params: {} } },
   places: [
     at('ZZ-AA', 'ZZ', { salesTax: [tax('pst', 700, { combinable: true })] }, { verified: true }),
     at('ZZ-RR', 'ZZ', { salesTax: [tax('hst', 1300)] }, { notes: ['RR note'] }),
@@ -84,7 +84,7 @@ describe('slots and the resolver', () => {
   });
 
   test('pension: nearest level wins, and an explicit null means not estimated here', () => {
-    expect(resolvePlace(zz, 'ZZ-AA').data.pension).toEqual({ plan: 'ZPP' });
+    expect(resolvePlace(zz, 'ZZ-AA').data.pension?.plan).toBe('ZPP');
     expect(resolvePlace(zz, 'ZZ-QQ').data.pension).toBeNull();
   });
 
@@ -104,7 +104,13 @@ describe('slots and the resolver', () => {
       'a: rate must be 0 to 10000 bp',
       'a: listed twice',
     ]);
-    expect(dataProblems({ pension: { plan: '' } })).toEqual(['pension: plan name is required']);
+    expect(dataProblems({ pension: { plan: '', params: { x: { ...rate, values: {} } } } })).toEqual(
+      [
+        'pension: plan name is required',
+        'pension x: no value is set',
+        'pension x: not ended by a final null',
+      ],
+    );
     expect(dataProblems({ nope: 1 } as never)).toEqual(['unknown slot nope']);
   });
 });

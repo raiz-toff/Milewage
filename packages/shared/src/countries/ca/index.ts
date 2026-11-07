@@ -2,6 +2,7 @@
 
 import { regionsOf, type MileageRate } from '../mileage';
 import { offer } from '../slots';
+import { caTax } from './tax';
 import type { CountryModule, Dated } from '../types';
 
 const CRA_ALLOWANCE =
@@ -30,6 +31,16 @@ const allowance: MileageRate = {
     '2027-01-01': null,
   }),
 };
+
+const CRA_CPP =
+  'https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/payroll/payroll-deductions-contributions/canada-pension-plan-cpp/cpp-contribution-rates-maximums-exemptions.html';
+/** CPP figures for 2025 and 2026 (years without figures get no contribution estimate). */
+const cpp = (label: string, unit: string, y2025: number, y2026: number): Dated<number> => ({
+  label,
+  unit,
+  reference: [CRA_CPP],
+  values: { '2025-01-01': y2025, '2026-01-01': y2026, '2027-01-01': null },
+});
 
 const hst = (rateBp: number) => ({ salesTax: [{ key: 'hst', label: 'HST', rateBp }] });
 
@@ -77,7 +88,16 @@ export const caCountry: CountryModule = {
   ),
   data: {
     salesTax: [{ key: 'gst', label: 'GST', rateBp: 500 }],
-    pension: { plan: 'CPP' },
+    pension: {
+      plan: 'CPP',
+      params: {
+        ympe: cpp('Maximum pensionable earnings', 'cents', 7_130_000, 7_460_000),
+        yampe: cpp('Additional maximum pensionable earnings', 'cents', 8_120_000, 8_500_000),
+        exemption: cpp('Basic exemption', 'cents', 350_000, 350_000),
+        selfBp: cpp('Self-employed rate, first band (both halves)', 'bp', 1190, 1190),
+        self2Bp: cpp('Self-employed rate, second band (CPP2)', 'bp', 800, 800),
+      },
+    },
     platforms: offer(
       'doordash',
       'ubereats',
@@ -88,6 +108,7 @@ export const caCountry: CountryModule = {
       'other',
     ),
   },
+  tax: caTax,
   mileage: {
     yearStarts: '01-01',
     rates: { car: allowance, van: allowance, motorcycle: allowance },
@@ -98,6 +119,6 @@ export const caCountry: CountryModule = {
     'Provincial rates; the territories have a higher rate that is not used.',
     'Rates fetched from the CRA page on 2026-11-05 and not yet compared by a person.',
     'The allowance rate is not the same thing as a motor vehicle expense deduction; no claim is made about which method applies.',
-    'Sales tax and pension data are copied from the tax pack, written from memory and not compared with the CRA pages.',
+    'Sales tax and CPP figures were written from memory of the CRA publications and have not been compared with them by a person.',
   ],
 };

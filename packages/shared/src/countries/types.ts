@@ -4,6 +4,7 @@
 
 import type { Mileage } from './mileage';
 import type { PlaceData } from './slots';
+import type { TaxPack } from './tax';
 
 export type VehicleKind =
   'car' | 'motorcycle' | 'van' | 'bicycle' | 'ebike' | 'scooter' | 'walking';
@@ -67,6 +68,8 @@ export interface CountryModule {
   /** National values of the data slots; regions and cities are in `places`. */
   data: PlaceData;
   mileage: Mileage;
+  /** Absent: no tax estimate for this country. */
+  tax?: TaxPack;
   /** Where the figures come from, and what has not been checked by a person. */
   sources: readonly string[];
   /** False until a person has compared every figure with the primary page (17 section 4). */

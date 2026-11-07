@@ -58,7 +58,7 @@ describe('CA, US and GB as country modules (plan 21)', () => {
       );
       expect(place.data.pension === null, region).toBe(caTaxPack.ownPensionPlan.includes(region));
     }
-    expect(resolvePlace(caCountry, null).data.pension).toEqual({ plan: 'CPP' });
+    expect(resolvePlace(caCountry, null).data.pension?.plan).toBe('CPP');
   });
 
   test('the old packs are thin aliases over the modules until J4', () => {
