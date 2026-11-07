@@ -973,3 +973,10 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Fixed: in the dev server the MapLibre worker was missing (only emitted at build time), so no map drew anything in development; the Vite plugin now serves it in dev as well. Checked in headless Chromium in light and dark.
 - Planned, not built: road snapping with Valhalla, display only, in [`20`](./20-map-matching-plan.md).
 - Tests: web 206 passed; typecheck, eslint and build pass.
+
+## PR P1a — [P1a] Phone: Expo SDK 58 (Phone track)
+
+- Branch `pr-P1a-phone-sdk58`.
+- Done: Expo 56 to 58 (Expo 58.0.23, React Native 0.88.1, React 19.3.0, Safe Area 5.11, Screens 4.30, jest-expo 58; the `expo-*` modules on their SDK 58 lines). One React in the monorepo: the phone joins `apps/web` (already on React 19.3.0 since W1); two Reacts would make Metro bundle both. Root `overrides` for `hermes-parser` and `babel-plugin-syntax-hermes-parser` move to 0.36.1 (RN 0.88 uses Flow `out` variance). The lockfile no longer carries the stale SDK 56 copies at the root. The tracker's unit-test task is `testDebugUnitTest` under the new Android Gradle plugin (`scripts/phone-release-build.sh`).
+- Side effect: the root `jsdom` is now 29 (the version `apps/web` declares) instead of a hoisted 20, so the web tests run under the jsdom they asked for. The receipt upload test now builds its file with Node's `File`, because Node's `fetch` cannot read jsdom's `File` as a body (a browser's can; the app code is unchanged).
+- Tests: `npm run verify` green (vitest 871 passed, 1 skipped; phone 206 passed, 2 skipped). No phone code changes.

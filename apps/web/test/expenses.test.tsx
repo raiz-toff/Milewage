@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { File as NodeFile } from 'node:buffer';
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { bodyOf } from '../src/pages/Expenses';
@@ -134,7 +135,8 @@ describe('expenses screen (module expenses)', () => {
   it('attaches a receipt as the raw file with its own content type, and shows view and remove', async () => {
     const s = open([expense(), expense({ id: 2, merchant: 'Esso', has_receipt: true })]);
     const input = (await screen.findByLabelText(/Attach receipt to Shell/)) as HTMLInputElement;
-    const file = new File(['%PDF-1.4'], 'r.pdf', { type: 'application/pdf' });
+    // Node's File, as a browser's would be: Node's fetch cannot read jsdom's File as a body.
+    const file = new NodeFile(['%PDF-1.4'], 'r.pdf', { type: 'application/pdf' });
     fireEvent.change(input, { target: { files: [file] } });
     await waitFor(() =>
       expect(s.calls.some((c) => c.method === 'PUT' && c.path === '/expenses/1/receipt')).toBe(
