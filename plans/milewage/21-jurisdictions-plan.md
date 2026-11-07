@@ -431,7 +431,7 @@ the owner's call.
 | J8 | `pr-J8-custom-mileage-rate` | Driver's own rate for a country without a pack (Q5). |
 
 **Track L, earnings as entries (Q7a), stacked on J0:** split into PRs by the builder (database and
-migration of today's rows; API; web; import), each within the size rule.
+migration of today's rows; API; web; import), each within the size rule. Spec: [`22`](./22-earnings-entries-plan.md).
 
 **Track V, vehicle ownership (Q7b), stacked on J0:** ownership field, API, web form, rent and
 financing expense categories.
