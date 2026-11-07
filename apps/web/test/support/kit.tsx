@@ -163,7 +163,9 @@ export function fakeServer(table: Record<string, Handler>) {
     const text = contentType.includes('multipart') ? '' : await req.text();
     const body = text ? (contentType.includes('json') ? JSON.parse(text) : text) : undefined;
     calls.push({ method: req.method, path, body, contentType });
-    const handler = table[`${req.method} ${path}`];
+    // A key ending in `/*` answers any last path segment (an id the page makes up, like a UUID).
+    const handler =
+      table[`${req.method} ${path}`] ?? table[`${req.method} ${path.replace(/[^/]+$/, '*')}`];
     if (!handler) {
       return problem(404, 'not_found');
     }

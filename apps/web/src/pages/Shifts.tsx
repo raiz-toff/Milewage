@@ -15,6 +15,7 @@ import { useSession, useSettings } from '../session';
 import { FormError } from '../ui/form';
 import { localDate } from './Dashboard';
 import { ExportButtons } from './Exports';
+import { AddTrip } from './AddTrip';
 import { ShiftEarnings } from './ShiftEarnings';
 import { ShiftChecks, ShiftFigures, useVehicleName } from './ShiftFacts';
 import type { EarnedSummary } from './ShiftFacts';
@@ -412,6 +413,7 @@ export function ShiftDetail() {
   const [earned, setEarned] = useState<EarnedSummary | null>(null);
   const vehicle = useVehicleName(shift?.vehicle_id ?? 0);
   const [picked, setPicked] = useState<Picked>(null);
+  const [adding, setAdding] = useState(false);
   const { trips, error: tripsError } = useShiftTrips(shift?.id ?? 0, shift?.calculated_at ?? 0);
   const stopsData = useShiftStops(shift?.id ?? 0, !!shift && settings.modules.stops);
   // A running shift has no route yet (worked out when it ends), so it is not asked for.
@@ -516,7 +518,7 @@ export function ShiftDetail() {
             <InProgressCard earnings={settings.modules.earnings} />
           ) : empty ? (
             <div id="checks" className="scroll-mt-20">
-              <NoRouteCard shift={shift} replay={replay} />
+              <NoRouteCard shift={shift} replay={replay} onAdd={() => setAdding(true)} />
             </div>
           ) : replay ? (
             <RouteView
@@ -535,6 +537,14 @@ export function ShiftDetail() {
         <Section
           label="Timeline"
           title="Timeline"
+          action={
+            // With nothing recorded, the button sits in the card that explains why (once).
+            shift.status === 'ended' && !adding && !empty ? (
+              <UiButton variant="outline" size="sm" onClick={() => setAdding(true)}>
+                Add a trip
+              </UiButton>
+            ) : undefined
+          }
           description={
             sparse
               ? 'Start and end only'
@@ -545,6 +555,16 @@ export function ShiftDetail() {
                 : undefined
           }
         >
+          {adding ? (
+            <AddTrip
+              shift={shift}
+              onCancel={() => setAdding(false)}
+              onSaved={(s) => {
+                setAdding(false);
+                setShift(s);
+              }}
+            />
+          ) : null}
           {tripsError ? (
             <p className="text-muted-foreground">Trips could not be loaded. {tripsError}</p>
           ) : trips === null ? (

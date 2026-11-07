@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
+import { Button as UiButton } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
@@ -18,7 +19,16 @@ const SHORT_MIN = 3;
  * from the checks, and what to do next, in one card (NN/g and Carbon empty-state guidance). It
  * holds the checks, so the page shows no separate Checks card then.
  */
-export function NoRouteCard({ shift, replay }: { shift: Shift; replay: boolean }) {
+export function NoRouteCard({
+  shift,
+  replay,
+  onAdd,
+}: {
+  shift: Shift;
+  replay: boolean;
+  /** Opens the add-a-trip form; absent when the shift cannot be changed. */
+  onAdd?: () => void;
+}) {
   const mins = shift.ended_at === null ? null : (shift.ended_at - shift.started_at) / 60_000;
   const short = mins !== null && mins < SHORT_MIN && !shift.total_m;
   // "No stops changed the estimate" says nothing more when nothing at all was recorded.
@@ -47,6 +57,16 @@ export function NoRouteCard({ shift, replay }: { shift: Shift; replay: boolean }
         </div>
       ) : null}
       <AdviceList title="What you can do" advice={adviceFor(shift, [PERMISSIONS])} />
+      {onAdd && shift.status === 'ended' ? (
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <span className="text-muted-foreground">
+            If you know the distance (from the odometer or the platform), add it by hand.
+          </span>
+          <UiButton variant="outline" size="sm" onClick={onAdd}>
+            Add a trip
+          </UiButton>
+        </div>
+      ) : null}
     </Section>
   );
 }
