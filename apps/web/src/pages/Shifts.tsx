@@ -503,10 +503,21 @@ export function ShiftDetail() {
         ) : null}
       </div>
 
-      <div className="grid items-start gap-6 @3xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <div
+        className={cn(
+          'grid items-start gap-6',
+          settings.modules.replay && '@3xl:grid-cols-[minmax(0,1fr)_22rem]',
+        )}
+      >
         <div className="min-w-0">
           {settings.modules.replay ? (
-            <RouteView shiftId={shift.id} />
+            <RouteView
+              shiftId={shift.id}
+              trips={trips ?? undefined}
+              stops={stopsData.stops ?? undefined}
+              picked={picked}
+              onPick={setPicked}
+            />
           ) : (
             <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
               The route map is off on this server, so the shift is shown as a list only.
@@ -532,7 +543,7 @@ export function ShiftDetail() {
           ) : trips === null ? (
             <p className="text-muted-foreground">Loading trips</p>
           ) : (
-            <div className="@3xl:max-h-[30rem] @3xl:overflow-y-auto">
+            <div data-timeline-scroll className="@3xl:max-h-[30rem] @3xl:overflow-y-auto">
               {trips.length === 0 ? (
                 <p className="mb-2 text-muted-foreground">No trips were recorded.</p>
               ) : null}

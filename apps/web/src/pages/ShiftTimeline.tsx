@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Flag } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -73,17 +74,29 @@ function Row({
     </>
   );
   const row = 'flex w-full items-start gap-3 rounded-lg px-2 py-2 text-left';
+  const ref = useRef<HTMLButtonElement>(null);
+  // Picked on the map: bring the entry into view inside the list's own scroll box, not the page.
+  useEffect(() => {
+    const el = ref.current;
+    const box = el?.closest<HTMLElement>('[data-timeline-scroll]');
+    if (!on || !el || !box || box.scrollHeight <= box.clientHeight) return;
+    const r = el.getBoundingClientRect();
+    const b = box.getBoundingClientRect();
+    if (r.top < b.top) box.scrollTop -= b.top - r.top;
+    else if (r.bottom > b.bottom) box.scrollTop += r.bottom - b.bottom;
+  }, [on]);
   return (
     <li>
       {onClick ? (
         <button
+          ref={ref}
           type="button"
           aria-pressed={on}
           onClick={onClick}
           className={cn(
             row,
             'transition-colors hover:bg-accent/60 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
-            on && 'bg-accent ring-1 ring-primary/60',
+            on && 'bg-accent ring-1 ring-primary/60 ring-inset',
           )}
         >
           {body}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { boundsOf, lineOf, positionAt, speedIn, stepOf, timeAt, toPoints } from '../src/map/route';
+import { segmentOf } from '../src/map/route';
 import { OPENFREEMAP, blankStyle, chooseStyle, routeColor } from '../src/map/style';
 
 const route = {
@@ -16,6 +17,15 @@ describe('route maths', () => {
     expect(p).toHaveLength(3);
     expect(p[1]).toEqual({ t: 2000, lat: 45.001, lon: -75.002, speed: 10 });
     expect(p[2]?.speed).toBeNull();
+  });
+
+  it('cuts out the part of the route a trip covers, with its ends on the line', () => {
+    const p = toPoints(route);
+    const seg = segmentOf(p, 1500, 3000);
+    expect(seg.map((x) => x.t)).toEqual([1500, 2000, 3000]);
+    expect(seg[2]!.lat).toBeCloseTo(45.002, 9);
+    expect(segmentOf(p, 3000, 3000)).toEqual([]);
+    expect(segmentOf([], 1, 2)).toEqual([]);
   });
 
   it('cuts unequal arrays to the shortest instead of inventing points', () => {

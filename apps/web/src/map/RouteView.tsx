@@ -1,16 +1,38 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Section } from '../ui/layout';
 import { ApiError, unwrap } from '../api/client';
+import type { Schemas } from '../api/client';
 import { formatTime } from '../format';
 import { useSession, useSettings } from '../session';
 import { positionAt, speedIn, timeAt, toPoints } from './route';
 import type { RoutePoint } from './route';
+import type { MapPick, MapStop } from './MapView';
+import type { Picked } from '../pages/ShiftTimeline';
 
 const MapView = lazy(() => import('./MapView'));
 const STEPS = 1000;
 
-/** Route map and replay scrubber for one shift (module `replay`). */
-export function RouteView({ shiftId }: { shiftId: number }) {
+const NONE: never[] = [];
+const NOTE = 'rounded-xl border border-dashed p-4 text-sm text-muted-foreground';
+
+/**
+ * Route map and replay scrubber for one shift (module `replay`), with the shift's stops numbered
+ * as in the timeline. `picked` (from the timeline) is shown on the map; a stop clicked on the map
+ * is picked through `onPick`.
+ */
+export function RouteView({
+  shiftId,
+  trips = NONE,
+  stops = NONE,
+  picked = null,
+  onPick,
+}: {
+  shiftId: number;
+  trips?: Schemas['Trip'][];
+  stops?: Schemas['Stop'][];
+  picked?: Picked;
+  onPick?: (p: Picked) => void;
+}) {
   const { api } = useSession();
   const settings = useSettings();
   const [points, setPoints] = useState<RoutePoint[] | null>(null);
@@ -47,15 +69,49 @@ export function RouteView({ shiftId }: { shiftId: number }) {
     [points, step],
   );
 
+  const mapStops = useMemo(
+    (): MapStop[] =>
+      [...stops]
+        .sort((a, b) => a.started_at - b.started_at)
+        .map((s, i) => ({
+          key: s.stop_key,
+          n: i + 1,
+          lat: s.lat_e7 / 1e7,
+          lon: s.lon_e7 / 1e7,
+          low: s.confidence === 'low',
+        })),
+    [stops],
+  );
+  const trip = picked?.kind === 'trip' ? trips.find((t) => t.id === picked.id) : undefined;
+  const pick: MapPick = trip
+    ? { trip: [trip.started_at, trip.ended_at] }
+    : picked?.kind === 'stop'
+      ? { stop: picked.key }
+      : null;
+
   if (points === null) return <p className="text-muted-foreground">Loading route</p>;
   if (points.length === 0)
-    return <p className="text-muted-foreground">{note ?? 'No route points were recorded.'}</p>;
+    return (
+      <p className={NOTE}>
+        {note ?? 'No route points were recorded.'} The timeline lists the trips and stops.
+      </p>
+    );
 
   const tz = settings.timezone;
   return (
-    <Section label="Route" title="Route">
+    <Section
+      label="Route"
+      title="Route"
+      description="Numbers are the stops in the timeline. Pick a trip or a stop there to find it here."
+    >
       <Suspense fallback={<p className="text-muted-foreground">Loading map</p>}>
-        <MapView points={points} cursor={cursor} />
+        <MapView
+          points={points}
+          cursor={step > 0 ? cursor : null}
+          stops={mapStops}
+          pick={pick}
+          onPickStop={(key) => onPick?.({ kind: 'stop', key })}
+        />
       </Suspense>
       <div className="flex items-center gap-4">
         <input

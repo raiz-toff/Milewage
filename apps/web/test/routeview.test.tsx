@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { stop, trip } from './support/fixtures';
 import { renderApp, settingsFixture, signedIn } from './support/kit';
 
 // MapLibre needs WebGL, which jsdom does not have; the library is replaced by a recorder.
@@ -10,14 +11,25 @@ const ml = vi.hoisted(() => {
       options: { style: unknown };
       handlers: Record<string, () => void>;
       setStyle: ReturnType<typeof vi.fn>;
-      sources: Record<string, unknown>;
+      sources: Record<string, { data: unknown }>;
+      paint: Record<string, unknown>;
+      fits: unknown[];
+      eases: unknown[];
     }[],
     failConstructor: false,
-    markers: [] as { lngLat: number[] | null }[],
+    markers: [] as {
+      lngLat: number[] | null;
+      on: boolean;
+      element?: HTMLElement;
+      color?: string;
+    }[],
   };
   class Map {
     handlers: Record<string, () => void> = {};
-    sources: Record<string, unknown> = {};
+    sources: Record<string, { data: unknown }> = {};
+    paint: Record<string, unknown> = {};
+    fits: unknown[] = [];
+    eases: unknown[] = [];
     setStyle = vi.fn();
     constructor(public options: { style: unknown }) {
       if (state.failConstructor) throw new Error('WebGL is not available');
@@ -30,21 +42,34 @@ const ml = vi.hoisted(() => {
       this.handlers[name] = cb;
     }
     getSource(id: string) {
-      return this.sources[id];
+      const src = this.sources[id];
+      return src && { ...src, setData: (d: unknown) => (src.data = d) };
     }
-    addSource(id: string, src: unknown) {
+    addSource(id: string, src: { data: unknown }) {
       this.sources[id] = src;
     }
     addLayer() {}
-    fitBounds() {}
+    setPaintProperty(layer: string, name: string, value: unknown) {
+      this.paint[`${layer}.${name}`] = value;
+    }
+    fitBounds(b: unknown) {
+      this.fits.push(b);
+    }
+    easeTo(o: unknown) {
+      this.eases.push(o);
+    }
+    getZoom() {
+      return 12;
+    }
     isStyleLoaded() {
       return false;
     }
     remove() {}
   }
   class Marker {
-    state = { lngLat: null as number[] | null };
-    constructor() {
+    state;
+    constructor(o: { element?: HTMLElement; color?: string } = {}) {
+      this.state = { lngLat: null as number[] | null, on: false, ...o };
       state.markers.push(this.state);
     }
     setLngLat(l: number[]) {
@@ -52,7 +77,11 @@ const ml = vi.hoisted(() => {
       return this;
     }
     addTo() {
+      this.state.on = true;
       return this;
+    }
+    remove() {
+      this.state.on = false;
     }
   }
   return { state, Map, Marker };
@@ -93,12 +122,24 @@ const route = {
   speed_dmps: [0, 100, 0],
 };
 
+const T0 = 1_700_000_000_000;
+const trips = [
+  trip(1, { started_at: T0, ended_at: T0 + 1_700_000 }),
+  trip(2, { started_at: T0 + 1_900_000, ended_at: T0 + 3_600_000 }),
+];
+const stops = [
+  stop(2, { started_at: T0 + 2_000_000, lat_e7: 450_200_000, confidence: 'low' }),
+  stop(1, { started_at: T0 + 1_700_000, lat_e7: 450_100_000 }),
+];
+
 function open(settings = settingsFixture(), routeAnswer: object = { body: route }) {
   return renderApp(
     {
       ...signedIn(settings),
       'GET /shifts/1': () => ({ body: shift }),
       'GET /shifts/1/route': () => routeAnswer,
+      'GET /shifts/1/trips': () => ({ body: trips }),
+      'GET /shifts/1/stops': () => ({ body: stops }),
     },
     '/shifts/1',
   );
@@ -112,11 +153,15 @@ describe('route view', () => {
     expect(ml.state.maps[0]!.options.style).toMatch(/tiles\.openfreemap\.org/);
     const slider = screen.getByLabelText('Replay position') as HTMLInputElement;
     expect(screen.getByText(/0 km\/h/)).toBeTruthy();
+    const pin = () => ml.state.markers.find((m) => m.color);
+    await waitFor(() => expect(pin()).toBeTruthy());
+    expect(pin()!.on).toBe(false); // at the start the Start marker is enough
     fireEvent.change(slider, { target: { value: '500' } });
     // halfway in time is the middle fix: 36 km/h and the middle coordinate
     await waitFor(() => expect(screen.getByText(/36 km\/h/)).toBeTruthy());
     expect(screen.getByText('45.01000, -75.00000')).toBeTruthy();
-    await waitFor(() => expect(ml.state.markers[0]?.lngLat).toEqual([-75, 45.01]));
+    await waitFor(() => expect(pin()?.lngLat).toEqual([-75, 45.01]));
+    expect(pin()!.on).toBe(true);
   });
 
   it('adds the route layer once the style has loaded', async () => {
@@ -126,9 +171,56 @@ describe('route view', () => {
     expect(ml.state.maps[0]!.sources.route).toBeTruthy();
   });
 
+  it('marks the start, the end and the stops, numbered in time order, the doubtful one paler', async () => {
+    open();
+    const marked = () => ml.state.markers.filter((m) => m.element && m.on);
+    await waitFor(() => expect(marked()).toHaveLength(4));
+    const at = (text: string) => marked().find((m) => m.element!.textContent === text)!;
+    expect(at('Start').lngLat).toEqual([-75, 45]);
+    expect(at('End').lngLat).toEqual([-75.01, 45.02]);
+    expect(at('1').lngLat).toEqual([-75, 45.01]);
+    expect(at('2').lngLat).toEqual([-75, 45.02]);
+    expect(at('2').element!.className).toContain('opacity-60');
+    expect(at('1').element!.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('a trip picked in the timeline is drawn bold over a faded route and framed; again lets go', async () => {
+    open();
+    await waitFor(() => expect(ml.state.maps).toHaveLength(1));
+    const map = ml.state.maps[0]!;
+    map.handlers.load!();
+    const tripRow = await screen.findByRole('button', { name: /^\S+Trip · 1\.0 km/ });
+    const fits = map.fits.length;
+    fireEvent.click(tripRow);
+    await waitFor(() => expect(map.paint['route.line-opacity']).toBe(0.35));
+    const picked = map.sources.picked!.data as { geometry: { coordinates: number[][] } };
+    // 0 to 1,700,000 ms: the first fix, then a point on the line just before the middle fix
+    expect(picked.geometry.coordinates[0]).toEqual([-75, 45]);
+    expect(picked.geometry.coordinates).toHaveLength(2);
+    expect(map.fits.length).toBe(fits + 1);
+    fireEvent.click(tripRow);
+    await waitFor(() => expect(map.paint['route.line-opacity']).toBe(1));
+    expect((map.sources.picked!.data as typeof picked).geometry.coordinates).toEqual([]);
+  });
+
+  it('a stop clicked on the map is picked in the timeline, ringed and centred', async () => {
+    open();
+    await waitFor(() =>
+      expect(ml.state.markers.filter((m) => m.element?.textContent === '2')).toHaveLength(1),
+    );
+    const two = ml.state.markers.find((m) => m.element?.textContent === '2')!.element!;
+    fireEvent.click(two);
+    const row = await screen.findByRole('button', { name: /Stop 2/ });
+    expect(row.getAttribute('aria-pressed')).toBe('true');
+    await waitFor(() => expect(two.dataset.picked).toBe('true'));
+    expect(ml.state.maps[0]!.eases.at(-1)).toMatchObject({ center: [-75, 45.02], zoom: 15 });
+  });
+
   it('says so, without an error, when the server has no route (404)', async () => {
     open(settingsFixture(), { status: 404, body: { code: 'not_found' } });
-    expect(await screen.findByText('No route is available for this shift.')).toBeTruthy();
+    expect(
+      await screen.findByText(/^No route is available for this shift\. The timeline/),
+    ).toBeTruthy();
     expect(ml.state.maps).toHaveLength(0);
   });
 
