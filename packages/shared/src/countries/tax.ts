@@ -2,6 +2,7 @@
 // accountant, never a filing. Each country computes its own lines from the resolved place; the
 // screens show the lines and never name a country's own field.
 
+import type { TaxRegime } from './dimensions';
 import { resolvePlace } from './resolve';
 import type { CountryModule, ResolvedPlace } from './types';
 
@@ -59,6 +60,8 @@ export interface TaxPack {
   checkedAgainst: string;
   sources: readonly string[];
   notes: readonly string[];
+  /** The income-tax regimes this pack estimates. */
+  regimes: readonly TaxRegime[];
   /** The information slip a platform sends above a threshold per platform, if any. */
   slip: { name: string; thresholdCents: number } | null;
   estimate(input: TaxInput, place: ResolvedPlace): TaxEstimate;

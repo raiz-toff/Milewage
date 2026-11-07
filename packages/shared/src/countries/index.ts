@@ -14,6 +14,7 @@ export * from './registry';
 export * from './mileage';
 export * from './name';
 export * from './tax';
+export * from './dimensions';
 export { caCountry, gbCountry, usCountry };
 
 /** The countries of this process, in the order screens list them. */

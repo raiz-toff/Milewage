@@ -9,6 +9,7 @@ import { half, type TaxPack } from '../tax';
 export const caTax: TaxPack = {
   verified: false,
   checkedAgainst: 'the CRA publications',
+  regimes: ['net_profit'],
   sources: [
     'https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/payroll/payroll-deductions-contributions/canada-pension-plan-cpp/cpp-contribution-rates-maximums-exemptions.html',
     'https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/line-10100-employment-income/employment-income-slips/t4a.html',

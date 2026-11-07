@@ -1,11 +1,13 @@
 // Data slots (plan 21 section 3.4). A slot is one kind of regional data; the slot decides how a
 // level combines with the one above. A new slot is one file here plus one line in each table.
 
+import { filingProblems, type Filing } from './filing';
 import { logbookProblems, type Logbook } from './logbook';
 import { pensionProblems, type Pension } from './pension';
 import { combinePlatforms, platformsProblems, type PlatformOffer } from './platforms';
 import { combineSalesTax, salesTaxProblems, type SalesTaxComponent } from './sales-tax';
 
+export * from './filing';
 export * from './logbook';
 export * from './pension';
 export * from './platforms';
@@ -16,6 +18,7 @@ export interface PlaceData {
   pension?: Pension | null;
   platforms?: readonly PlatformOffer[];
   logbook?: Logbook;
+  filing?: Filing;
 }
 
 type Slots = Required<PlaceData>;
@@ -25,13 +28,20 @@ const nearest = <T>(_parent: T | undefined, own: T): T => own;
 
 export const SLOT_COMBINE: {
   [K in keyof Slots]: (parent: Slots[K] | undefined, own: Slots[K]) => Slots[K];
-} = { salesTax: combineSalesTax, pension: nearest, platforms: combinePlatforms, logbook: nearest };
+} = {
+  salesTax: combineSalesTax,
+  pension: nearest,
+  platforms: combinePlatforms,
+  logbook: nearest,
+  filing: nearest,
+};
 
 export const SLOT_PROBLEMS: { [K in keyof Slots]: (value: Slots[K]) => string[] } = {
   salesTax: salesTaxProblems,
   pension: pensionProblems,
   platforms: platformsProblems,
   logbook: logbookProblems,
+  filing: filingProblems,
 };
 
 /** Adds one level's data on top of the data resolved so far. */

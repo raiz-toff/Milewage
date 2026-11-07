@@ -5,6 +5,7 @@ import {
   countryName,
   dataProblems,
   datedProblems,
+  dimensionProblems,
   mileageDeduction,
   notAutomobile,
   periodStart,
@@ -29,6 +30,8 @@ describe.each(countryModules.list())('country $code meets the contract', (c) => 
     expect(typeof c.verified).toBe('boolean');
     expect(Array.isArray(c.notes)).toBe(true);
     expect(dataProblems(c.data)).toEqual([]);
+    // Work kinds, statuses, mileage methods, tax regimes, money flow, expense overrides (3.6a).
+    expect(dimensionProblems(c)).toEqual([]);
   });
 
   test('places: unique codes under an existing parent, named, resolvable, valid data', () => {

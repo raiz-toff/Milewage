@@ -2,6 +2,7 @@
 // computed at read time from the distance and the rate of the shift's local date.
 
 import { valueAt } from './dated';
+import type { MileageMethod } from './dimensions';
 import type { CountryModule, Dated, DeductionInput, Place, VehicleKind } from './types';
 
 /** One mileage rate for a vehicle class. Tiers restart at the start of each rate period. */
@@ -12,6 +13,8 @@ export type MileageRate =
 export interface Mileage {
   /** `MM-DD` the rate period starts on each year (calendar year `01-01`, UK tax year `04-06`). */
   yearStarts: string;
+  /** How a vehicle may be deducted; `per_distance` exactly when there are rates. */
+  methods: readonly MileageMethod[];
   /** Rates by vehicle class; a class without a rate gets no deduction. */
   rates: Partial<Record<VehicleKind, MileageRate>>;
 }

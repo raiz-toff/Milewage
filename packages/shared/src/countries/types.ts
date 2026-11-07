@@ -2,6 +2,7 @@
 // and cities add only the data that differs from the level above. Nothing here is a compliance
 // claim: a rate is a published figure with its source, not advice (17 R9).
 
+import type { ExpenseOverrides, IncomeModel, StatusOffer, WorkKind } from './dimensions';
 import type { Mileage } from './mileage';
 import type { PlaceData } from './slots';
 import type { TaxPack } from './tax';
@@ -70,6 +71,13 @@ export interface CountryModule {
   mileage: Mileage;
   /** Absent: no tax estimate for this country. */
   tax?: TaxPack;
+  /** Kinds of platform work the country's data covers (plan 21 section 3.6a). */
+  work: readonly WorkKind[];
+  /** Worker statuses the country's data covers. */
+  statuses: readonly StatusOffer[];
+  /** Money flow; absent until filled from checked sources. */
+  income?: IncomeModel;
+  expenseOverrides?: ExpenseOverrides;
   /** Where the figures come from, and what has not been checked by a person. */
   sources: readonly string[];
   /** False until a person has compared every figure with the primary page (17 section 4). */

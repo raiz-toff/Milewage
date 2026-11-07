@@ -54,6 +54,13 @@ const perKm: Dated<number> = {
 A new kind of regional data is a new file in `slots/` plus one line in each table of
 `slots/index.ts`. Existing places do not change.
 
+### Dimensions: how gig work differs
+
+`dimensions.ts` holds closed lists: work kinds, worker statuses, income-tax regimes, mileage
+methods, payers and the OECD platform statement fields. A country lists the values that apply
+(`work`, `statuses`, `mileage.methods`, `tax.regimes`); leave out what you have not checked.
+The `filing` slot holds the sales-tax registration rule and the platform statement.
+
 ## Add a country
 
 1. Create a folder named after the code in lower case, for example `de/index.ts`, exporting a

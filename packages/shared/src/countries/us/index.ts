@@ -84,7 +84,14 @@ export const usCountry: CountryModule = {
     WY: 'Wyoming',
   }),
   data: { platforms: offer('doordash', 'ubereats', 'instacart', 'amazonflex', 'grubhub', 'other') },
-  mileage: { yearStarts: '01-01', rates: { car: standard, van: standard, motorcycle: standard } },
+  // Today's use only (plan 21 Q8): delivery work by independent contractors.
+  work: ['delivery'],
+  statuses: [{ status: 'contractor' }],
+  mileage: {
+    yearStarts: '01-01',
+    methods: ['per_distance', 'actual_costs'],
+    rates: { car: standard, van: standard, motorcycle: standard },
+  },
   sources: [IRS],
   verified: false,
   notes: [

@@ -114,9 +114,14 @@ export const caCountry: CountryModule = {
       'other',
     ),
   },
+  // Today's use only (plan 21 Q8): delivery work by independent contractors.
+  work: ['delivery'],
+  statuses: [{ status: 'contractor' }],
   tax: caTax,
   mileage: {
     yearStarts: '01-01',
+    // The driver chooses per vehicle and year (deduction-method.ts), in every country today.
+    methods: ['per_distance', 'actual_costs'],
     rates: { car: allowance, van: allowance, motorcycle: allowance },
   },
   sources: [CRA_ALLOWANCE],

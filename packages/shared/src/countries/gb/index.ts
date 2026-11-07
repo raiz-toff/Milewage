@@ -32,8 +32,12 @@ export const gbCountry: CountryModule = {
     WLS: 'Wales',
   }),
   data: { platforms: offer('ubereats', 'amazonflex', 'deliveroo', 'justeat', 'other') },
+  // Today's use only (plan 21 Q8): delivery work by independent contractors.
+  work: ['delivery'],
+  statuses: [{ status: 'contractor' }],
   mileage: {
     yearStarts: '04-06',
+    methods: ['per_distance', 'actual_costs'],
     rates: {
       car,
       van: car,
