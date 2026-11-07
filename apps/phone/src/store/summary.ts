@@ -1,4 +1,12 @@
-import { countryModules, mileageDeduction, periodStart, type VehicleKind } from '@milewage/shared';
+import {
+  countryModules,
+  mileageDeduction,
+  mileageRateSource,
+  ownRateDeduction,
+  periodStart,
+  type OwnRate,
+  type VehicleKind,
+} from '@milewage/shared';
 import type { ShiftRow } from './shiftStore';
 
 export interface PeriodSummary {
@@ -20,7 +28,8 @@ export interface HomeSummary {
 type Row = Pick<
   ShiftRow,
   'local_date' | 'started_at' | 'status' | 'total_m' | 'vehicle_id' | 'sync_state'
->;
+> &
+  Partial<Pick<ShiftRow, 'server_deduction_cents' | 'server_deduction_known'>>;
 
 /** Monday of the week containing a `YYYY-MM-DD` date. */
 export function weekStart(date: string): string {
@@ -35,14 +44,27 @@ export function weekStart(date: string): string {
  * with a count). Same meaning as the web dashboard: only ended or finalized shifts count, the
  * deduction is each shift's value from the country pack (07 section 3) with the business metres
  * already driven in the same rate period, summed over the period; null when no rate applies.
- * The phone holds only the history it has seen, so a tiered rate (Canada's 5,000 km) can be
- * off if older shifts of the year are not on this phone.
+ * The server's numbers win: a shift the pull feed has sent uses the server's value (which also
+ * knows a vehicle deducted through actual expenses has none). Only shifts the server has not sent
+ * are estimated here, from the country's rates or, where it has none, the driver's own rate. The
+ * phone holds only the history it has seen, so a tiered rate (Canada's 5,000 km) can be off for
+ * those if older shifts of the year are not on this phone. Mileage has no regional data, so the
+ * driver's region does not change the estimate.
  */
 export function summarize(
   rows: readonly Row[],
-  opts: { today: string; country: string; vehicleKinds: ReadonlyMap<number, string> },
+  opts: {
+    today: string;
+    country: string;
+    vehicleKinds: ReadonlyMap<number, string>;
+    /** The driver's own rate from the settings (plan 21 Q5), used only where the country has none. */
+    ownRate?: OwnRate | null;
+  },
 ): HomeSummary {
-  const pack = countryModules.get(opts.country);
+  const found = countryModules.get(opts.country);
+  const own = opts.ownRate ?? null;
+  const source = mileageRateSource(found, own);
+  const pack = source === 'official' ? found : undefined;
   const done = rows
     .filter((r) => r.status !== 'active' && r.total_m !== null)
     .sort((a, b) => a.local_date.localeCompare(b.local_date) || a.started_at - b.started_at);
@@ -52,17 +74,17 @@ export function summarize(
     const kind = (opts.vehicleKinds.get(r.vehicle_id) as VehicleKind | undefined) ?? 'car';
     const key = `${kind}|${pack ? periodStart(pack.mileage, r.local_date) : ''}`;
     const before = prior.get(key) ?? 0;
-    value.set(
-      r,
-      pack
-        ? mileageDeduction(pack, {
-            totalM: r.total_m!,
-            priorM: before,
-            date: r.local_date,
-            vehicleKind: kind,
-          })
-        : null,
-    );
+    const local = pack
+      ? mileageDeduction(pack, {
+          totalM: r.total_m!,
+          priorM: before,
+          date: r.local_date,
+          vehicleKind: kind,
+        })
+      : source === 'yours'
+        ? ownRateDeduction(own!, { totalM: r.total_m!, vehicleKind: kind })
+        : null;
+    value.set(r, r.server_deduction_known ? (r.server_deduction_cents ?? null) : local);
     prior.set(key, before + r.total_m!);
   }
   const period = (from: string): PeriodSummary => {

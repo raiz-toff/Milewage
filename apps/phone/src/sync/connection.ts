@@ -57,7 +57,7 @@ export class ConnectionMonitor {
     if (stored !== null && gen > stored) {
       this.restored = true;
       await this.db.runAsync(
-        "UPDATE shifts SET sync_state = 'local' WHERE sync_state = 'on_server'",
+        "UPDATE shifts SET sync_state = 'local', server_deduction_known = 0 WHERE sync_state = 'on_server'",
       );
     }
   }

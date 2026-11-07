@@ -476,5 +476,7 @@ the structure.
   lists.
 - **Licences:** check the licence of any data copied from another project (PolicyEngine's engine is
   AGPL) and choose MileWage's own licence before community contributions start.
+- **Phone bundle size:** the phone bundles `packages/shared`, so keep heavy dependencies (for
+  example a holiday library for the `filing` slot) out of it; put them on the server side.
 - **No compliance claims:** a rate is a published figure with its source, not advice (`17` R9). No
   facts about a country are written without checked sources.

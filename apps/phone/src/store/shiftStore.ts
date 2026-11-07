@@ -44,6 +44,9 @@ export interface ShiftRow {
   notes: string | null;
   updated_at: number;
   sync_state: SyncState;
+  /** The server's deduction value from the pull feed; only meaningful when `server_deduction_known` is 1. */
+  server_deduction_cents: number | null;
+  server_deduction_known: 0 | 1;
 }
 
 export interface TripRow {

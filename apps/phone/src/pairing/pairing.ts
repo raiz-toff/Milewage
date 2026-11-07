@@ -59,6 +59,10 @@ export interface CachedSettings {
   engine_version: number;
   diagnostics: { level: 'off' | 'basic' | 'verbose'; verbose_until: number | null };
   modules: Record<string, boolean>;
+  /** Absent from servers before plan 21 (J4b, J8): read as none. */
+  region?: string | null;
+  own_mileage_rate?: { cents_per_unit: number; unit: 'km' | 'mi' } | null;
+  mileage_rate?: 'official' | 'yours' | 'none';
 }
 
 /** What the screens read to hide things (F22): all derived, never stored separately. */
