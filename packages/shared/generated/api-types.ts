@@ -83,6 +83,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/countries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The countries a driver may choose, with their regions and what each supports (plan 21 section 3.9). Public, so first-run setup can list them. */
+        get: operations["listCountries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/login": {
         parameters: {
             query?: never;
@@ -1477,6 +1494,42 @@ export interface components {
                 message: string;
             }[];
         };
+        Country: {
+            /** @description ISO 3166-1 alpha-2. */
+            code: string;
+            /** @description From Unicode CLDR (Intl.DisplayNames), in English. */
+            name: string;
+            /** @description ISO 4217. */
+            currency: string;
+            /** @enum {unknown} */
+            unit: "km" | "mi";
+            /** @description What the country calls its levels, in libaddressinput's words (province, state, nation ...); null when it has none. */
+            labels: {
+                region: string | null;
+                city: string | null;
+            };
+            supports: {
+                /** @description The country has published mileage rates. */
+                mileage: boolean;
+                /** @description The country has a tax estimate and comma.tax_countries does not hide it. */
+                tax: boolean;
+            };
+            /** @description False until a person has checked the figures against the primary sources. */
+            verified: boolean;
+            /** @description Some region or city has its own rules, so setting the region can change results. */
+            regional_rules: boolean;
+            regions: components["schemas"]["CountryPlace"][];
+        };
+        CountryPlace: {
+            /** @description A region: the ISO 3166-2 part after the country, as settings.region stores it (ON). A city: its full code (US-NY-NYC). */
+            code: string;
+            name: string;
+            /** @description This place has data that differs from the level above. */
+            own_rules: boolean;
+            /** @description True only if every level that supplies data was checked by a person. */
+            verified: boolean;
+            cities: components["schemas"]["CountryPlace"][];
+        };
         SetupRequest: {
             username: string;
             password: string;
@@ -2854,6 +2907,26 @@ export interface operations {
             413: components["responses"]["TooLarge"];
             422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
+        };
+    };
+    listCountries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Countries in the order screens list them. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Country"][];
+                };
+            };
         };
     };
     login: {

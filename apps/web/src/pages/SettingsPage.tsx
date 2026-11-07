@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { describe, unwrap } from '../api/client';
+import { levelWord, useCountries } from '../countries';
 import type { Schemas, Settings } from '../api/client';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
@@ -236,9 +237,13 @@ function PrefsForm({ prefs, children }: { prefs: Prefs; children: ReactNode }) {
 
 function GeneralSection({ prefs }: { prefs: Prefs }) {
   const { draft, set, saved } = prefs;
+  const tree = useCountries();
   const countries = saved.modules.countries.includes(draft.country)
     ? saved.modules.countries
     : [draft.country, ...saved.modules.countries];
+  const country = tree.find((c) => c.code === draft.country);
+  const regions = country?.regions ?? [];
+  const word = levelWord(country);
   return (
     <SettingsCard title="General" description="How you appear and where you drive.">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -253,16 +258,38 @@ function GeneralSection({ prefs }: { prefs: Prefs }) {
         <SelectField
           label="Country"
           value={draft.country}
-          onChange={(v) => set({ country: v })}
-          options={countries.map((c) => ({ value: c, label: c }))}
+          // A region belongs to its country, so a new country starts without one.
+          onChange={(v) => set({ country: v, region: '' })}
+          options={countries.map((c) => ({
+            value: c,
+            label: tree.find((t) => t.code === c)?.name ?? c,
+          }))}
         />
-        <Field
-          label="Region"
-          hint="Province or state code, for example ON or QC."
-          maxLength={3}
-          value={draft.region}
-          onChange={(e) => set({ region: e.target.value.toUpperCase() })}
-        />
+        {regions.length > 0 ? (
+          <SelectField
+            label={word}
+            value={draft.region}
+            onChange={(v) => set({ region: v })}
+            options={[
+              { value: '', label: 'Not set' },
+              ...regions.map((r) => ({ value: r.code, label: r.name })),
+            ]}
+          />
+        ) : tree.length === 0 ? (
+          <Field
+            label="Region"
+            hint="Province or state code, for example ON."
+            maxLength={3}
+            value={draft.region}
+            onChange={(e) => set({ region: e.target.value.toUpperCase() })}
+          />
+        ) : null}
+        {country?.regional_rules && !draft.region ? (
+          <p role="note" className="text-sm text-muted-foreground sm:col-span-2">
+            Set your {word.toLowerCase()} to include its own rules. Until then, only the national
+            rules apply.
+          </p>
+        ) : null}
       </div>
     </SettingsCard>
   );

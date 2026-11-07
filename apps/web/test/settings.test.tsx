@@ -124,6 +124,28 @@ describe('settings page', () => {
     expect(['csv', 'gpx', 'geojson'].every((f) => within(mods).getByText(f))).toBe(true);
   });
 
+  it('names countries, offers the regions in a drop-down and prompts for a region with its own rules', async () => {
+    const { calls } = server();
+    const country = await screen.findByLabelText('Country');
+    await waitFor(() => expect(country.textContent).toBe('Canada'));
+    const prompt =
+      'Set your province to include its own rules. Until then, only the national rules apply.';
+    expect(screen.getByRole('note').textContent).toBe(prompt);
+    expect(optionsOf('Province')).toEqual(['', 'AB', 'ON', 'QC']);
+    pick('Province', 'QC');
+    expect(screen.queryByRole('note')).toBeNull();
+    fireEvent.click(save());
+    await screen.findByRole('status');
+    expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ region: 'QC' });
+
+    // A new country starts without a region; one without regional rules gets no prompt.
+    pick('Country', 'US');
+    expect((screen.getByLabelText('State') as HTMLElement).textContent).toBe('Not set');
+    expect(screen.queryByRole('note')).toBeNull();
+    pick('Country', 'GB');
+    expect(screen.getByLabelText('Nation')).toBeTruthy();
+  });
+
   it('hides the diagnostics level when the diagnostics module is off', async () => {
     server(settingsFixture({ modules: { diagnostics: false } }), undefined, '/settings/tracking');
     await screen.findByLabelText('Keep raw GPS points (days)');
@@ -152,7 +174,7 @@ describe('settings page', () => {
   it('saves the profile fields: empty name and region become null, week start a number', async () => {
     const { calls } = server();
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Sam' } });
-    fireEvent.change(screen.getByLabelText(/^Region/), { target: { value: 'on' } });
+    pick(await screen.findByLabelText('Province'), 'ON');
     await go('Units and format');
     pick(await screen.findByLabelText('Week starts on'), '0');
     pick(screen.getByLabelText('Time format'), '12h');

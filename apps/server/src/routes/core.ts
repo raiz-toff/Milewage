@@ -14,7 +14,8 @@ import {
   createUserRepository,
   type Db,
 } from '../db';
-import type { CommaOptions } from '../comma-options';
+import { COMMA_DEFAULTS, type CommaOptions } from '../comma-options';
+import { countriesRoute } from './countries';
 import { ProblemError } from '../errors';
 import { settingsRoutes } from './settings';
 import { statusRoute, type StatusContext } from './status';
@@ -112,6 +113,10 @@ export function coreRoutes(
       exportFormats,
       captureFor,
     });
+    countriesRoute(app, {
+      countries,
+      taxShown: comma?.taxCountries ?? COMMA_DEFAULTS.taxCountries,
+    });
     vehicleRoutes(app, { db, now, auth, emit });
     odometerRoutes(app, { db, now, auth, emit });
     summaryRoute(app, {
@@ -156,6 +161,7 @@ export function coreRoutes(
       '/setup/status',
       '/setup/confirm',
       '/setup/restore',
+      '/countries',
       '/auth/login',
       '/auth/logout',
     ].map((p) => API_PREFIX + p);

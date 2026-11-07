@@ -4,6 +4,7 @@ import { App } from '../../src/App';
 import { createApi } from '../../src/api/client';
 import type { Modules, Settings } from '../../src/api/client';
 import { SessionProvider } from '../../src/session';
+import { countriesFixture } from './fixtures';
 
 // jsdom has no matchMedia; the shadcn sidebar and the theme switcher query it.
 if (typeof window !== 'undefined' && !window.matchMedia) {
@@ -215,6 +216,7 @@ export function renderApp(table: Record<string, Handler>, url = '/') {
 export const signedIn = (settings: Settings = settingsFixture()): Record<string, Handler> => ({
   'GET /setup/status': () => ({ body: { state: 'ready' } }),
   'GET /settings': () => ({ body: settings }),
+  'GET /countries': () => ({ body: countriesFixture() }),
   'GET /platforms': () => ({ body: [] }),
   'GET /notifications': () => ({ body: { items: [], next_cursor: null, unread_count: 0 } }),
   'GET /notifications/prefs': () => ({

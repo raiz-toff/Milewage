@@ -19,6 +19,7 @@ tags:
   - { name: auth }
   - { name: devices }
   - { name: settings }
+  - { name: countries }
   - { name: vehicles }
   - { name: shifts }
   - { name: stops }
@@ -45,7 +46,7 @@ tags:
 x-modules:
   core:
     toggle: never
-    operations: [getHealth, getSetupStatus, createOwner, confirmRecoveryKey, login, logout, changePassword, getSettings, updateSettings, listVehicles, createVehicle, updateVehicle, getSystemStatus, getSummary, listShifts, startShift, getShift, updateShift, purgeShift, endShift, finalizeShift, recalculateShift, setShiftOdometer, listOdometerReadings, createYearOdometerReading, deleteOdometerReading, listShiftTrips, putManualTrip, updateTrip, deleteManualTrip]
+    operations: [getHealth, getSetupStatus, listCountries, createOwner, confirmRecoveryKey, login, logout, changePassword, getSettings, updateSettings, listVehicles, createVehicle, updateVehicle, getSystemStatus, getSummary, listShifts, startShift, getShift, updateShift, purgeShift, endShift, finalizeShift, recalculateShift, setShiftOdometer, listOdometerReadings, createYearOdometerReading, deleteOdometerReading, listShiftTrips, putManualTrip, updateTrip, deleteManualTrip]
   devices:
     toggle: modules.devices
     default: true
@@ -260,6 +261,18 @@ paths:
         '422': { $ref: '#/components/responses/Unprocessable' }
         '429': { $ref: '#/components/responses/RateLimited' }
 
+  /countries:
+    get:
+      tags: [countries]
+      operationId: listCountries
+      summary: The countries a driver may choose, with their regions and what each supports (plan 21 section 3.9). Public, so first-run setup can list them.
+      security: []
+      responses:
+        '200':
+          description: Countries in the order screens list them.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Country' } }
   /auth/login:
     post:
       tags: [auth]
@@ -2261,6 +2274,39 @@ components:
               path: { type: string, description: JSON Pointer into the request body. }
               message: { type: string }
 
+    Country:
+      type: object
+      required: [code, name, currency, unit, labels, supports, verified, regional_rules, regions]
+      properties:
+        code: { type: string, description: ISO 3166-1 alpha-2. }
+        name: { type: string, description: 'From Unicode CLDR (Intl.DisplayNames), in English.' }
+        currency: { type: string, description: ISO 4217. }
+        unit: { enum: [km, mi] }
+        labels:
+          type: object
+          required: [region, city]
+          description: What the country calls its levels, in libaddressinput's words (province, state, nation ...); null when it has none.
+          properties:
+            region: { type: [string, 'null'] }
+            city: { type: [string, 'null'] }
+        supports:
+          type: object
+          required: [mileage, tax]
+          properties:
+            mileage: { type: boolean, description: The country has published mileage rates. }
+            tax: { type: boolean, description: 'The country has a tax estimate and comma.tax_countries does not hide it.' }
+        verified: { type: boolean, description: False until a person has checked the figures against the primary sources. }
+        regional_rules: { type: boolean, description: 'Some region or city has its own rules, so setting the region can change results.' }
+        regions: { type: array, items: { $ref: '#/components/schemas/CountryPlace' } }
+    CountryPlace:
+      type: object
+      required: [code, name, own_rules, verified, cities]
+      properties:
+        code: { type: string, description: 'A region: the ISO 3166-2 part after the country, as settings.region stores it (ON). A city: its full code (US-NY-NYC).' }
+        name: { type: string }
+        own_rules: { type: boolean, description: This place has data that differs from the level above. }
+        verified: { type: boolean, description: True only if every level that supplies data was checked by a person. }
+        cities: { type: array, items: { $ref: '#/components/schemas/CountryPlace' } }
     SetupRequest:
       type: object
       required: [username, password, country, distance_unit, currency, timezone]

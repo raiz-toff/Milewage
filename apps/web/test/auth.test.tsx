@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { renderApp, settingsFixture, pick } from './support/kit';
+import { countriesFixture } from './support/fixtures';
 
 afterEach(cleanup);
 
@@ -70,6 +71,7 @@ describe('setup wizard', () => {
     return renderApp({
       'GET /setup/status': () => ({ body: { state: confirmed ? 'ready' : 'needs_setup' } }),
       'GET /settings': () => ({ body: settingsFixture() }),
+      'GET /countries': () => ({ body: countriesFixture() }),
       'POST /setup': setup,
       'POST /setup/confirm': ({ body }) => {
         if ((body as { last6: string }).last6 !== 'abc123') {
@@ -93,6 +95,8 @@ describe('setup wizard', () => {
       body: { recovery_key: 'AGE-SECRET-KEY-1XYZabc123', state: 'needs_confirmation' },
     }));
     await screen.findByRole('heading', { name: 'Set up MileWage' });
+    // Country names and their currency and unit come from GET /countries.
+    await waitFor(() => expect(screen.getByLabelText('Country').textContent).toBe('Canada'));
     type('Username', 'rider');
     type('Password', 'a long enough password');
     pick(screen.getByLabelText('Country'), 'US');
