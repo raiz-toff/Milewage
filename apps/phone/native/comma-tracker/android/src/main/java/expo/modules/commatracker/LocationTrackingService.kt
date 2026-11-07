@@ -14,6 +14,8 @@ import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
+import java.lang.ref.WeakReference
+import org.json.JSONObject
 
 class LocationTrackingService : Service() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
@@ -22,15 +24,19 @@ class LocationTrackingService : Service() {
     private var activityPendingIntent: PendingIntent? = null
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var cadence = CadenceConfig()
+    /** The running distance shown in the notification; rebuilt from the buffer after a restart. */
+    private var live: LiveDistance? = null
+    /** What the notification shows now, so it is only re-posted when the text changes. */
+    private var shownTitle: String? = null
     private val pauseGpsRunnable = Runnable {
         Log.d(TAG, "Still for ${cadence.stillTimeoutMs}ms — pausing GPS to save battery.")
         stopLocationUpdates()
     }
 
     companion object {
-        // v2: changed channel importance from DEFAULT→LOW so the ongoing tracking
-        // notification never plays sound on repeated startForeground calls.
-        private const val CHANNEL_ID = "comma_tracker_channel_v2"
+        // A silent channel of its own; the old Comma-named one is deleted on first use.
+        private const val CHANNEL_ID = "milewage_shift"
+        private const val OLD_CHANNEL_ID = "comma_tracker_channel_v2"
         private const val NOTIFICATION_ID = 9876
         private const val TAG = "LocationTrackingService"
         private const val PREFS_NAME = "CommaTracker"
@@ -43,10 +49,23 @@ class LocationTrackingService : Service() {
         // Commands delivered by ActivityTransitionReceiver when movement state changes.
         const val ACTION_MOVEMENT = "expo.modules.commatracker.ACTION_MOVEMENT"
         const val ACTION_STILL = "expo.modules.commatracker.ACTION_STILL"
+        /** The shift details from JS (`setNotice`), as JSON, kept so a restarted service shows them. */
+        const val KEY_NOTICE = "notice"
+        /** Brand yellow (apps/phone/src/theme/colors.ts), the notification's accent. */
+        private const val ACCENT = 0xFFFFC21F.toInt()
+
+        @Volatile private var running: WeakReference<LocationTrackingService>? = null
+
+        /** Called after `setNotice` stored new shift details: the running service re-posts its notification. */
+        fun noticeChanged() {
+            val service = running?.get() ?: return
+            service.mainHandler.post { service.refreshNotice(force = true) }
+        }
     }
 
     override fun onCreate() {
         super.onCreate()
+        running = WeakReference(this)
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         locationCallback = object : LocationCallback() {
@@ -79,8 +98,9 @@ class LocationTrackingService : Service() {
             CadenceConfig()
         }
 
+        if (live == null) live = seedLive(prefs)
         createNotificationChannel()
-        val notification = createNotification()
+        val notification = buildNotification()
         try {
             // Android 10+ requires the foreground-service type to be supplied at the
             // startForeground() call site; on Android 14 the 2-arg overload throws
@@ -135,6 +155,7 @@ class LocationTrackingService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        if (running?.get() === this) running = null
         cancelPauseGps()
         unregisterActivityTransitions()
         fusedLocationClient.removeLocationUpdates(locationCallback)
@@ -288,18 +309,19 @@ class LocationTrackingService : Service() {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val shiftId = prefs.getString(KEY_SHIFT_CLIENT_ID, null) ?: return
         try {
-            AndroidSqlDb.buffer(this).insert(
-                PointMapper.toPoint(
-                    shiftId,
-                    loc.time,
-                    loc.latitude,
-                    loc.longitude,
-                    if (loc.hasAccuracy()) loc.accuracy else null,
-                    if (loc.hasSpeed()) loc.speed else null,
-                    if (loc.hasBearing()) loc.bearing else null,
-                    if (loc.hasAltitude()) loc.altitude else null,
-                )
+            val point = PointMapper.toPoint(
+                shiftId,
+                loc.time,
+                loc.latitude,
+                loc.longitude,
+                if (loc.hasAccuracy()) loc.accuracy else null,
+                if (loc.hasSpeed()) loc.speed else null,
+                if (loc.hasBearing()) loc.bearing else null,
+                if (loc.hasAltitude()) loc.altitude else null,
             )
+            val seq = AndroidSqlDb.buffer(this).insert(point)
+            live?.push(point.copy(seq = seq))
+            refreshNotice()
             // Latest GNSS offset for event times (15 section 10).
             prefs.edit()
                 .putLong(KEY_GNSS_OFFSET, PointMapper.gnssOffsetMs(loc.time, System.currentTimeMillis()))
@@ -311,16 +333,77 @@ class LocationTrackingService : Service() {
         }
     }
 
-    private fun createNotification(): Notification {
+    // ─── The running-shift notification ─────────────────────────────────────────
+
+    private fun notice(prefs: android.content.SharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)): ShiftNotice {
+        val fallbackStart = prefs.getLong("tracking_started_at", System.currentTimeMillis())
+        val json = prefs.getString(KEY_NOTICE, null) ?: return ShiftNotice(startedAt = fallbackStart)
+        return try {
+            val o = JSONObject(json)
+            ShiftNotice.fromMap(o.keys().asSequence().associateWith { o.opt(it) }, fallbackStart)
+        } catch (e: Exception) {
+            ShiftNotice(startedAt = fallbackStart)
+        }
+    }
+
+    /** The shift's distance so far from every stored row of it, as the app does after a restart. */
+    private fun seedLive(prefs: android.content.SharedPreferences): LiveDistance {
+        val acc = LiveDistance(notice(prefs).startedAt)
+        val shiftId = prefs.getString(KEY_SHIFT_CLIENT_ID, null) ?: return acc
+        try {
+            val buffer = AndroidSqlDb.buffer(this)
+            var after = 0L
+            while (true) {
+                val page = buffer.readByShift(shiftId, after, 5_000)
+                page.forEach(acc::push)
+                if (page.size < 5_000) break
+                after = page.last().seq
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Could not read the buffer for the running distance", e)
+        }
+        return acc
+    }
+
+    /** Re-posts the notification when what it says has changed (at most once per new fix). */
+    private fun refreshNotice(force: Boolean = false) {
+        val n = notice()
+        val title = n.text(live?.runningTotalM() ?: 0).title
+        if (!force && title == shownTitle) return
+        try {
+            getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, buildNotification(n))
+        } catch (e: SecurityException) {
+            // Notifications switched off for the app: tracking carries on without it.
+            Log.e(TAG, "Could not update the shift notification", e)
+        }
+    }
+
+    /**
+     * Collapsed: the shift's distance, today's total and a live clock in the header. Expanded:
+     * today's total, start time and vehicle. On Android 16 it asks to be a promoted ongoing
+     * notification, so the distance also shows as a chip in the status bar. Tapping opens the app.
+     */
+    private fun buildNotification(n: ShiftNotice = notice()): Notification {
+        val t = n.text(live?.runningTotalM() ?: 0)
+        shownTitle = t.title
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Comma — Shift Active")
-            .setContentText("Recording your mileage in the background.")
-            .setSmallIcon(android.R.drawable.ic_menu_compass)
+            .setSmallIcon(R.drawable.milewage_notification)
+            .setColor(ACCENT)
+            .setContentTitle(t.title)
+            .setContentText(t.text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(t.expanded))
+            .setWhen(n.startedAt)
+            .setShowWhen(true)
+            .setUsesChronometer(true)
             .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            // Prevent repeated sounds when startForeground() is called again on each
-            // ActivityTransitionReceiver delivery (ACTION_MOVEMENT / ACTION_STILL).
             .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+            .setRequestPromotedOngoing(true)
+            .setShortCriticalText(t.chip)
 
         // Tapping the ongoing notification reopens the app — without a content intent it does
         // nothing, which is the main way a user returns to a tracking app.
@@ -341,14 +424,20 @@ class LocationTrackingService : Service() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.deleteNotificationChannel(OLD_CHANNEL_ID)
+            // Default importance so Android 16 can promote it; no sound or vibration, ever.
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Shift Tracking",
-                NotificationManager.IMPORTANCE_LOW
+                "Shift in progress",
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "Shows while Comma is recording mileage during an active shift."
+                description = "Distance and time of the running shift."
+                setSound(null, null)
+                enableVibration(false)
+                setShowBadge(false)
             }
-            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+            manager.createNotificationChannel(channel)
         }
     }
 }

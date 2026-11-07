@@ -153,7 +153,9 @@ export function describeLadder(state: LadderState): LadderView {
     warnings.push('"Allow all the time" can only be chosen in the app\'s system settings now.');
   }
   if (s.notifications === 'denied' || s.notifications === 'blocked') {
-    warnings.push('Without notifications you will not see that a shift is being recorded.');
+    warnings.push(
+      'Without notifications you will not see the time and distance of your shift while you use other apps.',
+    );
   }
   if (mode !== 'none' && !state.batteryVisited) {
     warnings.push('Set battery use to unrestricted so the phone does not stop the tracker.');

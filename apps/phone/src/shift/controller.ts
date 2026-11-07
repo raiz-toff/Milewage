@@ -8,6 +8,7 @@ import { shiftOf, type Outbox } from '../sync/outbox';
 import type { OutboxRunner } from '../sync/runner';
 import { runLocal } from './endPayload';
 import { PUMP_LIMIT, PointFeed, toFix } from './feed';
+import { shiftNotice } from './notice';
 import { newId } from './uuid';
 
 /** The shift being recorded, persisted so a restart resumes it (and finishes unsent calls). */
@@ -101,6 +102,8 @@ export class ShiftController {
     if (this.active && this.active.endedAt === null) {
       this.attach(this.active);
       this.seed(this.active);
+      const s = await this.d.session();
+      if (s) await this.publishNotice(this.active, s.flags);
     } else if (this.active) {
       await this.handOff(); // killed between "End shift" and the hand-off
     }
@@ -165,6 +168,7 @@ export class ShiftController {
     this.attach(shift);
     await this.save();
     await this.begin(shift, s.flags.timezone);
+    await this.publishNotice(shift, s.flags);
     if (shift.odometerStartM !== null) {
       await this.d.shifts.setOdometer(
         shift.clientId,
@@ -237,7 +241,33 @@ export class ShiftController {
     this.attach(shift);
     await this.save();
     await this.begin(shift, s.flags.timezone);
+    await this.publishNotice(shift, s.flags);
     return { ok: true, shift };
+  }
+
+  /**
+   * Tells the tracker what the running-shift notification says around the distance (today's
+   * earlier shifts, start time, vehicle). Best effort: without it the notification still shows the
+   * distance and the clock.
+   */
+  private async publishNotice(shift: ActiveShift, flags: Flags) {
+    if (!flags.tracking) return;
+    try {
+      const kept = await this.d.store.get(K_VEHICLES);
+      const vehicles = kept ? (JSON.parse(kept) as Vehicle[]) : [];
+      this.d.tracker.setNotice(
+        shiftNotice({
+          clientId: shift.clientId,
+          startedAt: shift.startedAt,
+          vehicle: vehicles.find((v) => v.id === shift.vehicleId)?.name ?? null,
+          rows: await this.d.shifts.list(200),
+          unit: flags.distanceUnit,
+          timeZone: flags.timezone,
+        }),
+      );
+    } catch {
+      // The notification keeps its plain text; tracking is not affected.
+    }
   }
 
   private begin(shift: ActiveShift, timeZone: string) {

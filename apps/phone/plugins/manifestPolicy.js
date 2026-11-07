@@ -9,6 +9,9 @@ const ALLOWED = [
   'FOREGROUND_SERVICE_LOCATION',
   'ACTIVITY_RECOGNITION',
   'POST_NOTIFICATIONS',
+  // Android 16+: the running-shift notification may show as a chip in the status bar (owner
+  // decision 2026-11-07). A normal permission; older Android ignores it.
+  'POST_PROMOTED_NOTIFICATIONS',
   // Pairing: scanning the QR code from the web app (owner decision 2026-11-06).
   'CAMERA',
 ];

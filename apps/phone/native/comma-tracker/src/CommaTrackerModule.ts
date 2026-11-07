@@ -1,5 +1,5 @@
 import { NativeModule, requireNativeModule } from 'expo';
-import type { CadenceConfig, NativePoint } from './CommaTracker.types';
+import type { CadenceConfig, NativePoint, ShiftNotice } from './CommaTracker.types';
 
 declare class CommaTrackerModule extends NativeModule {
   /**
@@ -23,6 +23,8 @@ declare class CommaTrackerModule extends NativeModule {
   gnssOffsetMs(): number | null;
   /** Opens the system battery-optimization settings list. Returns false if it cannot open. */
   requestBatteryOptimizationSettings(): boolean;
+  /** What the running-shift notification says around the distance; cleared by stop(). */
+  setNotice(notice: ShiftNotice): void;
 }
 
 export default requireNativeModule<CommaTrackerModule>('CommaTracker');
