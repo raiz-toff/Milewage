@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { FileX, Pencil, Plus, Trash2 } from 'lucide-react';
 import { RowMenu } from '../ui/RowMenu';
 import { EmptyState, PageHeader, Section, StatCard, TableBox, tableClass } from '../ui/layout';
@@ -77,7 +78,11 @@ export function ExpensesPage() {
   const [shifts, setShifts] = useState<Schemas['Shift'][]>([]);
   const [filter, setFilter] = useState({ category: '', deductible: '' });
   const [merchants, setMerchants] = useState<string[]>([]);
-  const [draft, setDraft] = useState<Draft | null>(null);
+  // `?new` (the dashboard's Add expense) opens the form at once.
+  const [params] = useSearchParams();
+  const [draft, setDraft] = useState<Draft | null>(() =>
+    params.has('new') ? blank(new Date().toISOString().slice(0, 10)) : null,
+  );
   const [editing, setEditing] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 

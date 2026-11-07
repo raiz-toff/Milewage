@@ -53,11 +53,11 @@ export const weekOf = (d: string, weekStart: number) =>
   addDays(d, -((new Date(utcMs(d)).getUTCDay() - weekStart + 7) % 7));
 
 /** A calendar date as words; the date is already local, so it is formatted as UTC. */
-const dateWords = (d: string, opts: Intl.DateTimeFormatOptions) =>
+export const dateWords = (d: string, opts: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', ...opts }).format(utcMs(d));
 
 /** "Nov 13 – 19, 2023", or "Oct 30 – Nov 5, 2023" when the week spans two months. */
-const weekWords = (from: string, to: string) => {
+export const weekWords = (from: string, to: string) => {
   const start = dateWords(from, { month: 'short', day: 'numeric' });
   const end =
     from.slice(0, 7) === to.slice(0, 7)

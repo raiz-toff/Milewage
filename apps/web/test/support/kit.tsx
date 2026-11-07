@@ -87,6 +87,9 @@ export function optionsOf(target: string | HTMLElement): string[] {
   return values;
 }
 
+/** The dashboard's heading: the greeting, whatever the time of day (W4a). */
+export const DASHBOARD = /^Good (morning|afternoon|evening)/;
+
 export type Handler = (req: { body: unknown; url: URL }) => {
   status?: number;
   body?: unknown;
@@ -97,6 +100,8 @@ export interface Call {
   path: string;
   body: unknown;
   contentType: string;
+  /** The query string, e.g. `?from=2026-01-01&to=2026-01-31`. */
+  query: string;
 }
 
 export const ALL_ON: Modules = {
@@ -162,7 +167,7 @@ export function fakeServer(table: Record<string, Handler>) {
     // jsdom's File streams never finish under Node's Request, so a multipart body is not read.
     const text = contentType.includes('multipart') ? '' : await req.text();
     const body = text ? (contentType.includes('json') ? JSON.parse(text) : text) : undefined;
-    calls.push({ method: req.method, path, body, contentType });
+    calls.push({ method: req.method, path, body, contentType, query: url.search });
     const handler = table[`${req.method} ${path}`];
     if (!handler) {
       return problem(404, 'not_found');

@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { targetOf, valueText } from '../src/pages/Goals';
-import { renderApp, settingsFixture, signedIn, pick, menu } from './support/kit';
+import { renderApp, settingsFixture, signedIn, pick, menu, DASHBOARD } from './support/kit';
 
 afterEach(cleanup);
 
@@ -104,7 +104,7 @@ describe('goals screen (module goals)', () => {
 
   it('is absent when the module is off', async () => {
     const s = open([goal()], false);
-    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: DASHBOARD })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Goals' })).toBeNull();
     expect(s.calls.some((c) => c.path === '/goals')).toBe(false);
   });
