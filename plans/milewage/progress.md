@@ -1263,3 +1263,12 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Visual check: headless Chromium (Playwright cache) on the Vite dev server with the API answered by a fixture (a Toronto shift with 6 trips and 5 stops), 1280 and 390 px light; screenshots in the session scratchpad.
 - Not done: the Earned figure and the platforms in the header (W2b); the timeline of trips and stops and the map links (W2c, W2d).
 - Assumption (owner to confirm): "Business" is active plus deadhead; personal distance is shown under Distance.
+
+## PR W2b — Web: what the shift earned, at the top of the shift page (shift detail rework)
+
+- Branch `pr-W2b-shift-detail-earned` (pushed, not merged), stacked on `pr-W2a-shift-detail-header`.
+- Done: an "Earned" key figure between Time and the deduction: the shift's effective earnings (`GET /shifts/{ref}/earnings`, the sum of `effective`), "not entered" when nothing was entered or labelled (never zero, 05 §3.1a). The header line adds the platforms with earnings on the shift, by their names. Both come from the Earnings block, which reports them up when it loads or changes (`onSummary`), so there is no second request. Absent when the earnings module is off or the shift is still running, as the block is.
+- Standards checked: Uber's driver trip details put the earnings breakdown with the trip ([Uber, earnings basics](https://www.uber.com/us/en/drive/basics/earnings/)); Gridwise totals earnings per shift ([Gridwise earnings](https://gridwise.io/features/earnings)).
+- Tests: `apps/web/test/shifts.test.tsx` 2 new (two platforms add up to $63.50 and both are named in the header; "not entered" with no earnings, no Earned figure with the module off). Both fail without the change. `routeview.test.tsx`: the first test waits up to 5 s for the lazily imported map (it timed out at the 1 s default while the shared machine was loaded). `npm run verify` exit 0: vitest 117 files, 927 passed, 3 skipped; phone jest 240 passed, 2 skipped.
+- Visual check: headless Chromium, 1280 and 390 px dark; screenshots in the session scratchpad.
+- Not done: if the earnings cannot be read the figure keeps its loading bar (the Earnings block below shows the error).

@@ -17,6 +17,7 @@ import { localDate } from './Dashboard';
 import { ExportButtons } from './Exports';
 import { ShiftEarnings } from './ShiftEarnings';
 import { ShiftChecks, ShiftFigures, useVehicleName } from './ShiftFacts';
+import type { EarnedSummary } from './ShiftFacts';
 import { ShiftOdometer } from './ShiftOdometer';
 import { StopsPanel } from './Stops';
 import { TripsTable } from './Trips';
@@ -405,6 +406,7 @@ export function ShiftDetail() {
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [saved, setSaved] = useState(false);
+  const [earned, setEarned] = useState<EarnedSummary | null>(null);
   const vehicle = useVehicleName(shift?.vehicle_id ?? 0);
 
   useEffect(() => {
@@ -447,11 +449,13 @@ export function ShiftDetail() {
   if (!shift) return <p className="text-muted-foreground">Loading</p>;
   const split = showsSplit(shift, settings);
   const tz = settings.timezone;
+  const showEarnings = settings.modules.earnings && shift.status !== 'active';
   const review = shift.flags?.filter((f) => f.severity === 'review').length ?? 0;
   const context = [
     `${formatTime(shift.started_at, tz)} – ${shift.ended_at ? formatTime(shift.ended_at, tz) : 'now'}`,
     formatDuration(shift.started_at, shift.ended_at),
     vehicle,
+    ...(showEarnings ? (earned?.platforms ?? []) : []),
   ].filter(Boolean);
 
   return (
@@ -480,7 +484,13 @@ export function ShiftDetail() {
       </PageHeader>
 
       <div className="space-y-2">
-        <ShiftFigures shift={shift} settings={settings} split={split} est={<Est />} />
+        <ShiftFigures
+          shift={shift}
+          settings={settings}
+          split={split}
+          earned={showEarnings ? earned : undefined}
+          est={<Est />}
+        />
         {split ? (
           <p className="text-xs text-muted-foreground">* estimated from detected stops</p>
         ) : null}
@@ -493,9 +503,7 @@ export function ShiftDetail() {
 
       <div className="grid items-start gap-6 @3xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 space-y-6">
-          {settings.modules.earnings && shift.status !== 'active' ? (
-            <ShiftEarnings shift={shift} />
-          ) : null}
+          {showEarnings ? <ShiftEarnings shift={shift} onSummary={setEarned} /> : null}
           <ShiftOdometer shift={shift} />
         </div>
         <div className="min-w-0 space-y-6">

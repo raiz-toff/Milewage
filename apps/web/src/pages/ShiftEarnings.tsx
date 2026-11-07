@@ -6,6 +6,7 @@ import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { formatMoney, toCents } from '../format';
 import { EarningLedger } from './EarningLedger';
+import type { EarnedSummary } from './ShiftFacts';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
 
@@ -19,7 +20,14 @@ export { toCents };
  * figure typed after the fact, never a tap per delivery. It replaces the sum of that platform's
  * stop labels, which stay visible below as the breakdown.
  */
-export function ShiftEarnings({ shift }: { shift: Schemas['Shift'] }) {
+export function ShiftEarnings({
+  shift,
+  onSummary,
+}: {
+  shift: Schemas['Shift'];
+  /** Told the shift's earned total and platform names whenever they change. */
+  onSummary?: (s: EarnedSummary) => void;
+}) {
   const { api } = useSession();
   const { currency, modules } = useSettings();
   const [data, setData] = useState<Earnings | null>(null);
@@ -96,6 +104,14 @@ export function ShiftEarnings({ shift }: { shift: Schemas['Shift'] }) {
   }
 
   const label = (slug: string) => options.find((o) => o.value === slug)?.label ?? slug;
+  const names = data?.effective.map((r) => label(r.platform)).join('\n');
+  useEffect(() => {
+    if (!data || names === undefined) return;
+    onSummary?.({
+      cents: data.effective.length ? data.effective.reduce((t, r) => t + r.total_cents, 0) : null,
+      platforms: names === '' ? [] : names.split('\n'),
+    });
+  }, [data, names, onSummary]);
 
   return (
     <Section label="Earnings" title="Earnings">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { unwrap } from '../api/client';
 import type { Schemas, Settings } from '../api/client';
 import { deductionWord, formatDistance, formatDuration, formatMoney } from '../format';
@@ -54,6 +55,13 @@ export function useVehicleName(id: number): string | null {
   return name;
 }
 
+/** What the earnings block reports up for the figures and the header. */
+export interface EarnedSummary {
+  /** Effective earnings of the shift; null when nothing was entered or labelled. */
+  cents: number | null;
+  platforms: string[];
+}
+
 /**
  * The shift's key figures. Total distance is never marked estimated; the active and deadhead
  * split is, and only when the shift was segmented by stops (05 section 3.1a).
@@ -62,11 +70,14 @@ export function ShiftFigures({
   shift,
   settings,
   split,
+  earned,
   est,
 }: {
   shift: Shift;
   settings: Settings;
   split: boolean;
+  /** Undefined when earnings are not shown for this shift (module off, or still running). */
+  earned: EarnedSummary | null | undefined;
   est: React.ReactNode;
 }) {
   const unit = settings.distance_unit;
@@ -96,6 +107,20 @@ export function ShiftFigures({
         }
       />
       <StatCard label="Time" value={formatDuration(shift.started_at, shift.ended_at)} />
+      {earned !== undefined ? (
+        <StatCard
+          label="Earned"
+          value={
+            earned === null ? (
+              <Skeleton className="h-7 w-20" />
+            ) : earned.cents === null ? (
+              'not entered'
+            ) : (
+              formatMoney(earned.cents, settings.currency)
+            )
+          }
+        />
+      ) : null}
       <StatCard
         label={deductionWord(settings, true)}
         value={formatMoney(shift.deduction_cents, settings.currency)}

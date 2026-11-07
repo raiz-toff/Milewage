@@ -107,7 +107,8 @@ function open(settings = settingsFixture(), routeAnswer: object = { body: route 
 describe('route view', () => {
   it('draws on the OpenFreeMap basemap when no style URL is configured, and scrubs', async () => {
     open();
-    await waitFor(() => expect(ml.state.maps).toHaveLength(1));
+    // The first test pays for the lazy import of the map module; a loaded machine needs longer.
+    await waitFor(() => expect(ml.state.maps).toHaveLength(1), { timeout: 5000 });
     expect(ml.state.maps[0]!.options.style).toMatch(/tiles\.openfreemap\.org/);
     const slider = screen.getByLabelText('Replay position') as HTMLInputElement;
     expect(screen.getByText(/0 km\/h/)).toBeTruthy();

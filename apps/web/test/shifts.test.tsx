@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { sortRows } from '../src/ui/SortTable';
 import type { Column } from '../src/ui/SortTable';
@@ -203,6 +203,52 @@ describe('shift detail', () => {
     expect(figure('Business')).toBe('Business10.0 km7.0 km active*3.0 km deadhead*');
     expect(figure('Time')).toBe('Time4h 12m');
     expect(figure('Deduction')).toBe('Deduction$36.31');
+  });
+
+  it('shows what the shift earned, and the platforms in the header', async () => {
+    renderApp(
+      {
+        ...signedIn(),
+        'GET /shifts/1': () => ({ body: shift(1) }),
+        'GET /platforms': () => ({ body: [{ slug: 'doordash', label: 'DoorDash' }] }),
+        'GET /shifts/1/earnings': () => ({
+          body: {
+            entries: [],
+            labels: [],
+            effective: [
+              { platform: 'doordash', total_cents: 5350 },
+              { platform: 'skip', total_cents: 1000 },
+            ],
+          },
+        }),
+      },
+      '/shifts/1',
+    );
+    expect(await screen.findByText(/ · 4h 12m · DoorDash · skip$/)).toBeTruthy();
+    expect(screen.getByText('Earned').parentElement!.textContent).toBe('Earned$63.50');
+  });
+
+  it('earned reads "not entered" with nothing entered, and is absent with earnings off', async () => {
+    renderApp(
+      {
+        ...signedIn(),
+        'GET /shifts/1': () => ({ body: shift(1) }),
+        'GET /shifts/1/earnings': () => ({ body: { entries: [], labels: [], effective: [] } }),
+      },
+      '/shifts/1',
+    );
+    const earned = await screen.findByText('Earned');
+    await waitFor(() => expect(earned.parentElement!.textContent).toBe('Earnednot entered'));
+    cleanup();
+    renderApp(
+      {
+        ...signedIn(settingsFixture({ modules: { earnings: false } })),
+        'GET /shifts/1': () => ({ body: shift(1) }),
+      },
+      '/shifts/1',
+    );
+    await screen.findByText('Business');
+    expect(screen.queryByText('Earned')).toBeNull();
   });
 
   it('lists checks in plain words, review ones first, and counts them in the header', async () => {
