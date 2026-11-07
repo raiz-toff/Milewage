@@ -5,7 +5,7 @@ import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
-import { Button, Field, FormError, SelectField } from '../ui/form';
+import { Button, DateField, Field, FormError, SelectField } from '../ui/form';
 import { localDate } from './Dashboard';
 import { toCents } from './ShiftEarnings';
 
@@ -122,18 +122,17 @@ export function VehicleMaintenance({ vehicleId, name }: { vehicleId: number; nam
           ))}
         </ul>
       )}
-      <form className="grid gap-2 sm:grid-cols-5" onSubmit={(e) => void add(e)}>
+      <form className="grid gap-2 sm:grid-cols-2" onSubmit={(e) => void add(e)}>
         <SelectField
           label="Service"
           value={form.kind}
           onChange={(v) => setForm({ ...form, kind: v })}
           options={KINDS}
         />
-        <Field
+        <DateField
           label="Service date"
-          type="date"
           value={form.date}
-          onChange={(e) => setForm({ ...form, date: e.target.value })}
+          onChange={(date) => setForm({ ...form, date })}
         />
         <Field
           label={modules.expenses ? 'Cost (also saved as an expense)' : 'Cost'}
