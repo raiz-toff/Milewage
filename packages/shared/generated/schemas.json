@@ -909,7 +909,8 @@
         "emoji",
         "active",
         "sort",
-        "hourly_target_cents"
+        "hourly_target_cents",
+        "logo_version"
       ],
       "properties": {
         "slug": {
@@ -945,6 +946,40 @@
             "null"
           ],
           "description": "Used by analytics only."
+        },
+        "logo_version": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Changes when the driver's uploaded logo changes; null: no logo (plan 25 section 7). The image is GET /platforms/{slug}/logo?v=<logo_version>."
+        }
+      }
+    },
+    "PlatformLogo": {
+      "type": "object",
+      "required": [
+        "slug",
+        "mime",
+        "bytes",
+        "logo_version"
+      ],
+      "properties": {
+        "slug": {
+          "type": "string"
+        },
+        "mime": {
+          "enum": [
+            "image/png",
+            "image/jpeg",
+            "image/webp"
+          ]
+        },
+        "bytes": {
+          "type": "integer"
+        },
+        "logo_version": {
+          "type": "string"
         }
       }
     },

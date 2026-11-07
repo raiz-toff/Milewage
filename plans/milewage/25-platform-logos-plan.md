@@ -233,7 +233,8 @@ owners" line appears only where an uploaded logo can appear (Settings › Your p
 | PL1 | `pr-PL1-platform-badge`          | shared `color` / `initials` / `logo`; web `PlatformBadge`, the five marks, tests             |
 | PL2 | `pr-PL2-platform-badges-in-ui`   | the badge in the places of section 4.4, the "not affiliated" line, tests, visual check       |
 | PL3 | `pr-PL3-no-bundled-logos`        | owner decision: the five marks, `logo` flags and `SHOW_PLATFORM_LOGOS` removed; initials     |
-| PL4 | `pr-PL4-platform-logo-upload`    | the driver's own logo per platform: server routes, backups, Settings upload (section 7)      |
+| PL4a | `pr-PL4a-platform-logo-server` | the driver's own logo per platform: table, routes, OpenAPI, backups (section 7)              |
+| PL4b | `pr-PL4b-platform-logo-web`    | Settings upload, change and remove; the badge shows the image                                |
 
 Tests (fail without the change): initials for every built-in platform and no bundled image; a custom platform's stored colour wins and a missing one is
 stable for the same slug; letters reach 4.5:1 on every built-in and fallback colour; the
@@ -243,4 +244,50 @@ section 4.4 shows the badge.
 ## 7. The driver's own logo (PL4)
 
 Per platform, built-in or custom, the driver may upload one small image to their own server; the
-badge then shows it instead of the initials. Design, security and backups: written with PL4.
+badge then shows it, cropped to the tile, instead of the initials. Removing it brings the initials
+back.
+
+### 7.1 Research (2026-11-07)
+
+- [OWASP File Upload Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html):
+  allow-list the types; do not trust the `Content-Type` header; check the file signature, but not
+  as the only check; the application names stored files, never the user; set a size limit; only
+  signed-in users upload; re-encode images where possible.
+- SVG can carry script and runs it when opened directly, so it is refused
+  ([MDN: SVG as an image](https://developer.mozilla.org/en-US/docs/Web/SVG/Guides/SVG_as_an_image)).
+- Serving: [`X-Content-Type-Options: nosniff`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Content-Type-Options)
+  and [`Content-Security-Policy: sandbox`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/sandbox),
+  so a file opened on its own cannot act as a page.
+- SQLite: blobs under about 100 KB read faster from the database than from files
+  ([Internal versus external BLOBs](https://www.sqlite.org/intern-v-extern-blob.html)).
+- MileWage already has receipts (18 section 5.4, `apps/server/src/routes/receipts.ts`): raw image
+  body with its type, `sniffMime` on the first bytes, JPEG location data removed (`stripGps`),
+  `nosniff` on the way out; files on disk under random names, copied into each backup and written
+  back on restore (`receipts/store.ts`).
+
+### 7.2 Design
+
+- `PUT /platforms/{slug}/logo` (web session only): the image as the request body with its type.
+  PNG, JPEG or WebP; the first bytes must match the declared type (receipts' `sniffMime`); 256 KB
+  at most (413 above); SVG and anything else is 415; JPEG Exif is removed (`stripGps`). Any
+  built-in slug or one of the driver's custom platforms, else 404. 201 new, 200 replaced.
+- `GET /platforms/{slug}/logo` (session or paired phone): the bytes with their stored type,
+  `nosniff`, `Content-Security-Policy: default-src 'none'; sandbox`, and, like every API answer,
+  `Cache-Control: no-store` (hooks.ts). Not cached: at most 256 KB each and a handful per page.
+- `DELETE /platforms/{slug}/logo`: idempotent, 204. Deleting a custom platform, or resetting a
+  built-in's override, removes its logo too.
+- `GET /platforms` gains `logo_version` (16 hex characters of the image's SHA-256, null when there
+  is none); the web loads `/api/v1/platforms/{slug}/logo?v=<logo_version>`, so a new image shows at
+  once.
+- Storage: table `platform_logos` (migration `platforms/0002`), one row per driver and slug, the
+  bytes as a BLOB with type, SHA-256 and time. No file name or path from the driver ever reaches
+  the disk.
+- **Backups:** the logos are rows of the database, so every backup holds them and a restore brings
+  them back, with no extra step (unlike receipts, which are files and need `embedReceipts`).
+- Not done: re-encoding the image (OWASP's strongest step): the server has no image library, and
+  adding one (e.g. sharp, with native code) is a heavy dependency for a 256 KB picture that is
+  only shown to the driver who uploaded it, as an `<img>` (which never runs script).
+- Web (PL4b): Settings › Your platforms, per row: **Add logo** (file picker), then **Change** and
+  **Remove**; the badge previews the image; errors in plain words ("Use a PNG, JPEG or WebP under
+  256 KB."); the line "Platform names and logos belong to their owners. MileWage is not affiliated
+  with them." under the list.
