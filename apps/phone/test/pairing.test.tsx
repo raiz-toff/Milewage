@@ -103,6 +103,30 @@ describe('redeem against the mock server', () => {
     expect(bad.state.settings?.distance_unit).toBe('mi');
   });
 
+  it('status: paired, revoked when the server refuses the phone, cleared by a new pairing', async () => {
+    let revoked = false;
+    const server = mockServer({
+      ...okServer().routes,
+      'GET /settings': () => (revoked ? problem(401, 'device_revoked') : json(200, SETTINGS)),
+    });
+    const { services } = makeServices(server.fetch);
+    const changes = jest.fn();
+    services.pairing.subscribe(changes);
+    expect(await services.pairing.status()).toBe('unpaired');
+    const paired = await services.pairing.redeem(parsePairingPayload(QR)!);
+    expect(await services.pairing.status()).toBe('paired');
+    await services.pairing.refreshSettings(paired);
+    expect(await services.pairing.status()).toBe('paired'); // a good answer changes nothing
+    revoked = true;
+    await services.pairing.refreshSettings(paired);
+    expect(await services.pairing.status()).toBe('revoked');
+    expect(await services.pairing.load()).not.toBeNull(); // nothing deleted
+    revoked = false;
+    await services.pairing.redeem(parsePairingPayload(QR)!);
+    expect(await services.pairing.status()).toBe('paired');
+    expect(changes).toHaveBeenCalledTimes(3);
+  });
+
   it('unpair forgets the credential', async () => {
     const { services } = makeServices(okServer().fetch);
     await services.pairing.redeem(parsePairingPayload(QR)!);

@@ -105,6 +105,13 @@ export interface PairedState {
 
 const K_CRED = 'pairing.credential';
 const K_SETTINGS = 'pairing.settings';
+const K_REVOKED = 'pairing.revoked';
+
+/**
+ * What the app start gate reads (24 section 4.1). `revoked`: the server refused this phone
+ * (`device_revoked`); the credential is kept, but the phone must connect again.
+ */
+export type PairingStatus = 'paired' | 'unpaired' | 'revoked';
 
 export interface PairingDeps {
   secure: KeyValueStore;
@@ -123,7 +130,30 @@ export interface PairingDeps {
 }
 
 export class Pairing {
+  private readonly listeners = new Set<() => void>();
+
   constructor(private readonly d: PairingDeps) {}
+
+  /** Called after every pairing change (paired, unpaired, revoked). Returns the unsubscribe. */
+  subscribe(fn: () => void): () => void {
+    this.listeners.add(fn);
+    return () => void this.listeners.delete(fn);
+  }
+
+  private changed() {
+    for (const fn of [...this.listeners]) fn();
+  }
+
+  async status(): Promise<PairingStatus> {
+    if (!(await this.d.secure.get(K_CRED))) return 'unpaired';
+    return (await this.d.plain.get(K_REVOKED)) ? 'revoked' : 'paired';
+  }
+
+  /** The server said this phone was revoked. Nothing is deleted; the gate asks to connect again. */
+  private async revoked(): Promise<void> {
+    if (!(await this.d.plain.get(K_REVOKED))) await this.d.plain.set(K_REVOKED, '1');
+    this.changed(); // again on each refusal: the gate may have waited for a running shift to end
+  }
 
   /** Redeems the token; stores the credential securely and the settings in the cache. */
   async redeem(payload: PairingPayload): Promise<PairedState> {
@@ -154,7 +184,9 @@ export class Pairing {
     };
     await this.d.secure.set(K_CRED, JSON.stringify(credential));
     await this.d.plain.set(K_SETTINGS, JSON.stringify(settings));
+    await this.d.plain.remove(K_REVOKED);
     this.d.onSettings?.(settings);
+    this.changed();
     return { credential, settings };
   }
 
@@ -186,6 +218,7 @@ export class Pairing {
       now: this.d.now,
       blocked: () => this.d.monitor?.blocked() ?? false,
       onResponse: (h) => this.d.monitor?.observe(h, c.instanceId),
+      onProblem: (e) => void (e.code === 'device_revoked' && this.revoked()),
     });
   }
 
@@ -216,5 +249,7 @@ export class Pairing {
   async unpair(): Promise<void> {
     await this.d.secure.remove(K_CRED);
     await this.d.plain.remove(K_SETTINGS);
+    await this.d.plain.remove(K_REVOKED);
+    this.changed();
   }
 }

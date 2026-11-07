@@ -27,12 +27,14 @@ describe('settings screen', () => {
   it('pairs from a pasted link, then shows flag-driven lines and unpairs', async () => {
     const { services } = makeServices(okServer().fetch);
     render(<App services={services} />);
-    fireEvent.press(await screen.findByRole('button', { name: 'Settings' }));
+    fireEvent.press(await screen.findByRole('button', { name: 'I have a server' }));
     expect(await screen.findByText('Not paired.')).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText('Pairing link'), QR);
     fireEvent.press(screen.getByRole('button', { name: 'Pair' }));
+    // Paired: the app start gate shows Home; Settings now shows the server.
+    fireEvent.press(await screen.findByRole('button', { name: 'Settings' }));
     expect(await screen.findByText('Paired to https://mw.example.net')).toBeTruthy();
-    expect(await screen.findByText('Distances in miles.')).toBeTruthy();
+    expect(await screen.findByText('Distances in kilometres.')).toBeTruthy();
     expect(screen.getByText('Stops and the estimated split are on.')).toBeTruthy();
     // Unpairing asks first: Cancel keeps the pairing, Unpair removes it and says so.
     fireEvent.press(screen.getByRole('button', { name: 'Unpair this phone' }));
@@ -42,7 +44,7 @@ describe('settings screen', () => {
     expect(screen.getByText(/Paired to/)).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: 'Unpair this phone' }));
     fireEvent.press(await screen.findByRole('button', { name: 'Unpair' }));
-    expect(await screen.findByText('Not paired.')).toBeTruthy();
+    expect(await screen.findByText('Welcome to MileWage')).toBeTruthy();
     expect(screen.getByText('Phone unpaired.')).toBeTruthy();
   });
 
@@ -58,9 +60,10 @@ describe('settings screen', () => {
     });
     const { services } = makeServices(server.fetch);
     render(<App services={services} />);
-    fireEvent.press(await screen.findByRole('button', { name: 'Settings' }));
+    fireEvent.press(await screen.findByRole('button', { name: 'I have a server' }));
     fireEvent.changeText(await screen.findByLabelText('Pairing link'), QR);
     fireEvent.press(screen.getByRole('button', { name: 'Pair' }));
+    fireEvent.press(await screen.findByRole('button', { name: 'Settings' }));
     expect(await screen.findByText('Tracking is turned off on the server.')).toBeTruthy();
     expect(screen.queryByText('Stops and the estimated split are on.')).toBeNull();
   });
@@ -71,7 +74,7 @@ describe('settings screen', () => {
     });
     const { services } = makeServices(server.fetch);
     render(<App services={services} />);
-    fireEvent.press(await screen.findByRole('button', { name: 'Settings' }));
+    fireEvent.press(await screen.findByRole('button', { name: 'I have a server' }));
     fireEvent.changeText(await screen.findByLabelText('Pairing link'), 'hello');
     fireEvent.press(screen.getByRole('button', { name: 'Pair' }));
     expect(await screen.findByText('That is not a MileWage pairing code.')).toBeTruthy();
@@ -92,8 +95,8 @@ describe('pairing link that opens the app (the phone camera scanned the QR)', ()
     expect(await screen.findByText('Pair with this server?')).toBeTruthy();
     expect(screen.getByText(/https:\/\/mw\.example\.net/)).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: 'Pair phone' }));
-    expect(await screen.findByText('Paired to https://mw.example.net')).toBeTruthy();
-    expect(screen.getByText('Phone paired.')).toBeTruthy();
+    expect(await screen.findByText('Phone paired.')).toBeTruthy();
+    expect(await screen.findByText('No shift running.')).toBeTruthy(); // the gate opened Home
   });
 
   it('Cancel leaves the phone unpaired and sends nothing', async () => {

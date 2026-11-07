@@ -111,7 +111,11 @@ describe('permissions screen', () => {
     const permissions = new FakePermissions();
     const tracker = new FakeTracker();
     render(
-      <App services={makeServices(mockServer({}).fetch, { permissions, tracker }).services} />,
+      <App
+        services={
+          makeServices(mockServer({}).fetch, { permissions, tracker, paired: true }).services
+        }
+      />,
     );
     fireEvent.press(await screen.findByRole('button', { name: 'Settings' }));
     fireEvent.press(await screen.findByRole('button', { name: 'Permissions' }));

@@ -17,6 +17,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useGate } from './firstrun/gate';
 import { PairingLinks } from './pairing/PairingLinks';
 import { RootNavigator, type RootStackParamList } from './navigation';
 import { ServicesProvider, useServices, type Services } from './services';
@@ -77,15 +78,19 @@ export function App({ services }: { services?: Services }) {
 /** The screens inside the crash guard; a caught crash goes to diagnostics like any other. */
 function Guarded() {
   const { diagnostics } = useServices();
+  const gate = useGate();
+  // Until the pairing is read, the bare canvas, so the wrong first screen never flashes.
+  if (gate === 'loading') return <View style={{ flex: 1, backgroundColor: PALETTE.background }} />;
+  const first = gate === 'paired' ? 'Home' : 'Welcome';
   return (
     <ErrorBoundary
       onError={(e) => {
         diagnostics.recordCrash(e, false);
         void diagnostics.persist();
       }}
-      onHome={() => navRef.isReady() && navRef.reset({ index: 0, routes: [{ name: 'Home' }] })}
+      onHome={() => navRef.isReady() && navRef.reset({ index: 0, routes: [{ name: first }] })}
     >
-      <RootNavigator />
+      <RootNavigator gate={gate} />
     </ErrorBoundary>
   );
 }
