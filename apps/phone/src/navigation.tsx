@@ -2,6 +2,7 @@ import {
   createNativeStackNavigator,
   type NativeStackScreenProps,
 } from '@react-navigation/native-stack';
+import { ConnectScreen } from './firstrun/ConnectScreen';
 import { ServerSetupScreen } from './firstrun/ServerSetupScreen';
 import { WelcomeScreen } from './firstrun/WelcomeScreen';
 import type { PairingStatus } from './pairing/pairing';
@@ -16,9 +17,10 @@ export type RootStackParamList = {
   /** `revoked`: the server disconnected this phone; Welcome says so. */
   Welcome: { revoked?: boolean } | undefined;
   ServerSetup: undefined;
-  Home: undefined;
   /** `pairLink`: a `milewage://pair` link that opened the app, to pair from after asking. */
-  Settings: { pairLink?: string } | undefined;
+  Connect: { pairLink?: string } | undefined;
+  Home: undefined;
+  Settings: undefined;
   Shifts: undefined;
   ShiftDetail: { clientId: string };
   Permissions: undefined;
@@ -58,8 +60,9 @@ export function RootNavigator({ gate }: { gate: PairingStatus }) {
           <Stack.Screen name="ServerSetup" component={ServerSetupScreen} />
         </Stack.Group>
       )}
-      {/* In both sets; Settings holds the pairing form until the Connect screen (PO2). */}
+      {/* In both sets. Connect also takes a pairing link that arrives when already connected. */}
       <Stack.Group navigationKey={key}>
+        <Stack.Screen name="Connect" component={ConnectScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="Permissions" component={PermissionsScreen} />
         <Stack.Screen name="Conformance" component={ConformanceScreen} />

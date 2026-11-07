@@ -45,7 +45,9 @@ describe('first run gate (24 section 4)', () => {
     expect(screen.queryByText('No shift running.')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Go back' })).toBeNull();
     fireEvent.press(screen.getByRole('button', { name: 'I have a server' }));
-    expect(await screen.findByText('Not paired.')).toBeTruthy();
+    expect(await screen.findByText('Connect to your server')).toBeTruthy();
+    expect(screen.getByText('Open the link')).toBeTruthy(); // the ways without the camera
+    expect(screen.getByText('Paste the code')).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: 'Go back' }));
     expect(await screen.findByText('Welcome to MileWage')).toBeTruthy();
   });
@@ -65,7 +67,7 @@ describe('first run gate (24 section 4)', () => {
     fireEvent.press(screen.getByRole('button', { name: 'Open the guide' }));
     expect(open).toHaveBeenCalledWith(INSTALL_GUIDE_URL);
     fireEvent.press(screen.getByRole('button', { name: 'My server is ready' }));
-    expect(await screen.findByText('Not paired.')).toBeTruthy();
+    expect(await screen.findByText('Connect to your server')).toBeTruthy();
   });
 
   it('a phone the server disconnected goes back to Welcome and says so', async () => {

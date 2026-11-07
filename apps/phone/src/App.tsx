@@ -63,7 +63,7 @@ export function App({ services }: { services?: Services }) {
               <NavigationContainer ref={navRef} theme={navTheme} onReady={() => setNavReady(true)}>
                 <Guarded />
                 {navReady && (
-                  <PairingLinks onLink={(url) => navRef.navigate('Settings', { pairLink: url })} />
+                  <PairingLinks onLink={(url) => navRef.navigate('Connect', { pairLink: url })} />
                 )}
               </NavigationContainer>
             </ConfirmProvider>

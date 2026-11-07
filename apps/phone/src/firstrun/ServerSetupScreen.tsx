@@ -33,7 +33,7 @@ export function ServerSetupScreen({ navigation }: ScreenProps<'ServerSetup'>) {
       title="Set up your server"
       description="Do these steps on a computer. Then come back to this phone."
       footer={
-        <Button size="lg" onPress={() => navigation.navigate('Settings')}>
+        <Button size="lg" onPress={() => navigation.navigate('Connect')}>
           <Text>My server is ready</Text>
         </Button>
       }

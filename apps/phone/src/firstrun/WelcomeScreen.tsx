@@ -17,7 +17,7 @@ export function WelcomeScreen({ navigation, route }: ScreenProps<'Welcome'>) {
       description="MileWage records your shifts and sends them to your own MileWage server."
       footer={
         <View className="gap-3">
-          <Button size="lg" onPress={() => navigation.navigate('Settings')}>
+          <Button size="lg" onPress={() => navigation.navigate('Connect')}>
             <Text>I have a server</Text>
           </Button>
           <Button size="lg" variant="outline" onPress={() => navigation.navigate('ServerSetup')}>
