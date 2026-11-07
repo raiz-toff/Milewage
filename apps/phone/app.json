@@ -4,7 +4,7 @@
     "slug": "milewage",
     "version": "0.1.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "scheme": "milewage",
     "android": {
       "package": "app.milewage.phone",
@@ -16,14 +16,37 @@
         "FOREGROUND_SERVICE_LOCATION",
         "ACTIVITY_RECOGNITION",
         "POST_NOTIFICATIONS"
-      ]
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png",
+        "backgroundColor": "#101214"
+      }
     },
     "plugins": [
       "./plugins/withManifestPolicy",
       [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#101214"
+        }
+      ],
+      [
         "expo-build-properties",
-        { "android": { "minSdkVersion": 24, "usesCleartextTraffic": false, "allowBackup": false } }
+        {
+          "android": {
+            "minSdkVersion": 24,
+            "usesCleartextTraffic": false,
+            "allowBackup": false
+          }
+        }
       ]
-    ]
+    ],
+    "icon": "./assets/icon.png",
+    "backgroundColor": "#101214"
   }
 }
