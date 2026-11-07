@@ -22,14 +22,17 @@ export function ServerSetupScreen({ navigation }: ScreenProps<'ServerSetup'>) {
     toast.show({
       tone: 'error',
       title: 'This phone could not open it.',
-      description: `On your computer, open ${INSTALL_GUIDE_URL}.`,
+      description: INSTALL_GUIDE_URL
+        ? `On your computer, open ${INSTALL_GUIDE_URL}.`
+        : 'Do the steps above on your computer.',
     });
   const share = () =>
     Share.share(
       { title: 'Set up your MileWage server', message: shareStepsMessage() },
       { dialogTitle: 'Send these steps' },
     ).catch(failed);
-  const openGuide = () => Linking.openURL(INSTALL_GUIDE_URL).catch(failed);
+  const guide = INSTALL_GUIDE_URL;
+  const openGuide = (url: string) => Linking.openURL(url).catch(failed);
 
   return (
     <Screen
@@ -62,10 +65,12 @@ export function ServerSetupScreen({ navigation }: ScreenProps<'ServerSetup'>) {
         <Send size={18} color={C.foreground} />
         <Text>Send these steps to my computer</Text>
       </Button>
-      <Button variant="outline" onPress={() => void openGuide()}>
-        <ExternalLink size={18} color={C.foreground} />
-        <Text>Open the guide</Text>
-      </Button>
+      {guide ? (
+        <Button variant="outline" onPress={() => void openGuide(guide)}>
+          <ExternalLink size={18} color={C.foreground} />
+          <Text>Open the guide</Text>
+        </Button>
+      ) : null}
     </Screen>
   );
 }

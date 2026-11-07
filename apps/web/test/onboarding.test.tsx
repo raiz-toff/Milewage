@@ -231,8 +231,15 @@ describe('onboarding wizard (plan 23)', () => {
     const { calls } = wizard({ region: 'ON' }, '/onboarding/phone', undefined, [], {
       'POST /pairing-tokens': () => ({
         status: 201,
-        body: { token: 'mwp_x', qr_payload: 'milewage://pair?t=mwp_x', expires_at: 2e12 },
+        body: {
+          token: 'mwp_x',
+          qr_payload: 'milewage://pair?t=mwp_x',
+          pair_url: 'https://host/pair#v=1&t=mwp_x',
+          expires_at: 2e12,
+        },
       }),
+      // The server has the app file: the step offers it beside the code (plan 24 section 4.3).
+      'HEAD /app/android.apk': () => ({}),
       // The wizard reads the list once; the step's first check finds the phone.
       'GET /devices': () => ({
         body: ++asked > 1 ? [{ ...phone, last_seen_at: 2, revoked_at: null }] : [],
@@ -240,6 +247,7 @@ describe('onboarding wizard (plan 23)', () => {
     });
     expect(await heading('Pair your phone — Step 5 of 6')).toBeTruthy();
     expect(await screen.findByRole('img', { name: 'Pairing code' })).toBeTruthy();
+    expect(await screen.findByRole('link', { name: 'Get the app' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Pair later' })).toBeTruthy();
     expect(await screen.findByText('Paired: Pixel 8.', {}, { timeout: 4000 })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Pair later' })).toBeNull();

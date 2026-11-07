@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Linking, Share } from 'react-native';
 import { App } from '../src/App';
-import { INSTALL_GUIDE_URL } from '../src/firstrun/links';
+import { shareStepsMessage } from '../src/firstrun/links';
 import { makeServices, mockServer } from './support/mock';
 import { setup } from './support/shiftKit';
 
@@ -52,7 +52,7 @@ describe('first run gate (24 section 4)', () => {
     expect(await screen.findByText('Welcome to MileWage')).toBeTruthy();
   });
 
-  it('without a server: the steps, shared or opened, then on to connecting', async () => {
+  it('without a server: the steps, shared, then on to connecting', async () => {
     const share = jest
       .spyOn(Share, 'share')
       .mockResolvedValue({ action: 'sharedAction', activityType: undefined });
@@ -63,11 +63,19 @@ describe('first run gate (24 section 4)', () => {
     fireEvent.press(screen.getByRole('button', { name: 'Send these steps to my computer' }));
     const sent = share.mock.calls[0]![0] as { message: string };
     expect(sent.message).toContain('1. Install MileWage.');
-    expect(sent.message).toContain(`Install guide: ${INSTALL_GUIDE_URL}`);
-    fireEvent.press(screen.getByRole('button', { name: 'Open the guide' }));
-    expect(open).toHaveBeenCalledWith(INSTALL_GUIDE_URL);
+    // No public guide address yet (X2): no guide line and no "Open the guide".
+    expect(sent.message).not.toContain('Install guide');
+    expect(screen.queryByRole('button', { name: 'Open the guide' })).toBeNull();
+    expect(open).not.toHaveBeenCalled();
     fireEvent.press(screen.getByRole('button', { name: 'My server is ready' }));
     expect(await screen.findByText('Connect to your server')).toBeTruthy();
+  });
+
+  it('the shared steps name the guide once it has an address', () => {
+    const text = shareStepsMessage('https://guide.example/install');
+    expect(text).toContain('4. Pair a phone.');
+    expect(text.split('\n').at(-1)).toBe('Install guide: https://guide.example/install');
+    expect(shareStepsMessage(null)).not.toContain('Install guide');
   });
 
   it('a phone the server disconnected goes back to Welcome and says so', async () => {
