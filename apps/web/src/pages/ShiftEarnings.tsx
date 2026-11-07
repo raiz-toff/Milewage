@@ -4,16 +4,15 @@ import { Button as UiButton } from '@/components/ui/button';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
-import { formatMoney } from '../format';
+import { formatMoney, toCents } from '../format';
+import { EarningLedger } from './EarningLedger';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
 
 type Earnings = Schemas['ShiftEarnings'];
 type Platform = Schemas['Platform'];
 
-/** Dollars typed by the driver to whole cents; blank is 0, anything else invalid is NaN. */
-export const toCents = (text: string): number =>
-  text.trim() === '' ? 0 : Math.round(Number(text.replace(',', '.')) * 100);
+export { toCents };
 
 /**
  * The driver's own total per platform for one shift (module `earnings`, 18 section 4.3). One
@@ -160,6 +159,9 @@ export function ShiftEarnings({ shift }: { shift: Schemas['Shift'] }) {
         Type the figure the platform shows for this shift. It replaces that platform&apos;s stop
         labels in your totals.
       </p>
+      {data === null ? null : (
+        <EarningLedger shiftId={shift.id} data={data} options={options} onChange={setData} />
+      )}
     </Section>
   );
 }

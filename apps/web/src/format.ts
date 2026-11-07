@@ -42,3 +42,7 @@ export function deductionWord(s: { mileage_rate: string }, start = false) {
   const word = s.mileage_rate === 'yours' ? 'deduction (your rate)' : 'deduction';
   return start ? word.charAt(0).toUpperCase() + word.slice(1) : word;
 }
+
+/** Money typed by the driver to whole minor units; blank is 0, anything else invalid is NaN. */
+export const toCents = (text: string): number =>
+  text.trim() === '' ? 0 : Math.round(Number(text.replace(',', '.')) * 100);

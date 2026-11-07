@@ -105,6 +105,18 @@ export function TaxPage() {
                 <tbody>
                   {[
                     ['Earnings (base, tips, bonus)', money(report.income.total_cents)],
+                    // Shown only when entered (plan 22), so nothing changes for other drivers.
+                    ...(report.income.fees_cents
+                      ? [['Platform fees (already taken off)', money(report.income.fees_cents)]]
+                      : []),
+                    ...(report.income.tax_withheld_cents
+                      ? [
+                          [
+                            'Tax withheld by platforms (not counted below)',
+                            money(-report.income.tax_withheld_cents),
+                          ],
+                        ]
+                      : []),
                     ['Expenses you can deduct', `− ${money(report.deductions?.expenses_cents)}`],
                     [
                       'Mileage deduction (a deduction, not cash)',

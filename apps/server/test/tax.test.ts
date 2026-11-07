@@ -107,6 +107,32 @@ describe('the estimate', () => {
     expect((await send('GET', '/tax/1999')).statusCode).toBe(422);
   });
 
+  test('a commission comes off the income and withheld tax is shown apart (plan 22)', async () => {
+    const id = await seed();
+    const before = (await year()).estimate.taxable_income_cents;
+    const add = (type: string, amount_cents: number) =>
+      send('POST', `/shifts/${id}/earnings/doordash/entries`, { type, amount_cents });
+    await add('commission', -1_000_000);
+    await add('adjustment', 20_000);
+    await add('tax_withheld', -30_000);
+    const t = await year();
+    expect(t.income).toMatchObject({
+      gross_cents: 7_000_000,
+      fees_cents: -1_000_000,
+      adjustments_cents: 20_000,
+      tax_withheld_cents: -30_000,
+      total_cents: 7_020_000,
+    });
+    const i = t.income;
+    expect(i.gross_cents + i.tips_cents + i.bonus_cents + i.fees_cents + i.adjustments_cents).toBe(
+      i.total_cents,
+    );
+    expect(t.estimate.taxable_income_cents).toBe(before - 980_000);
+    const csv = (await send('GET', '/exports/tax_summary?year=2026')).body;
+    expect(csv).toContain('Income,Platform_Fees_Taken,10000.00\r\nIncome,Adjustments,200.00');
+    expect(csv).toContain('Income,Tax_Withheld_By_Platforms,300.00');
+  });
+
   test('no earnings means no estimate, never a zero one; a year without CPP figures says so', async () => {
     const empty = await year();
     expect([empty.income, empty.estimate]).toEqual([null, null]);

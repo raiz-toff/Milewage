@@ -152,6 +152,89 @@ describe('typed earnings', () => {
   });
 });
 
+describe('entries (22 section 5.2)', () => {
+  test('a cash trip: add, see the sums and the ledger, remove one; the totals follow', async () => {
+    await setup();
+    const id = await shiftWithStop(A, false);
+    const add = (type: string, amount_cents: number, note?: string) =>
+      send('POST', `/shifts/${id}/earnings/grab/entries`, { type, amount_cents, note });
+    await send('PUT', '/platforms/grab', { label: 'Grab' });
+    expect((await add('fare', 10_000, 'cash')).statusCode).toBe(200);
+    await add('cash_collected', -10_000);
+    await add('commission', -2_000);
+    const r = (await add('tax_withheld', -100)).json();
+    expect(r.entries[0]).toMatchObject({
+      platform: 'grab',
+      gross_cents: 10_000,
+      fees_cents: -2_000,
+      total_cents: 8_000,
+      tax_withheld_cents: -100,
+      cash_collected_cents: -10_000,
+      balance_cents: -2_100,
+      source: 'manual',
+    });
+    expect(r.entries[0].ledger.map((x: { type: string }) => x.type)).toEqual([
+      'fare',
+      'cash_collected',
+      'commission',
+      'tax_withheld',
+    ]);
+    expect(r.entries[0].ledger[0]).toMatchObject({ amount_cents: 10_000, note: 'cash' });
+    expect(r.effective[0]).toMatchObject({ total_cents: 8_000, fees_cents: -2_000 });
+    expect(await summary()).toMatchObject({ earnings_cents: 8_000 });
+
+    const commission = r.entries[0].ledger[2].id as number;
+    const del = await send('DELETE', `/shifts/${id}/earnings/grab/entries/${commission}`);
+    expect(del.json().entries[0]).toMatchObject({ total_cents: 10_000, balance_cents: -100 });
+    // Removing it again, or from another platform's row, changes nothing.
+    expect(
+      (await send('DELETE', `/shifts/${id}/earnings/grab/entries/${commission}`)).statusCode,
+    ).toBe(200);
+    const first = r.entries[0].ledger[0].id as number;
+    await send('DELETE', `/shifts/${id}/earnings/doordash/entries/${first}`);
+    expect(await summary()).toMatchObject({ earnings_cents: 10_000 });
+  });
+
+  test('rules: the sign must match the type, the shift must be ended, the platform known', async () => {
+    await setup();
+    const id = await shiftWithStop(A, false, 'active');
+    const post = (path: string, body: object) =>
+      send('POST', `/shifts/${path}/earnings/doordash/entries`, body);
+    const r = await post(String(id), { type: 'fare', amount_cents: 100 });
+    expect([r.statusCode, r.json().code]).toEqual([409, 'shift_not_ended']);
+    h.db
+      .prepare("UPDATE shifts SET status = 'ended', ended_at = ? WHERE id = ?")
+      .run(h.clock.t + 1, id);
+    const wrong = await post(String(id), { type: 'commission', amount_cents: 300 });
+    expect(wrong.statusCode).toBe(422);
+    expect(JSON.stringify(wrong.json())).toContain('takes money off, so it must be below 0');
+    for (const body of [
+      { type: 'fare', amount_cents: -1 },
+      { type: 'adjustment', amount_cents: 0 },
+      { type: 'refund', amount_cents: 1 },
+      { type: 'tip', amount_cents: 1.5 },
+      { type: 'tip' },
+    ]) {
+      expect((await post(String(id), body)).statusCode, JSON.stringify(body)).toBe(422);
+    }
+    const bad = await send('POST', `/shifts/${id}/earnings/nosuch/entries`, {
+      type: 'tip',
+      amount_cents: 1,
+    });
+    expect(bad.statusCode).toBe(422);
+    expect((await post(String(id), { type: 'adjustment', amount_cents: -5 })).statusCode).toBe(200);
+    expect((await post('99', { type: 'tip', amount_cents: 1 })).statusCode).toBe(404);
+    expect(
+      (
+        await h.call('POST', `/shifts/${id}/earnings/doordash/entries`, {
+          type: 'tip',
+          amount_cents: 1,
+        })
+      ).statusCode,
+    ).toBe(401);
+  });
+});
+
 describe('the override rule is a setting, not code (18 section 17)', () => {
   test('comma.earnings_override = sum adds the typed total to the label sum', async () => {
     await setup({}, { comma: { earningsOverride: 'sum' } });
