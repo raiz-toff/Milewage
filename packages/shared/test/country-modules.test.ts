@@ -1,15 +1,16 @@
 import { describe, expect, test } from 'vitest';
-import { caPack, gbPack, usPack, type CountryPack, type VehicleKind } from '../src/countries';
+import grid from './fixtures/mileage-grid.json';
 import {
   caCountry,
   countryModules,
+  countryPacks,
   gbCountry,
   mileageDeduction,
   periodStart,
   resolvePlace,
   salesTaxRateBp,
   usCountry,
-  type CountryModule,
+  type VehicleKind,
 } from '../src/countries/index';
 import { caTaxPack } from '../src/tax';
 
@@ -22,23 +23,22 @@ const DATES = (
 const TOTALS = [0, 1, 6.85, 102.6, 102.7, 999.5, 10_000, 1_234_567, 20_000_000, 15_000 * MILE];
 const PRIORS = [0, 4_000_000, 9_000_000, 16_000_000, 9_999 * MILE];
 
-describe('CA, US and GB as country modules (plan 21, J1b)', () => {
-  test.each([
-    [caPack, caCountry],
-    [usPack, usCountry],
-    [gbPack, gbCountry],
-  ] as [CountryPack, CountryModule][])('%# same deduction and period as the old pack', (old, c) => {
-    for (const date of DATES) {
-      expect(periodStart(c.mileage, date), date).toBe(old.periodStart(date));
+// Every deduction and period start of the packs before plan 21, written out by them before they
+// were removed (J1c). Order: date, vehicle kind, distance, earlier distance; empty means null.
+const FROZEN: Record<string, string> = grid;
+
+describe('CA, US and GB as country modules (plan 21)', () => {
+  test.each([caCountry, usCountry, gbCountry])("$code gives the old packs' results", (c) => {
+    const got: (number | null)[] = [];
+    for (const date of DATES)
       for (const vehicleKind of KINDS)
         for (const totalM of TOTALS)
-          for (const priorM of PRIORS) {
-            const i = { totalM, priorM, date, vehicleKind };
-            expect(mileageDeduction(c, i), JSON.stringify(i)).toBe(old.deduction(i));
-          }
-    }
-    expect(c.places.map((p) => p.code)).toEqual(old.regions.map((r) => `${c.code}-${r}`));
-    expect([c.unit, c.verified, c.sources]).toEqual([old.unit, old.verified, old.sources]);
+          for (const priorM of PRIORS)
+            got.push(mileageDeduction(c, { totalM, priorM, date, vehicleKind }));
+    expect(got.map((x) => x ?? '').join(',')).toBe(FROZEN[c.code]);
+    expect(DATES.map((d) => periodStart(c.mileage, d)).join(',')).toBe(
+      FROZEN[`${c.code} periodStart`],
+    );
   });
 
   test('tiered rates round twice, as before: to 1/100 cent, then to a cent (plan 21 section 8)', () => {
@@ -59,6 +59,14 @@ describe('CA, US and GB as country modules (plan 21, J1b)', () => {
       expect(place.data.pension === null, region).toBe(caTaxPack.ownPensionPlan.includes(region));
     }
     expect(resolvePlace(caCountry, null).data.pension).toEqual({ plan: 'CPP' });
+  });
+
+  test('the old packs are thin aliases over the modules until J4', () => {
+    for (const c of countryModules.list()) {
+      const pack = countryPacks.get(c.code)!;
+      expect([pack.sources, pack.notes, pack.unit]).toEqual([c.sources, c.notes, c.unit]);
+      expect(pack.notes).toBe(c.notes);
+    }
   });
 
   test('the process registry lists the three countries and nothing else', () => {

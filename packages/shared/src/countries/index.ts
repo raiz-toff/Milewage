@@ -13,6 +13,7 @@ export * from './resolve';
 export * from './registry';
 export * from './mileage';
 export * from './name';
+export * from './legacy';
 export { caCountry, gbCountry, usCountry };
 
 /** The countries of this process. */

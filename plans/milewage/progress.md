@@ -1047,3 +1047,13 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Standards checked: region names as in Google's address data (libaddressinput `sub_names` for CA and US; CC-BY 4.0; US list without territories and military codes, as before). [data/CA](https://chromium-i18n.appspot.com/ssl-address/data/CA). Units of a dated rate are written like OpenFisca's `unit` metadata (`cents/km`, `pence/mi`).
 - Tests: 6 in `packages/shared/test/country-modules.test.ts`: each module gives exactly the old pack's deduction and period start over 12 dates (each year edge, 6 April, 1 July), 7 vehicle kinds, 10 distances and 5 earlier distances (12,600 cases), plus the same regions, unit, sources and `verified`; the double rounding; CA sales tax and pension match the tax pack for all 13 regions; the registry. Shared package 48 passed.
 - Not done: the old packs as aliases, deleting `countries.ts`, conformance tests (J1c).
+
+## PR J1c — Countries: old packs become aliases; first conformance tests (Track J, plan 21)
+
+- Branch `pr-J1c-countries-aliases` (pushed, not merged), on J1b.
+- Done: `packages/shared/src/countries.ts` is deleted. `caPack`, `usPack`, `gbPack`, `CountryPack`, `createCountryRegistry` and `countryPacks` live on in `countries/legacy.ts` as thin aliases built from the country modules (`toCountryPack`), so the server, phone and their tests do not change. J4 moves the consumers and deletes the file.
+- Before the old code was deleted, it wrote out every result of the J1b grid (12,600 deductions and the period starts) to `test/fixtures/mileage-grid.json`; the modules are now checked against that frozen output.
+- First conformance suite over every registered country (`country-conformance.test.ts`, plan 21 section 3.8): ISO code with a CLDR name, currency known to `Intl.supportedValuesOf('currency')`, unit, sources and `verified`; places with unique codes under an existing parent, named, resolvable, a level word when there are regions, valid slot data; every mileage rate a dated parameter with a reference and ended by `null`, no rate for non-automobiles, no deduction in 1900 or 2100, period start within the year before the date.
+- Standards checked: nothing new; the suite follows `moduleMatrix` and date-holidays' per-country tests (plan 21 section 2.4).
+- Tests: 9 conformance (3 per country), 1 alias test, the frozen-grid test replaces the old-vs-new comparison. Unchanged and passing: `countries.test.ts` (6), `apps/server/test/tax.test.ts`, `apps/phone/test/summary.test.tsx`. Shared package 58 passed.
+- Not done: ISO 3166-2 code list and the lint rule (J6).
