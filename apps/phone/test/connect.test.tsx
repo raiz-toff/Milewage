@@ -2,7 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { App } from '../src/App';
 import { addressProblem, explainFailure, isTailnetAddress } from '../src/connect/reach';
 import { parsePairingPayload } from '../src/pairing/pairing';
-import { fakeNet, makeServices, TOKEN } from './support/mock';
+import { fakeNet, json, makeServices, TOKEN } from './support/mock';
+import { server, setup } from './support/shiftKit';
 
 jest.mock(
   'react-native-safe-area-context',
@@ -58,10 +59,13 @@ describe('Connect screen messages', () => {
   };
 
   it('Tailscale off: says so and opens Tailscale', async () => {
-    const net = fakeNet(false);
+    const net = fakeNet(true);
     const fetch = jest.fn(async () => Promise.reject(new TypeError('Network request failed')));
     render(<App services={makeServices(fetch, { net }).services} />);
-    await connect(TAILNET);
+    fireEvent.press(await screen.findByRole('button', { name: 'I have a server' }));
+    fireEvent.changeText(await screen.findByLabelText('Pairing code'), code(TAILNET));
+    net.vpn = false; // turned off after the Tailscale check
+    fireEvent.press(screen.getByRole('button', { name: 'Connect' }));
     expect(await screen.findByText(/Tailscale is off on this phone/)).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: 'Open Tailscale' }));
     expect(net.opened).toBe(1);
@@ -73,5 +77,43 @@ describe('Connect screen messages', () => {
     await connect('http://localhost:8080');
     expect(await screen.findByText(/points at the computer that made it/)).toBeTruthy();
     expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('Tailscale on this phone (plan 24 screen 3)', () => {
+  it('missing: the Tailscale screen comes first, installs, and can be skipped', async () => {
+    const net = fakeNet(null, false);
+    render(<App services={makeServices(jest.fn(), { net }).services} />);
+    fireEvent.press(await screen.findByRole('button', { name: 'I have a server' }));
+    expect(await screen.findByText('Get Tailscale on this phone')).toBeTruthy();
+    fireEvent.press(await screen.findByRole('button', { name: 'Install Tailscale' }));
+    expect(net.opened).toBe(1);
+    fireEvent.press(screen.getByRole('button', { name: 'Continue without Tailscale' }));
+    expect(await screen.findByText('Connect to your server')).toBeTruthy();
+  });
+
+  it('installed but off: offers to open it; on: goes straight to Connect', async () => {
+    const net = fakeNet(false, true);
+    const view = render(<App services={makeServices(jest.fn(), { net }).services} />);
+    fireEvent.press(await screen.findByRole('button', { name: 'I have a server' }));
+    expect(await screen.findByRole('button', { name: 'Open Tailscale' })).toBeTruthy();
+    view.unmount();
+    render(<App services={makeServices(jest.fn(), { net: fakeNet(true) }).services} />);
+    fireEvent.press(await screen.findByRole('button', { name: 'I have a server' }));
+    expect(await screen.findByText('Connect to your server')).toBeTruthy();
+  });
+
+  it('home banner: a tailnet server out of reach for 10 minutes with Tailscale off', async () => {
+    const net = fakeNet(false);
+    const routes = server({ 'POST /shifts': () => json(503, { code: 'x', retryable: true }) });
+    const { services, secure } = setup(routes, { paired: true, net });
+    const cred = JSON.parse(secure.data.get('pairing.credential')!);
+    secure.data.set('pairing.credential', JSON.stringify({ ...cred, baseUrl: TAILNET }));
+    await services.shift.start({ vehicleId: 3 });
+    await services.shift.end(); // ended at the test clock, long before now
+    render(<App services={services} />);
+    expect(await screen.findByText(/Tailscale is off on this phone, so/)).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: 'Open Tailscale' }));
+    expect(net.opened).toBe(1);
   });
 });

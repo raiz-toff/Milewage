@@ -4,6 +4,7 @@ import {
 } from '@react-navigation/native-stack';
 import { ConnectScreen } from './firstrun/ConnectScreen';
 import { ServerSetupScreen } from './firstrun/ServerSetupScreen';
+import { TailscaleScreen } from './firstrun/TailscaleScreen';
 import { WelcomeScreen } from './firstrun/WelcomeScreen';
 import type { PairingStatus } from './pairing/pairing';
 import { HomeScreen } from './screens/HomeScreen';
@@ -17,6 +18,7 @@ export type RootStackParamList = {
   /** `revoked`: the server disconnected this phone; Welcome says so. */
   Welcome: { revoked?: boolean } | undefined;
   ServerSetup: undefined;
+  Tailscale: undefined;
   /** `pairLink`: a `milewage://pair` link that opened the app, to pair from after asking. */
   Connect: { pairLink?: string } | undefined;
   Home: undefined;
@@ -58,6 +60,7 @@ export function RootNavigator({ gate }: { gate: PairingStatus }) {
             initialParams={{ revoked: gate === 'revoked' }}
           />
           <Stack.Screen name="ServerSetup" component={ServerSetupScreen} />
+          <Stack.Screen name="Tailscale" component={TailscaleScreen} />
         </Stack.Group>
       )}
       {/* In both sets. Connect also takes a pairing link that arrives when already connected. */}

@@ -1085,3 +1085,12 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Build: `scripts/phone-release-build.sh` (now also runs `:net-check:testDebugUnitTest`) BUILD SUCCESSFUL; `apps/phone/android/app/build/outputs/apk/release/app-release.apk`, 108,254,227 bytes; JUnit net-check 3 of 3, qr-scanner 3 of 3, comma-tracker 18 of 18; the merged manifest has the `com.tailscale.ipn` query.
 - Size: 349 + 23 changed lines (source and tests).
 - Not checked on a phone: whether Android reports the VPN while on Wi-Fi with Tailscale (handled either way: null and both answers have a message).
+
+## PR PO2d — Phone: Get Tailscale on this phone (plan 24 screen 3)
+
+- Branch `pr-PO2d-phone-tailscale-screen` (pushed, not merged), stacked on `pr-PO2c-phone-connect-checks`.
+- Done (24 section 4.2, screen 3): "I have a server" and "My server is ready" go through the **Get Tailscale on this phone** screen when the phone can tell that Tailscale is not installed or is off (VPN state unknown does not stop the driver). Three steps (install, sign in with the same account as your server, turn it on), **Install Tailscale** (Play Store) or **Open Tailscale**, and **Continue** / **Continue without Tailscale** (another https route also works, plan 19 section 3.7). It looks again when the driver comes back from Tailscale or the store. After connecting, the Home sync notice adds "Tailscale is off on this phone, so your server cannot be reached." with **Open Tailscale** when the server is a `.ts.net` address, something has waited 10 minutes or more, and no VPN is on (plan 19 section 3.5, Q4). This finishes plan 19's T4 on the phone.
+- Standards checked: Tailscale's [Android install guide](https://tailscale.com/kb/1079/install-android) (Play Store or tailscale.com/download/android; sign in, accept the VPN configuration); plan 19 section 3.5 for the wording.
+- Tests: `test/connect.test.tsx` (missing: screen first, Install opens the store, Continue without Tailscale reaches Connect; installed but off offers Open Tailscale; on goes straight to Connect; the Home notice and its button); the PO2c screen test now turns Tailscale off after the Tailscale check. `npm run verify` green (vitest 848 passed, 1 skipped; phone 256 passed).
+- Size: 172 + 7 changed lines (source and tests).
+- Assumption (owner to confirm): "out of reach for 10 minutes" is read as "something has waited 10 minutes to be sent"; with no VPN a `.ts.net` address cannot be reached at all, so no failed upload is needed first.

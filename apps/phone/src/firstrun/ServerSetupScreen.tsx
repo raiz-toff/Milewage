@@ -4,15 +4,18 @@ import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Text } from '../components/ui/text';
 import type { ScreenProps } from '../navigation';
+import { useServices } from '../services';
 import { useColors } from '../theme/theme';
 import { Rows } from '../ui/Parts';
 import { Screen } from '../ui/Screen';
 import { useToast } from '../ui/Toast';
+import { connectRoute } from './TailscaleScreen';
 import { INSTALL_GUIDE_URL, SERVER_STEPS, shareStepsMessage } from './links';
 
 /** "I don't have one yet" (24 section 4.2, screen 2): what to do on a computer, then come back. */
 export function ServerSetupScreen({ navigation }: ScreenProps<'ServerSetup'>) {
   const C = useColors();
+  const { net } = useServices();
   const toast = useToast();
 
   const failed = () =>
@@ -33,7 +36,7 @@ export function ServerSetupScreen({ navigation }: ScreenProps<'ServerSetup'>) {
       title="Set up your server"
       description="Do these steps on a computer. Then come back to this phone."
       footer={
-        <Button size="lg" onPress={() => navigation.navigate('Connect')}>
+        <Button size="lg" onPress={async () => navigation.navigate(await connectRoute(net))}>
           <Text>My server is ready</Text>
         </Button>
       }
