@@ -15,3 +15,5 @@ apps/phone/native/**/android/build/
 apps/phone/native/**/android/.gradle/
 # VM test output (raw JSON, CSV, copied backups)
 infra/vm-tests/artifacts/
+# Local dev data for `npm run dev` (scripts/dev.mjs)
+.dev/
