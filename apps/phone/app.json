@@ -16,6 +16,7 @@
         "FOREGROUND_SERVICE_LOCATION",
         "ACTIVITY_RECOGNITION",
         "POST_NOTIFICATIONS",
+        "POST_PROMOTED_NOTIFICATIONS",
         "CAMERA"
       ],
       "adaptiveIcon": {

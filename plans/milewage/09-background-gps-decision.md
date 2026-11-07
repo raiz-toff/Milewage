@@ -78,14 +78,14 @@ Why: the product's whole job is gap-free, battery-friendly tracking with the scr
 
 | Cut | Reason |
 |---|---|
-| `ShiftOverlay.kt` (floating pill) and `SYSTEM_ALERT_WINDOW` | Not tied to a driver problem in Gate 1; Comma's own plugin notes this permission "commonly triggers manual review / rejection" on Play. Re-add only if the Human asks. |
+| `ShiftOverlay.kt` (floating pill) and `SYSTEM_ALERT_WINDOW` | Not tied to a driver problem in Gate 1; Comma's own plugin notes this permission "commonly triggers manual review / rejection" on Play. Owner decision 2026-11-07: no floating pill; the live time and distance go in the ongoing notification instead (§5.10). |
 | `BootReceiver.kt` | Restarting a location FGS from a boot broadcast is exactly the case Android 12+ restricts (E8; Comma's code already abandons on refusal). Mid-shift reboot is rare. On next app open, recover the shift and mark the gap honestly. Revisit after Spike A. |
 | Hardcoded cadence constants | Move into one config object passed from JS at `start()`, so tuning needs no native rebuild. |
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` in the copied manifest | Comma declares it. Play restricts it to apps whose core function is adversely affected by Doze (§5.3); remove it and send the driver to the system battery settings instead. |
 
 ### 5.3 Permissions (Android manifest)
 
-`ACCESS_FINE_LOCATION`, `ACCESS_BACKGROUND_LOCATION`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION`, `ACTIVITY_RECOGNITION`, `POST_NOTIFICATIONS` (Android 13+), `CAMERA` (amended 2026-11-06 by owner decision: scanning the pairing QR code; used only on the pairing screen, no microphone; decoded with ZXing, without Google ML Kit, from 2026-11-07, plan 24 §6). Network access is already implied by the sync. **Not requested:** `SYSTEM_ALERT_WINDOW`, `RECEIVE_BOOT_COMPLETED`, `SCHEDULE_EXACT_ALARM`, `RECORD_AUDIO`. Keep Comma's plugin that strips unwanted transitive permissions.
+`ACCESS_FINE_LOCATION`, `ACCESS_BACKGROUND_LOCATION`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION`, `ACTIVITY_RECOGNITION`, `POST_NOTIFICATIONS` (Android 13+), `CAMERA` (amended 2026-11-06 by owner decision: scanning the pairing QR code; used only on the pairing screen, no microphone; decoded with ZXing, without Google ML Kit, from 2026-11-07, plan 24 §6). `POST_PROMOTED_NOTIFICATIONS` (amended 2026-11-07 by owner decision: on Android 16+ the running-shift notification may show its distance as a chip in the status bar; a normal permission that older Android ignores). Network access is already implied by the sync. **Not requested:** `SYSTEM_ALERT_WINDOW`, `RECEIVE_BOOT_COMPLETED`, `SCHEDULE_EXACT_ALARM`, `RECORD_AUDIO`. Keep Comma's plugin that strips unwanted transitive permissions.
 
 `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`: Comma declares it. Android's Doze guidance and Google Play's Device and Network Abuse policy (S0 claim 11) allow requesting the exemption only when the core function is adversely affected, and tell most apps to send users to the general battery settings instead ([Doze and App Standby](https://developer.android.com/training/monitoring-device-state/doze-standby), [Play policy](https://support.google.com/googleplay/android-developer/answer/16559646)). Default for MileWage: **do not declare it**; instead open the system battery-optimization settings screen from onboarding and walk the driver through the OEM steps. Remove it from the copied manifest (§5.2). Requesting it is defensible only if Spike A shows OEM killing despite the foreground service, and would then need a Play review justification.
 
@@ -133,6 +133,13 @@ The module records its own lifecycle facts into a table in the same native-owned
 - **Capture mode** (module `capture`, `16` §8) adds a `captureConfig` to `start()`: the service requests the dense cadence, writes every fix to `capture_fixes`, and writes to `telemetry_buffer` only fixes that meet the production cadence (at least 10 s and 20 m since the last written fix). This is the one place the service applies a gate to what reaches the buffer, active in capture mode only. It is unverified against the provider's own behaviour; shifts recorded this way carry the `capture_session` flag.
 - **Cut:** logcat shipping, minidumps, a native crash handler that captures memory. The native crash event is the Java/Kotlin exception class plus frames, with the message withheld unless the class is allowlisted (`16` §4.3).
 - **Permissions:** none added.
+
+
+### 5.10 Running-shift notification (owner decision 2026-11-07)
+
+The foreground service's ongoing notification is the driver's live view while another app is on screen; there is no map and no floating window. It shows the shift's distance (title), today's total with the shifts already ended today, a running clock in the header, and when expanded the start time and vehicle. Tapping opens the app. On Android 16+ it requests promotion (`setRequestPromotedOngoing`, `setShortCriticalText`), so the distance also shows as a status-bar chip where the system allows it.
+
+The distance is counted **in the service** (`LiveDistance.kt`), with the same stages 1-3 as the engine's live accumulator on the same stored integers, because the app's JS timers stop while it is in the background. It is approximate and never stored, like the Home screen figure. The app sends the parts that do not change during a shift with `setNotice` (start time, unit, today's earlier shifts, footer); `stop()` clears them. The channel is silent (`milewage_shift`, default importance, no sound or vibration).
 
 ## 6. Proposed Changes to the `02` Sampling Table
 

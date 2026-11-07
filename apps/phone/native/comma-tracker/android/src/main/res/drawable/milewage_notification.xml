@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status-bar icon of the running-shift notification: a route between two points (lucide "route"). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <path
+      android:fillColor="#00000000"
+      android:strokeColor="#FFFFFFFF"
+      android:strokeWidth="2"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round"
+      android:pathData="M3,19a3,3 0 1,0 6,0a3,3 0 1,0 -6,0M15,5a3,3 0 1,0 6,0a3,3 0 1,0 -6,0M9,19h8.5a3.5,3.5 0 0,0 0,-7h-11a3.5,3.5 0 0,1 0,-7H15" />
+</vector>

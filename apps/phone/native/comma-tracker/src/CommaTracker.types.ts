@@ -10,6 +10,15 @@ export interface CadenceConfig {
   stillTimeoutMs?: number;
 }
 
+/** Running-shift notification details (`setNotice`); the distance is counted natively. */
+export interface ShiftNotice {
+  startedAt: number;
+  unit: 'km' | 'mi';
+  earlierM: number;
+  earlierShifts: number;
+  footer: string;
+}
+
 /** A buffered fix in the wire units of 08 section 5. */
 export interface NativePoint {
   seq: number;

@@ -1,4 +1,4 @@
-import type { CadenceConfig, Tracker, TrackerPoint } from './types';
+import type { CadenceConfig, ShiftNotice, Tracker, TrackerPoint } from './types';
 
 interface Row extends TrackerPoint {
   status: 'PENDING' | 'UPLOADED';
@@ -19,6 +19,8 @@ export class FakeTracker implements Tracker {
   private shiftId: string | null = null;
   private offset: { value: number; at: number } | null = null;
   batterySettingsOpened = 0;
+  /** What the notification would say; null when no shift is running. */
+  notice: ShiftNotice | null = null;
 
   constructor(private readonly now: () => number = Date.now) {}
 
@@ -31,6 +33,7 @@ export class FakeTracker implements Tracker {
 
   stop(): void {
     this.shiftId = null;
+    this.notice = null;
   }
 
   isTracking(): boolean {
@@ -122,6 +125,10 @@ export class FakeTracker implements Tracker {
   requestBatteryOptimizationSettings(): boolean {
     this.batterySettingsOpened++;
     return true;
+  }
+
+  setNotice(notice: ShiftNotice): void {
+    if (this.shiftId !== null) this.notice = notice;
   }
 
   /** Test hook: seqs that were quarantined. */

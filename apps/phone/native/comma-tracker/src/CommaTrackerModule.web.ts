@@ -26,6 +26,7 @@ class CommaTrackerModule extends NativeModule {
   requestBatteryOptimizationSettings() {
     return false;
   }
+  setNotice() {}
 }
 
 export default registerWebModule(CommaTrackerModule, 'CommaTrackerModule');
