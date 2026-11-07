@@ -57,7 +57,7 @@ describe('settings page', () => {
     expect(((await screen.findByLabelText('Name')) as HTMLInputElement).value).toBe('');
     await go('Units and format');
     expect(((await screen.findByLabelText('Currency')) as HTMLInputElement).value).toBe('CAD');
-    await go('Tracking');
+    await go('Tracking and privacy');
     expect(
       ((await screen.findByLabelText('Keep raw GPS points (days)')) as HTMLInputElement).value,
     ).toBe('90');
@@ -68,7 +68,7 @@ describe('settings page', () => {
     const { calls } = server(settingsFixture(), undefined, '/settings/units');
     pick(await screen.findByLabelText('Distance unit'), 'mi');
     // An unsaved edit survives moving to another settings page and is saved from there.
-    await go('Tracking');
+    await go('Tracking and privacy');
     fireEvent.change(await screen.findByLabelText('Keep raw GPS points (days)'), {
       target: { value: '120' },
     });
@@ -89,7 +89,7 @@ describe('settings page', () => {
     fireEvent.click(save());
     await screen.findByRole('status');
     expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ stops_enabled: false });
-    await go('Modules');
+    await go('Server modules');
     await screen.findByRole('region', { name: 'Modules' });
     expect(flag('stops')).toBe('Off');
   });
@@ -117,7 +117,7 @@ describe('settings page', () => {
   it('offers only the countries the server lists and shows the module flags', async () => {
     server(settingsFixture({ modules: { countries: ['CA', 'GB'], replay: false } }));
     expect(optionsOf(await screen.findByLabelText('Country'))).toEqual(['CA', 'GB']);
-    await go('Modules');
+    await go('Server modules');
     await screen.findByRole('region', { name: 'Modules' });
     expect(flag('replay')).toBe('Off');
     expect(flag('sync')).toBe('On');
@@ -211,7 +211,7 @@ describe('settings page', () => {
       week_start: 0,
       time_format: '12h',
     });
-    await go('General');
+    await go('Profile and region');
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: '' } });
     fireEvent.click(save());
     await waitFor(() => expect(calls.filter((c) => c.method === 'PATCH')).toHaveLength(2));

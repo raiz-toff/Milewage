@@ -70,7 +70,7 @@ export function PlatformsCard() {
 
   return (
     <section aria-label="Platforms" className="space-y-3">
-      <h2 className="text-base leading-snug font-medium">Platforms</h2>
+      <h3 className="text-base leading-snug font-medium">Your platforms</h3>
       <FormError message={error} />
       {list === null ? (
         <p className="text-muted-foreground">Loading</p>

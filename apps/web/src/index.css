@@ -61,6 +61,8 @@
  * they stay readable on white.
  */
 :root {
+  /* Native scroll bars and form controls follow the theme (MDN: color-scheme). */
+  color-scheme: light;
   --background: #f5f6f8;
   --foreground: #101214;
   --card: #ffffff;
@@ -99,6 +101,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: #101214;
   --foreground: #eceef0;
   --card: #181b1e;

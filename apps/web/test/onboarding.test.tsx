@@ -283,7 +283,7 @@ describe('onboarding wizard (plan 23)', () => {
   });
 
   it('Settings › Run setup again opens the first step', async () => {
-    const { calls } = wizard({ onboarded_at: 1, region: 'ON' }, '/settings/general');
+    const { calls } = wizard({ onboarded_at: 1, region: 'ON' }, '/settings/profile');
     fireEvent.click(await screen.findByRole('link', { name: 'Run setup again' }));
     expect(await heading('Where you drive — Step 1 of 6')).toBeTruthy();
     expect(patches(calls)).toEqual([]);

@@ -74,7 +74,8 @@ describe('import card (module import)', () => {
     expect(optionsOf(await screen.findByLabelText('What is in the file'))).toEqual(['shifts']);
     cleanup();
     const s = open({ import: false });
-    await screen.findByLabelText('Name');
+    // The old address opens Your data, which still leads to backups and exports.
+    await screen.findByRole('heading', { level: 2, name: 'Your data' });
     const sections = screen.getByRole('navigation', { name: 'Settings sections' });
     expect(within(sections).queryByRole('link', { name: 'Import' })).toBeNull();
     expect(screen.queryByRole('region', { name: 'Import' })).toBeNull();
