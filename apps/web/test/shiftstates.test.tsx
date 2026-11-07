@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { cleanup, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { shift } from './support/fixtures';
+import { shift, stop, trip } from './support/fixtures';
 import { renderApp, settingsFixture, signedIn } from './support/kit';
 
 afterEach(cleanup);
@@ -20,13 +20,20 @@ const nothing = shift({
   ],
 });
 
-function open(theShift: object, settings = settingsFixture(), trips: object[] = []) {
+function open(
+  theShift: object,
+  settings = settingsFixture(),
+  trips: object[] = [],
+  stops: object[] = [],
+) {
   return renderApp(
     {
       ...signedIn(settings),
       'GET /shifts/1': () => ({ body: theShift }),
       'GET /shifts/1/trips': () => ({ body: trips }),
-      'GET /shifts/1/stops': () => ({ body: [] }),
+      'GET /shifts/1/stops': () => ({ body: stops }),
+      'GET /odometer': () => ({ body: [] }),
+      'PATCH /shifts/1': ({ body }) => ({ body: { ...theShift, ...(body as object) } }),
     },
     '/shifts/1',
   );
@@ -87,5 +94,54 @@ describe('shift detail with little or nothing recorded', () => {
     expect(screen.queryByRole('region', { name: 'What happened' })).toBeNull();
     await waitFor(() => expect(s.calls.some((c) => c.path.endsWith('/trips'))).toBe(true));
     expect(s.calls.some((c) => c.path.endsWith('/route'))).toBe(false);
+  });
+
+  it('folds odometer, notes and export into one More card, all closed, and saves notes there', async () => {
+    const s = open(nothing);
+    const more = await screen.findByRole('region', { name: 'More' });
+    const rows = within(more).getAllByRole('group');
+    expect(rows.map((d) => d.querySelector('summary')?.textContent)).toEqual([
+      'OdometerStart and end readings, if you noted them',
+      'NotesNone yet',
+      'ExportDownload this shift as a file',
+    ]);
+    expect(rows.map((d) => (d as HTMLDetailsElement).open)).toEqual([false, false, false]);
+    // No empty cards of their own, and no empty Label stops card.
+    expect(screen.queryByRole('region', { name: 'Export' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Stops' })).toBeNull();
+    expect(screen.queryByText('No stops were detected.')).toBeNull();
+    fireEvent.change(within(more).getByLabelText('Notes'), {
+      target: { value: 'Started by mistake' },
+    });
+    fireEvent.click(within(more).getByRole('button', { name: 'Save notes' }));
+    expect((await within(more).findByRole('status')).textContent).toBe('Saved.');
+    expect(s.calls.find((c) => c.method === 'PATCH')?.body).toEqual({
+      notes: 'Started by mistake',
+    });
+  });
+
+  it('opens Notes when the shift has some; a running shift has no Export', async () => {
+    open(shift({ status: 'active', ended_at: null, total_m: null, notes: 'Airport run' }));
+    const more = await screen.findByRole('region', { name: 'More' });
+    const rows = within(more).getAllByRole('group') as HTMLDetailsElement[];
+    expect(rows.map((d) => [d.querySelector('summary')?.textContent, d.open])).toEqual([
+      ['OdometerStart and end readings, if you noted them', false],
+      ['NotesAirport run', true],
+    ]);
+  });
+
+  it('a shift with trips but no stops keeps its checks and folds the rest', async () => {
+    open(shift(), settingsFixture(), [trip(1)]);
+    expect(await screen.findByRole('region', { name: 'More' })).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Checks' })).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Stops' })).toBeNull();
+  });
+
+  it('a shift with stops keeps the full layout: its own cards, Label stops, no More', async () => {
+    open(shift(), settingsFixture(), [trip(1)], [stop(1)]);
+    expect(await screen.findByRole('region', { name: 'Stops' })).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Export' })).toBeTruthy();
+    expect(await screen.findByRole('region', { name: 'Odometer' })).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'More' })).toBeNull();
   });
 });

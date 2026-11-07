@@ -12,14 +12,14 @@ import type { Schemas, Settings } from '../api/client';
 import { deductionWord, formatDistance, formatDuration, formatMoney, formatTime } from '../format';
 import { RouteView, useShiftRoute } from '../map/RouteView';
 import { useSession, useSettings } from '../session';
-import { Button, FormError } from '../ui/form';
+import { FormError } from '../ui/form';
 import { localDate } from './Dashboard';
 import { ExportButtons } from './Exports';
 import { ShiftEarnings } from './ShiftEarnings';
 import { ShiftChecks, ShiftFigures, useVehicleName } from './ShiftFacts';
 import type { EarnedSummary } from './ShiftFacts';
 import { ShiftOdometer } from './ShiftOdometer';
-import { InProgressCard, NoRouteCard } from './ShiftStates';
+import { InProgressCard, MoreCard, NoRouteCard, ShiftNotes } from './ShiftStates';
 import { ShiftTimeline } from './ShiftTimeline';
 import type { Picked } from './ShiftTimeline';
 import { StopsPanel, useShiftStops } from './Stops';
@@ -409,8 +409,6 @@ export function ShiftDetail() {
   const settings = useSettings();
   const [shift, setShift] = useState<Shift | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notes, setNotes] = useState('');
-  const [saved, setSaved] = useState(false);
   const [earned, setEarned] = useState<EarnedSummary | null>(null);
   const vehicle = useVehicleName(shift?.vehicle_id ?? 0);
   const [picked, setPicked] = useState<Picked>(null);
@@ -425,33 +423,12 @@ export function ShiftDetail() {
   useEffect(() => {
     let live = true;
     void unwrap(api.GET('/shifts/{ref}', { params: { path: { ref: ref ?? '' } } }))
-      .then((s) => {
-        if (!live) return;
-        setShift(s);
-        setNotes(s.notes ?? '');
-      })
+      .then((s) => live && setShift(s))
       .catch((e) => live && setError(describe(e)));
     return () => {
       live = false;
     };
   }, [api, ref]);
-
-  async function saveNotes() {
-    if (!shift) return;
-    setError(null);
-    try {
-      const s = await unwrap(
-        api.PATCH('/shifts/{ref}', {
-          params: { path: { ref: String(shift.id) } },
-          body: { notes: notes.trim() === '' ? null : notes },
-        }),
-      );
-      setShift(s);
-      setSaved(true);
-    } catch (e) {
-      setError(describe(e));
-    }
-  }
 
   if (error && !shift)
     return (
@@ -477,8 +454,18 @@ export function ShiftDetail() {
   // Nothing was recorded: no trips, no stops and no route points (or no map to ask).
   const empty =
     !active && trips?.length === 0 && stops.length === 0 && (!replay || route.points?.length === 0);
+  const orphans = shift.flags?.some((f) => f.code === 'label_orphaned');
   // Only start and end in the timeline.
   const sparse = active || empty;
+  // Little to show (also a shift without stops): the quieter tools fold into one "More" card.
+  const folded = sparse || (stopsData.stops?.length === 0 && !orphans);
+  // Label stops only when there is a stop to label, or a label that lost its stop.
+  const showLabels =
+    settings.modules.stops && (stopsData.stops === null || stops.length > 0 || orphans);
+  const exporters = settings.modules.exporters.length > 0 && !active;
+
+  const notes = (bare?: boolean) => <ShiftNotes shift={shift} onShift={setShift} bare={bare} />;
+  const exportButtons = <ExportButtons selection={{ shift_id: shift.id }} />;
 
   return (
     <section className="@container space-y-6">
@@ -581,57 +568,74 @@ export function ShiftDetail() {
         </Section>
       </div>
 
-      <div className="grid items-start gap-6 @3xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="min-w-0 space-y-6">
-          {showEarnings ? <ShiftEarnings shift={shift} onSummary={setEarned} /> : null}
-          <ShiftOdometer shift={shift} />
+      {folded ? (
+        <div
+          className={cn(
+            'grid items-start gap-6',
+            showEarnings && '@3xl:grid-cols-[minmax(0,1fr)_22rem]',
+          )}
+        >
+          {showEarnings ? (
+            <div className="min-w-0">
+              <ShiftEarnings shift={shift} onSummary={setEarned} />
+            </div>
+          ) : null}
+          <div className={cn('min-w-0 space-y-6', !showEarnings && 'max-w-xl')}>
+            {sparse ? null : (
+              <div id="checks" className="scroll-mt-20">
+                <ShiftChecks shift={shift} />
+              </div>
+            )}
+            <MoreCard
+              rows={[
+                {
+                  key: 'odometer',
+                  title: 'Odometer',
+                  hint: 'Start and end readings, if you noted them',
+                  body: <ShiftOdometer shift={shift} bare />,
+                },
+                {
+                  key: 'notes',
+                  title: 'Notes',
+                  hint: shift.notes ?? 'None yet',
+                  open: !!shift.notes,
+                  body: notes(true),
+                },
+                ...(exporters
+                  ? [
+                      {
+                        key: 'export',
+                        title: 'Export',
+                        hint: 'Download this shift as a file',
+                        body: exportButtons,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          </div>
         </div>
-        <div className="min-w-0 space-y-6">
-          {empty || active ? null : (
+      ) : (
+        <div className="grid items-start gap-6 @3xl:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="min-w-0 space-y-6">
+            {showEarnings ? <ShiftEarnings shift={shift} onSummary={setEarned} /> : null}
+            <ShiftOdometer shift={shift} />
+          </div>
+          <div className="min-w-0 space-y-6">
             <div id="checks" className="scroll-mt-20">
               <ShiftChecks shift={shift} />
             </div>
-          )}
-          <Section title="Notes">
-            <label className="sr-only" htmlFor="notes">
-              Notes
-            </label>
-            <textarea
-              id="notes"
-              className="w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-              rows={3}
-              maxLength={2000}
-              value={notes}
-              onChange={(e) => {
-                setSaved(false);
-                setNotes(e.target.value);
-              }}
-            />
-            <FormError message={error} />
-            <div className="flex items-center gap-3">
-              <Button
-                type="button"
-                busy={notes === (shift.notes ?? '')}
-                onClick={() => void saveNotes()}
-              >
-                Save notes
-              </Button>
-              {saved ? (
-                <span role="status" className="text-sm text-muted-foreground">
-                  Saved.
-                </span>
-              ) : null}
-            </div>
-          </Section>
-          {settings.modules.exporters.length > 0 ? (
-            <Section label="Export" title="Export this shift">
-              <ExportButtons selection={{ shift_id: shift.id }} />
-            </Section>
-          ) : null}
+            {notes()}
+            {exporters ? (
+              <Section label="Export" title="Export this shift">
+                {exportButtons}
+              </Section>
+            ) : null}
+          </div>
         </div>
-      </div>
+      )}
 
-      {settings.modules.stops ? (
+      {showLabels && (!folded || orphans) ? (
         <Section
           label="Stops"
           title="Label stops"
