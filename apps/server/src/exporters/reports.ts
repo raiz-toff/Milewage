@@ -134,6 +134,12 @@ export const taxSummaryExporter: Exporter = {
       yield row(['Income', 'Gross', money(inc.gross_cents)]);
       yield row(['Income', 'Tips', money(inc.tips_cents)]);
       yield row(['Income', 'Bonus', money(inc.bonus_cents)]);
+      // Plan 22: only when entered, so today's files are unchanged. Fees and withheld tax are
+      // amounts taken, written above zero as on the OECD platform statement.
+      if (inc.fees_cents) yield row(['Income', 'Platform_Fees_Taken', money(-inc.fees_cents)]);
+      if (inc.adjustments_cents) yield row(['Income', 'Adjustments', money(inc.adjustments_cents)]);
+      if (inc.tax_withheld_cents)
+        yield row(['Income', 'Tax_Withheld_By_Platforms', money(-inc.tax_withheld_cents)]);
       for (const p of inc.by_platform)
         yield row(['Income_By_Platform', p.platform, money(p.total_cents)]);
     } else yield row(['Income', 'Total', 'not entered']);

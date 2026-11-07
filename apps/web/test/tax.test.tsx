@@ -86,6 +86,23 @@ describe('tax screen (module tax)', () => {
     expect(screen.getByText(/expect a T4A/)).toBeTruthy();
   });
 
+  it('shows platform fees and withheld tax only when there are some (plan 22)', async () => {
+    open();
+    await screen.findByRole('heading', { name: `Estimate for ${YEAR}` });
+    expect(screen.queryByText(/Platform fees|Tax withheld/)).toBeNull();
+    cleanup();
+    const base = report();
+    open(
+      report({
+        income: { ...base.income, fees_cents: -20_000, tax_withheld_cents: -3000 },
+      }),
+    );
+    expect(
+      await screen.findByRole('row', { name: /Platform fees \(already taken off\).*-\$200\.00/ }),
+    ).toBeTruthy();
+    expect(screen.getByRole('row', { name: /Tax withheld by platforms.*\$30\.00/ })).toBeTruthy();
+  });
+
   it('says so, and shows no estimate, for a country without a pack', async () => {
     open(
       report({

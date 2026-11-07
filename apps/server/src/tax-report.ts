@@ -71,6 +71,10 @@ export function taxReport(o: TaxReportOptions, userId: number, year: number, col
           gross_cents: sum((r) => r.grossCents),
           tips_cents: sum((r) => r.tipsCents),
           bonus_cents: sum((r) => r.bonusCents),
+          // Plan 22: fees are already taken off the total; withheld tax is shown, not yet credited.
+          fees_cents: sum((r) => r.feesCents),
+          adjustments_cents: sum((r) => r.adjustmentsCents),
+          tax_withheld_cents: sum((r) => r.taxWithheldCents),
           total_cents: sum(totalOf),
           by_platform: [...byPlatform].map(([platform, total_cents]) => ({
             platform,

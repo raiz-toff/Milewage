@@ -1611,8 +1611,21 @@
             "bonus_cents": {
               "type": "integer"
             },
+            "fees_cents": {
+              "type": "integer",
+              "description": "Commission and platform fees (plan 22), 0 or below; already taken off total_cents."
+            },
+            "adjustments_cents": {
+              "type": "integer",
+              "description": "Corrections to pay; part of total_cents."
+            },
+            "tax_withheld_cents": {
+              "type": "integer",
+              "description": "Tax the platforms kept, 0 or below; not part of total_cents and not yet subtracted from the estimate."
+            },
             "total_cents": {
-              "type": "integer"
+              "type": "integer",
+              "description": "gross + tips + bonus + fees + adjustments."
             },
             "by_platform": {
               "type": "array",

@@ -1924,6 +1924,13 @@ export interface components {
                 gross_cents?: number;
                 tips_cents?: number;
                 bonus_cents?: number;
+                /** @description Commission and platform fees (plan 22), 0 or below; already taken off total_cents. */
+                fees_cents?: number;
+                /** @description Corrections to pay; part of total_cents. */
+                adjustments_cents?: number;
+                /** @description Tax the platforms kept, 0 or below; not part of total_cents and not yet subtracted from the estimate. */
+                tax_withheld_cents?: number;
+                /** @description gross + tips + bonus + fees + adjustments. */
                 total_cents?: number;
                 by_platform?: {
                     platform?: string;
