@@ -14,6 +14,7 @@ interface Row {
   year: number | null;
   plate: string | null;
   power: string | null;
+  ownership: string;
   created_at: number;
   archived_at: number | null;
 }
@@ -26,6 +27,7 @@ const car = (over: Partial<Row> = {}): Row => ({
   year: null,
   plate: null,
   power: null,
+  ownership: 'owned',
   created_at: 1_700_000_000_000,
   archived_at: null,
   ...over,
@@ -42,8 +44,8 @@ function server(initial: Row[] = [car()]) {
           : rows.filter((r) => !r.archived_at),
     }),
     'POST /vehicles': ({ body }: { body: unknown }) => {
-      const b = body as { name: string; kind: string };
-      const row = car({ id: 2, name: b.name, kind: b.kind });
+      const b = body as { name: string; kind: string; ownership: string };
+      const row = car({ id: 2, name: b.name, kind: b.kind, ownership: b.ownership });
       rows = [...rows, row];
       return { status: 201, body: row };
     },
@@ -55,6 +57,7 @@ function server(initial: Row[] = [car()]) {
         archived?: boolean;
         make?: string | null;
         year?: number | null;
+        ownership?: string;
       };
       rows = rows.map((r) =>
         r.id === 1
@@ -64,6 +67,7 @@ function server(initial: Row[] = [car()]) {
               kind: b.kind ?? r.kind,
               make: 'make' in b ? (b as Row).make : r.make,
               year: 'year' in b ? (b as Row).year : r.year,
+              ownership: b.ownership ?? r.ownership,
               archived_at:
                 b.archived === undefined ? r.archived_at : b.archived ? 1_700_000_900_000 : null,
             }
@@ -96,7 +100,7 @@ describe('vehicles page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add vehicle' }));
     expect(await screen.findByText('Cargo bike')).toBeTruthy();
     const post = s.calls.find((c) => c.method === 'POST' && c.path === '/vehicles');
-    expect(post?.body).toEqual({ name: 'Cargo bike', kind: 'bicycle' });
+    expect(post?.body).toEqual({ name: 'Cargo bike', kind: 'bicycle', ownership: 'owned' });
   });
 
   it('renames and retypes a vehicle', async () => {
@@ -111,7 +115,7 @@ describe('vehicles page', () => {
     const patch = s.calls.find((c) => c.method === 'PATCH');
     expect(patch?.body).toEqual({
       ...{ name: 'Van', kind: 'van' },
-      ...{ make: null, model: null, year: null, plate: null },
+      ...{ make: null, model: null, year: null, plate: null, ownership: 'owned' },
     });
   });
 
@@ -126,6 +130,36 @@ describe('vehicles page', () => {
     expect(s.calls.find((c) => c.method === 'PATCH')?.body).toMatchObject({
       make: 'Toyota',
       year: 2020,
+    });
+  });
+
+  it('records who owns a new vehicle and shows it when it is not owned', async () => {
+    const s = server();
+    await screen.findByText('Corolla');
+    expect(optionsOf('Ownership')).toEqual(['owned', 'financed', 'leased', 'rented']);
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Yulu' } });
+    pick(screen.getByLabelText('Type'), 'scooter');
+    pick(screen.getByLabelText('Ownership'), 'rented');
+    fireEvent.click(screen.getByRole('button', { name: 'Add vehicle' }));
+    const row = (name: RegExp) => screen.getByRole('row', { name }).textContent;
+    await waitFor(() => expect(row(/Yulu/)).toContain('Rented'));
+    const post = s.calls.find((c) => c.method === 'POST' && c.path === '/vehicles');
+    expect(post?.body).toEqual({ name: 'Yulu', kind: 'scooter', ownership: 'rented' });
+    expect(row(/Corolla/)).not.toContain('Owned'); // owned outright is the plain case
+  });
+
+  it('changes ownership when editing', async () => {
+    const s = server();
+    await screen.findByText('Corolla');
+    menu('Corolla', 'Edit');
+    pick(screen.getByLabelText('Ownership of Corolla'), 'financed');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Save' })).toBeNull());
+    expect(screen.getByRole('row', { name: /Corolla/ }).textContent).toContain(
+      'Financed (loan or hire purchase)',
+    );
+    expect(s.calls.find((c) => c.method === 'PATCH')?.body).toMatchObject({
+      ownership: 'financed',
     });
   });
 

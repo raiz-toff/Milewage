@@ -1046,3 +1046,11 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Tests: `apps/server/test/vehicle-costs.test.ts` (3: the list and flags, finance not deductible until ticked, the double-count flag on a car and not on a scooter or an actual-expense vehicle). All 3 fail without the change.
 - Not done: web vehicle form (V3). No per-country relabelling (J7).
 - Expected conflicts: `progress.md`; `expense-categories.ts` if Track J moves categories into the country contract (J7).
+
+## PR V3 — Vehicles: ownership on the web (Track V)
+
+- Branch `pr-V3-vehicle-ownership-web` (pushed, not merged), stacked on `pr-V2-vehicle-cost-categories`.
+- Done: the Vehicles page has an "Ownership" choice when adding a vehicle (Owned, Financed (loan or hire purchase), Leased, Rented; Owned is preselected) and in the edit row; the list shows it after the make and model when the vehicle is not owned outright. The page description says ownership is for the driver's records and that whether rent or finance payments count for tax depends on the country. Phone UI unchanged.
+- Standards checked: the four words and their meanings from `21` §3.6c ([STAR VehicleOwnershipType](https://schemas.liquid-technologies.com/STAR/5.3.4/vehicleownershiptypeenumeratedtype.html) plus `financed`); "hire purchase" named in the label because it is the common term in the UK, Nigeria and Kenya ([Bolt and MAX](https://techcabal.com/2021/11/24/bolt-partners-max-ng/)).
+- Tests: `apps/web/test/vehicles.test.tsx` 2 new (the add form sends the chosen ownership and the list shows "Rented", an owned vehicle shows nothing; editing sends `financed` and the list shows it); the add and rename tests now expect `ownership` in the request. 4 fail without the change.
+- Not done: no visual check in a browser (behaviour tests only); no ownership filter on the Expenses page; no prompt to pick the rental or finance category for a rented or financed vehicle.
