@@ -11,6 +11,7 @@ import { describe, unwrap } from '../api/client';
 import type { Schemas, Settings } from '../api/client';
 import { deductionWord, formatDistance, formatDuration, formatMoney, formatTime } from '../format';
 import { RouteView } from '../map/RouteView';
+import { PlatformName } from '../platforms/PlatformBadge';
 import { useSession, useSettings } from '../session';
 import { Button, FormError } from '../ui/form';
 import { localDate } from './Dashboard';
@@ -462,8 +463,8 @@ export function ShiftDetail() {
     `${formatTime(shift.started_at, tz)} – ${shift.ended_at ? formatTime(shift.ended_at, tz) : 'now'}`,
     formatDuration(shift.started_at, shift.ended_at),
     vehicle,
-    ...(showEarnings ? (earned?.platforms ?? []) : []),
   ].filter(Boolean);
+  const platforms = showEarnings ? (earned?.platforms ?? []) : [];
 
   return (
     <section className="@container space-y-6">
@@ -480,7 +481,17 @@ export function ShiftDetail() {
           day: 'numeric',
           year: 'numeric',
         })}
-        description={<span className="tabular-nums">{context.join(' · ')}</span>}
+        description={
+          <span className="tabular-nums">
+            {context.join(' · ')}
+            {platforms.map((p) => (
+              <span key={p.slug}>
+                {' · '}
+                <PlatformName platform={p} className="align-middle" />
+              </span>
+            ))}
+          </span>
+        }
       >
         <StatusBadge shift={shift} />
         {review > 0 ? (

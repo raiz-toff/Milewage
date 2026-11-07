@@ -9,6 +9,7 @@ import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import { createPlatformRepository, createSettingsRepository, type Db } from '../db';
 import { ProblemError } from '../errors';
+import { deleteLogo, logoVersion, platformLogoRoutes } from './platform-logos';
 import { strictObject } from './util';
 
 const slugParams = strictObject({ slug: { type: 'string', pattern: '^[a-z0-9_]{1,32}$' } }, [
@@ -36,7 +37,15 @@ export function platformKnown(db: Db, userId: number, slug: string): boolean {
 }
 
 /** Module `platforms` (18 section 4.2): the registry merged with the driver's overrides. */
-export function platformsRoutes({ db, authn }: { db: Db; authn: Authenticator }) {
+export function platformsRoutes({
+  db,
+  authn,
+  now,
+}: {
+  db: Db;
+  authn: Authenticator;
+  now: () => number;
+}) {
   return (host: RouteHost) => {
     const { app } = host as ServerRouteHost;
     const repo = createPlatformRepository(db);
@@ -55,8 +64,16 @@ export function platformsRoutes({ db, authn }: { db: Db; authn: Authenticator })
         active: (row?.active ?? 1) === 1,
         sort: row?.sort ?? order * 10,
         hourly_target_cents: row?.hourlyTargetCents ?? null,
+        logo_version: logoVersion(db, userId, slug),
       };
     };
+
+    platformLogoRoutes(app, {
+      db,
+      authn,
+      now,
+      known: (userId, slug) => platformKnown(db, userId, slug),
+    });
 
     app.get('/platforms', { schema: { querystring: query } }, async (req) => {
       const { userId } = authn.authenticate(req, 'SD');
@@ -130,6 +147,7 @@ export function platformsRoutes({ db, authn }: { db: Db; authn: Authenticator })
         );
       }
       repo.delete(userId, slug); // a built-in override is reset to its defaults
+      deleteLogo(db, userId, slug);
       return reply.status(204).send();
     });
   };

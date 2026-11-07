@@ -224,7 +224,18 @@ describe('shift detail', () => {
       },
       '/shifts/1',
     );
-    expect(await screen.findByText(/ · 4h 12m · DoorDash · skip$/)).toBeTruthy();
+    const header = (await screen.findByText(/ · 4h 12m$/)).parentElement!;
+    // What a screen reader says: the badges are hidden, the names are not.
+    const spoken = () => {
+      const copy = header.cloneNode(true) as HTMLElement;
+      copy.querySelectorAll('[aria-hidden="true"]').forEach((n) => n.remove());
+      return copy.textContent;
+    };
+    await waitFor(() => expect(spoken()).toMatch(/ · 4h 12m · DoorDash · skip$/));
+    // Each platform with its badge (plan 25): initials, also for an unknown slug.
+    const badge = (slug: string) => header.querySelector(`[data-platform="${slug}"]`);
+    expect(badge('doordash')?.textContent).toBe('DD');
+    expect(badge('skip')?.textContent).toBe('S');
     expect(screen.getByText('Earned').parentElement!.textContent).toBe('Earned$63.50');
   });
 

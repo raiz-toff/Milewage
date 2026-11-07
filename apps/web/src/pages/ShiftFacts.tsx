@@ -4,6 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { unwrap } from '../api/client';
 import type { Schemas, Settings } from '../api/client';
 import { deductionWord, formatDistance, formatDuration, formatMoney } from '../format';
+import type { PlatformLike } from '../platforms/PlatformBadge';
 import { useSession } from '../session';
 import { Section, StatCard } from '../ui/layout';
 
@@ -59,7 +60,8 @@ export function useVehicleName(id: number): string | null {
 export interface EarnedSummary {
   /** Effective earnings of the shift; null when nothing was entered or labelled. */
   cents: number | null;
-  platforms: string[];
+  /** The platforms with earnings, for the page header. */
+  platforms: PlatformLike[];
 }
 
 /**

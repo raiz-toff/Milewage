@@ -6,6 +6,7 @@ import type { Schemas } from '../api/client';
 import { formatMoney, toCents } from '../format';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
+import type { PickOption } from '../ui/form';
 
 type Earnings = Schemas['ShiftEarnings'];
 type EntryType = Schemas['EarningEntryType'];
@@ -38,7 +39,7 @@ export function EarningLedger({
 }: {
   shiftId: number;
   data: Earnings;
-  options: { value: string; label: string }[];
+  options: PickOption[];
   onChange: (d: Earnings) => void;
 }) {
   const { api } = useSession();
@@ -100,12 +101,15 @@ export function EarningLedger({
     <div className="space-y-3">
       {rows.map((r) => (
         <div key={r.platform} className="space-y-1">
-          <p className="text-sm">
-            {label(r.platform)}: fees {money(-r.fees_cents)}, tax withheld{' '}
-            {money(-r.tax_withheld_cents)}, cash collected {money(-r.cash_collected_cents)}.{' '}
-            {r.balance_cents < 0
-              ? `You owe the app ${money(-r.balance_cents)}.`
-              : `Balance with the app: ${money(r.balance_cents)}.`}
+          <p className="flex items-start gap-2 text-sm">
+            {options.find((o) => o.value === r.platform)?.icon}
+            <span>
+              {label(r.platform)}: fees {money(-r.fees_cents)}, tax withheld{' '}
+              {money(-r.tax_withheld_cents)}, cash collected {money(-r.cash_collected_cents)}.{' '}
+              {r.balance_cents < 0
+                ? `You owe the app ${money(-r.balance_cents)}.`
+                : `Balance with the app: ${money(r.balance_cents)}.`}
+            </span>
           </p>
           <ul className="text-sm text-muted-foreground">
             {r.ledger.map((x) => {

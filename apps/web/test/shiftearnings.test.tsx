@@ -130,7 +130,12 @@ describe('shift earnings block (module earnings)', () => {
     fireEvent.change(screen.getByLabelText('Gratuities'), { target: { value: '5.00' } });
     fireEvent.change(screen.getByLabelText('Orders'), { target: { value: '7' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save total' }));
-    expect(await screen.findByText(/DoorDash: \$35\.00, 7 orders/)).toBeTruthy();
+    const row = (await screen.findByText(/DoorDash: \$35\.00, 7 orders/)).closest('li')!;
+    // The row and the platform select show the badge (plan 25).
+    expect(row.querySelector('[data-platform="doordash"]')).not.toBeNull();
+    expect(
+      screen.getByLabelText('Platform').querySelector('[data-platform="doordash"]'),
+    ).not.toBeNull();
     expect(s.calls.find((c) => c.method === 'PUT')?.body).toEqual({
       gross_cents: 3000,
       tips_cents: 500,
@@ -164,11 +169,13 @@ describe('shift earnings block (module earnings)', () => {
   it('adds a line with the sign of its kind, shows what is owed, and removes a line', async () => {
     const s = open({ start: typed });
     expect(await screen.findByText(/DoorDash: \$35\.00/)).toBeTruthy();
+    expect(screen.getByLabelText('Line platform').querySelector('[data-platform]')).not.toBeNull();
     expect(screen.queryByText(/Balance with the app|You owe the app/)).toBeNull(); // a plain row
     pick('Kind', 'commission');
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '20' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add line' }));
-    expect(await screen.findByText(/You owe the app \$85\.00/)).toBeTruthy();
+    const owed = await screen.findByText(/You owe the app \$85\.00/);
+    expect(owed.closest('p')!.querySelector('[data-platform="doordash"]')).not.toBeNull();
     expect(screen.getByText(/Cash collected -\$100\.00 \(trip 4\)/)).toBeTruthy();
     expect(s.calls.find((c) => c.method === 'POST')?.body).toEqual({
       type: 'commission',

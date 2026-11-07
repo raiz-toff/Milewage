@@ -1,14 +1,20 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
-import { Trash2 } from 'lucide-react';
-import { Button as UiButton } from '@/components/ui/button';
+import { ImageMinus, ImageUp, Trash2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useSession } from '../session';
 import { Button, Field, FormError } from '../ui/form';
+import { PlatformBadge } from '../platforms/PlatformBadge';
+import { RowMenu } from '../ui/RowMenu';
+import type { RowAction } from '../ui/RowMenu';
 
 type Platform = Schemas['Platform'];
+
+/** What the server takes for a platform's logo (plan 25 section 7). */
+const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const LOGO_MAX_BYTES = 256 * 1024;
 
 /** The slug of a platform the driver names; empty when the name has no letters or digits. */
 export const slugOf = (name: string) =>
@@ -24,6 +30,8 @@ export function PlatformsCard() {
   const [list, setList] = useState<Platform[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
+  const picker = useRef<HTMLInputElement>(null);
+  const logoFor = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -58,15 +66,64 @@ export function PlatformsCard() {
     setName('');
   }
 
-  async function remove(slug: string) {
+  async function act(run: () => Promise<unknown>) {
     setError(null);
     try {
-      await unwrap(api.DELETE('/platforms/{slug}', { params: { path: { slug } } }));
+      await run();
       await load();
     } catch (e) {
       setError(describe(e));
     }
   }
+  const remove = (slug: string) =>
+    act(() => unwrap(api.DELETE('/platforms/{slug}', { params: { path: { slug } } })));
+
+  /** The driver's own logo: the raw file with its type, as receipts are sent. */
+  async function upload(file: File) {
+    const slug = logoFor.current;
+    if (!slug) return;
+    if (!LOGO_TYPES.includes(file.type) || file.size > LOGO_MAX_BYTES) {
+      return setError('Use a PNG, JPEG or WebP under 256 KB.');
+    }
+    await act(() =>
+      unwrap(
+        api.PUT('/platforms/{slug}/logo', {
+          params: { path: { slug } },
+          body: file as never,
+          bodySerializer: (b: unknown) => b as never,
+          headers: { 'Content-Type': file.type },
+        } as never),
+      ),
+    );
+  }
+  const pickLogo = (slug: string) => {
+    logoFor.current = slug;
+    picker.current?.click();
+  };
+  const actions = (p: Platform): RowAction[] => [
+    {
+      label: p.logo_version ? 'Change logo' : 'Add logo',
+      icon: ImageUp,
+      onSelect: () => pickLogo(p.slug),
+    },
+    ...(p.logo_version
+      ? [
+          {
+            label: 'Remove logo',
+            icon: ImageMinus,
+            onSelect: () =>
+              void act(() =>
+                unwrap(
+                  api.DELETE('/platforms/{slug}/logo', { params: { path: { slug: p.slug } } }),
+                ),
+              ),
+          },
+        ]
+      : []),
+    ...(p.custom
+      ? [{ label: 'Delete', icon: Trash2, destructive: true, onSelect: () => void remove(p.slug) }]
+      : []),
+  ];
 
   return (
     <section aria-label="Platforms" className="space-y-3">
@@ -78,24 +135,14 @@ export function PlatformsCard() {
         <ul className="divide-y rounded-lg border">
           {list.map((p) => (
             <li key={p.slug} className="flex items-center gap-3 px-3 py-2">
+              <PlatformBadge platform={p} size="md" className={p.active ? '' : 'opacity-50'} />
               <label
                 htmlFor={`platform-${p.slug}`}
                 className={`flex-1 text-sm ${p.active ? '' : 'text-muted-foreground line-through'}`}
               >
-                {p.emoji ? `${p.emoji} ` : ''}
                 {p.label}
               </label>
-              {p.custom ? (
-                <UiButton
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Delete ${p.label}`}
-                  onClick={() => void remove(p.slug)}
-                >
-                  <Trash2 />
-                </UiButton>
-              ) : null}
+              <RowMenu name={p.label} actions={actions(p)} />
               <Switch
                 id={`platform-${p.slug}`}
                 checked={p.active}
@@ -118,8 +165,24 @@ export function PlatformsCard() {
           Add
         </Button>
       </form>
+      <input
+        ref={picker}
+        type="file"
+        accept={LOGO_TYPES.join(',')}
+        aria-label="Logo image"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (file) void upload(file);
+        }}
+      />
       <p className="text-xs text-muted-foreground">
         An inactive platform drops out of the pickers; its past labels and earnings stay.
+      </p>
+      <p className="text-xs text-muted-foreground">
+        A logo you add (PNG, JPEG or WebP, up to 256 KB) stays on your server and in its backups.
+        Platform names and logos belong to their owners. MileWage is not affiliated with them.
       </p>
     </section>
   );

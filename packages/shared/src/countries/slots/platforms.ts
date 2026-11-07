@@ -1,5 +1,5 @@
 // Slot `platforms`: the delivery apps offered at a place, by slug from the shared list
-// (`platforms.ts` keeps only slug, label and vocabulary). Every level adds to the list above it;
+// (`platforms.ts` keeps only slug, label, badge colour and letters, and vocabulary). Every level adds to the list above it;
 // `available: false` takes one away (a region where an app does not run).
 
 import { builtinPlatform } from '../../platforms';

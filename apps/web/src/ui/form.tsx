@@ -37,6 +37,8 @@ export function Field({
 export interface PickOption {
   value: string;
   label: string;
+  /** Shown before the label, in the list and the closed select (a platform's badge). */
+  icon?: ReactNode;
 }
 
 /** Radix Select cannot hold an empty value, so "" (none, any, all) travels under this name. */
@@ -75,6 +77,7 @@ export function Picker({
       <SelectContent position="popper" align="start">
         {options.map((o) => (
           <SelectItem key={o.value} value={o.value === '' ? EMPTY : o.value} data-value={o.value}>
+            {o.icon}
             {o.label}
           </SelectItem>
         ))}
