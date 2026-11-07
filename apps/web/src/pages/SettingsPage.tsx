@@ -7,10 +7,13 @@ import { Button as UiButton } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { describe, unwrap } from '../api/client';
@@ -18,6 +21,7 @@ import { levelWord, useCountries } from '../countries';
 import type { Schemas, Settings } from '../api/client';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
+import { PageHeader } from '../ui/layout';
 import { Account } from './Account';
 import { ImportCard } from './Import';
 import { AlertsCard } from './Notifications';
@@ -97,10 +101,7 @@ function ModuleFlags({ modules }: { modules: Settings['modules'] }) {
     ] as const
   ).map((k) => [k, modules[k]] as const);
   return (
-    <SettingsCard
-      title="Modules"
-      description="Set when the server starts; they cannot be changed here."
-    >
+    <SettingsCard>
       <section aria-label="Modules" className="space-y-4">
         <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {flags.map(([name, on]) => (
@@ -131,31 +132,98 @@ function ModuleFlags({ modules }: { modules: Settings['modules'] }) {
 }
 
 type SectionId =
-  'general' | 'units' | 'tracking' | 'account' | 'platforms' | 'import' | 'alerts' | 'modules';
+  'profile' | 'units' | 'alerts' | 'platforms' | 'tracking' | 'import' | 'account' | 'modules';
 
-const SECTIONS: {
+interface Section {
   id: SectionId;
   label: string;
-  module?: 'platforms' | 'import' | 'notifications';
-}[] = [
-  { id: 'general', label: 'General' },
-  { id: 'units', label: 'Units and format' },
-  { id: 'tracking', label: 'Tracking' },
-  { id: 'account', label: 'Account' },
-  { id: 'platforms', label: 'Platforms', module: 'platforms' },
-  { id: 'import', label: 'Import', module: 'import' },
-  { id: 'alerts', label: 'Alerts', module: 'notifications' },
-  { id: 'modules', label: 'Modules' },
+  description: string;
+  /** Shown only when this module runs on the server. */
+  module?: 'platforms' | 'notifications' | 'import';
+}
+
+/** The settings sections in groups, in order. One topic per section, one URL each. */
+const GROUPS: { label: string; sections: Section[] }[] = [
+  {
+    label: 'Preferences',
+    sections: [
+      {
+        id: 'profile',
+        label: 'Profile and region',
+        description: 'Your name, and the country and region whose mileage and tax rules apply.',
+      },
+      {
+        id: 'units',
+        label: 'Units and format',
+        description: 'How distances, money, dates and times are shown.',
+      },
+      {
+        id: 'alerts',
+        label: 'Alerts',
+        description: 'What MileWage tells you about, here and on the phone.',
+        module: 'notifications',
+      },
+    ],
+  },
+  {
+    label: 'Work and tracking',
+    sections: [
+      {
+        id: 'platforms',
+        label: 'Platforms',
+        description: 'The apps you work for. Active ones are offered when you label shifts.',
+        module: 'platforms',
+      },
+      {
+        id: 'tracking',
+        label: 'Tracking and privacy',
+        description: "What the server works out from your phone's GPS, and how long it keeps it.",
+      },
+    ],
+  },
+  {
+    label: 'Data and account',
+    sections: [
+      {
+        id: 'import',
+        label: 'Import',
+        description: 'Bring shifts or expenses in from a CSV file.',
+        module: 'import',
+      },
+      {
+        id: 'account',
+        label: 'Account',
+        description: 'Your password for this server.',
+      },
+      {
+        id: 'modules',
+        label: 'Server modules',
+        description:
+          'What this server runs. They are set when the server starts and are read only here.',
+      },
+    ],
+  },
 ];
 
-type Section = (typeof SECTIONS)[number];
+/** Old section addresses, kept working. */
+const MOVED: Record<string, SectionId> = { general: 'profile' };
+
+/** Groups with only the sections whose module is on; a group left empty is dropped. */
+const visibleGroups = (modules: Settings['modules']) =>
+  GROUPS.map((g) => ({
+    ...g,
+    sections: g.sections.filter((s) => !s.module || modules[s.module]),
+  })).filter((g) => g.sections.length > 0);
+
+type Group = ReturnType<typeof visibleGroups>[number];
 
 /**
- * The section list. Where there is room it is a list beside the form that stays in view; where
- * there is not, one menu button that names the open section. Neither ever scrolls sideways.
+ * The section list. Where there is room it is a grouped list beside the form that stays in view;
+ * where there is not, one menu button that names the open section. Neither ever scrolls sideways.
  */
-function SettingsNav({ sections }: { sections: Section[] }) {
+function SettingsNav({ groups }: { groups: Group[] }) {
   const { pathname } = useLocation();
+  const sections = groups.flatMap((g) => g.sections);
   const current = sections.find((s) => pathname.startsWith(`/settings/${s.id}`)) ?? sections[0];
   return (
     <nav
@@ -172,65 +240,81 @@ function SettingsNav({ sections }: { sections: Section[] }) {
           </UiButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-(--radix-dropdown-menu-trigger-width)">
-          {sections.map((s) => (
-            <DropdownMenuItem key={s.id} asChild>
-              <Link
-                to={`/settings/${s.id}`}
-                aria-current={s === current ? 'page' : undefined}
-                className="aria-[current=page]:font-medium"
-              >
-                {s.label}
-              </Link>
-            </DropdownMenuItem>
+          {groups.map((g, i) => (
+            <DropdownMenuGroup key={g.label}>
+              {i > 0 ? <DropdownMenuSeparator /> : null}
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                {g.label}
+              </DropdownMenuLabel>
+              {g.sections.map((s) => (
+                <DropdownMenuItem key={s.id} asChild>
+                  <Link
+                    to={`/settings/${s.id}`}
+                    aria-current={s === current ? 'page' : undefined}
+                    className="aria-[current=page]:font-medium"
+                  >
+                    {s.label}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-      <ul className="hidden flex-col gap-1 text-sm @2xl:flex">
-        {sections.map((s) => (
-          <li key={s.id}>
-            <NavLink
-              to={`/settings/${s.id}`}
-              className={({ isActive }) =>
-                cn(
-                  'block rounded-md px-3 py-1.5 transition-colors',
-                  isActive
-                    ? 'bg-muted font-medium text-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                )
-              }
+      <div className="hidden space-y-4 text-sm @2xl:block">
+        {groups.map((g, i) => (
+          <div key={g.label} className="space-y-1">
+            <p
+              id={`settings-group-${i}`}
+              className="px-3 text-xs font-medium text-muted-foreground"
             >
-              {s.label}
-            </NavLink>
-          </li>
+              {g.label}
+            </p>
+            <ul aria-labelledby={`settings-group-${i}`} className="flex flex-col gap-1">
+              {g.sections.map((s) => (
+                <li key={s.id}>
+                  <NavLink
+                    to={`/settings/${s.id}`}
+                    className={({ isActive }) =>
+                      cn(
+                        'block rounded-md px-3 py-1.5 transition-colors',
+                        isActive
+                          ? 'bg-muted font-medium text-foreground'
+                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                      )
+                    }
+                  >
+                    {s.label}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </div>
         ))}
-      </ul>
+      </div>
     </nav>
   );
 }
 
-function SettingsCard({
-  title,
-  description,
-  children,
-}: {
-  title?: string;
-  description?: string;
-  children: ReactNode;
-}) {
+/** The top of a section: its name and what it is for. */
+function SectionHeader({ section }: { section: Section }) {
+  return (
+    <div className="space-y-1">
+      <h2 className="text-lg font-semibold tracking-tight">{section.label}</h2>
+      <p className="text-sm text-muted-foreground">{section.description}</p>
+    </div>
+  );
+}
+
+function SettingsCard({ children }: { children: ReactNode }) {
   return (
     <Card>
-      {title ? (
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-          {description ? <CardDescription>{description}</CardDescription> : null}
-        </CardHeader>
-      ) : null}
       <CardContent>{children}</CardContent>
     </Card>
   );
 }
 
-/** The saved preferences and the unsaved draft, shared by the General, Units and Tracking pages. */
+/** The saved preferences and the unsaved draft, shared by the Profile, Units and Tracking pages. */
 function usePrefs() {
   const { api, setSettings } = useSession();
   const saved = useSettings();
@@ -312,7 +396,7 @@ function PrefsForm({ prefs, children }: { prefs: Prefs; children: ReactNode }) {
   );
 }
 
-function GeneralSection({ prefs }: { prefs: Prefs }) {
+function ProfileSection({ prefs }: { prefs: Prefs }) {
   const { draft, set, saved } = prefs;
   const tree = useCountries();
   const countries = saved.modules.countries.includes(draft.country)
@@ -322,7 +406,7 @@ function GeneralSection({ prefs }: { prefs: Prefs }) {
   const regions = country?.regions ?? [];
   const word = levelWord(country);
   return (
-    <SettingsCard title="General" description="How you appear and where you drive.">
+    <SettingsCard>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <Field
@@ -388,10 +472,7 @@ function GeneralSection({ prefs }: { prefs: Prefs }) {
 function UnitsSection({ prefs }: { prefs: Prefs }) {
   const { draft, set } = prefs;
   return (
-    <SettingsCard
-      title="Units and format"
-      description="How distances, money, dates and times are shown."
-    >
+    <SettingsCard>
       <div className="grid gap-4 sm:grid-cols-2">
         <SelectField
           label="Distance unit"
@@ -442,7 +523,7 @@ function UnitsSection({ prefs }: { prefs: Prefs }) {
 function TrackingSection({ prefs }: { prefs: Prefs }) {
   const { draft, set, saved } = prefs;
   return (
-    <SettingsCard title="Tracking" description="What the server keeps from your phone's GPS.">
+    <SettingsCard>
       <div className="space-y-6">
         <div className="flex items-start justify-between gap-6">
           <div className="space-y-1">
@@ -489,16 +570,17 @@ function TrackingSection({ prefs }: { prefs: Prefs }) {
   );
 }
 
-/** Settings, one page per section under /settings/<section>; /settings opens General. */
+/** Settings, one page per section under /settings/<section>; /settings opens the first. */
 export function SettingsPage() {
   const prefs = usePrefs();
   const { modules } = prefs.saved;
-  const sections = SECTIONS.filter((s) => !s.module || modules[s.module]);
+  const groups = visibleGroups(modules);
+  const first = groups[0]!.sections[0]!.id;
 
   const pages: Record<SectionId, ReactNode> = {
-    general: (
+    profile: (
       <PrefsForm prefs={prefs}>
-        <GeneralSection prefs={prefs} />
+        <ProfileSection prefs={prefs} />
       </PrefsForm>
     ),
     units: (
@@ -511,9 +593,9 @@ export function SettingsPage() {
         <TrackingSection prefs={prefs} />
       </PrefsForm>
     ),
-    account: (
+    alerts: (
       <SettingsCard>
-        <Account />
+        <AlertsCard />
       </SettingsCard>
     ),
     platforms: (
@@ -526,9 +608,9 @@ export function SettingsPage() {
         <ImportCard />
       </SettingsCard>
     ),
-    alerts: (
+    account: (
       <SettingsCard>
-        <AlertsCard />
+        <Account />
       </SettingsCard>
     ),
     modules: <ModuleFlags modules={modules} />,
@@ -536,22 +618,38 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground">
-          Your profile, units, tracking and account on this server.
-        </p>
-      </div>
+      <PageHeader
+        title="Settings"
+        description="Your preferences, the apps you work for, tracking, your data and your account."
+      />
       {/* Sized by its own width, not the window's: the side list needs room beside the form. */}
       <div className="@container">
         <div className="grid gap-6 @2xl:grid-cols-[200px_minmax(0,1fr)] @2xl:gap-8">
-          <SettingsNav sections={sections} />
+          <SettingsNav groups={groups} />
           <div className="max-w-3xl min-w-0">
             <Routes>
-              {sections.map((s) => (
-                <Route key={s.id} path={s.id} element={pages[s.id]} />
+              {groups
+                .flatMap((g) => g.sections)
+                .map((s) => (
+                  <Route
+                    key={s.id}
+                    path={s.id}
+                    element={
+                      <div className="space-y-4">
+                        <SectionHeader section={s} />
+                        {pages[s.id]}
+                      </div>
+                    }
+                  />
+                ))}
+              {Object.entries(MOVED).map(([from, to]) => (
+                <Route
+                  key={from}
+                  path={from}
+                  element={<Navigate to={`/settings/${to}`} replace />}
+                />
               ))}
-              <Route path="*" element={<Navigate to="/settings/general" replace />} />
+              <Route path="*" element={<Navigate to={`/settings/${first}`} replace />} />
             </Routes>
           </div>
         </div>

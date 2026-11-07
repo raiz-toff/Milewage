@@ -180,7 +180,7 @@ export function AlertsCard() {
   }
   return (
     <section aria-label="Alerts" className="space-y-3">
-      <h2 className="text-base leading-snug font-medium">Alerts</h2>
+      <h3 className="text-base leading-snug font-medium">Tell me about</h3>
       <FormError message={error} />
       {prefs ? (
         <ul className="divide-y rounded-lg border">

@@ -77,7 +77,7 @@ export function ImportCard() {
   ];
   return (
     <section aria-label="Import" className="space-y-3">
-      <h2 className="text-base leading-snug font-medium">Import a CSV file</h2>
+      <h3 className="text-base leading-snug font-medium">Import a CSV file</h3>
       <FormError message={error} />
       <SelectField
         label="What is in the file"

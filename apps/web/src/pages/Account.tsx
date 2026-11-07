@@ -40,7 +40,7 @@ export function Account() {
 
   return (
     <section aria-label="Account" className="space-y-3">
-      <h2 className="text-base leading-snug font-medium">Change password</h2>
+      <h3 className="text-base leading-snug font-medium">Change password</h3>
       <p className="text-sm text-muted-foreground">
         The new password needs at least {MIN} characters.
       </p>

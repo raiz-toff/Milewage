@@ -44,16 +44,17 @@ describe('page layout and scrolling', () => {
     expect(nav.className).not.toMatch(/overflow-x-auto/);
     // The width that decides is the settings area's own (a container query), not the window's.
     expect(nav.closest('.\\@container')).toBeTruthy();
-    expect(within(nav).getByRole('list').className).toMatch(/hidden .*@2xl:flex/);
+    const list = within(nav).getAllByRole('list')[0]!.closest('.hidden');
+    expect(list?.className).toMatch(/@2xl:(flex|block)/);
 
     const button = within(nav).getByRole('button', { name: /Section: Tracking/ });
     expect(button.className).toMatch(/@2xl:hidden/);
     fireEvent.keyDown(button, { key: 'Enter' });
     const item = screen.getByRole('menuitem', { name: 'Units and format' });
     expect(item.getAttribute('href')).toBe('/settings/units');
-    expect(screen.getByRole('menuitem', { name: 'Tracking' }).getAttribute('aria-current')).toBe(
-      'page',
-    );
+    expect(
+      screen.getByRole('menuitem', { name: 'Tracking and privacy' }).getAttribute('aria-current'),
+    ).toBe('page');
     fireEvent.click(item);
     expect(await screen.findByLabelText('Distance unit')).toBeTruthy();
     expect(within(nav).getByRole('button', { name: /Section: Units and format/ })).toBeTruthy();
