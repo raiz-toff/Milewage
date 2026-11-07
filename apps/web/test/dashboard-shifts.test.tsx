@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { sketchPath } from '../src/map/RouteSketch';
 import { renderApp, settingsFixture, signedIn } from './support/kit';
 import type { Handler } from './support/kit';
 
@@ -39,6 +40,13 @@ const effective = (platform: string, total: number) => ({
   orders: null,
   source: 'entered',
 });
+const route = {
+  source: 'raw' as const,
+  t: [1, 2, 3],
+  lat_e7: [436500000, 436500000, 436600000],
+  lon_e7: [-793900000, -793800000, -793800000],
+};
+
 function open(table: Record<string, Handler>, modules: object = {}) {
   return renderApp(
     {
@@ -118,5 +126,46 @@ describe('dashboard recent shifts (Comma rows)', () => {
     fail = false;
     fireEvent.click(await failed.findByRole('button', { name: 'Try again' }));
     expect(await failed.findByRole('link', { name: /Shift/ })).toBeTruthy();
+  });
+  it('draws a sketch of the route, hidden from screen readers; none without a route or replay', async () => {
+    const list = () => ({ body: { items: [shift(1)], next_cursor: null } });
+    open({ 'GET /shifts': list, 'GET /shifts/1/route': () => ({ body: route }) });
+    const row = await (await recent()).findByRole('link', { name: /Shift/ });
+    const svg = await within(row).findByTestId('route-sketch');
+    expect(svg.getAttribute('aria-hidden')).toBe('true');
+    const [edge, line] = [...svg.querySelectorAll('polyline')];
+    expect(line!.getAttribute('points')!.split(' ')).toHaveLength(3);
+    expect([edge!.getAttribute('stroke'), line!.getAttribute('stroke')]).toEqual([
+      '#101214',
+      '#ffc21f',
+    ]);
+    cleanup();
+    open({
+      'GET /shifts': list,
+      'GET /shifts/1/route': () => ({ status: 404, body: { code: 'not_found' } }),
+    });
+    const bare = await (await recent()).findByRole('link', { name: /Shift/ });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(within(bare).queryByTestId('route-sketch')).toBeNull();
+    cleanup();
+    const off = open({ 'GET /shifts': list }, { replay: false });
+    await (await recent()).findByRole('link', { name: /Shift/ });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(off.calls.some((c) => c.path === '/shifts/1/route')).toBe(false);
+  });
+
+  it('fits the route into the sketch box, keeping its shape', () => {
+    // Due east: a flat line across the middle, not squeezed into a dot.
+    const flat = { source: 'raw' as const, t: [1, 2], lat_e7: [0, 0], lon_e7: [0, 100000] };
+    expect(sketchPath(flat, 64, 48, 4)).toBe('4.0,24.0 60.0,24.0');
+    // A square stays square: 40 px high fits, so it is 40 px wide, centred.
+    const square = {
+      source: 'raw' as const,
+      t: [1, 2, 3],
+      lat_e7: [0, 0, 100000],
+      lon_e7: [0, 100000, 100000],
+    };
+    expect(sketchPath(square, 64, 48, 4)).toBe('12.0,44.0 52.0,44.0 52.0,4.0');
+    expect(sketchPath({ source: 'raw', t: [1], lat_e7: [0], lon_e7: [0] })).toBeNull();
   });
 });

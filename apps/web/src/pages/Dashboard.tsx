@@ -1,4 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useSettings } from '../session';
 import { GoalRing, Notices, SetupChecklist } from './DashboardExtras';
 import { PageHeader } from '../ui/layout';
@@ -57,9 +60,12 @@ export const PERIODS: Period[] = [
   },
 ];
 
-/** "Good afternoon, Sam" and the date, both in the driver's time zone (Comma's header). */
+/**
+ * "Good afternoon, Sam" and the date, both in the driver's time zone (Comma's header), with the
+ * one thing Comma's bottom bar does that the web also does: add an expense.
+ */
 function Greeting({ now }: { now: number }) {
-  const { display_name: name, timezone } = useSettings();
+  const { display_name: name, timezone, modules } = useSettings();
   const hour = Number(
     new Intl.DateTimeFormat('en-GB', {
       timeZone: timezone,
@@ -74,7 +80,18 @@ function Greeting({ now }: { now: number }) {
     month: 'long',
     day: 'numeric',
   }).format(now);
-  return <PageHeader title={`Good ${part}${name ? `, ${name}` : ''}`} description={date} />;
+  return (
+    <PageHeader title={`Good ${part}${name ? `, ${name}` : ''}`} description={date}>
+      {modules.expenses ? (
+        <Button asChild variant="outline">
+          <Link to="/expenses?new">
+            <Plus />
+            Add expense
+          </Link>
+        </Button>
+      ) : null}
+    </PageHeader>
+  );
 }
 
 /**

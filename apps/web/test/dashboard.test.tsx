@@ -159,6 +159,16 @@ describe('dashboard', () => {
     expect(await metric('Earned')).toBeTruthy();
   });
 
+  it('Add expense opens the expense form; it is not there with expenses off', async () => {
+    open(summary());
+    fireEvent.click(await screen.findByRole('link', { name: 'Add expense' }));
+    expect(await screen.findByText('New expense')).toBeTruthy();
+    cleanup();
+    open(summary(), settingsFixture({ modules: { expenses: false } }));
+    await screen.findByRole('region', { name: 'Earned' });
+    expect(screen.queryByRole('link', { name: 'Add expense' })).toBeNull();
+  });
+
   it('computes period bounds in the given zone', () => {
     const now = Date.parse('2026-03-01T03:00:00Z'); // still 28 Feb in Toronto
     expect(localDate(now, 'America/Toronto')).toBe('2026-02-28');

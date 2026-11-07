@@ -6,6 +6,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { formatDistance, formatMoney, formatTime } from '../format';
+import { RouteSketch } from '../map/RouteSketch';
+import type { RouteData } from '../map/route';
 import { useSession, useSettings } from '../session';
 import { EmptyState, Section } from '../ui/layout';
 import { dateWords } from './Shifts';
@@ -38,8 +40,8 @@ function useSeen<T extends Element>() {
 
 /**
  * One recent shift, Comma's row: platforms, date, time and distance, then what it earned and per
- * hour. Earnings are read when the row comes into view, only with the module on; failing just
- * leaves them out.
+ * hour, then a sketch of the route. Earnings and route are read when the row comes into view,
+ * only with their modules on; either failing just leaves it out.
  */
 function ShiftRow({ shift, labels }: { shift: Shift; labels: Map<string, string> }) {
   const { api } = useSession();
@@ -47,6 +49,7 @@ function ShiftRow({ shift, labels }: { shift: Shift; labels: Map<string, string>
   const { modules, currency, timezone: tz } = settings;
   const [ref, seen] = useSeen<HTMLAnchorElement>();
   const [extra, setExtra] = useState<Extra | null>(null);
+  const [route, setRoute] = useState<RouteData | null>(null);
   useEffect(() => {
     if (!seen) return;
     const path = { params: { path: { ref: String(shift.id) } } };
@@ -59,7 +62,11 @@ function ShiftRow({ shift, labels }: { shift: Shift; labels: Map<string, string>
           }),
         )
         .catch(() => setExtra(null));
-  }, [api, seen, shift.id, modules.earnings]);
+    if (modules.replay)
+      void unwrap(api.GET('/shifts/{ref}/route', path))
+        .then(setRoute)
+        .catch(() => setRoute(null));
+  }, [api, seen, shift.id, modules.earnings, modules.replay]);
 
   const hours = shift.ended_at ? (shift.ended_at - shift.started_at) / 3_600_000 : null;
   const review = shift.flags?.filter((f) => f.severity === 'review').length ?? 0;
@@ -109,6 +116,11 @@ function ShiftRow({ shift, labels }: { shift: Shift; labels: Map<string, string>
                   ? `${formatMoney(Math.round(cents / hours), currency)} / h`
                   : null}
           </div>
+        </div>
+      ) : null}
+      {modules.replay ? (
+        <div className="hidden h-12 w-16 shrink-0 overflow-hidden rounded-md bg-muted/60 min-[360px]:block">
+          {route ? <RouteSketch route={route} /> : null}
         </div>
       ) : null}
     </Link>
