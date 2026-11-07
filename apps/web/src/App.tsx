@@ -51,6 +51,7 @@ import {
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { navGroups, visibleScreens } from './screens';
 import type { Screen } from './screens';
+import { Onboarding } from './onboarding/Wizard';
 import { Login } from './pages/Login';
 import { RecoveryKey } from './pages/RecoveryKey';
 import { Restore } from './pages/Restore';
@@ -296,6 +297,7 @@ function Shell({ settings }: { settings: Settings }) {
 /** Auth shell: decides between setup, sign-in and the app from what the server says. */
 export function App() {
   const { state } = useSession();
+  const { pathname } = useLocation();
   const [restoring, setRestoring] = useState(false);
   switch (state.status) {
     case 'loading':
@@ -313,6 +315,11 @@ export function App() {
     case 'signed_out':
       return <Login />;
     case 'ready':
-      return <Shell settings={state.settings} />;
+      // Not onboarded yet (plan 23): the wizard comes first; "Continue setup" opens it later.
+      return state.settings.onboarded_at === null || isUnder(pathname, '/onboarding') ? (
+        <Onboarding />
+      ) : (
+        <Shell settings={state.settings} />
+      );
   }
 }
