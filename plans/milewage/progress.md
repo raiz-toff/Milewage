@@ -1504,3 +1504,16 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Tests: none (plan only). `npm run verify` green.
 - Not done: code (PL1, PL2).
 - Assumption (owner to confirm): real logos for DoorDash, Uber Eats, Instacart, Deliveroo and Just Eat (the marks Simple Icons keeps); initials for Amazon Flex, Grubhub, SkipTheDishes, Foodora, Other and custom platforms. One constant turns every logo off. Skip's and Foodora's colours are best guesses (plan 25 section 4.3).
+
+## PR PL1 — Platform badge: brand colour, letters and marks (plan 25)
+
+- Branch `pr-PL1-platform-badge` (pushed, not merged), on `pr-PL0-platform-logos-plan`.
+- Done:
+  - `packages/shared/src/platforms.ts`: each built-in platform has `color` (brand colour, `null` for Other), `initials` and `logo: true` for DoorDash, Uber Eats, Instacart, Deliveroo and Just Eat. Hex strings only: no artwork in the package the phone bundles.
+  - Web `apps/web/src/platforms/PlatformBadge.tsx`: `PlatformBadge` (sm 20 px, md 28 px; mark, emoji or initials on the platform's colour; letters and mark in white or asphalt, whichever contrasts more; a faint inset ring keeps the edge visible; hidden from screen readers unless `labelled`), `PlatformName` (badge and name), and the pure `platformLook`. Colour order: the driver's stored colour, the brand colour, else one of six colours picked from the slug. Custom initials from the name ("Spark Driver" SD, "Lyft" L).
+  - `apps/web/src/platforms/logos.ts`: the five marks (Simple Icons 16.36.0 paths, unchanged; 5.9 KB in all, CC0 drawings, trademarks of their owners) and `SHOW_PLATFORM_LOGOS`, the one switch for real logos.
+- Standards checked: as PL0; WCAG contrast formula for the letter colour.
+- Tests: `apps/web/test/platform-badge.test.tsx` (mark for DoorDash, initials for Amazon Flex; all initials with logos off; marks exactly for the platforms marked `logo`; stored colour wins, slug colour stable; emoji; 4.5:1 or more on every built-in and fallback colour; hidden beside the name, named alone), `packages/shared/test/country-platforms.test.ts` (colour format, one or two letters, no Amazon mark). `npm run verify` green.
+- Visual check: a sheet of every built-in plus custom examples at 28 and 20 px, with logos on and off, light and dark (`/tmp/claude-1000/-home-coder-Production-milewage/36d23177-8421-4bf2-8eda-bc483d8cb560/scratchpad/platform-logos/badges-sheet.png`). The Uber Eats wordmark is small at 20 px but readable.
+- Not done: using the badge on screens (PL2).
+- Assumption (owner to confirm): as PL0 (logos on for the five; Skip and Foodora colours are best guesses).
