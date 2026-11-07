@@ -157,21 +157,30 @@ export class Pairing {
 
   /** Redeems the token; stores the credential securely and the settings in the cache. */
   async redeem(payload: PairingPayload): Promise<PairedState> {
+    let milewage = false; // every MileWage answer carries X-MileWage-Api (15 section 9.4)
     const client = new ApiClient({
       baseUrl: payload.baseUrl,
       fetch: this.d.fetch,
       now: this.d.now,
+      onResponse: (h) => void (milewage = h.has('X-MileWage-Api')),
     });
-    const res = await client.request<{
-      device_id: number;
-      device_token: string;
-      settings: CachedSettings;
-    }>('POST', '/pairing/redeem', {
-      token: payload.token,
-      device_name: this.d.deviceName ?? 'Android phone',
-      platform: 'android',
-      app_version: this.d.appVersion ?? '0.1.0',
-    });
+    const res = await client
+      .request<{
+        device_id: number;
+        device_token: string;
+        settings: CachedSettings;
+      }>('POST', '/pairing/redeem', {
+        token: payload.token,
+        device_name: this.d.deviceName ?? 'Android phone',
+        platform: 'android',
+        app_version: this.d.appVersion ?? '0.1.0',
+      })
+      .catch((e: unknown) => {
+        if (e instanceof ApiError && e.status > 0 && !milewage) {
+          throw new ApiError(e.status, 'not_milewage', false);
+        }
+        throw e;
+      });
     const { device_id, device_token, settings } = res.data;
     if (typeof device_id !== 'number' || !/^mwd_/.test(String(device_token))) {
       throw new ApiError(res.status, 'bad_response', false);

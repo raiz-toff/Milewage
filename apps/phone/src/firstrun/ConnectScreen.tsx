@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { Link2, XCircle } from 'lucide-react-native';
 import { ApiError } from '../api/client';
+import { addressProblem, explainFailure, type Failure } from '../connect/reach';
 import { Alert, AlertTitle } from '../components/ui/alert';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -15,29 +16,25 @@ import { Field } from '../ui/Field';
 import { Screen } from '../ui/Screen';
 import { useToast } from '../ui/Toast';
 
-const PROBLEMS: Record<string, string> = {
-  invalid_pairing_token: 'This code is not valid, has expired or was already used. Make a new one.',
-  rate_limited: 'Too many attempts. Wait a few minutes and try again.',
-  network: 'Cannot reach the server. Check the address and your connection.',
-};
-
 /**
  * Connect this phone to the driver's server (24 section 4.2, screen 4), in three ways: scan the
  * code, open the link on this phone, or paste the code. Connecting switches to the app screens.
  */
 export function ConnectScreen({ navigation, route }: ScreenProps<'Connect'>) {
   const C = useColors();
-  const { pairing, uploader, scanner: Scanner } = useServices();
+  const { pairing, uploader, net, scanner: Scanner } = useServices();
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Failure | null>(null);
   const toast = useToast();
   const confirm = useConfirm();
 
   const submit = async (input: string) => {
     if (busy) return;
     const payload = parsePairingPayload(input.trim());
-    if (!payload) return setError('That is not a MileWage pairing code.');
+    if (!payload) return setError({ text: 'That is not a MileWage pairing code.' });
+    const bad = addressProblem(payload.baseUrl, !__DEV__);
+    if (bad) return setError({ text: bad });
     setError(null);
     setBusy(true);
     try {
@@ -51,7 +48,8 @@ export function ConnectScreen({ navigation, route }: ScreenProps<'Connect'>) {
       });
     } catch (e) {
       const code = e instanceof ApiError ? e.code : 'unknown';
-      setError(PROBLEMS[code] ?? 'Connecting failed. Check the address and try again.');
+      const vpn = code === 'network' ? await net.vpnActive() : null;
+      setError(explainFailure(code, payload.baseUrl, vpn));
     } finally {
       setBusy(false);
     }
@@ -139,7 +137,12 @@ export function ConnectScreen({ navigation, route }: ScreenProps<'Connect'>) {
           />
           {error && (
             <Alert variant="destructive" icon={XCircle}>
-              <AlertTitle accessibilityRole="alert">{error}</AlertTitle>
+              <AlertTitle accessibilityRole="alert">{error.text}</AlertTitle>
+              {error.tailscale && (
+                <Button variant="outline" size="sm" onPress={() => void net.openTailscale()}>
+                  <Text>Open Tailscale</Text>
+                </Button>
+              )}
             </Alert>
           )}
           <Button

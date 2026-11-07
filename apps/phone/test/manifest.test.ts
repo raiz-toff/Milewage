@@ -98,6 +98,20 @@ describe('manifest lint (09 section 5.3)', () => {
     expect(read(merged)).not.toMatch(GOOGLE_SCANNING);
   });
 
+  // Tailscale is the only other app MileWage may see (Android 11 package visibility).
+  const TAILSCALE = /<package android:name="com\.tailscale\.ipn"\s*\/>/;
+  it('the network check module asks to see Tailscale and nothing else', () => {
+    const xml = read(
+      join(root, 'native', 'net-check', 'android', 'src', 'main', 'AndroidManifest.xml'),
+    );
+    expect(xml).toMatch(TAILSCALE);
+    expect(xml.match(/<package /g)).toHaveLength(1);
+    expect(forbiddenIn(xml)).toEqual([]);
+  });
+  (existsSync(merged) ? it : it.skip)('the merged release manifest can see Tailscale', () => {
+    expect(read(merged)).toMatch(TAILSCALE);
+  });
+
   // Every permission in the merged manifest is one we declared or a known harmless library one.
   const BENIGN = ['INTERNET', 'VIBRATE', 'ACCESS_NETWORK_STATE'].map((n) => PREFIX + n);
   (existsSync(merged) ? it : it.skip)(
