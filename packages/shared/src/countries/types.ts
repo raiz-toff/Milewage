@@ -2,6 +2,7 @@
 // and cities add only the data that differs from the level above. Nothing here is a compliance
 // claim: a rate is a published figure with its source, not advice (17 R9).
 
+import type { Mileage } from './mileage';
 import type { PlaceData } from './slots';
 
 export type VehicleKind =
@@ -65,6 +66,7 @@ export interface CountryModule {
   places: readonly Place[];
   /** National values of the data slots; regions and cities are in `places`. */
   data: PlaceData;
+  mileage: Mileage;
   /** Where the figures come from, and what has not been checked by a person. */
   sources: readonly string[];
   /** False until a person has compared every figure with the primary page (17 section 4). */

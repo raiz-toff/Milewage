@@ -42,6 +42,7 @@ const zz: CountryModule = {
     at('ZZ-L1', 'ZZ-L2'),
     at('ZZ-L2', 'ZZ-L1'),
   ],
+  mileage: { yearStarts: '01-01', rates: {} },
   sources: ['https://example.org'],
   verified: true,
   notes: ['national note'],
