@@ -1026,3 +1026,11 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Merges the other planning session's `21-country-modularity-findings.md` (left in the main checkout, uncommitted).
 - Stacked on the P1 phone stack (`pr-P1g-phone-qr-pairing`), not on `main`: on a clean `npm ci`, `main`'s lockfile installs two `@types/react` versions for `apps/web` (19.2.18 nested, 19.3.0 via `@types/react-dom`) and `typecheck:web` fails with 8 errors in the shadcn components; the P1 lockfile has one React and is green. P1 must merge first.
 - No code.
+
+## PR O0 — Plan: onboarding on the web (plan 23)
+
+- Branch `pr-O0-onboarding-plan` (pushed, not merged), stacked on `pr-J0-country-plan`.
+- Done: [`23-onboarding-plan.md`](./23-onboarding-plan.md) — a short web wizard after the recovery key: region, work kinds, apps, vehicle (ownership and which rate applies), weekly goal, pair phone, check answers. A step with only one possible answer is not shown; steps come from country data and module flags. The dashboard checklist stays for skipped items. PR list O1–O4 on an integration branch X1 that merges tracks J, L and V.
+- Standards checked: GOV.UK question pages (one thing per page) and check answers; NN/g, Visa, PatternFly and Microsoft wizard guidance; W3C WAI multi-page forms (step in heading and title); onboarding practice (time to value, checklist, no dead ends). Links in plan 23 §3.
+- Assumption (owner to confirm): existing owners with a vehicle are marked as onboarded and do not see the wizard.
+- No code.
