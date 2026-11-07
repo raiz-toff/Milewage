@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { FormEvent, ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
@@ -132,14 +132,23 @@ function ModuleFlags({ modules }: { modules: Settings['modules'] }) {
 }
 
 type SectionId =
-  'profile' | 'units' | 'alerts' | 'platforms' | 'tracking' | 'import' | 'account' | 'modules';
+  'profile' | 'units' | 'alerts' | 'platforms' | 'tracking' | 'data' | 'account' | 'modules';
+
+/** How a section keeps its changes; said under its heading so nobody wonders. */
+const SAVES = {
+  shared:
+    'Saved with the Save button below, together with unsaved changes in the other sections that use it.',
+  instant: 'Each change is saved at once.',
+  own: 'Uses its own button, not the Save bar of the preferences.',
+} as const;
 
 interface Section {
   id: SectionId;
   label: string;
   description: string;
+  saves?: keyof typeof SAVES;
   /** Shown only when this module runs on the server. */
-  module?: 'platforms' | 'notifications' | 'import';
+  module?: 'platforms' | 'notifications';
 }
 
 /** The settings sections in groups, in order. One topic per section, one URL each. */
@@ -151,16 +160,19 @@ const GROUPS: { label: string; sections: Section[] }[] = [
         id: 'profile',
         label: 'Profile and region',
         description: 'Your name, and the country and region whose mileage and tax rules apply.',
+        saves: 'shared',
       },
       {
         id: 'units',
         label: 'Units and format',
         description: 'How distances, money, dates and times are shown.',
+        saves: 'shared',
       },
       {
         id: 'alerts',
         label: 'Alerts',
         description: 'What MileWage tells you about, here and on the phone.',
+        saves: 'instant',
         module: 'notifications',
       },
     ],
@@ -172,12 +184,14 @@ const GROUPS: { label: string; sections: Section[] }[] = [
         id: 'platforms',
         label: 'Platforms',
         description: 'The apps you work for. Active ones are offered when you label shifts.',
+        saves: 'instant',
         module: 'platforms',
       },
       {
         id: 'tracking',
         label: 'Tracking and privacy',
         description: "What the server works out from your phone's GPS, and how long it keeps it.",
+        saves: 'shared',
       },
     ],
   },
@@ -185,15 +199,15 @@ const GROUPS: { label: string; sections: Section[] }[] = [
     label: 'Data and account',
     sections: [
       {
-        id: 'import',
-        label: 'Import',
-        description: 'Bring shifts or expenses in from a CSV file.',
-        module: 'import',
+        id: 'data',
+        label: 'Your data',
+        description: 'Bring records in, and where to find backups and exports.',
       },
       {
         id: 'account',
-        label: 'Account',
-        description: 'Your password for this server.',
+        label: 'Account and security',
+        description: 'Your password, and the phones that can send data to this server.',
+        saves: 'own',
       },
       {
         id: 'modules',
@@ -206,7 +220,26 @@ const GROUPS: { label: string; sections: Section[] }[] = [
 ];
 
 /** Old section addresses, kept working. */
-const MOVED: Record<string, SectionId> = { general: 'profile' };
+const MOVED: Record<string, SectionId> = { general: 'profile', import: 'data' };
+
+/** Which section each preference belongs to, to say where unsaved changes are. */
+const FIELD_SECTION: Record<keyof Draft, SectionId> = {
+  display_name: 'profile',
+  country: 'profile',
+  region: 'profile',
+  own_rate: 'profile',
+  distance_unit: 'units',
+  currency: 'units',
+  week_start: 'units',
+  time_format: 'units',
+  timezone: 'units',
+  stops_enabled: 'tracking',
+  raw_retention_days: 'tracking',
+  diagnostics_level: 'tracking',
+};
+
+const ALL_SECTIONS = GROUPS.flatMap((g) => g.sections);
+const labelOf = (id: SectionId) => ALL_SECTIONS.find((s) => s.id === id)?.label ?? id;
 
 /** Groups with only the sections whose module is on; a group left empty is dropped. */
 const visibleGroups = (modules: Settings['modules']) =>
@@ -296,13 +329,34 @@ function SettingsNav({ groups }: { groups: Group[] }) {
   );
 }
 
-/** The top of a section: its name and what it is for. */
+/** The top of a section: its name, what it is for and how it saves. */
 function SectionHeader({ section }: { section: Section }) {
   return (
     <div className="space-y-1">
       <h2 className="text-lg font-semibold tracking-tight">{section.label}</h2>
       <p className="text-sm text-muted-foreground">{section.description}</p>
+      {section.saves ? (
+        <p className="text-xs text-muted-foreground">{SAVES[section.saves]}</p>
+      ) : null}
     </div>
+  );
+}
+
+/** A row that leads to another page of the app. */
+function LinkRow({ to, title, children }: { to: string; title: string; children: string }) {
+  return (
+    <li>
+      <Link
+        to={to}
+        className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted"
+      >
+        <span className="space-y-0.5">
+          <span className="block text-sm font-medium">{title}</span>
+          <span className="block text-sm text-muted-foreground">{children}</span>
+        </span>
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+      </Link>
+    </li>
   );
 }
 
@@ -323,7 +377,13 @@ function usePrefs() {
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const patch = changes(saved, draft);
+  const was = draftOf(saved);
+  const edited = (Object.keys(draft) as (keyof Draft)[]).filter((k) => draft[k] !== was[k]);
   return {
+    /** Sections with edits not yet saved, in menu order. */
+    unsaved: ALL_SECTIONS.map((s) => s.id).filter((id) =>
+      edited.some((k) => FIELD_SECTION[k] === id),
+    ),
     saved,
     draft,
     error,
@@ -379,7 +439,9 @@ function PrefsForm({ prefs, children }: { prefs: Prefs; children: ReactNode }) {
             </p>
           ) : (
             <p className="text-muted-foreground">
-              {dirty ? 'You have unsaved changes.' : 'All changes saved.'}
+              {dirty
+                ? `Unsaved changes: ${prefs.unsaved.map(labelOf).join(', ')}.`
+                : 'All changes saved.'}
             </p>
           )}
         </div>
@@ -603,15 +665,42 @@ export function SettingsPage() {
         <PlatformsCard />
       </SettingsCard>
     ),
-    import: (
-      <SettingsCard>
-        <ImportCard />
-      </SettingsCard>
+    data: (
+      <>
+        {modules.import ? (
+          <SettingsCard>
+            <ImportCard />
+          </SettingsCard>
+        ) : null}
+        <Card className="py-0">
+          <ul aria-label="Elsewhere in MileWage" className="divide-y">
+            <LinkRow to="/backups" title="Backups">
+              Encrypted copies of all your data: make one, download it, check the last run.
+            </LinkRow>
+            {modules.exporters.length > 0 ? (
+              <LinkRow to="/exports" title="Exports">
+                Files of your shifts, trips and totals for your records or an accountant.
+              </LinkRow>
+            ) : null}
+          </ul>
+        </Card>
+      </>
     ),
     account: (
-      <SettingsCard>
-        <Account />
-      </SettingsCard>
+      <>
+        <SettingsCard>
+          <Account />
+        </SettingsCard>
+        {modules.devices ? (
+          <Card className="py-0">
+            <ul aria-label="Elsewhere in MileWage">
+              <LinkRow to="/devices" title="Devices">
+                The phones paired with this server. Revoke one you lost or replaced.
+              </LinkRow>
+            </ul>
+          </Card>
+        ) : null}
+      </>
     ),
     modules: <ModuleFlags modules={modules} />,
   };

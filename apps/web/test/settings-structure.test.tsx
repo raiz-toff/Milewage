@@ -27,8 +27,8 @@ describe('settings structure', () => {
       'Alerts',
       'Platforms',
       'Tracking and privacy',
-      'Import',
-      'Account',
+      'Your data',
+      'Account and security',
       'Server modules',
     ]);
     const nav = await sectionNav();
@@ -58,7 +58,8 @@ describe('settings structure', () => {
       'Profile and region',
       'Units and format',
       'Tracking and privacy',
-      'Account',
+      'Your data',
+      'Account and security',
       'Server modules',
     ]);
   });
