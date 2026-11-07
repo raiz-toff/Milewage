@@ -90,7 +90,14 @@ export function PairStep({ ctx, next }: StepProps) {
           <p className="text-sm text-muted-foreground">
             Pair your phone with this server. The phone records your shifts and sends them here.
           </p>
-          {pairing ? <PairingCode pairing={pairing} /> : null}
+          {pairing ? (
+            <PairingCode
+              pairing={pairing}
+              remake={async (base_url) =>
+                setPairing(await unwrap(api.POST('/pairing-tokens', { body: { base_url } })))
+              }
+            />
+          ) : null}
           <FormError message={error} />
           <p role="status" className="text-sm text-muted-foreground">
             Waiting for your phone…

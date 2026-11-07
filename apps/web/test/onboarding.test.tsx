@@ -240,6 +240,8 @@ describe('onboarding wizard (plan 23)', () => {
           token: 'mwp_x',
           qr_payload: 'milewage://pair?t=mwp_x',
           pair_url: 'https://host/pair#v=1&t=mwp_x',
+          base_url: 'https://host',
+          base_url_source: 'request',
           expires_at: 2e12,
         },
       }),
