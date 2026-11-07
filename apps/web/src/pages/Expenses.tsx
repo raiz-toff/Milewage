@@ -8,7 +8,7 @@ import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
-import { Button, Field, FormError, SelectField } from '../ui/form';
+import { Button, DateField, Field, FormError, SelectField } from '../ui/form';
 import { toCents } from './ShiftEarnings';
 
 type Expense = Schemas['Expense'];
@@ -278,11 +278,10 @@ export function ExpensesPage() {
               ))}
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
-              <Field
+              <DateField
                 label="Date"
-                type="date"
                 value={draft.spent_on}
-                onChange={(e) => setDraft({ ...draft, spent_on: e.target.value })}
+                onChange={(spent_on) => setDraft({ ...draft, spent_on })}
               />
               <Field
                 label="Amount"
@@ -354,11 +353,10 @@ export function ExpensesPage() {
                 ]}
               />
               {draft.recurrence ? (
-                <Field
+                <DateField
                   label="Next due"
-                  type="date"
                   value={draft.next_due}
-                  onChange={(e) => setDraft({ ...draft, next_due: e.target.value })}
+                  onChange={(next_due) => setDraft({ ...draft, next_due })}
                 />
               ) : null}
             </div>

@@ -6,7 +6,7 @@ import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { formatDateTime, formatDistance } from '../format';
 import { useSession, useSettings } from '../session';
-import { Button, Field, FormError, SelectField } from '../ui/form';
+import { Button, DateField, Field, FormError, SelectField } from '../ui/form';
 import { localDate } from './Dashboard';
 
 type Reading = Schemas['OdometerReading'];
@@ -205,7 +205,7 @@ export function OdometerPage() {
               { value: 'year_end', label: 'Year end' },
             ]}
           />
-          <Field label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <DateField label="Date" value={date} onChange={setDate} />
           <Field
             label={`Odometer (${unit})`}
             inputMode="decimal"

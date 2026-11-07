@@ -57,6 +57,17 @@ export function pick(target: string | HTMLElement, value: string) {
   fireEvent.click(option);
 }
 
+/** Open the calendar of the date field `label` (shadcn Date Picker) and click the day named `day`. */
+export function pickDay(label: string, day: RegExp) {
+  fireEvent.click(screen.getByRole('button', { name: `Open calendar: ${label}` }));
+  const dialog = screen.getByRole('dialog', { name: label });
+  const button = [...dialog.querySelectorAll<HTMLElement>('button')].find((b) =>
+    day.test(b.getAttribute('aria-label') ?? ''),
+  );
+  if (!button) throw new Error(`No day ${String(day)} in the ${label} calendar`);
+  fireEvent.click(button);
+}
+
 const actionsFor = (name: string | RegExp) =>
   screen.getByRole('button', {
     name:
