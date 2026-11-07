@@ -1516,3 +1516,12 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Visual check: headless Chromium, fixtures as W2f plus a 9-minute shift with one trip and no stops; 1280 and 390 px dark; the W2e Toronto shift is unchanged. Screenshots in the session scratchpad (`shots/sparse/w2g`).
 - Not done: the empty earnings form is still full size (W2h).
 - Assumption (owner to confirm): a shift without stops counts as "little in it", so its Odometer, Notes and Export fold too; with the stops module off nothing folds (unchanged).
+
+## PR W2h — Web: a compact earnings block when nothing is entered yet (shift detail rework)
+
+- Branch `pr-W2h-shift-earnings-compact` (pushed, not merged), stacked on `pr-W2g-shift-more`.
+- Done: with no earnings entered or labelled, the Earnings card says it in one line under its title, with the instruction: "No earnings entered or labelled for this shift. Type the total the platform shows." The total form stays (it is the real action); the note about stop labels is left out (there are none), and the entry lines (cash trips, commission, fees, payouts: plan 22) wait behind one quiet button, "Add a cash trip, fee or payout line". Once anything is entered the card is as before. The form follows the card's width (container query), not the window's: two fields a row when the card is under 36rem (the platform and "Save total" across), five when wider, so it no longer squeezes five fields into a narrow column (820 px with the sidebar open) and is half as tall on a phone.
+- Standards checked: NN/g empty states (one clear message, a direct path to the main task: [NN/g](https://www.nngroup.com/articles/empty-state-interface-design/)); NN/g progressive disclosure (the less used lines one step away: [NN/g](https://www.nngroup.com/articles/progressive-disclosure/)); [Tailwind container queries](https://tailwindcss.com/docs/responsive-design#container-queries).
+- Tests: `apps/web/test/shiftearnings.test.tsx` 1 new (the one line, "Save total" there, no label note, no entry form until the button is pressed) and the line test now presses the button first. Both fail without the change. `npm run verify` exit 0: vitest 124 files, 973 passed, 3 skipped; phone jest 271 passed, 4 skipped.
+- Visual check: headless Chromium, the W2f fixtures and the W2e Toronto shift, 390, 820 and 1280 px, light and dark. The Toronto shift at 1280 matches the W2e screenshots card for card. Screenshots in the session scratchpad (`shots/sparse/after`).
+- Not done: nothing for this block.

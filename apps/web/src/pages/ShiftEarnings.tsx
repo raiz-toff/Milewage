@@ -33,6 +33,7 @@ export function ShiftEarnings({
   const [data, setData] = useState<Earnings | null>(null);
   const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [ledger, setLedger] = useState(false);
   const [form, setForm] = useState({
     platform: 'other',
     gross: '',
@@ -113,12 +114,22 @@ export function ShiftEarnings({
     });
   }, [data, names, onSummary]);
 
+  // Nothing yet: one line says so and how, and the less common lines wait behind a button.
+  const none = data?.effective.length === 0;
   return (
-    <Section label="Earnings" title="Earnings">
+    <Section
+      label="Earnings"
+      title="Earnings"
+      // The form follows the card's width, not the window's (the card can sit in a column).
+      className="@container"
+      description={
+        none
+          ? 'No earnings entered or labelled for this shift. Type the total the platform shows.'
+          : undefined
+      }
+    >
       <FormError message={error} />
-      {data === null ? null : data.effective.length === 0 ? (
-        <p className="text-muted-foreground">No earnings entered or labelled for this shift.</p>
-      ) : (
+      {data === null || none ? null : (
         <ul className="space-y-1">
           {data.effective.map((r) => (
             <li key={r.platform} className="flex items-center gap-3">
@@ -144,7 +155,11 @@ export function ShiftEarnings({
           ))}
         </ul>
       )}
-      <form className="grid max-w-2xl gap-3 sm:grid-cols-5" onSubmit={(e) => void save(e)}>
+      <form
+        // Two fields a row when narrow (platform and the button across), five when wide.
+        className="grid max-w-2xl grid-cols-2 gap-3 *:first:col-span-2 @xl:grid-cols-5 @xl:*:first:col-span-1 [&>button]:col-span-2 @xl:[&>button]:col-span-1"
+        onSubmit={(e) => void save(e)}
+      >
         <SelectField
           label="Platform"
           value={options.some((o) => o.value === form.platform) ? form.platform : options[0]!.value}
@@ -171,11 +186,23 @@ export function ShiftEarnings({
           Save total
         </Button>
       </form>
-      <p className="text-xs text-muted-foreground">
-        Type the figure the platform shows for this shift. It replaces that platform&apos;s stop
-        labels in your totals.
-      </p>
-      {data === null ? null : (
+      {none ? null : (
+        <p className="text-xs text-muted-foreground">
+          Type the figure the platform shows for this shift. It replaces that platform&apos;s stop
+          labels in your totals.
+        </p>
+      )}
+      {data === null ? null : none && !ledger ? (
+        <UiButton
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="-ml-2 self-start text-muted-foreground"
+          onClick={() => setLedger(true)}
+        >
+          Add a cash trip, fee or payout line
+        </UiButton>
+      ) : (
         <EarningLedger shiftId={shift.id} data={data} options={options} onChange={setData} />
       )}
     </Section>

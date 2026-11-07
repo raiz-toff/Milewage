@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { toCents } from '../src/pages/ShiftEarnings';
 import { pick, renderApp, settingsFixture, signedIn } from './support/kit';
@@ -191,9 +191,27 @@ describe('shift earnings block (module earnings)', () => {
     expect(s.calls.some((c) => c.method === 'DELETE' && c.path.endsWith('/entries/4'))).toBe(true);
   });
 
+  it('with nothing entered, says so in one line and keeps the other lines behind a button', async () => {
+    open();
+    const card = await screen.findByRole('region', { name: 'Earnings' });
+    expect(
+      await within(card).findByText(
+        'No earnings entered or labelled for this shift. Type the total the platform shows.',
+      ),
+    ).toBeTruthy();
+    expect(within(card).getByRole('button', { name: 'Save total' })).toBeTruthy();
+    expect(within(card).queryByText(/replaces that platform/)).toBeNull();
+    expect(within(card).queryByLabelText('Amount')).toBeNull();
+    fireEvent.click(
+      within(card).getByRole('button', { name: 'Add a cash trip, fee or payout line' }),
+    );
+    expect(within(card).getByLabelText('Amount')).toBeTruthy();
+  });
+
   it('refuses a line without an amount above zero', async () => {
     const s = open();
     await screen.findByText(/No earnings entered/);
+    fireEvent.click(screen.getByRole('button', { name: 'Add a cash trip, fee or payout line' }));
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '-2' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add line' }));
     expect((await screen.findByRole('alert')).textContent).toMatch(/above zero/);
