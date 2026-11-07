@@ -3,7 +3,6 @@ import grid from './fixtures/mileage-grid.json';
 import {
   caCountry,
   countryModules,
-  countryPacks,
   gbCountry,
   mileageDeduction,
   periodStart,
@@ -58,17 +57,15 @@ describe('CA, US and GB as country modules (plan 21)', () => {
     }
   });
 
-  test('the old packs are thin aliases over the modules until J4', () => {
-    for (const c of countryModules.list()) {
-      const pack = countryPacks.get(c.code)!;
-      expect([pack.sources, pack.notes, pack.unit]).toEqual([c.sources, c.notes, c.unit]);
-      expect(pack.notes).toBe(c.notes);
-    }
+  test('the pre-plan-21 pack aliases are gone (J4)', async () => {
+    const shared = await import('../src');
+    for (const old of ['caPack', 'countryPacks', 'taxPacks', 'caTaxPack', 'createCountryRegistry'])
+      expect(old in shared, old).toBe(false);
   });
 
   test('the process registry lists the three countries and nothing else', () => {
-    expect(countryModules.codes()).toEqual(['CA', 'US', 'GB']);
+    expect(countryModules.codes()).toEqual(['US', 'CA', 'GB']); // the order of the old list
     expect(countryModules.get('gb')).toBe(gbCountry);
-    expect(countryModules.list().map((c) => c.currency)).toEqual(['CAD', 'USD', 'GBP']);
+    expect(countryModules.list().map((c) => c.currency)).toEqual(['USD', 'CAD', 'GBP']);
   });
 });

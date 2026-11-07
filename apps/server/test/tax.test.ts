@@ -130,6 +130,20 @@ describe('the estimate', () => {
       await off.close();
     }
   });
+
+  test('tax countries can only hide a pack: listing a country without one shows nothing', async () => {
+    const on = harness({}, { comma: { taxCountries: ['CA', 'US', 'GB'] } });
+    try {
+      const { cookie: c } = await on.signUp();
+      for (const country of ['US', 'GB']) {
+        await on.call('PATCH', '/settings', { country }, { cookie: c });
+        const t = (await on.call('GET', '/tax/2026', undefined, { cookie: c })).json();
+        expect([country, t.supported, t.deadlines]).toEqual([country, false, []]);
+      }
+    } finally {
+      await on.close();
+    }
+  });
 });
 
 describe('how a vehicle is deducted', () => {

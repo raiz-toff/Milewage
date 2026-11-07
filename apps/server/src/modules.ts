@@ -1,5 +1,5 @@
 import { dirname, join } from 'node:path';
-import { defineModule, type ModuleRegistry } from '@milewage/shared';
+import { countryModules, defineModule, type ModuleRegistry } from '@milewage/shared';
 import { Authenticator } from './auth/authenticator';
 import { nightlyBackupJob } from './backup/schedule';
 import { fileSecrets, secretsCodec, type SecretsStore } from './backup/secrets';
@@ -29,7 +29,7 @@ import { createServerState, type ServerState } from './state';
 import { coreRoutes, type CoreContext } from './routes/core';
 import { devicesRoutes } from './routes/devices';
 import { diagnosticsRoutes } from './routes/diagnostics';
-import { DEFAULT_COUNTRIES, settingsReader } from './routes/settings';
+import { settingsReader } from './routes/settings';
 import { createShiftProcessor } from './processing/shift-processor';
 import { createLateRecompute } from './processing/late-recompute';
 import { createArchiver } from './processing/archive';
@@ -215,7 +215,7 @@ export function buildBackupService(
 export function createServerModules(ctx: ServerContext) {
   const authn = new Authenticator(createSessionRepository(ctx.db), ctx.now);
   const secrets = ctx.secrets ?? fileSecrets(ctx.configDir ?? 'config');
-  const countries = ctx.countries ?? DEFAULT_COUNTRIES;
+  const countries = ctx.countries ?? countryModules.codes();
   const captureFor = (_userId: number, deviceId: number) => {
     if (!registry?.isEnabled('capture')) return null;
     const c = createCaptureStore(diagnosticsStore().db);

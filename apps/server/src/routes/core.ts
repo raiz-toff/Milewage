@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import type { ModuleRegistry, RouteHost } from '@milewage/shared';
+import { countryModules, type ModuleRegistry, type RouteHost } from '@milewage/shared';
 import { API_PREFIX, type ServerRouteHost } from '../app';
 import { generateRecoveryKey, keyTail, tailCheck } from '../backup/age';
 import { fileSecrets, type SecretsStore } from '../backup/secrets';
@@ -16,7 +16,7 @@ import {
 } from '../db';
 import type { CommaOptions } from '../comma-options';
 import { ProblemError } from '../errors';
-import { DEFAULT_COUNTRIES, settingsRoutes } from './settings';
+import { settingsRoutes } from './settings';
 import { statusRoute, type StatusContext } from './status';
 import type { ShiftProcessor } from '../processing/shift-processor';
 import { odometerRoutes } from './odometer';
@@ -29,7 +29,7 @@ import { vehicleRoutes } from './vehicles';
 export interface CoreContext {
   db: Db;
   now: () => number;
-  /** Registered country packs (config `countries`); defaults to US, CA, GB. */
+  /** Countries a driver may choose; defaults to every registered country (plan 21). */
   countries?: readonly string[];
   /** `config/secrets.json`; defaults to the `config` directory. */
   secrets?: SecretsStore;
@@ -82,7 +82,7 @@ export function coreRoutes(
   {
     db,
     now,
-    countries = DEFAULT_COUNTRIES,
+    countries = countryModules.codes(),
     secrets = fileSecrets('config'),
     status,
     processor,

@@ -15,9 +15,24 @@ import { deductionOfShift } from './processing/presenter';
 export interface TaxReportOptions {
   db: Db;
   registry: ModuleRegistry;
-  /** Countries whose estimate is on (`comma.tax_countries`). */
+  /** `comma.tax_countries`: countries whose estimate is not hidden. */
   countries: readonly string[];
   override?: 'replace' | 'sum';
+}
+
+/**
+ * A country's tax pack and the driver's resolved place, if shown. The country's pack decides
+ * whether an estimate exists; `comma.tax_countries` can only hide it (plan 21, owner decision Q3).
+ */
+export function shownTax(
+  country: string,
+  region: string | null | undefined,
+  shown: readonly string[],
+) {
+  const c = countryModules.get(country);
+  return c?.tax && shown.includes(c.code)
+    ? { pack: c.tax, place: resolvePlace(c, region) }
+    : undefined;
 }
 
 /** Everything `GET /tax/{year}` and the `tax_summary` export say, computed at read time (18 section 7.2). */
@@ -26,9 +41,7 @@ export function taxReport(o: TaxReportOptions, userId: number, year: number, col
   const tax = createTaxRepository(o.db);
   const inputs = tax.year(userId, year);
   const country = settings?.country ?? '';
-  const known = countryModules.get(country);
-  const place = known && resolvePlace(known, settings?.region);
-  const pack = place && o.countries.includes(country) ? known?.tax : undefined;
+  const { pack, place } = shownTax(country, settings?.region, o.countries) ?? {};
   const from = `${year}-01-01`;
   const to = `${year}-12-31`;
 

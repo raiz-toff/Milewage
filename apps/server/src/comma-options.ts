@@ -8,7 +8,11 @@ import { ConfigError } from './config';
 export interface CommaOptions {
   /** 18 section 16 item 3: a typed platform total `replace`s that platform's label sum, or is added (`sum`). */
   earningsOverride: 'replace' | 'sum';
-  /** 16 item 5: countries whose tax estimate is on. US and GB stay off until their numbers are verified. */
+  /**
+   * 16 item 5, plan 21 Q3: countries whose tax estimate is shown. Only a country's own tax pack can
+   * make an estimate exist; this switch can only hide one nobody has checked. Listing a country
+   * without a pack (US, GB today) shows nothing.
+   */
   taxCountries: readonly string[];
   /** 16 item 6: the weekly "earn" challenge target in minor units of the settings currency. */
   challengeTargetCents: number;

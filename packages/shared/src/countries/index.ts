@@ -14,8 +14,7 @@ export * from './registry';
 export * from './mileage';
 export * from './name';
 export * from './tax';
-export * from './legacy';
 export { caCountry, gbCountry, usCountry };
 
-/** The countries of this process. */
-export const countryModules = createCountryModules([caCountry, usCountry, gbCountry]);
+/** The countries of this process, in the order screens list them. */
+export const countryModules = createCountryModules([usCountry, caCountry, gbCountry]);

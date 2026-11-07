@@ -1,4 +1,4 @@
-import { countryPacks, type VehicleKind } from '@milewage/shared';
+import { countryModules, mileageDeduction, periodStart, type VehicleKind } from '@milewage/shared';
 import {
   createProcessingRepository,
   createSettingsRepository,
@@ -17,7 +17,7 @@ import { shiftView } from '../routes/shifts';
 export function deductionOfShift(db: Db, r: ShiftRow): number | null {
   if (r.totalM === null || r.status === 'active') return null;
   const country = createSettingsRepository(db).get(r.userId)?.country;
-  const pack = country ? countryPacks.get(country) : undefined;
+  const pack = country ? countryModules.get(country) : undefined;
   if (!pack) return null;
   // A vehicle deducted through its expenses has no mileage deduction value (18 section 7.1).
   if (
@@ -37,14 +37,14 @@ export function deductionOfShift(db: Db, r: ShiftRow): number | null {
     .get(
       r.userId,
       kind,
-      pack.periodStart(r.localDate),
+      periodStart(pack.mileage, r.localDate),
       r.localDate,
       r.localDate,
       r.startedAt,
       r.startedAt,
       r.id,
     ) as number;
-  return pack.deduction({
+  return mileageDeduction(pack, {
     totalM: r.totalM,
     priorM: prior,
     date: r.localDate,

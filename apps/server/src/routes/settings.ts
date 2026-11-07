@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ModuleRegistry } from '@milewage/shared';
-import { countryPacks } from '@milewage/shared';
+import { countryModules } from '@milewage/shared';
 import { algorithmVersion } from '@milewage/track-engine';
 import {
   createSettingsRepository,
@@ -12,8 +12,6 @@ import { ProblemError } from '../errors';
 import type { EventEmit } from '../events';
 import { str, strictObject, type AuthFn } from './util';
 
-/** Registered country packs until the pack registry exists (08 section 16.3). */
-export const DEFAULT_COUNTRIES = ['US', 'CA', 'GB'] as const;
 /** Driver admin modules (18): each is a flag in `modules` so the web can hide its screen. */
 export const COMMA_MODULES = [
   'platforms',
@@ -183,7 +181,10 @@ export function settingsRoutes(
     if (b.time_format) patch.timeFormat = b.time_format as '12h' | '24h';
     if (b.region !== undefined || b.country) {
       // A region belongs to its country: a new country clears a region it does not have.
-      const known = countryPacks.get(country)?.regions;
+      const c = countryModules.get(country);
+      const known = c?.places
+        .filter((p) => p.parent === c.code)
+        .map((p) => p.code.slice(c.code.length + 1));
       const ok = region == null || (known?.includes(region.toUpperCase()) ?? false);
       if (!ok && b.region != null) {
         throw new ProblemError('validation_failed', 'Settings are not valid.', [

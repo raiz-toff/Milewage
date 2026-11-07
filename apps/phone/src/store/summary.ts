@@ -1,4 +1,4 @@
-import { countryPacks, type VehicleKind } from '@milewage/shared';
+import { countryModules, mileageDeduction, periodStart, type VehicleKind } from '@milewage/shared';
 import type { ShiftRow } from './shiftStore';
 
 export interface PeriodSummary {
@@ -42,7 +42,7 @@ export function summarize(
   rows: readonly Row[],
   opts: { today: string; country: string; vehicleKinds: ReadonlyMap<number, string> },
 ): HomeSummary {
-  const pack = countryPacks.get(opts.country);
+  const pack = countryModules.get(opts.country);
   const done = rows
     .filter((r) => r.status !== 'active' && r.total_m !== null)
     .sort((a, b) => a.local_date.localeCompare(b.local_date) || a.started_at - b.started_at);
@@ -50,12 +50,12 @@ export function summarize(
   const value = new Map<Row, number | null>();
   for (const r of done) {
     const kind = (opts.vehicleKinds.get(r.vehicle_id) as VehicleKind | undefined) ?? 'car';
-    const key = `${kind}|${pack?.periodStart(r.local_date) ?? ''}`;
+    const key = `${kind}|${pack ? periodStart(pack.mileage, r.local_date) : ''}`;
     const before = prior.get(key) ?? 0;
     value.set(
       r,
       pack
-        ? pack.deduction({
+        ? mileageDeduction(pack, {
             totalM: r.total_m!,
             priorM: before,
             date: r.local_date,

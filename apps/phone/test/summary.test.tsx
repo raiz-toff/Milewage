@@ -1,4 +1,4 @@
-import { countryPacks } from '@milewage/shared';
+import { countryModules, mileageDeduction } from '@milewage/shared';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { App } from '../src/App';
 import { summarize, weekStart } from '../src/store/summary';
@@ -28,7 +28,7 @@ describe('home summary', () => {
   });
 
   it('sums week and month from the shifts on the phone, with the pack value, and counts unsynced shifts', () => {
-    const us = countryPacks.get('US')!;
+    const us = countryModules.get('US')!;
     const s = summarize(
       [
         row('2025-10-02', 10_000), // this month, not this week
@@ -43,7 +43,7 @@ describe('home summary', () => {
     expect(s.week).toMatchObject({ from: '2025-10-13', shifts: 2, unsynced: 1, totalM: 24_000 });
     expect(s.month).toMatchObject({ from: '2025-10-01', shifts: 3, totalM: 34_000 });
     const each = (m: number) =>
-      us.deduction({ totalM: m, priorM: 0, date: '2025-10-15', vehicleKind: 'car' })!;
+      mileageDeduction(us, { totalM: m, priorM: 0, date: '2025-10-15', vehicleKind: 'car' })!;
     expect(s.week.deductionCents).toBe(each(16_000) + each(8_000));
     expect(s.month.deductionCents).toBe(each(10_000) + each(16_000) + each(8_000));
   });
@@ -54,10 +54,15 @@ describe('home summary', () => {
       country: 'CA',
       vehicleKinds: none,
     });
-    const ca = countryPacks.get('CA')!;
+    const ca = countryModules.get('CA')!;
     expect(s.month.deductionCents).toBe(
-      ca.deduction({ totalM: 4_900_000, priorM: 0, date: '2025-03-01', vehicleKind: 'car' })! +
-        ca.deduction({
+      mileageDeduction(ca, {
+        totalM: 4_900_000,
+        priorM: 0,
+        date: '2025-03-01',
+        vehicleKind: 'car',
+      })! +
+        mileageDeduction(ca, {
           totalM: 200_000,
           priorM: 4_900_000,
           date: '2025-03-02',
