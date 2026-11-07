@@ -13,9 +13,11 @@ import {
 import { GeistMono_400Regular } from '@expo-google-fonts/geist-mono';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
+import { useState } from 'react';
 import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { PairingLinks } from './pairing/PairingLinks';
 import { RootNavigator, type RootStackParamList } from './navigation';
 import { ServicesProvider, useServices, type Services } from './services';
 import { PALETTE } from './theme/colors';
@@ -39,6 +41,7 @@ const navTheme: Theme = {
 };
 
 export function App({ services }: { services?: Services }) {
+  const [navReady, setNavReady] = useState(false);
   const [fontsLoaded, fontError] = useFonts({
     Geist_400Regular,
     Geist_500Medium,
@@ -56,8 +59,11 @@ export function App({ services }: { services?: Services }) {
         <ServicesProvider value={services}>
           <ToastProvider>
             <ConfirmProvider>
-              <NavigationContainer ref={navRef} theme={navTheme}>
+              <NavigationContainer ref={navRef} theme={navTheme} onReady={() => setNavReady(true)}>
                 <Guarded />
+                {navReady && (
+                  <PairingLinks onLink={(url) => navRef.navigate('Settings', { pairLink: url })} />
+                )}
               </NavigationContainer>
             </ConfirmProvider>
           </ToastProvider>

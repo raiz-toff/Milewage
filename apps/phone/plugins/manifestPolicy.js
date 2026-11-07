@@ -9,6 +9,8 @@ const ALLOWED = [
   'FOREGROUND_SERVICE_LOCATION',
   'ACTIVITY_RECOGNITION',
   'POST_NOTIFICATIONS',
+  // Pairing: scanning the QR code from the web app (owner decision 2026-11-06).
+  'CAMERA',
 ];
 
 /** Never requested (09 section 5.2 and 5.3); transitive copies are stripped by the plugin. */

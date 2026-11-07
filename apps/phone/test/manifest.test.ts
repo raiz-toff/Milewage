@@ -83,7 +83,9 @@ describe('manifest lint (09 section 5.3)', () => {
   );
 
   // Every permission in the merged manifest is one we declared or a known harmless library one.
-  const BENIGN = ['INTERNET', 'VIBRATE'].map((n) => PREFIX + n);
+  // ACCESS_NETWORK_STATE (no prompt) comes with the camera: androidx media3 and Google's
+  // datatransport, which ML Kit's barcode scanner uses (expo-camera, QR pairing).
+  const BENIGN = ['INTERNET', 'VIBRATE', 'ACCESS_NETWORK_STATE'].map((n) => PREFIX + n);
   (existsSync(merged) ? it : it.skip)(
     'the merged release manifest requests only known permissions',
     () => {

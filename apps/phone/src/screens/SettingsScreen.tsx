@@ -25,7 +25,7 @@ const PROBLEMS: Record<string, string> = {
   network: 'Cannot reach the server. Check the address and your connection.',
 };
 
-export function SettingsScreen({ navigation }: ScreenProps<'Settings'>) {
+export function SettingsScreen({ navigation, route }: ScreenProps<'Settings'>) {
   const C = useColors();
   const { pairing, uploader, diagnostics, scanner: Scanner } = useServices();
   const [state, setState] = useState<PairedState | null>(null);
@@ -79,6 +79,39 @@ export function SettingsScreen({ navigation }: ScreenProps<'Settings'>) {
       setBusy(false);
     }
   };
+
+  // A pairing link that opened the app (the phone's camera, or a tap on the web page). Anyone can
+  // make such a link, so the driver confirms the server before this phone sends shifts there.
+  const pairLink = route.params?.pairLink;
+  useEffect(() => {
+    if (!loaded || !pairLink) return;
+    navigation.setParams({ pairLink: undefined });
+    const payload = parsePairingPayload(pairLink);
+    if (!payload) {
+      toast.show({
+        tone: 'error',
+        title: 'That is not a MileWage pairing code.',
+        description: 'Make a new code on the Devices page of the web app and scan it again.',
+      });
+      return;
+    }
+    if (state) {
+      toast.show({
+        tone: 'error',
+        title: 'This phone is already paired.',
+        description: `It sends shifts to ${state.credential.baseUrl}. Unpair it first, then scan the new code.`,
+      });
+      return;
+    }
+    void confirm({
+      title: 'Pair with this server?',
+      description: `${payload.baseUrl}\n\nShifts you record on this phone will be sent there. Only pair with your own MileWage server.`,
+      confirmLabel: 'Pair phone',
+    }).then((ok) => {
+      if (ok) void submit(pairLink);
+    });
+    // Runs once per link; `state`, `submit` and the rest are read as they are when it arrives.
+  }, [loaded, pairLink]);
 
   const unpair = async () => {
     const ok = await confirm({

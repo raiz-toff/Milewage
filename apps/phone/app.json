@@ -15,7 +15,8 @@
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_LOCATION",
         "ACTIVITY_RECOGNITION",
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "CAMERA"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -26,6 +27,14 @@
     },
     "plugins": [
       "./plugins/withManifestPolicy",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "MileWage uses the camera only to scan the pairing code from your MileWage web app.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
       [
         "expo-splash-screen",
         {

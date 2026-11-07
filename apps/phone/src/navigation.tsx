@@ -11,7 +11,8 @@ import { ShiftsScreen } from './screens/ShiftsScreen';
 
 export type RootStackParamList = {
   Home: undefined;
-  Settings: undefined;
+  /** `pairLink`: a `milewage://pair` link that opened the app, to pair from after asking. */
+  Settings: { pairLink?: string } | undefined;
   Shifts: undefined;
   ShiftDetail: { clientId: string };
   Permissions: undefined;
