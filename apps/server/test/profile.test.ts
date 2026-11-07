@@ -136,7 +136,7 @@ describe('the vehicles table rebuild (migration core/0008)', () => {
     const db = openDatabase(join(dir, 'milewage.db'));
     try {
       const all = loadMigrations(MIGRATIONS_DIR);
-      const before = all.filter((m) => !(m.module === 'core' && m.id === '0008_profile'));
+      const before = all.filter((m) => !(m.module === 'core' && m.id >= '0008'));
       migrate(db, before);
       db.exec(`INSERT INTO users VALUES (1, 'sam', 'x', 1);
         INSERT INTO settings (user_id, country, distance_unit, currency, timezone, updated_at) VALUES (1, 'CA', 'km', 'CAD', 'UTC', 1);
@@ -144,7 +144,7 @@ describe('the vehicles table rebuild (migration core/0008)', () => {
         INSERT INTO shifts (id, user_id, client_id, vehicle_id, status, started_at, local_date, segmenter, updated_at)
           VALUES (1, 1, 'c', 7, 'ended', 1, '2026-01-01', 'stops', 1);
         INSERT INTO odometer_readings (user_id, vehicle_id, shift_id, kind, reading_m, recorded_at) VALUES (1, 7, 1, 'shift_start', 5, 1);`);
-      expect(migrate(db, all)).toEqual(['core/0008_profile']);
+      expect(migrate(db, all)).toContain('core/0008_profile');
       expect(db.prepare('SELECT name, kind, make FROM vehicles').all()).toEqual([
         { name: 'Civic', kind: 'car', make: null },
       ]);

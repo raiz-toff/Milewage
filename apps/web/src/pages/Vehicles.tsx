@@ -27,6 +27,18 @@ const KINDS: { value: Kind; label: string }[] = [
 ];
 const kindLabel = (k: Kind) => KINDS.find((x) => x.value === k)?.label ?? k;
 
+type Ownership = Vehicle['ownership'];
+/** 21 section 3.6c: a record for the driver; no rate or tax rule reads it. */
+const OWNERSHIP: { value: Ownership; label: string }[] = [
+  { value: 'owned', label: 'Owned' },
+  { value: 'financed', label: 'Financed (loan or hire purchase)' },
+  { value: 'leased', label: 'Leased' },
+  { value: 'rented', label: 'Rented' },
+];
+/** Shown in the list only when the vehicle is not owned outright. */
+const ownershipNote = (o: Ownership) =>
+  o === 'owned' ? '' : (OWNERSHIP.find((x) => x.value === o)?.label ?? '');
+
 function VehicleRow({ vehicle, onChanged }: { vehicle: Vehicle; onChanged: () => void }) {
   const { api } = useSession();
   const { timezone } = useSettings();
@@ -37,6 +49,7 @@ function VehicleRow({ vehicle, onChanged }: { vehicle: Vehicle; onChanged: () =>
     model: string;
     year: string;
     plate: string;
+    ownership: Ownership;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [service, setService] = useState(false);
@@ -93,10 +106,23 @@ function VehicleRow({ vehicle, onChanged }: { vehicle: Vehicle; onChanged: () =>
                 onChange={(e) => setEdit({ ...edit, [k]: e.target.value })}
               />
             ))}
+            <Picker
+              label={`Ownership of ${vehicle.name}`}
+              size="sm"
+              className="col-span-2 w-auto"
+              value={edit.ownership}
+              onChange={(v) => setEdit({ ...edit, ownership: v as Ownership })}
+              options={OWNERSHIP}
+            />
           </div>
         ) : (
           <span className="block text-sm text-muted-foreground">
-            {[vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ')}
+            {[
+              [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' '),
+              ownershipNote(vehicle.ownership),
+            ]
+              .filter(Boolean)
+              .join(' · ')}
             {saved.default_vehicle_id === vehicle.id ? ' (default)' : ''}
           </span>
         )}
@@ -159,6 +185,7 @@ function VehicleRow({ vehicle, onChanged }: { vehicle: Vehicle; onChanged: () =>
                   model: edit.model.trim() || null,
                   year: edit.year.trim() === '' ? null : Number(edit.year),
                   plate: edit.plate.trim() || null,
+                  ownership: edit.ownership,
                 })
               }
             >
@@ -186,6 +213,7 @@ function VehicleRow({ vehicle, onChanged }: { vehicle: Vehicle; onChanged: () =>
                           model: vehicle.model ?? '',
                           year: vehicle.year === null ? '' : String(vehicle.year),
                           plate: vehicle.plate ?? '',
+                          ownership: vehicle.ownership,
                         }),
                     },
                   ]),
@@ -224,6 +252,7 @@ export function VehiclesPage() {
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [kind, setKind] = useState<Kind>('car');
+  const [ownership, setOwnership] = useState<Ownership>('owned');
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -246,8 +275,9 @@ export function VehiclesPage() {
     setBusy(true);
     setError(null);
     try {
-      await unwrap(api.POST('/vehicles', { body: { name: name.trim(), kind } }));
+      await unwrap(api.POST('/vehicles', { body: { name: name.trim(), kind, ownership } }));
       setName('');
+      setOwnership('owned');
       await load();
     } catch (err) {
       setError(describe(err));
@@ -260,10 +290,13 @@ export function VehiclesPage() {
     <section className="space-y-6">
       <PageHeader
         title="Vehicles"
-        description="The type decides which mileage rate applies. Vehicles are archived rather than deleted so past shifts keep their vehicle."
+        description="The type decides which mileage rate applies. Ownership is for your own records: whether rent or finance payments count for tax depends on your country. Vehicles are archived rather than deleted so past shifts keep their vehicle."
       />
       <Section title="Add a vehicle">
-        <form className="grid gap-3 sm:grid-cols-[1fr_200px_auto]" onSubmit={(e) => void add(e)}>
+        <form
+          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_180px_240px_auto]"
+          onSubmit={(e) => void add(e)}
+        >
           <Field
             label="Name"
             maxLength={64}
@@ -275,6 +308,12 @@ export function VehiclesPage() {
             value={kind}
             onChange={(v) => setKind(v as Kind)}
             options={KINDS}
+          />
+          <SelectField
+            label="Ownership"
+            value={ownership}
+            onChange={(v) => setOwnership(v as Ownership)}
+            options={OWNERSHIP}
           />
           <div className="flex items-end">
             <Button type="submit" busy={busy || name.trim() === ''}>

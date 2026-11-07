@@ -143,6 +143,27 @@ describe('pull (GET /sync/changes)', () => {
     expect(server.calls.at(-1)!.url).toContain('after=4');
   });
 
+  it('a vehicle with fields the phone does not use (ownership, 21 section 3.6c) is cached as before', async () => {
+    const v = { id: 4, name: 'Yulu', kind: 'scooter', make: null, model: null, year: null };
+    const f = feed([
+      {
+        changes: [
+          entry(1, 'vehicle', 'upsert', '4', { ...v, ownership: 'rented', archived_at: null }),
+          entry(2, 'vehicle', 'upsert', '4', {
+            ...v,
+            ownership: 'some_future_value',
+            archived_at: 7,
+          }),
+        ],
+        next_cursor: 2,
+        has_more: false,
+      },
+    ]);
+    const { services } = await phone(f.routes);
+    expect(await services.puller.pull({ force: true })).toEqual({ state: 'ok', applied: 2 });
+    expect(await services.shifts.vehicleKinds()).toEqual(new Map([[4, 'scooter']]));
+  });
+
   it('a web recompute replaces the number, and the phone figure goes to the diff list', async () => {
     const f = feed([
       {

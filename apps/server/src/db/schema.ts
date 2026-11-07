@@ -57,6 +57,9 @@ export const vehicles = sqliteTable('vehicles', {
   year: integer('year'),
   plate: text('plate'),
   power: text('power', { enum: ['gas', 'hybrid', 'ev', 'other'] }),
+  ownership: text('ownership', { enum: ['owned', 'financed', 'leased', 'rented'] })
+    .notNull()
+    .default('owned'),
   createdAt: integer('created_at').notNull(),
   archivedAt: integer('archived_at'),
 });

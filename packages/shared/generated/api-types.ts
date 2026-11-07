@@ -1713,6 +1713,11 @@ export interface components {
         VehicleKind: "car" | "motorcycle" | "van" | "bicycle" | "ebike" | "scooter" | "walking";
         /** @enum {unknown} */
         VehiclePower: "gas" | "hybrid" | "ev" | "other";
+        /**
+         * @description Who owns the vehicle (21 section 3.6c). owned: the driver owns it. financed: the driver is buying it with instalments (car loan, hire purchase, drive-to-own). leased: a fixed-term contract; the vehicle goes back at the end. rented: short-term, by the day, week or month. A record only: no tax rule reads it.
+         * @enum {unknown}
+         */
+        VehicleOwnership: "owned" | "financed" | "leased" | "rented";
         VehicleCreate: {
             name: string;
             kind: components["schemas"]["VehicleKind"];
@@ -1722,6 +1727,8 @@ export interface components {
             /** @description The driver's own record; never exported unless the driver ticks it. */
             plate?: string | null;
             power?: components["schemas"]["VehiclePower"] | null;
+            /** @description Left out means owned. */
+            ownership?: components["schemas"]["VehicleOwnership"];
         };
         Vehicle: {
             id: number;
@@ -1732,6 +1739,7 @@ export interface components {
             year: number | null;
             plate: string | null;
             power: components["schemas"]["VehiclePower"] | null;
+            ownership: components["schemas"]["VehicleOwnership"];
             created_at: components["schemas"]["EpochMs"];
             archived_at: number | null;
         };
@@ -3350,6 +3358,7 @@ export interface operations {
                     year?: number | null;
                     plate?: string | null;
                     power?: components["schemas"]["VehiclePower"] | null;
+                    ownership?: components["schemas"]["VehicleOwnership"];
                 };
             };
         };
