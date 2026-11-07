@@ -25,7 +25,7 @@ import type { Tracker } from './tracker/types';
 import { UploadWorker } from './upload/worker';
 
 /** A camera view that reports each decoded QR text. Absent until the camera adapter is wired. */
-export type QrScanner = ComponentType<{ onScanned: (text: string) => void }>;
+export type QrScanner = ComponentType<{ onScanned: (text: string) => void; busy?: boolean }>;
 
 export interface DeviceInfo {
   make: string;

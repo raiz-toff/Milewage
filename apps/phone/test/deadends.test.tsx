@@ -50,6 +50,14 @@ describe('no dead ends', () => {
     expect(screen.queryByText('Shift running')).toBeNull();
   });
 
+  it('a missing permission leads to the Permissions screen', async () => {
+    const { services } = setup();
+    render(<App services={services} />);
+    fireEvent.press(await screen.findByRole('button', { name: 'Start shift' }));
+    fireEvent.press(await screen.findByRole('button', { name: 'Fix permissions' }));
+    expect(await screen.findByText(/What MileWage needs/)).toBeTruthy();
+  });
+
   it('a mistyped odometer is caught before the shift starts', async () => {
     const { services } = setup(server(), { paired: true, permissions: allowed() });
     render(<App services={services} />);

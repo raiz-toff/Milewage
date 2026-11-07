@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { App } from '../src/App';
 import {
   DEVICE_TOKEN,
@@ -33,8 +33,16 @@ describe('settings screen', () => {
     expect(await screen.findByText('Paired to https://mw.example.net')).toBeTruthy();
     expect(await screen.findByText('Distances in miles.')).toBeTruthy();
     expect(screen.getByText('Stops and the estimated split are on.')).toBeTruthy();
+    // Unpairing asks first: Cancel keeps the pairing, Unpair removes it and says so.
     fireEvent.press(screen.getByRole('button', { name: 'Unpair this phone' }));
+    expect(await screen.findByText('Unpair this phone?')).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByText('Unpair this phone?')).toBeNull());
+    expect(screen.getByText(/Paired to/)).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: 'Unpair this phone' }));
+    fireEvent.press(await screen.findByRole('button', { name: 'Unpair' }));
     expect(await screen.findByText('Not paired.')).toBeTruthy();
+    expect(screen.getByText('Phone unpaired.')).toBeTruthy();
   });
 
   it('tracking off on the server hides the stops line and says so', async () => {
