@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { BUILTIN_PLATFORMS } from '@milewage/shared';
 import {
@@ -73,5 +73,20 @@ describe('platform badge (plan 25)', () => {
     const badge = screen.getByRole('img', { name: 'DoorDash' });
     expect(badge.getAttribute('data-look')).toBe('initials');
     expect(badge.textContent).toBe('DD');
+  });
+
+  it("shows the driver's uploaded logo, and the letters when it does not load", () => {
+    const withLogo = { ...doordash, emoji: '🚗', logo_version: 'v1' };
+    expect(platformLook(withLogo)).toMatchObject({
+      kind: 'image',
+      text: '/api/v1/platforms/doordash/logo?v=v1',
+    });
+    render(<PlatformBadge platform={withLogo} labelled />);
+    const badge = screen.getByRole('img', { name: 'DoorDash' });
+    const img = badge.querySelector('img')!;
+    expect(img.getAttribute('alt')).toBe(''); // the badge carries the name
+    fireEvent.error(img);
+    expect(badge.querySelector('img')).toBeNull();
+    expect(badge.textContent).toBe('🚗');
   });
 });

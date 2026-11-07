@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { builtinPlatform } from '@milewage/shared';
 import { cn } from '@/lib/utils';
@@ -9,6 +10,8 @@ export interface PlatformLike {
   /** The driver's own colour (`platform_settings.color`), `#rrggbb`. */
   color?: string | null;
   emoji?: string | null;
+  /** Set when the driver uploaded a logo for this platform (plan 25 section 7). */
+  logo_version?: string | null;
 }
 
 /**
@@ -63,27 +66,33 @@ export function initialsOf(label: string) {
 }
 
 export interface BadgeLook {
-  kind: 'emoji' | 'initials';
+  kind: 'image' | 'emoji' | 'initials';
+  /** The image's address, the emoji or the letters. */
   text: string;
   bg: string | null;
   fg: string | null;
 }
 
 /**
- * What the badge shows for a platform (plan 25 section 4.1): the driver's emoji, else initials.
- * MileWage ships no platform's logo (owner decision, plan 25 section 5). `bg` null: the neutral.
+ * What the badge shows for a platform (plan 25 section 4.1): the logo the driver uploaded, else
+ * their emoji, else initials. MileWage ships no platform's logo (owner decision, plan 25 section 5).
+ * `bg` null: the neutral.
  */
 export function platformLook(p: PlatformLike): BadgeLook {
   const built = builtinPlatform(p.slug);
   const own = p.color && /^#[0-9a-f]{6}$/i.test(p.color) ? p.color : null;
   const bg = own ?? (built ? built.color : customColor(p.slug));
   const fg = bg ? inkOn(bg) : null;
+  if (p.logo_version) {
+    const src = `/api/v1/platforms/${p.slug}/logo?v=${encodeURIComponent(p.logo_version)}`;
+    return { kind: 'image', text: src, bg, fg };
+  }
   if (p.emoji) return { kind: 'emoji', text: p.emoji, bg, fg };
   return { kind: 'initials', text: built ? built.initials : initialsOf(p.label), bg, fg };
 }
 
 /**
- * A platform's badge: its emoji or initials on its colour. Hidden from screen readers, because
+ * A platform's badge: the driver's logo, emoji or initials on its colour. Hidden from screen readers, because
  * the name is written next to it; `labelled` names it, for a badge on its own.
  */
 export function PlatformBadge({
@@ -97,7 +106,13 @@ export function PlatformBadge({
   labelled?: boolean;
   className?: string;
 }) {
-  const look = platformLook(platform);
+  // An image that does not load (removed elsewhere, server unreachable) falls back to the letters.
+  const [failed, setFailed] = useState<string | null>(null);
+  const first = platformLook(platform);
+  const look =
+    first.kind === 'image' && failed === first.text
+      ? platformLook({ ...platform, logo_version: null })
+      : first;
   const style: CSSProperties | undefined = look.bg
     ? { backgroundColor: look.bg, color: look.fg!, boxShadow: `inset 0 0 0 1px ${look.fg}1f` }
     : undefined;
@@ -114,7 +129,14 @@ export function PlatformBadge({
       )}
       style={style}
     >
-      {look.kind === 'emoji' ? (
+      {look.kind === 'image' ? (
+        <img
+          src={look.text}
+          alt=""
+          className="size-full rounded-[inherit] object-cover"
+          onError={() => setFailed(look.text)}
+        />
+      ) : look.kind === 'emoji' ? (
         <span className={size === 'sm' ? 'text-xs' : 'text-base'}>{look.text}</span>
       ) : (
         look.text
