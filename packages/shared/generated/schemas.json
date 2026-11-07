@@ -467,6 +467,15 @@
         "other"
       ]
     },
+    "VehicleOwnership": {
+      "enum": [
+        "owned",
+        "financed",
+        "leased",
+        "rented"
+      ],
+      "description": "Who owns the vehicle (21 section 3.6c). owned: the driver owns it. financed: the driver is buying it with instalments (car loan, hire purchase, drive-to-own). leased: a fixed-term contract; the vehicle goes back at the end. rented: short-term, by the day, week or month. A record only: no tax rule reads it."
+    },
     "VehicleCreate": {
       "type": "object",
       "required": [
@@ -521,6 +530,10 @@
               "type": "null"
             }
           ]
+        },
+        "ownership": {
+          "$ref": "#/$defs/VehicleOwnership",
+          "description": "Left out means owned."
         }
       }
     },
@@ -535,6 +548,7 @@
         "year",
         "plate",
         "power",
+        "ownership",
         "created_at",
         "archived_at"
       ],
@@ -581,6 +595,9 @@
               "type": "null"
             }
           ]
+        },
+        "ownership": {
+          "$ref": "#/$defs/VehicleOwnership"
         },
         "created_at": {
           "$ref": "#/$defs/EpochMs"

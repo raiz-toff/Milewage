@@ -11,6 +11,7 @@ const details = {
   year: { type: ['integer', 'null'], minimum: 1900, maximum: 2100 },
   plate: { type: ['string', 'null'], maxLength: 16 },
   power: { enum: ['gas', 'hybrid', 'ev', 'other', null] },
+  ownership: { enum: ['owned', 'financed', 'leased', 'rented'] },
 };
 const create = strictObject({ name: str(1, 64), kind, ...details }, ['name', 'kind']);
 const update = strictObject(
@@ -28,6 +29,7 @@ export const vehicleView = (v: VehicleRow) => ({
   year: v.year,
   plate: v.plate,
   power: v.power,
+  ownership: v.ownership,
   created_at: v.createdAt,
   archived_at: v.archivedAt,
 });

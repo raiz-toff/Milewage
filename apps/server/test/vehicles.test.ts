@@ -19,7 +19,7 @@ test('create, list, rename and archive; vehicles are never deleted', async () =>
     201,
     {
       ...{ id: 1, name: 'Civic', kind: 'car', created_at: h.clock.t, archived_at: null },
-      ...{ make: null, model: null, year: null, plate: null, power: null },
+      ...{ make: null, model: null, year: null, plate: null, power: null, ownership: 'owned' },
     },
   ]);
   await send('POST', '/vehicles', { name: 'Vespa', kind: 'motorcycle' });

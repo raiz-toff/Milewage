@@ -333,6 +333,79 @@ These are not country rules, but the global patterns need them, and each is chea
 
 Each is its own plan item and PR; none is needed to move CA, US and GB into the new structure.
 
+### 3.6c Vehicle ownership (Track V spec, Q7b)
+
+**What the driver records.** Each vehicle says who owns it. It is a record only: no tax rule reads
+it. Whether rent or a lease is deductible is a country rule (section 3.6a) and stays out of this
+track.
+
+| Value | Meaning for the driver | Examples found |
+|---|---|---|
+| `owned` | You own it. | A car you bought outright or have paid off. |
+| `financed` | You are buying it with instalments; it becomes yours at the end. | Car loan; hire purchase; drive-to-own (Moove), lease-to-own (Bolt with MAX). |
+| `leased` | A fixed-term contract; the vehicle goes back at the end. | Car lease, personal contract hire. |
+| `rented` | Short term, by the day, week or month; you can hand it back. | Weekly e-scooter rental (Yulu, Zypp in India), weekly car rental (Moove Flexi-Rental in Kenya). |
+
+**Standards checked (web search, 2026-11-07).**
+
+- STAR (automotive retail data standard) `VehicleOwnershipType` has `Owned`, `Leased`, `Rented`;
+  MileWage uses the same three words and adds `financed`.
+- Why `financed` is separate: in Nigeria and Kenya many drivers pay a weekly instalment from their
+  earnings and own the car after three to five years (Bolt with MAX, Moove); hire purchase is the
+  common name there and in the UK. It is not a lease (the driver ends up owning it) and not
+  `owned` (the payments are a large weekly cost).
+- Leases are **not** split into finance and operating. That split is an accounting test of the
+  contract (US ASC 842 keeps it; IFRS 16 has one model for the lessee); a driver cannot be expected
+  to answer it, and nothing in MileWage uses it.
+- Tax forms keep rent, lease and loan apart: US Schedule C line 20a "Rent or lease: vehicles,
+  machinery and equipment"; QuickBooks lists "Vehicle lease" and "Vehicle loan interest" and says
+  the loan itself is not an expense; UK adviser guides say a sole trader claims the finance part
+  of a hire purchase, not the whole payment. MileWage only records the payment in a fitting
+  category. None of this is verified for any country, and none of it is shipped as a rule.
+
+Sources: [STAR VehicleOwnershipType](https://schemas.liquid-technologies.com/STAR/5.3.4/vehicleownershiptypeenumeratedtype.html),
+[Bolt and MAX lease-to-own](https://techcabal.com/2021/11/24/bolt-partners-max-ng/),
+[Bolt weekly instalments](https://nairametrics.com/2021/07/05/bolts-vehicle-financing-scheme-will-boost-drivers-income),
+[Moove in Kenya: Flexi-Rental and Drive-to-Own](https://africa.com/headlines/nigerian-fintech-company-moove-comes-to-kenya),
+[Yulu weekly rentals](https://techcrunch.com/2026/08/11/indias-yulu-raises-93m-as-quick-commerce-boom-fuels-e-bike-demand/),
+[Zypp rentals](https://techcrunch.com/2023/02/08/zypp-electric-funding-gogoro),
+[IFRS 16 and ASC 842](https://dart.deloitte.com/USDART/home/publications/deloitte/additional-deloitte-guidance/roadmap-ifrs-us-gaap-comparison/chapter-5-broad-transactions/5-7-leases),
+[Schedule C](https://www.irs.gov/pub/irs-pdf/f1040sc.pdf),
+[QuickBooks Schedule C categories](https://quickbooks.intuit.com/learn-support/en-us/help-article/expense-accounts/schedule-c-expense-categories-quickbooks-self/L1viz8KIU_US_en_US),
+[GOV.UK car and travel expenses](https://www.gov.uk/expenses-if-youre-self-employed/travel),
+[IRS Publication 463](https://www.irs.gov/publications/p463).
+
+**Data.** `vehicles.ownership TEXT NOT NULL DEFAULT 'owned' CHECK (ownership IN
+('owned','financed','leased','rented'))`, added by migration `core/0009_vehicle_ownership` with
+`ALTER TABLE ... ADD COLUMN`. SQLite allows a new column with a constant default and a CHECK, so
+the table is not rebuilt (unlike `core/0008`) and every row, id and reference stays as it is.
+
+**API.** `Vehicle` always has `ownership` (one of the four values). `createVehicle` and
+`updateVehicle` accept it; left out on create means `owned`; `null` and other values are 422. The
+phone sync feed carries it with the vehicle; the phone keeps only name, kind and archived state, so
+it ignores the field (and any value added later).
+
+**Expense categories.** `leasing` ("Lease payments") and `interest` ("Loan interest") exist.
+Added: `vehicle_rental` ("Vehicle rental") and `vehicle_finance` ("Finance or hire-purchase
+payments"), both vehicle-related.
+
+**Web.** The vehicle form (add and edit) has an "Ownership" choice; the list shows it next to the
+vehicle's details when it is not `owned`.
+
+**Assumptions (owner to confirm).**
+
+- Existing vehicles, and new ones sent without the field, are `owned`. The other choice would be
+  "not said" (`null`), but nothing reads the field yet, and a driver who rents or finances can
+  change it in one edit.
+- `vehicle_finance` is **not deductible by default** (the driver can tick it): a repayment mixes
+  the price of the vehicle with interest, and most tax systems found treat the price through
+  depreciation or capital allowances, not as an expense. `vehicle_rental` is deductible by default,
+  like `leasing`.
+- Both new categories are marked as covered by a standard mileage rate (so an actual-cost claim
+  is flagged as counting twice, as fuel and insurance are): the IRS standard mileage rate replaces
+  lease payments. `leasing` keeps Comma's setting (not covered); changing it is a tax rule for the
+  country packs (J7, expense overrides).
+
 ### 3.7 Files and registration
 
 ```
@@ -433,8 +506,9 @@ the owner's call.
 **Track L, earnings as entries (Q7a), stacked on J0:** split into PRs by the builder (database and
 migration of today's rows; API; web; import), each within the size rule.
 
-**Track V, vehicle ownership (Q7b), stacked on J0:** ownership field, API, web form, rent and
-financing expense categories.
+**Track V, vehicle ownership (Q7b), stacked on J0** (spec in section 3.6c): V1
+`pr-V1-vehicle-ownership` (migration, API, OpenAPI), V2 `pr-V2-vehicle-cost-categories` (rent and
+finance expense categories), V3 `pr-V3-vehicle-ownership-web` (web form and list).
 
 Later, not started: onboarding wizard (separate plan), then a new country as the first real test of
 the structure.
