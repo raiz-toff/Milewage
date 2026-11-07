@@ -32,6 +32,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), mapWorker()],
   resolve: { alias: { '@': join(import.meta.dirname, 'src') } },
   server: {
+    // Lets a phone pair against the dev server through `tailscale serve` (plan 19 §3.6).
+    allowedHosts: ['.ts.net'],
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:3000',

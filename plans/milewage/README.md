@@ -108,6 +108,7 @@ plans/milewage/
 ├── 15-offline-storage-and-sync-spec.md        ← Phone local storage, weeks-offline sync, reconciliation, conflicts (1.5a)
 ├── 16-diagnostics-and-telemetry-spec.md       ← Built-in diagnostics (own server only), capture sessions, debug view (1.5c)
 ├── 18-comma-parity.md                         ← Comma-parity driver admin modules: expenses, goals, schedule, analytics, tax, platforms, notifications (1.9)
+├── 19-phone-connection-tailscale.md           ← Phone reaches the home server over Tailscale https: fixes, install step, clearer errors (1.7)
 ├── infra-requirements.md                      ← Hardware, VM and account facts for the spikes (from the infra agent)
 └── spikes/                                    ← Spike results (S0 done); `13-gate3-results-and-decisions.md` is written when Gate 3 closes
 ```
