@@ -22,7 +22,8 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
       the Tailscale warning on the web (T3). Done 2026-11-07, `pr-T1`…`pr-T3`.
 - [x] Get the app in setup: public download page `/app`, wizard step with its QR, store link
       setting, `--publish` for the latest build (owner, 2026-11-07). Done, `pr-A1`…`pr-A3`.
-- [ ] Plan 19 T5: the install script's Tailscale step (writes `MILEWAGE_PUBLIC_URL`).
+- [x] Plan 19 T5: the install script's Tailscale step (writes `MILEWAGE_PUBLIC_URL`). Done
+      2026-11-07, `pr-T5-install-tailscale`; not yet run on a real fresh host (T7).
 - [ ] When the app is on Google Play: set `MILEWAGE_APP_STORE_URL` and replace the plain "Get it
       on Google Play" button with Google's official badge file (A2).
 - [ ] A public install-guide URL for the phone's "Set up your server" screen (currently hidden;

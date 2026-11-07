@@ -17,7 +17,9 @@ git clone <your MileWage repository> milewage && cd milewage
 infra/install.sh
 ```
 
-The script checks Docker, writes `infra/docker/.env` with the host port (default 8080, the next free port if 8080 is busy) and the proxy subnet, builds and starts the two containers, waits until they are healthy, and checks `/healthz`. It never overwrites an existing `.env`. `infra/install.sh --no-start` only writes the file. Options: `--port N`, `--subnet CIDR`.
+The script checks Docker, writes `infra/docker/.env` with the host port (default 8080, the next free port if 8080 is busy) and the proxy subnet, builds and starts the two containers, waits until they are healthy, and checks `/healthz`. It never overwrites an existing `.env`. `infra/install.sh --no-start` only writes the file. Options: `--port N`, `--subnet CIDR`, `--yes-tailscale`, `--no-tailscale`.
+
+Then it does the Tailscale step of section 3 for you when it can: if Tailscale is installed and this host is signed in and has HTTPS certificates on, it shows the machine name that will become public (read the privacy note in section 3), asks `Turn on https for <name>? [y/N]`, runs `tailscale serve --bg <port>`, writes `MILEWAGE_PUBLIC_URL=https://<name>` to `.env`, restarts the API and checks the address. Otherwise it says which step is missing (install Tailscale, `sudo tailscale up`, or turn on HTTPS certificates in the admin console) and stops without changing anything. It never installs Tailscale and never runs `tailscale funnel`. `--yes-tailscale` answers yes; `--no-tailscale` skips the step.
 
 The web client is now at `http://127.0.0.1:8080` on the host. The port is published on loopback only.
 
