@@ -170,7 +170,8 @@ function useWide(px: number) {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const check = () => setWide(el.clientWidth >= px);
+    // A little slack going back, so a scroll bar coming and going cannot flip it back and forth.
+    const check = () => setWide((was) => el.clientWidth >= (was ? px - 24 : px));
     check();
     const ro = new ResizeObserver(check);
     ro.observe(el);

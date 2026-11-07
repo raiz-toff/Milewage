@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Circle, CircleCheck, DatabaseBackup, Flag, MapPin } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  Circle,
+  CircleCheck,
+  DatabaseBackup,
+  Flag,
+  MapPin,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -93,25 +101,56 @@ export function GoalRing() {
 interface Item {
   id: string;
   text: string;
+  /** One line on why it is worth doing. */
+  why: string;
+  /** Where it is done. */
+  to: string;
   visible: boolean;
   done: () => Promise<boolean>;
 }
+type Step = Pick<Item, 'id' | 'text' | 'why' | 'to'> & { done: boolean };
+
+const linkClass = 'font-medium underline underline-offset-4';
+
+const HIDDEN_KEY = 'mw-setup-hidden';
+/** "Hide for now" is kept per browser; storage can be blocked, which just means not hidden. */
+function storedHidden(): boolean {
+  try {
+    return localStorage.getItem(HIDDEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+function storeHidden(hidden: boolean) {
+  try {
+    if (hidden) localStorage.setItem(HIDDEN_KEY, '1');
+    else localStorage.removeItem(HIDDEN_KEY);
+  } catch {
+    // Not stored: hidden until the page is opened again.
+  }
+}
 
 /**
- * "Finish setting up" (18 section 13): done or not from server state, only for the modules that
- * are on, gone when everything visible is done. If any answer cannot be read the card stays
- * hidden rather than guess.
+ * "Finish setting up" (18 section 13, plan 23 section 4.4): done or not from server state, only
+ * for the modules that are on, gone when everything visible is done. Onboarding-checklist
+ * practice: progress shown, the next step first and marked, every step a link to where it is
+ * done with why it matters, finished steps folded away, and "Hide for now" that can be undone.
+ * If any answer cannot be read the card stays hidden rather than guess.
  */
 export function SetupChecklist() {
   const { api } = useSession();
   const { modules } = useSettings();
-  const [state, setState] = useState<{ text: string; done: boolean }[] | null>(null);
+  const [state, setState] = useState<Step[] | null>(null);
+  const [hidden, setHidden] = useState(storedHidden);
+  const [showDone, setShowDone] = useState(false);
 
   useEffect(() => {
     const items: Item[] = [
       {
         id: 'platforms',
         text: 'Add your other apps',
+        why: "So each app's pay is kept apart.",
+        to: '/settings/platforms',
         visible: modules.platforms,
         done: async () =>
           (
@@ -123,12 +162,16 @@ export function SetupChecklist() {
       {
         id: 'vehicle',
         text: 'Add your real vehicle',
+        why: 'So your logbook and deduction use the right vehicle.',
+        to: '/vehicles',
         visible: true,
         done: async () => (await unwrap<Schemas['Vehicle'][]>(api.GET('/vehicles'))).length > 0,
       },
       {
         id: 'goal',
         text: 'Set a weekly goal',
+        why: 'See how far along the week you are.',
+        to: '/goals',
         visible: modules.goals,
         done: async () =>
           (await unwrap<Schemas['Goal'][]>(api.GET('/goals'))).some((g) => g.period === 'weekly'),
@@ -136,6 +179,8 @@ export function SetupChecklist() {
       {
         id: 'phone',
         text: 'Pair your phone',
+        why: 'The phone records your shifts.',
+        to: '/devices',
         visible: modules.devices,
         done: async () =>
           (await unwrap<Schemas['Device'][]>(api.GET('/devices'))).some(
@@ -145,12 +190,22 @@ export function SetupChecklist() {
       {
         id: 'backup',
         text: 'Run a backup',
+        why: 'A copy of your data you can restore.',
+        to: '/backups',
         visible: true,
         done: async () => (await unwrap<Schemas['Backup'][]>(api.GET('/backups'))).length > 0,
       },
     ].filter((i) => i.visible);
     let live = true;
-    void Promise.all(items.map(async (i) => ({ text: i.text, done: await i.done() })))
+    void Promise.all(
+      items.map(async (i) => ({
+        id: i.id,
+        text: i.text,
+        why: i.why,
+        to: i.to,
+        done: await i.done(),
+      })),
+    )
       .then((r) => live && setState(r))
       .catch(() => live && setState(null));
     return () => {
@@ -159,29 +214,104 @@ export function SetupChecklist() {
   }, [api, modules.platforms, modules.goals, modules.devices]);
 
   if (!state || state.every((i) => i.done)) return null;
-  const done = state.filter((i) => i.done).length;
+  const open = state.filter((i) => !i.done);
+  const done = state.filter((i) => i.done);
+  const hide = (h: boolean) => {
+    storeHidden(h);
+    setHidden(h);
+  };
+  if (hidden)
+    return (
+      <p className="text-sm text-muted-foreground">
+        Setup steps hidden ({open.length} left).{' '}
+        <button type="button" className={linkClass} onClick={() => hide(false)}>
+          Show them
+        </button>
+      </p>
+    );
   return (
     <Card role="group" aria-label="Finish setting up">
-      <CardContent className="space-y-3">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-base font-medium">Finish setting up</h2>
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {done} of {state.length}
-          </span>
+      <CardContent className="space-y-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-1">
+            <h2 className="text-base font-medium">Finish setting up</h2>
+            <p className="text-sm text-muted-foreground tabular-nums">
+              {done.length} of {state.length} done
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="-mr-2"
+            onClick={() => hide(true)}
+          >
+            Hide for now
+          </Button>
         </div>
-        <ul className="space-y-2 text-sm">
-          {state.map((i) => (
-            <li key={i.text} className="flex items-center gap-3">
-              {i.done ? (
-                <CircleCheck aria-hidden="true" className="size-4 shrink-0 text-earned" />
-              ) : (
+        <div
+          role="progressbar"
+          aria-label="Setup progress"
+          aria-valuenow={done.length}
+          aria-valuemin={0}
+          aria-valuemax={state.length}
+          className="h-2 overflow-hidden rounded-full bg-primary/20"
+        >
+          <div
+            className="h-2 rounded-full bg-primary"
+            style={{ width: `${(done.length / state.length) * 100}%` }}
+          />
+        </div>
+        <ul className="-mx-2 space-y-1">
+          {open.map((i, n) => (
+            <li key={i.id}>
+              <Link
+                to={i.to}
+                className={`flex items-center gap-3 rounded-lg border px-2 py-2 transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none ${n === 0 ? 'border-primary/50 bg-primary/10' : 'border-transparent'}`}
+              >
                 <Circle aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-              )}
-              <span className={i.done ? 'text-muted-foreground line-through' : ''}>{i.text}</span>
-              <span className="sr-only">{i.done ? ' (done)' : ' (not done)'}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-2 font-medium">
+                    {i.text}
+                    {n === 0 ? <Badge>Next</Badge> : null}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">{i.why}</span>
+                </span>
+                <ChevronRight
+                  aria-hidden="true"
+                  className="size-4 shrink-0 text-muted-foreground"
+                />
+              </Link>
             </li>
           ))}
         </ul>
+        {done.length > 0 ? (
+          <div>
+            <button
+              type="button"
+              aria-expanded={showDone}
+              onClick={() => setShowDone(!showDone)}
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <ChevronDown
+                aria-hidden="true"
+                className={`size-4 transition-transform motion-reduce:transition-none ${showDone ? '' : '-rotate-90'}`}
+              />
+              {done.length} done
+            </button>
+            {showDone ? (
+              <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                {done.map((i) => (
+                  <li key={i.id} className="flex items-center gap-3">
+                    <CircleCheck aria-hidden="true" className="size-4 shrink-0 text-earned" />
+                    {i.text}
+                    <span className="sr-only"> (done)</span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
         <Button asChild size="sm">
           <Link to="/onboarding">Continue setup</Link>
         </Button>
@@ -198,8 +328,6 @@ function Notice({ icon, children }: { icon: ReactNode; children: ReactNode }) {
     </Alert>
   );
 }
-
-const linkClass = 'font-medium underline underline-offset-4';
 
 /**
  * One-line notices under the greeting (Comma's banners), each with where to act: the region

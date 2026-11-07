@@ -183,14 +183,51 @@ describe('dashboard checklist and goal ring (18 section 13)', () => {
     }
   });
 
-  it('lists what is not done from server state, for the modules that are on', async () => {
+  it('lists what is not done from server state as links, the next step marked, done folded away', async () => {
     open({ vehicles: [vehicle] });
     const card = await screen.findByRole('group', { name: 'Finish setting up' });
-    expect(card.textContent).toMatch(/Add your other apps \(not done\)/);
+    expect(within(card).getByText('1 of 5 done')).toBeTruthy();
+    expect(within(card).getByRole('progressbar').getAttribute('aria-valuenow')).toBe('1');
+    const links = within(card)
+      .getAllByRole('link')
+      .map((l) => [l.textContent, l.getAttribute('href')]);
+    expect(links).toEqual([
+      ["Add your other appsNextSo each app's pay is kept apart.", '/settings/platforms'],
+      ['Set a weekly goalSee how far along the week you are.', '/goals'],
+      ['Pair your phoneThe phone records your shifts.', '/devices'],
+      ['Run a backupA copy of your data you can restore.', '/backups'],
+      ['Continue setup', '/onboarding'],
+    ]);
+    expect(within(card).queryByText(/Add your real vehicle/)).toBeNull();
+    const fold = within(card).getByRole('button', { name: '1 done' });
+    expect(fold.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(fold);
+    expect(fold.getAttribute('aria-expanded')).toBe('true');
     expect(card.textContent).toMatch(/Add your real vehicle \(done\)/);
-    expect(card.textContent).toMatch(/Set a weekly goal \(not done\)/);
-    expect(card.textContent).toMatch(/Pair your phone \(not done\)/);
-    expect(card.textContent).toMatch(/Run a backup \(not done\)/);
+  });
+
+  it('Hide for now is kept in this browser and can be undone', async () => {
+    localStorage.removeItem('mw-setup-hidden');
+    open({ vehicles: [vehicle] });
+    const card = await screen.findByRole('group', { name: 'Finish setting up' });
+    fireEvent.click(within(card).getByRole('button', { name: 'Hide for now' }));
+    expect(screen.queryByRole('group', { name: 'Finish setting up' })).toBeNull();
+    expect(screen.getByText(/Setup steps hidden \(4 left\)/)).toBeTruthy();
+    cleanup();
+    open({ vehicles: [vehicle] });
+    fireEvent.click(await screen.findByRole('button', { name: 'Show them' }));
+    expect(await screen.findByRole('group', { name: 'Finish setting up' })).toBeTruthy();
+    expect(localStorage.getItem('mw-setup-hidden')).toBeNull();
+    cleanup();
+    const blocked = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    try {
+      open({ vehicles: [vehicle] });
+      expect(await screen.findByRole('group', { name: 'Finish setting up' })).toBeTruthy();
+    } finally {
+      blocked.mockRestore();
+    }
   });
 
   it('Continue setup opens the wizard at the first step not done; the province prompt (Q4)', async () => {
