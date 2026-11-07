@@ -3,7 +3,7 @@ import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { formatDistance, formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
-import { GoalRing, SetupChecklist } from './DashboardExtras';
+import { GoalRing, RegionPrompt, SetupChecklist } from './DashboardExtras';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -178,6 +178,7 @@ export function Dashboard({ now }: { now?: number }) {
           />
         </div>
       </PageHeader>
+      <RegionPrompt />
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}

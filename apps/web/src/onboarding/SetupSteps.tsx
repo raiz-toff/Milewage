@@ -14,8 +14,11 @@ import type { OnboardingCtx, StepProps } from './steps';
 type Kind = Schemas['Vehicle']['kind'];
 type Ownership = Schemas['Vehicle']['ownership'];
 
+/** The apps the step asks about. The built-in "Other" stays as it is: "Another app" names one. */
+export const listedApps = (c: OnboardingCtx) => c.platforms.filter((p) => p.slug !== 'other');
+
 /** Every app starts switched on, so an answer shows as one switched off or one of the driver's own. */
-export const appsAnswered = (c: OnboardingCtx) => c.platforms.some((p) => p.custom || !p.active);
+export const appsAnswered = (c: OnboardingCtx) => listedApps(c).some((p) => p.custom || !p.active);
 
 function Tick({
   id,
@@ -39,9 +42,10 @@ function Tick({
 /** The apps of the driver's country and region, plus their own (plan 23 step 3). */
 export function AppsStep({ ctx, next }: StepProps) {
   const { api } = useSession();
+  const listed = listedApps(ctx);
   // Not answered yet: nothing ticked, rather than every app the country lists.
   const [on, setOn] = useState(() =>
-    appsAnswered(ctx) ? ctx.platforms.filter((p) => p.active).map((p) => p.slug) : [],
+    appsAnswered(ctx) ? listed.filter((p) => p.active).map((p) => p.slug) : [],
   );
   const [other, setOther] = useState(false);
   const [name, setName] = useState('');
@@ -52,7 +56,7 @@ export function AppsStep({ ctx, next }: StepProps) {
     const own = other ? name.trim() : '';
     if (other && !slugOf(own)) throw new StepError('Enter the name of the other app.');
     if (!on.length && !own) return; // nothing ticked: the same as skipping
-    for (const p of ctx.platforms) {
+    for (const p of listed) {
       if (on.includes(p.slug) !== p.active) await put(p.slug, { active: on.includes(p.slug) });
     }
     if (own) await put(slugOf(own), { label: own });
@@ -64,7 +68,7 @@ export function AppsStep({ ctx, next }: StepProps) {
         <legend className="mb-3 text-sm text-muted-foreground">
           Choose every app you work for. Earnings and reports list only these.
         </legend>
-        {ctx.platforms.map((p) => (
+        {listed.map((p) => (
           <Tick
             key={p.slug}
             id={`app-${p.slug}`}

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PERIODS } from '../src/pages/Dashboard';
 import { renderApp, settingsFixture, signedIn, pick } from './support/kit';
@@ -92,6 +92,22 @@ describe('dashboard checklist and goal ring (18 section 13)', () => {
     expect(card.textContent).toMatch(/Set a weekly goal \(not done\)/);
     expect(card.textContent).toMatch(/Pair your phone \(not done\)/);
     expect(card.textContent).toMatch(/Run a backup \(not done\)/);
+  });
+
+  it('Continue setup opens the wizard at the first step not done; the province prompt (Q4)', async () => {
+    open({ vehicles: [vehicle] });
+    expect(await screen.findByText(/Set your province to include its own rules/)).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Set your province' }).getAttribute('href')).toBe(
+      '/settings/general',
+    );
+    fireEvent.click(await screen.findByRole('link', { name: 'Continue setup' }));
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /Where you drive — Step 1 of/ }),
+    ).toBeTruthy();
+    cleanup();
+    renderApp({ ...signedIn(settingsFixture({ region: 'ON' })) }, '/dashboard');
+    await screen.findByRole('heading', { name: 'Dashboard' });
+    expect(screen.queryByText(/Set your province/)).toBeNull();
   });
 
   it('leaves out the items of modules that are off, and disappears when everything left is done', async () => {

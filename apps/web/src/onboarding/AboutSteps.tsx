@@ -48,7 +48,7 @@ export function RegionStep({ ctx, next }: StepProps) {
 }
 
 type WorkKind = Schemas['WorkKind'];
-const WORK_LABELS: Record<WorkKind, string> = {
+export const WORK_LABELS: Record<WorkKind, string> = {
   delivery: 'Delivery: food, groceries or parcels',
   ride_hailing: 'Ride-hailing: driving passengers',
   moto_taxi: 'Motorcycle taxi',

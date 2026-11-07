@@ -16,11 +16,13 @@ export function StepForm({
   save,
   next,
   skip = 'Skip this step',
+  submit: label = 'Continue',
 }: {
   children: ReactNode;
   /** Saves the answer; resolves when the server has it. */
   save: () => Promise<void>;
-  next: () => void;
+  next: () => void | Promise<void>;
+  submit?: string;
   /** Label of the skip button, or null for a step that cannot be skipped. */
   skip?: string | null;
 }) {
@@ -33,7 +35,7 @@ export function StepForm({
     setError(null);
     try {
       await save();
-      next();
+      await next();
     } catch (err) {
       setError(err instanceof StepError ? err.message : describe(err));
     } finally {
@@ -47,10 +49,10 @@ export function StepForm({
       <FormError message={error} />
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={busy}>
-          Continue
+          {label}
         </Button>
         {skip ? (
-          <Button type="button" variant="ghost" onClick={next} disabled={busy}>
+          <Button type="button" variant="ghost" onClick={() => void next()} disabled={busy}>
             {skip}
           </Button>
         ) : null}

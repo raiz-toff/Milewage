@@ -21,7 +21,7 @@ export function PairingCode({ pairing }: { pairing: Pairing }) {
       <div className="rounded-lg border bg-white p-2">
         <Qr text={pairing.qr_payload} label="Pairing code" />
       </div>
-      <div className="min-w-0 flex-1 space-y-2">
+      <div className="min-w-48 flex-1 space-y-2">
         <p className="text-sm text-muted-foreground">
           Scan in the MileWage app. Valid once, until {formatTime(pairing.expires_at, timezone)}.
         </p>

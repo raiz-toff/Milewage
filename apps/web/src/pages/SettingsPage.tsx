@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { Link, NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import type { FormEvent, ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
@@ -422,6 +422,23 @@ function TrackingSection({ prefs }: { prefs: Prefs }) {
   );
 }
 
+/**
+ * Opens the onboarding wizard again at its first step (plan 23 section 4.4). The driver stays
+ * onboarded, so leaving half-way returns to the app; Finish keeps the first time.
+ */
+function RunSetupAgain() {
+  return (
+    <SettingsCard
+      title="Setup"
+      description="Go through the first-run questions again. Your answers stay until you change them."
+    >
+      <UiButton variant="outline" asChild>
+        <Link to="/onboarding/start">Run setup again</Link>
+      </UiButton>
+    </SettingsCard>
+  );
+}
+
 /** Settings, one page per section under /settings/<section>; /settings opens General. */
 export function SettingsPage() {
   const prefs = usePrefs();
@@ -430,9 +447,12 @@ export function SettingsPage() {
 
   const pages: Record<SectionId, ReactNode> = {
     general: (
-      <PrefsForm prefs={prefs}>
-        <GeneralSection prefs={prefs} />
-      </PrefsForm>
+      <div className="space-y-6">
+        <PrefsForm prefs={prefs}>
+          <GeneralSection prefs={prefs} />
+        </PrefsForm>
+        <RunSetupAgain />
+      </div>
     ),
     units: (
       <PrefsForm prefs={prefs}>

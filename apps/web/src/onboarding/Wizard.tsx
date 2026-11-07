@@ -27,7 +27,7 @@ export function Onboarding() {
   const { api, setSettings } = useSession();
   const settings = useSettings();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const heading = useRef<HTMLHeadingElement>(null);
   const [data, setData] = useState<WizardData | null>(null);
   const { platforms: withPlatforms, goals: withGoals, devices: withDevices } = settings.modules;
@@ -76,9 +76,14 @@ export function Onboarding() {
     navigate('/dashboard', { replace: true });
   }, [api, navigate, setSettings]);
 
-  // No step in the URL (or one that does not apply): resume at the first unfinished step.
+  // No step in the URL (or one that does not apply): resume at the first unfinished step;
+  // `/onboarding/start` ("Run setup again") opens the first step.
   const resumeAt =
-    countries && !step ? (visible.find((s) => !s.done(ctx)) ?? visible.at(-1)) : null;
+    countries && !step
+      ? id === 'start'
+        ? visible[0]
+        : (visible.find((s) => !s.done(ctx)) ?? visible.at(-1))
+      : null;
   useEffect(() => {
     if (!countries || step) return;
     if (resumeAt) navigate(path(resumeAt.id), { replace: true });
@@ -97,10 +102,11 @@ export function Onboarding() {
   }, [title]);
 
   if (!step) return <p className="p-8 text-center text-muted-foreground">Loading</p>;
-  const next = () => {
-    const after = visible[index + 1];
-    if (after) navigate(path(after.id));
-    else void finish();
+  // After a "Change" from the answers, back to the answers (GOV.UK check answers pattern).
+  const next = async () => {
+    const after = new URLSearchParams(search).has('change') ? visible.at(-1) : visible[index + 1];
+    if (after && after !== step) navigate(path(after.id));
+    else await finish();
   };
   const before = visible[index - 1];
 
@@ -124,7 +130,7 @@ export function Onboarding() {
             </h1>
           </CardHeader>
           <CardContent>
-            <step.Component key={step.id} ctx={ctx} next={next} />
+            <step.Component key={step.id} ctx={ctx} next={next} steps={visible} />
           </CardContent>
         </Card>
       </div>

@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Circle, CircleCheck } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
+import { levelWord, useCountries } from '../countries';
 import { useSession, useSettings } from '../session';
 import { GoalBar } from './Goals';
 
@@ -120,7 +124,30 @@ export function SetupChecklist() {
             </li>
           ))}
         </ul>
+        <Button asChild size="sm">
+          <Link to="/onboarding">Continue setup</Link>
+        </Button>
       </CardContent>
     </Card>
+  );
+}
+
+/** Owner decision Q4 (plan 21): while the country has regional rules and no region is set. */
+export function RegionPrompt() {
+  const { country, region } = useSettings();
+  const c = useCountries().find((x) => x.code === country);
+  if (!c?.regional_rules || region) return null;
+  const word = levelWord(c).toLowerCase();
+  return (
+    <Alert role="note">
+      <AlertDescription>
+        <span>
+          Set your {word} to include its own rules. Until then, only the national rules apply.{' '}
+          <Link to="/settings/general" className="font-medium underline underline-offset-4">
+            Set your {word}
+          </Link>
+        </span>
+      </AlertDescription>
+    </Alert>
   );
 }
