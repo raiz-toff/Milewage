@@ -57,8 +57,9 @@ data collector: it keeps pairing and the permission ladder and shows no onboardi
 | 3 | **Your apps**: the country's and region's apps as checkboxes, plus "Another app" | module `platforms` is on | `PUT /platforms/{slug}` (active, custom) | Yes |
 | 4 | **Your vehicle**: name, kind, ownership (Track V); a line saying which rate applies ("Gets the CRA allowance rate", "No official rate here: you can set your own rate" from J8, "Bicycles have no mileage rate") | always | `POST /vehicles` (and `PATCH /settings` for a custom rate) | No: a shift needs a vehicle. "Skip" only if one already exists. |
 | 5 | **Weekly goal** | module `goals` is on | `POST /goals` | Yes |
-| 6 | **Pair your phone**: the pairing QR and link, waits for the phone, says "Paired" | module `devices` is on | `POST /devices/pairing-tokens` (existing) | Yes ("Pair later") |
-| 7 | **Check your answers**: every answer with "Change"; "Finish" | always | `settings.onboarded_at` | — |
+| 6 | **Get the app** (added 2026-11-07, owner request): a QR of the public download page `/app` (the store link once published, else the server's own app file), the page's address as text, the file's size and date; a this-computer address shows plan 19's warning instead of the QR. Not listed on Check your answers (nothing is answered); done once a phone has paired | module `devices` is on | nothing (`GET /app`) | Yes ("I already have the app") |
+| 7 | **Pair your phone**: the pairing QR and link, waits for the phone, says "Paired" | module `devices` is on | `POST /devices/pairing-tokens` (existing) | Yes ("Pair later") |
+| 8 | **Check your answers**: every answer with "Change"; "Finish" | always | `settings.onboarded_at` | — |
 
 Rules:
 

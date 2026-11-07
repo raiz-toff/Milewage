@@ -91,8 +91,8 @@ describe('onboarding wizard (plan 23)', () => {
   it('opens for a driver not yet onboarded; Canada asks only the province', async () => {
     const { calls } = wizard();
     // One kind of work in Canada: that step is not shown (region, apps, vehicle, goal, phone, check).
-    expect(await heading('Where you drive — Step 1 of 6')).toBeTruthy();
-    expect(document.title).toBe('Where you drive — Step 1 of 6 — MileWage');
+    expect(await heading('Where you drive — Step 1 of 7')).toBeTruthy();
+    expect(document.title).toBe('Where you drive — Step 1 of 7 — MileWage');
     expect(
       screen.getByText(/Until you choose your province, only the national rules/),
     ).toBeTruthy();
@@ -100,7 +100,7 @@ describe('onboarding wizard (plan 23)', () => {
     pick('Province', 'ON');
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     // The answer is saved on Continue, then the next step opens.
-    expect(await heading('Your apps — Step 2 of 6')).toBeTruthy();
+    expect(await heading('Your apps — Step 2 of 7')).toBeTruthy();
     expect(patches(calls)).toEqual([{ region: 'ON' }]);
   });
 
@@ -214,14 +214,14 @@ describe('onboarding wizard (plan 23)', () => {
     const { calls } = wizard({ region: 'ON' }, '/onboarding/goal', undefined, [], {
       'POST /goals': () => ({ status: 201, body: {} }),
     });
-    expect(await heading('Weekly goal — Step 4 of 6')).toBeTruthy();
+    expect(await heading('Weekly goal — Step 4 of 7')).toBeTruthy();
     const field = screen.getByLabelText('How much do you want to earn each week? (CAD)');
     fireEvent.change(field, { target: { value: 'lots' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect((await screen.findByRole('alert')).textContent).toMatch(/^Enter an amount above 0/);
     fireEvent.change(field, { target: { value: '800' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(await heading(/Pair your phone/)).toBeTruthy();
+    expect(await heading(/Get the app/)).toBeTruthy();
     expect(calls.find((c) => c.path === '/goals' && c.method === 'POST')?.body).toEqual({
       label: 'Weekly earnings',
       metric: 'earnings',
@@ -254,22 +254,71 @@ describe('onboarding wizard (plan 23)', () => {
         body: ++asked > 1 ? [{ ...phone, last_seen_at: 2, revoked_at: null }] : [],
       }),
     });
-    expect(await heading('Pair your phone — Step 5 of 6')).toBeTruthy();
+    expect(await heading('Pair your phone — Step 6 of 7')).toBeTruthy();
     expect(await screen.findByRole('img', { name: 'Pairing code' })).toBeTruthy();
     expect(await screen.findByRole('link', { name: 'Get the app' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Pair later' })).toBeTruthy();
     expect(await screen.findByText('Paired: Pixel 8.', {}, { timeout: 4000 })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Pair later' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(await heading('Check your answers — Step 6 of 6')).toBeTruthy();
+    expect(await heading('Check your answers — Step 7 of 7')).toBeTruthy();
     expect(patches(calls)).toEqual([]);
+  });
+
+  const appInfo = (over: object = {}) => ({
+    'GET /app': () => ({
+      body: {
+        apk: { size_bytes: 108_296_623, updated_at: Date.UTC(2026, 10, 7, 18), version: '0.1.0' },
+        store_url: null,
+        page_url: 'https://box.tail1234.ts.net/app',
+        base_url: 'https://box.tail1234.ts.net',
+        base_url_source: 'configured',
+        ...over,
+      },
+    }),
+  });
+
+  it('get the app: a QR of the download page, its address, the app file; skip to pairing', async () => {
+    const { calls } = wizard({ region: 'ON' }, '/onboarding/app', undefined, [], appInfo());
+    expect(await heading('Get the app — Step 5 of 7')).toBeTruthy();
+    expect(await screen.findByRole('img', { name: 'Download page code' })).toBeTruthy();
+    expect(screen.getByText('https://box.tail1234.ts.net/app')).toBeTruthy();
+    expect(
+      screen.getByText('The app file from this server: Version 0.1.0 · 108 MB · Nov 7, 2026'),
+    ).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /Google Play/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'I already have the app' }));
+    expect(await heading('Pair your phone — Step 6 of 7')).toBeTruthy();
+    expect(patches(calls)).toEqual([]);
+  });
+
+  it('get the app: Google Play when the app is published; no QR for a this-computer address', async () => {
+    const play = 'https://play.google.com/store/apps/details?id=app.milewage.phone';
+    wizard({ region: 'ON' }, '/onboarding/app', undefined, [], appInfo({ store_url: play }));
+    const link = await screen.findByRole('link', { name: 'Get it on Google Play' });
+    expect(link.getAttribute('href')).toBe(play);
+    expect(screen.getByText(/^Or the app file from this server/)).toBeTruthy();
+    cleanup();
+    const local = { page_url: 'http://localhost:5173/app', base_url: 'http://localhost:5173' };
+    wizard({ region: 'ON' }, '/onboarding/app', undefined, [], appInfo(local));
+    expect((await screen.findByRole('note')).textContent).toMatch(/only works on this computer/);
+    expect(screen.queryByRole('img', { name: 'Download page code' })).toBeNull();
+    cleanup();
+    wizard({ region: 'ON' }, '/onboarding/app', undefined, [], appInfo({ apk: null }));
+    expect((await screen.findByRole('note')).textContent).toMatch(/no app to download yet/);
+  });
+
+  it('get the app is not a step when the devices module is off', async () => {
+    const off = settingsFixture().modules;
+    wizard({ region: 'ON', modules: { ...off, devices: false } }, '/onboarding/goal');
+    expect(await heading('Weekly goal — Step 4 of 5')).toBeTruthy();
   });
 
   it('check your answers: every answer with Change; Change comes back here; Finish', async () => {
     const { calls } = wizard({ region: 'ON' }, '/onboarding/check', undefined, [
       { name: 'Civic', archived_at: null },
     ]);
-    expect(await heading('Check your answers — Step 6 of 6')).toBeTruthy();
+    expect(await heading('Check your answers — Step 7 of 7')).toBeTruthy();
     const rows = [...document.querySelectorAll('dl > div')].map((r) => r.textContent);
     expect(rows).toEqual([
       'Where you driveOntarioChange where you drive',
@@ -302,7 +351,7 @@ describe('onboarding wizard (plan 23)', () => {
   it('Settings › Run setup again opens the first step', async () => {
     const { calls } = wizard({ onboarded_at: 1, region: 'ON' }, '/settings/profile');
     fireEvent.click(await screen.findByRole('link', { name: 'Run setup again' }));
-    expect(await heading('Where you drive — Step 1 of 6')).toBeTruthy();
+    expect(await heading('Where you drive — Step 1 of 7')).toBeTruthy();
     expect(patches(calls)).toEqual([]);
   });
 });

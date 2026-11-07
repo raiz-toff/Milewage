@@ -18,8 +18,13 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
 - [ ] Shifts list cannot show platform badges: the shifts API has no platforms per shift (PL2).
 - [ ] Web `formatMoney` still assumes two decimal digits; use the currency's own digits (J9).
 - [ ] Edit and delete a hand-made trip on the web (W2i).
-- [ ] Plan 19 T1–T3 and T5: `MILEWAGE_PUBLIC_URL`, Change address on the web, Caddy trusted
-      proxies, the install script's Tailscale step.
+- [x] Plan 19 T1–T3: Caddy trusted proxies (T1), `MILEWAGE_PUBLIC_URL` (T2), Change address and
+      the Tailscale warning on the web (T3). Done 2026-11-07, `pr-T1`…`pr-T3`.
+- [x] Get the app in setup: public download page `/app`, wizard step with its QR, store link
+      setting, `--publish` for the latest build (owner, 2026-11-07). Done, `pr-A1`…`pr-A3`.
+- [ ] Plan 19 T5: the install script's Tailscale step (writes `MILEWAGE_PUBLIC_URL`).
+- [ ] When the app is on Google Play: set `MILEWAGE_APP_STORE_URL` and replace the plain "Get it
+      on Google Play" button with Google's official badge file (A2).
 - [ ] A public install-guide URL for the phone's "Set up your server" screen (currently hidden;
       PO1/X2).
 - [ ] Error `type` URIs use `https://milewage.dev/errors/…`, a domain the owner does not own

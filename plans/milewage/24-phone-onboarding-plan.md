@@ -117,7 +117,12 @@ The owner tests on the phone; no emulators.
 - **Q2 Where drivers get the app → the driver's own server serves the APK it was built with.**
   "Get the app" on the web pairing step downloads it. Minimal: the server serves an APK file from a
   configured location when the file is there; the link is hidden when it is not. How the file gets
-  there is documented; no build pipeline (PO4).
+  there is documented; no build pipeline (PO4). **Extended 2026-11-07 (A1–A3, owner request):** a
+  public download page `/app` (store link first once `MILEWAGE_APP_STORE_URL` is set, then the
+  server's file with its version, size and date, and the "Install unknown apps" steps); the setup
+  wizard's own **Get the app** step shows its QR before Pair your phone; "Get the app" elsewhere
+  opens that page; `scripts/phone-release-build.sh --publish <path>` puts the latest build in place,
+  read on every request.
 
 ## 7. Not in this plan (phone backlog from the review)
 

@@ -3,6 +3,7 @@ import type { Schemas, Settings } from '../api/client';
 import { formatMoney } from '../format';
 import type { Country } from '../countries';
 import { RegionStep, WORK_LABELS, WorkStep } from './AboutSteps';
+import { AppStep } from './AppStep';
 import { CheckStep } from './CheckStep';
 import { GoalStep, PairStep } from './GoalPhoneSteps';
 import { AppsStep, appsAnswered, listedApps, VehicleStep } from './SetupSteps';
@@ -99,6 +100,14 @@ export const STEPS: Step[] = [
         ),
       ),
     Component: GoalStep,
+  },
+  {
+    // No answer to save, so no summary on Check your answers; done once a phone has paired.
+    id: 'app',
+    title: 'Get the app',
+    visible: (c) => c.settings.modules.devices,
+    done: (c) => c.devices.length > 0,
+    Component: AppStep,
   },
   {
     id: 'phone',
