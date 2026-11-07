@@ -1240,3 +1240,15 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Standards checked: Home Assistant companion app, Immich, Nextcloud QR login, Android background-location guidance, dontkillmyapp.com, QR scanner libraries (all Android options except ZXing use Google ML Kit / Play services). Links in plan 24 §3.
 - Open owner decisions: Q1 QR scanner without Google (recommend a ZXing-based scanner, with the phone camera plus an https pair page as fallback); Q2 where drivers get the app (recommend the server serves its matching APK).
 - No code.
+
+## PR X1 — Integration of tracks J, L, V and plans 23–24
+
+- Branch `pr-X1-tracks-merged` (pushed, not merged), from `pr-J9-phone-country-consistency`, with three real merges (`--no-ff`, so each PR's history stays): `pr-L4-earnings-tax-income` (L0–L4), `pr-V3-vehicle-ownership-web` (V1–V3), `pr-PO0-phone-onboarding-plan` (O0 plan 23, PO0 plan 24). No new features.
+- Conflicts and how they were resolved:
+  - `apps/web/src/format.ts`: J8's `deductionWord` and L3's `toCents` added at the same place; both kept.
+  - `apps/web/test/tax.test.tsx`: J3b's "country's lines" test and L4's "platform fees and withheld tax" test at the same place; both kept.
+  - `plans/milewage/progress.md` (each merge): every entry kept, in the order J, L, V, O0, PO0.
+  - Core migration number (no text conflict, two files `core/0009_*`): J8's `0009_own_mileage_rate.sql` keeps its number; V1's becomes `core/0010_vehicle_ownership.sql`. `apps/server/test/ownership.test.ts` (filters migrations by id) and plan 21 section 3.6c now say `0010`. Both are additive `ALTER TABLE` migrations, so their order does not matter.
+  - Merged without a text conflict and checked by reading: `tax-report.ts` keeps J3's generic estimate `lines` and J6's `sales_tax_name`, with L4's `fees_cents`, `adjustments_cents` and `tax_withheld_cents` in `income`; the `tax_summary` export (`reports.ts`) and the Tax screen keep both; `presenter.ts` and `csv.ts` (J8 own rate) were not touched by L; `expense-categories.ts` (V2's two categories) sits beside J7's `expenseCategoriesFor`; `openapi.yaml` has both sides (`TaxYear` lines, `sales_tax_name` and the income fields; earnings entries; `VehicleOwnership`; `OwnMileageRate`), and `packages/shared/generated/` was regenerated with `npm run openapi:generate` (identical to git's merge). Plan 21: V's section 3.6c and section 5 paragraph and PO0's J9 row are all in; there is one J9 row.
+- Tests: `npm run verify` exit 0 with no fix-up: vitest 117 files, 925 passed, 3 skipped; phone jest 28 suites, 240 passed, 2 skipped.
+- Not done: nothing; the onboarding wizard (O1–O4) stacks on this branch.
