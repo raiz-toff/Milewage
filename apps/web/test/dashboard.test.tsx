@@ -153,7 +153,9 @@ describe('dashboard', () => {
     );
     expect((await screen.findAllByRole('alert')).length).toBeGreaterThan(0);
     fail = false;
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    fireEvent.click(
+      within(screen.getByRole('tabpanel')).getByRole('button', { name: 'Try again' }),
+    );
     expect(await metric('Earned')).toBeTruthy();
   });
 

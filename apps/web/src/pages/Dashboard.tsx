@@ -1,13 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { unwrap } from '../api/client';
-import type { Schemas } from '../api/client';
-import { useSession, useSettings } from '../session';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { useSettings } from '../session';
 import { GoalRing, Notices, SetupChecklist } from './DashboardExtras';
-import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { EmptyState, PageHeader, Section } from '../ui/layout';
+import { PageHeader } from '../ui/layout';
 import { DashboardHero } from './DashboardHero';
-import { ShiftCard } from './Shifts';
+import { RecentShifts } from './DashboardShifts';
 
 const DAY = 86_400_000;
 
@@ -60,46 +56,6 @@ export const PERIODS: Period[] = [
     },
   },
 ];
-
-/** The latest few shifts, as on the Shifts page. Hidden when they cannot be read. */
-function RecentShifts() {
-  const { api } = useSession();
-  const settings = useSettings();
-  const [rows, setRows] = useState<Schemas['Shift'][] | null>(null);
-  useEffect(() => {
-    let live = true;
-    void unwrap(api.GET('/shifts', { params: { query: { limit: 5 } } }))
-      .then((p) => live && setRows(p.items))
-      .catch(() => live && setRows(null));
-    return () => {
-      live = false;
-    };
-  }, [api]);
-  if (!rows) return null;
-  return (
-    <Section
-      title="Recent shifts"
-      label="Recent shifts"
-      action={
-        <Button asChild variant="ghost" size="sm">
-          <Link to="/shifts">View all</Link>
-        </Button>
-      }
-    >
-      {rows.length === 0 ? (
-        <EmptyState>No shifts yet. Shifts start on the phone.</EmptyState>
-      ) : (
-        <ul className="space-y-3">
-          {rows.map((s) => (
-            <li key={s.id}>
-              <ShiftCard shift={s} settings={settings} />
-            </li>
-          ))}
-        </ul>
-      )}
-    </Section>
-  );
-}
 
 /** "Good afternoon, Sam" and the date, both in the driver's time zone (Comma's header). */
 function Greeting({ now }: { now: number }) {
