@@ -1034,3 +1034,11 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Standards checked: GOV.UK question pages (one thing per page) and check answers; NN/g, Visa, PatternFly and Microsoft wizard guidance; W3C WAI multi-page forms (step in heading and title); onboarding practice (time to value, checklist, no dead ends). Links in plan 23 §3.
 - Assumption (owner to confirm): existing owners with a vehicle are marked as onboarded and do not see the wizard.
 - No code.
+
+## PR PO0 — Plan: phone first run (plan 24)
+
+- Branch `pr-PO0-phone-onboarding-plan` (pushed, not merged), stacked on `pr-O0-onboarding-plan`.
+- Done: [`24-phone-onboarding-plan.md`](./24-phone-onboarding-plan.md) — the phone does not open on Home until it is connected: Welcome ("I have a server" / "I don't have one yet"), server set-up steps with "Send these steps to my computer", Tailscale on the phone when needed, Connect (scan, link, paste) with plan 19's checks and messages, Connected (with "add your vehicle on the web"), notifications, location, all the time, battery, Ready. PRs PO1–PO4. Records a phone review's findings (region and custom rate on the phone, server's figure for synced shifts, currency digits) as J9 in track J.
+- Standards checked: Home Assistant companion app, Immich, Nextcloud QR login, Android background-location guidance, dontkillmyapp.com, QR scanner libraries (all Android options except ZXing use Google ML Kit / Play services). Links in plan 24 §3.
+- Open owner decisions: Q1 QR scanner without Google (recommend a ZXing-based scanner, with the phone camera plus an https pair page as fallback); Q2 where drivers get the app (recommend the server serves its matching APK).
+- No code.
