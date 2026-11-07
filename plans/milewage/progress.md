@@ -1599,6 +1599,7 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Done: removed `apps/web/src/platforms/logos.ts` (the five Simple Icons marks and `SHOW_PLATFORM_LOGOS`) and the `logo` flags in `packages/shared/src/platforms.ts`. Every platform's badge is its initials (or the driver's emoji) on its colour. The "names and logos belong to their owners" line is gone from Settings until an uploaded logo can appear there (PL4). Plan 25: the decision and why (trademarks with no licence; public code; the self-hosted driver chooses), sections 4.1, 4.2, 5, 6 and a new section 7.
 - Tests: `platform-badge.test.tsx` (initials for every built-in platform, DoorDash "DD" on its red), `platforms.test.tsx` and `shifts.test.tsx` (initials, no image in the badge), `country-platforms.test.ts` (no `logo` key). `npm run verify` green.
 - Not done: the upload (PL4).
+- Correction (X3, 2026-11-07): "public code" above was wrong. The repository is on the owner's private git server; plan 25 now gives the reason as: the code may be published later and every copy would carry the marks, and the driver chooses on their own server.
 
 ## PR PL4a — Platforms: the driver's own logo, server side (plan 25 section 7)
 
@@ -1686,3 +1687,21 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Visual check: headless Chromium, the owner's case with the form open and closed, 1280 and 390 px dark; the W2e Toronto shift at 1280 shows the button at the top of its Timeline card and is otherwise unchanged. Screenshots in the session scratchpad (`shots/sparse/w2i`, `shots/sparse/after`).
 - Not done: editing or deleting a hand-made trip on the web (the API has `PATCH` and `DELETE /trips/{id}`); a time typed across a daylight-saving change can be off by the hour shift.
 - Assumption (owner to confirm): a trip added by hand is Business (active) or Personal; deadhead is not offered (the engine's estimate, not something a driver types).
+
+## PR X3 — Integration of dashboard, platform logos, calendar and sparse shift states (not merged)
+
+- Branch `pr-X3-web-merged` (pushed, not merged), on `pr-X2-all-merged`. Merged with `--no-ff`, in this order: `pr-W4f-dashboard-sketch` (W4a–W4f), `pr-PL4b-platform-logo-web` (PL0–PL4b), `pr-W5b-date-fields` (W5a–W5b; `npm ci` re-run for `react-day-picker` and `date-fns`), `pr-W2i-shift-add-trip` (W2f–W2i). No phone file changed, so no release build.
+- Conflicts and resolutions (every feature and test kept):
+  - `progress.md` (PL, W5 and W2 merges): every entry kept, in merge order.
+  - `expenses.test.tsx`, `exports.test.tsx` (W5b): the kit import takes both W4a's `DASHBOARD` and W5b's `pick`/`pickDay`; prettier then wrapped the longer line in `expenses.test.tsx`.
+  - `test/support/kit.tsx` (W2i): `calls` keeps W4a's `query: url.search` and the handler lookup keeps W2i's `/*` last-segment key.
+  - `Shifts.tsx` (W2i): imports keep PL2's `PlatformName` and W2i's `useShiftRoute`; the header keeps PL2's `platforms` (badges after the time, duration and vehicle) followed by W2f–W2i's `stops`/`empty`/`sparse`/`folded`/`showLabels`/`exporters`/`notes`/`exportButtons`.
+  - `ShiftEarnings.tsx` merged without a text conflict; checked by reading: W2h's compact block and PL2's `PlatformName` rows and badge options are both there. `openapi.yaml` merged cleanly; `npm run openapi:generate` gave no change. `package.json` and the lockfile merged cleanly.
+- Fix-ups (one commit):
+  - Dashboard recent shifts (`DashboardShifts.tsx`): each platform is drawn with its `PlatformBadge` (initials on the platform colour, or the driver's uploaded logo), the names beside them; the names come from `usePlatformOf` (driver's list, then built-in name, then slug) instead of the page's own label map. Tests in `dashboard-shifts.test.tsx`: badges in order, hidden from screen readers, "DD" for DoorDash; a custom platform with `logo_version` shows its image at `/api/v1/platforms/cityeats/logo?v=v7`.
+  - Plan 25: the reason "MileWage's code is public" was wrong (the repository is on the owner's private git server). Reworded in section 5 (both places): the code may be published later and every copy would carry the marks; the driver chooses on their own server. A correction line is added under PL3 above.
+  - "Added: Dec 31, 1969, 19:00" on Vehicles: **fixture only**. The screenshot fixture had `created_at: 1` (1 ms after the epoch, shown in Toronto time). The server's only vehicle writer sets `createdAt: now()` with `Date.now` (milliseconds), the schema is `EpochMs`, and the web formats milliseconds; no change.
+  - Service log rows wrote the raw `2026-10-01`; they now use `formatDay` with `dateLocale(country)` from `dateText.ts` ("Oct 1, 2026"; "1 Oct 2026" in GB), also in the Delete button's name. Test in `maintenance.test.tsx` (CA and GB).
+- Tests: `npm run verify` exit 0: vitest 129 files, 1018 passed, 3 skipped; phone jest 32 suites, 271 passed, 4 skipped.
+- Visual check (headless Chromium, Vite dev server, mocked API with a neutral test logo): `…/scratchpad/x3/dashboard-dark-1280.png` (badges on recent shifts, one with two platforms, one with an uploaded logo), `shift-dark-1280.png` (header badges, earnings rows with badges, Add a trip), `settings-platforms-dark-1280.png`, and `service-log-dark-1280.png` (formatted day). The "not_found" next to "Mileage rate" in the last one is the fixture not answering `GET /vehicles/1/tax-years/2026`.
+- Not done: nothing blocking.

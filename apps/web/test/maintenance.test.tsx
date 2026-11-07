@@ -31,12 +31,16 @@ const log = (over: object = {}) => ({
   ...over,
 });
 
-function open(enabled = true) {
+function open(enabled = true, country = 'CA') {
   let rows = [log()];
   return renderApp(
     {
       ...signedIn(
-        settingsFixture({ modules: { maintenance: enabled, tax: false }, distance_unit: 'km' }),
+        settingsFixture({
+          modules: { maintenance: enabled, tax: false },
+          distance_unit: 'km',
+          country,
+        }),
       ),
       'GET /vehicles': () => ({ body: [vehicle] }),
       'GET /vehicles/1/maintenance': () => ({ body: rows }),
@@ -74,9 +78,20 @@ describe('vehicle service log (module maintenance)', () => {
       odometer_m: 54_100_000,
     });
     fireEvent.click(
-      await screen.findByRole('button', { name: /Delete service 2023-11-01 Oil change/ }),
+      await screen.findByRole('button', { name: /Delete service Nov 1, 2023 Oil change/ }),
     );
     await waitFor(() => expect(s.calls.some((c) => c.method === 'DELETE')).toBe(true));
+  });
+
+  it("writes the service day as other dates are written, in the country's order", async () => {
+    open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Service log' }));
+    expect(await screen.findByText('Nov 1, 2023')).toBeTruthy();
+    expect(screen.queryByText('2023-11-01')).toBeNull();
+    cleanup();
+    open(true, 'GB');
+    fireEvent.click(await screen.findByRole('button', { name: 'Service log' }));
+    expect(await screen.findByText('1 Nov 2023')).toBeTruthy();
   });
 
   it('refuses a cost that is not a number without calling the server', async () => {

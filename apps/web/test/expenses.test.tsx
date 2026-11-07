@@ -3,7 +3,15 @@ import { File as NodeFile } from 'node:buffer';
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bodyOf } from '../src/pages/Expenses';
-import { renderApp, settingsFixture, signedIn, menu, pick, pickDay, DASHBOARD } from './support/kit';
+import {
+  renderApp,
+  settingsFixture,
+  signedIn,
+  menu,
+  pick,
+  pickDay,
+  DASHBOARD,
+} from './support/kit';
 
 afterEach(() => {
   cleanup();

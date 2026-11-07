@@ -8,6 +8,9 @@ import type { Schemas } from '../api/client';
 import { formatDistance, formatMoney, formatTime } from '../format';
 import { RouteSketch } from '../map/RouteSketch';
 import type { RouteData } from '../map/route';
+import { PlatformBadge } from '../platforms/PlatformBadge';
+import type { PlatformLike } from '../platforms/PlatformBadge';
+import { usePlatformOf } from '../platforms/usePlatforms';
 import { useSession, useSettings } from '../session';
 import { EmptyState, Section } from '../ui/layout';
 import { dateWords } from './Shifts';
@@ -16,7 +19,7 @@ type Shift = Schemas['Shift'];
 interface Extra {
   /** Effective earnings after app fees; null when nothing was entered or labelled. */
   cents: number | null;
-  /** Platform slugs. */
+  /** Platform slugs, in the order the server gives them. */
   platforms: string[];
 }
 
@@ -43,7 +46,13 @@ function useSeen<T extends Element>() {
  * hour, then a sketch of the route. Earnings and route are read when the row comes into view,
  * only with their modules on; either failing just leaves it out.
  */
-function ShiftRow({ shift, labels }: { shift: Shift; labels: Map<string, string> }) {
+function ShiftRow({
+  shift,
+  platformOf,
+}: {
+  shift: Shift;
+  platformOf: (slug: string) => PlatformLike;
+}) {
   const { api } = useSession();
   const settings = useSettings();
   const { modules, currency, timezone: tz } = settings;
@@ -79,11 +88,24 @@ function ShiftRow({ shift, labels }: { shift: Shift; labels: Map<string, string>
     >
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="truncate font-medium">
-            {extra && extra.platforms.length > 0
-              ? extra.platforms.map((p) => labels.get(p) ?? p).join(', ')
-              : 'Shift'}
-          </span>
+          {extra && extra.platforms.length > 0 ? (
+            <span className="flex min-w-0 items-center gap-2 font-medium">
+              <span className="flex shrink-0 -space-x-1">
+                {extra.platforms.map((slug) => (
+                  <PlatformBadge
+                    key={slug}
+                    platform={platformOf(slug)}
+                    className="ring-2 ring-card"
+                  />
+                ))}
+              </span>
+              <span className="truncate">
+                {extra.platforms.map((slug) => platformOf(slug).label).join(', ')}
+              </span>
+            </span>
+          ) : (
+            <span className="truncate font-medium">Shift</span>
+          )}
           {shift.status === 'active' ? <Badge variant="outline">In progress</Badge> : null}
           {review > 0 ? (
             <Badge variant="outline" className="border-primary/60">
@@ -131,8 +153,8 @@ function ShiftRow({ shift, labels }: { shift: Shift; labels: Map<string, string>
 export function RecentShifts() {
   const { api } = useSession();
   const { modules } = useSettings();
+  const platformOf = usePlatformOf();
   const [rows, setRows] = useState<Shift[] | null>(null);
-  const [labels, setLabels] = useState(new Map<string, string>());
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
@@ -141,14 +163,10 @@ export function RecentShifts() {
     void unwrap(api.GET('/shifts', { params: { query: { limit: 5 } } }))
       .then((p) => live && setRows(p.items))
       .catch((e) => live && setError(describe(e)));
-    if (modules.platforms)
-      void unwrap(api.GET('/platforms', { params: { query: { include_inactive: true } } }))
-        .then((list) => live && setLabels(new Map(list.map((p) => [p.slug, p.label]))))
-        .catch(() => undefined);
     return () => {
       live = false;
     };
-  }, [api, attempt, modules.platforms]);
+  }, [api, attempt]);
   return (
     <Section
       title="Recent shifts"
@@ -189,7 +207,7 @@ export function RecentShifts() {
         <ul className="space-y-2">
           {rows.map((s) => (
             <li key={s.id}>
-              <ShiftRow shift={s} labels={labels} />
+              <ShiftRow shift={s} platformOf={platformOf} />
             </li>
           ))}
         </ul>

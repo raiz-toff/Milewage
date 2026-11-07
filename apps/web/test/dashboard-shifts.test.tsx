@@ -81,11 +81,48 @@ describe('dashboard recent shifts (Comma rows)', () => {
     const box = await recent();
     const row = await box.findByRole('link', { name: /DoorDash, skip/ });
     expect(row.getAttribute('href')).toBe('/shifts/1');
+    // Each platform has its badge (hidden from screen readers; the names are written beside it).
+    const badges = [...row.querySelectorAll('[data-platform]')];
+    expect(
+      badges.map((b) => [b.getAttribute('data-platform'), b.getAttribute('data-look')]),
+    ).toEqual([
+      ['doordash', 'initials'],
+      ['skip', 'initials'],
+    ]);
+    expect(badges[0]!.textContent).toBe('DD');
+    expect(badges.every((b) => b.getAttribute('aria-hidden') === 'true')).toBe(true);
     expect(row.textContent).toMatch(/1 to review/);
     expect(row.textContent).toMatch(/Fri, Jan 15 ·.*10:00–12:00 ·.*52\.0 km/);
     expect(within(row).getByText('$120.00')).toBeTruthy();
     expect(within(row).getByText('$60.00 / h')).toBeTruthy();
     expect(box.getByRole('link', { name: 'View all' }).getAttribute('href')).toBe('/shifts');
+  });
+
+  it("shows the driver's own logo as a platform's badge", async () => {
+    open({
+      'GET /platforms': () => ({
+        body: [
+          {
+            slug: 'cityeats',
+            label: 'City Eats',
+            custom: true,
+            active: true,
+            sort: 0,
+            logo_version: 'v7',
+          },
+        ],
+      }),
+      'GET /shifts': () => ({ body: { items: [shift(1)], next_cursor: null } }),
+      'GET /shifts/1/earnings': () => ({
+        body: { entries: [], labels: [], effective: [effective('cityeats', 5_000)] },
+      }),
+    });
+    const row = await (await recent()).findByRole('link', { name: /City Eats/ });
+    const badge = row.querySelector('[data-platform="cityeats"]')!;
+    expect(badge.getAttribute('data-look')).toBe('image');
+    expect(badge.querySelector('img')!.getAttribute('src')).toBe(
+      '/api/v1/platforms/cityeats/logo?v=v7',
+    );
   });
 
   it('says "not entered" without earnings; asks nothing with the module off', async () => {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button as UiButton } from '@/components/ui/button';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
+import { dateLocale, formatDay } from '../dateText';
 import type { Schemas } from '../api/client';
 import { formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
@@ -21,7 +22,9 @@ const label = (k: string) => KINDS.find((x) => x.value === k)?.label ?? k;
 /** The service record of one vehicle (module `maintenance`, 18 section 6). */
 export function VehicleMaintenance({ vehicleId, name }: { vehicleId: number; name: string }) {
   const { api } = useSession();
-  const { currency, distance_unit: unit, timezone, modules } = useSettings();
+  const { currency, distance_unit: unit, timezone, modules, country } = useSettings();
+  // The day as other dates are written ("Oct 1, 2026", or "1 Oct 2026" in GB).
+  const day = (iso: string) => formatDay(iso, dateLocale(country)) || iso;
   const [logs, setLogs] = useState<Log[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -95,7 +98,7 @@ export function VehicleMaintenance({ vehicleId, name }: { vehicleId: number; nam
         <ul className="space-y-1 text-sm">
           {logs.map((l) => (
             <li key={l.id} className="flex flex-wrap gap-3">
-              <span className="tabular-nums">{l.serviced_on}</span>
+              <span className="tabular-nums">{day(l.serviced_on)}</span>
               <span>{label(l.kind)}</span>
               {l.cost_cents === null ? null : <span>{formatMoney(l.cost_cents, currency)}</span>}
               {l.odometer_m === null ? null : (
@@ -113,7 +116,7 @@ export function VehicleMaintenance({ vehicleId, name }: { vehicleId: number; nam
                 type="button"
                 variant="ghost"
                 size="sm"
-                aria-label={`Delete service ${l.serviced_on} ${label(l.kind)}`}
+                aria-label={`Delete service ${day(l.serviced_on)} ${label(l.kind)}`}
                 onClick={() => void remove(l.id)}
               >
                 Delete

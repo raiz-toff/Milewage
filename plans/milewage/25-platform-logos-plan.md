@@ -198,7 +198,8 @@ The phone shows no platforms today; when it does, the shared colour and initials
   a figure came from), nothing is sold, nothing suggests a partnership; MileWage runs on the
   driver's own server.
 - Against: no platform grants a licence for this; courts treat a logo as harder to justify than the
-  name; the artwork ships in a public repository and in every installed copy; Amazon is explicit
+  name; the artwork would ship in the repository (private today, but the code may be published
+  later) and in every installed copy; Amazon is explicit
   that its logo needs approval, and Simple Icons dropped it for that reason.
 
 **Initials only**
@@ -217,7 +218,10 @@ owners. MileWage is not affiliated with them."
 **Owner decision (2026-11-07):** "no, I want to let the user add it, it's self-hosted." MileWage
 ships **no** platform logo: PL3 removed the five Simple Icons marks, the `logo` flags and the
 `SHOW_PLATFORM_LOGOS` switch. Why: the marks are the platforms' trademarks and none of them grants a
-licence, while MileWage's code is public and runs on each driver's own server. A driver who wants a
+licence; MileWage's code lives on the owner's private git server today but may be published later,
+and every copy of it would carry the marks; and MileWage runs on each driver's own server, so the
+driver can choose for themselves there. (Corrected 2026-11-07, X3: an earlier wording said the code
+is public; it is not.) A driver who wants a
 logo uploads one image per platform to their own server (section 7); that copy is their own,
 private use, and MileWage only stores and shows it. The "Platform names and logos belong to their
 owners" line appears only where an uploaded logo can appear (Settings › Your platforms).
