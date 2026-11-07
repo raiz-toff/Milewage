@@ -1,6 +1,7 @@
 // United States. Figures are copied unchanged from the packs that came before plan 21.
 
 import { regionsOf, type MileageRate } from '../mileage';
+import { offer } from '../slots';
 import type { CountryModule } from '../types';
 
 const IRS = 'https://www.irs.gov/tax-professionals/standard-mileage-rates';
@@ -82,7 +83,7 @@ export const usCountry: CountryModule = {
     WI: 'Wisconsin',
     WY: 'Wyoming',
   }),
-  data: {},
+  data: { platforms: offer('doordash', 'ubereats', 'instacart', 'amazonflex', 'grubhub', 'other') },
   mileage: { yearStarts: '01-01', rates: { car: standard, van: standard, motorcycle: standard } },
   sources: [IRS],
   verified: false,

@@ -1057,3 +1057,11 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Standards checked: nothing new; the suite follows `moduleMatrix` and date-holidays' per-country tests (plan 21 section 2.4).
 - Tests: 9 conformance (3 per country), 1 alias test, the frozen-grid test replaces the old-vs-new comparison. Unchanged and passing: `countries.test.ts` (6), `apps/server/test/tax.test.ts`, `apps/phone/test/summary.test.tsx`. Shared package 58 passed.
 - Not done: ISO 3166-2 code list and the lint rule (J6).
+
+## PR J2 — Countries: platform lists move onto each country (Track J, plan 21)
+
+- Branch `pr-J2-country-platforms` (pushed, not merged), on J1c.
+- Done: a `platforms` data slot (`countries/slots/platforms.ts`): each level adds to the list above it, and an offer with `available: false` takes one away (a region where an app does not run). Slugs must exist in the shared list (slot check). CA, US and GB list the same platforms as before, in the same order (`other` in each). Shared `platforms.ts` keeps only slug, label and vocabulary; the `countries` tags are gone. `GET /platforms` reads the list for the driver's country and region from the registry, then the driver's own rows (the duplicate filter is now just the existing de-duplication).
+- Standards checked: Shopify Markets assigns catalogs to markets and a child market inherits the parent's products, with restriction done on the parent: the same "inherit and add" model; our `available: false` is the gap (a region can take one away without editing the country). [Shopify Markets catalogs](https://help.shopify.com/manual/markets-new/catalogs), [overview](https://help.shopify.com/en/manual/markets/getting-started/overview). Medusa's `combinable` (plan 21 section 2.4) does not fit here, because platforms always combine.
+- Tests: 3 in `packages/shared/test/country-platforms.test.ts` (each country's list and order; a region adds or removes; every shared platform is offered somewhere and has no country tag) and 1 in `apps/server/test/platforms.test.ts` (GB with a region, then own platforms; US). The Canadian listing test passes unchanged.
+- Not done: nothing for this step. Region-specific apps are not added (no checked data).

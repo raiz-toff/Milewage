@@ -1,24 +1,23 @@
-// Built-in delivery platforms (18 section 4.2, 08 section 16.3): data, not code. The driver's own
-// overrides and custom platforms live in the `platform_settings` table.
+// Built-in delivery platforms (18 section 4.2, 08 section 16.3): data, not code. Which ones a
+// country or region offers is its `platforms` slot (plan 21). The driver's own overrides and custom
+// platforms live in the `platform_settings` table.
 
 export interface BuiltinPlatform {
   slug: string;
   label: string;
-  /** Countries whose default list shows it; `other` is in every list. */
-  countries: readonly string[];
 }
 
 export const BUILTIN_PLATFORMS: readonly BuiltinPlatform[] = [
-  { slug: 'doordash', label: 'DoorDash', countries: ['CA', 'US'] },
-  { slug: 'ubereats', label: 'Uber Eats', countries: ['CA', 'US', 'GB'] },
-  { slug: 'skipthedishes', label: 'SkipTheDishes', countries: ['CA'] },
-  { slug: 'foodora', label: 'Foodora', countries: ['CA'] },
-  { slug: 'instacart', label: 'Instacart', countries: ['CA', 'US'] },
-  { slug: 'amazonflex', label: 'Amazon Flex', countries: ['CA', 'US', 'GB'] },
-  { slug: 'grubhub', label: 'Grubhub', countries: ['US'] },
-  { slug: 'deliveroo', label: 'Deliveroo', countries: ['GB'] },
-  { slug: 'justeat', label: 'Just Eat', countries: ['GB'] },
-  { slug: 'other', label: 'Other', countries: ['CA', 'US', 'GB'] },
+  { slug: 'doordash', label: 'DoorDash' },
+  { slug: 'ubereats', label: 'Uber Eats' },
+  { slug: 'skipthedishes', label: 'SkipTheDishes' },
+  { slug: 'foodora', label: 'Foodora' },
+  { slug: 'instacart', label: 'Instacart' },
+  { slug: 'amazonflex', label: 'Amazon Flex' },
+  { slug: 'grubhub', label: 'Grubhub' },
+  { slug: 'deliveroo', label: 'Deliveroo' },
+  { slug: 'justeat', label: 'Just Eat' },
+  { slug: 'other', label: 'Other' },
 ];
 
 export const builtinPlatform = (slug: string) => BUILTIN_PLATFORMS.find((p) => p.slug === slug);

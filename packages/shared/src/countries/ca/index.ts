@@ -1,6 +1,7 @@
 // Canada. Figures are copied unchanged from the packs that came before plan 21.
 
 import { regionsOf, type MileageRate } from '../mileage';
+import { offer } from '../slots';
 import type { CountryModule, Dated } from '../types';
 
 const CRA_ALLOWANCE =
@@ -74,7 +75,19 @@ export const caCountry: CountryModule = {
       },
     },
   ),
-  data: { salesTax: [{ key: 'gst', label: 'GST', rateBp: 500 }], pension: { plan: 'CPP' } },
+  data: {
+    salesTax: [{ key: 'gst', label: 'GST', rateBp: 500 }],
+    pension: { plan: 'CPP' },
+    platforms: offer(
+      'doordash',
+      'ubereats',
+      'skipthedishes',
+      'foodora',
+      'instacart',
+      'amazonflex',
+      'other',
+    ),
+  },
   mileage: {
     yearStarts: '01-01',
     rates: { car: allowance, van: allowance, motorcycle: allowance },

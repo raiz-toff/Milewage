@@ -2,14 +2,17 @@
 // level combines with the one above. A new slot is one file here plus one line in each table.
 
 import { pensionProblems, type Pension } from './pension';
+import { combinePlatforms, platformsProblems, type PlatformOffer } from './platforms';
 import { combineSalesTax, salesTaxProblems, type SalesTaxComponent } from './sales-tax';
 
 export * from './pension';
+export * from './platforms';
 export * from './sales-tax';
 
 export interface PlaceData {
   salesTax?: readonly SalesTaxComponent[];
   pension?: Pension | null;
+  platforms?: readonly PlatformOffer[];
 }
 
 type Slots = Required<PlaceData>;
@@ -19,11 +22,12 @@ const nearest = <T>(_parent: T | undefined, own: T): T => own;
 
 export const SLOT_COMBINE: {
   [K in keyof Slots]: (parent: Slots[K] | undefined, own: Slots[K]) => Slots[K];
-} = { salesTax: combineSalesTax, pension: nearest };
+} = { salesTax: combineSalesTax, pension: nearest, platforms: combinePlatforms };
 
 export const SLOT_PROBLEMS: { [K in keyof Slots]: (value: Slots[K]) => string[] } = {
   salesTax: salesTaxProblems,
   pension: pensionProblems,
+  platforms: platformsProblems,
 };
 
 /** Adds one level's data on top of the data resolved so far. */

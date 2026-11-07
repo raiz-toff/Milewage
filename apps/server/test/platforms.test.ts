@@ -33,6 +33,14 @@ describe('listing', () => {
     expect(await slugs('?include_inactive=true')).toContain('amazonflex');
   });
 
+  test('the list comes from the country and region of the settings, then own ones', async () => {
+    await send('PATCH', '/settings', { country: 'GB', region: 'SCT' });
+    await send('PUT', '/platforms/mylocal', { label: 'My Local' }); // sort 0: first
+    expect(await slugs()).toEqual('mylocal ubereats amazonflex deliveroo justeat other'.split(' '));
+    await send('PATCH', '/settings', { country: 'US', region: null });
+    expect(await slugs()).toContain('grubhub');
+  });
+
   test('a phone (device scope) may read the list but not change it', async () => {
     const phone = await h.pair(cookie);
     expect((await h.call('GET', '/platforms', undefined, phone.auth)).statusCode).toBe(200);

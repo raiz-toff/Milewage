@@ -1,6 +1,7 @@
 // United Kingdom. Figures are copied unchanged from the packs that came before plan 21.
 
 import { regionsOf, type MileageRate } from '../mileage';
+import { offer } from '../slots';
 import type { CountryModule, Dated } from '../types';
 
 const HMRC = 'https://www.gov.uk/simpler-income-tax-simplified-expenses/vehicles';
@@ -30,7 +31,7 @@ export const gbCountry: CountryModule = {
     SCT: 'Scotland',
     WLS: 'Wales',
   }),
-  data: {},
+  data: { platforms: offer('ubereats', 'amazonflex', 'deliveroo', 'justeat', 'other') },
   mileage: {
     yearStarts: '04-06',
     rates: {
