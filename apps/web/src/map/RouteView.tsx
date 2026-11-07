@@ -15,54 +15,63 @@ const STEPS = 1000;
 const NONE: never[] = [];
 const NOTE = 'rounded-xl border border-dashed p-4 text-sm text-muted-foreground';
 
+/** A shift's recorded route; `points` is null while it loads and empty when there is none. */
+export interface ShiftRoute {
+  points: RoutePoint[] | null;
+  source: 'raw' | 'archive';
+  note: string | null;
+}
+
+/** Reads the route once per shift; asks nothing while `on` is false (module off, still running). */
+export function useShiftRoute(shiftId: number, on: boolean): ShiftRoute {
+  const { api } = useSession();
+  const [route, setRoute] = useState<ShiftRoute>({ points: null, source: 'raw', note: null });
+  useEffect(() => {
+    if (!on) return;
+    let live = true;
+    void unwrap(api.GET('/shifts/{ref}/route', { params: { path: { ref: String(shiftId) } } }))
+      .then((r) => live && setRoute({ points: toPoints(r), source: r.source, note: null }))
+      .catch((e) => {
+        if (!live) return;
+        // 404 is the normal "no route" answer: replay off on the server, or nothing recorded.
+        setRoute({
+          points: [],
+          source: 'raw',
+          note:
+            e instanceof ApiError && e.status === 404
+              ? 'No route is available for this shift.'
+              : 'The route could not be loaded.',
+        });
+      });
+    return () => {
+      live = false;
+    };
+  }, [api, shiftId, on]);
+  return route;
+}
+
 /**
  * Route map and replay scrubber for one shift (module `replay`), with the shift's stops numbered
  * as in the timeline. `picked` (from the timeline) is shown on the map; a stop clicked on the map
  * is picked through `onPick`.
  */
 export function RouteView({
-  shiftId,
+  route,
   trips = NONE,
   stops = NONE,
   picked = null,
   onPick,
 }: {
-  shiftId: number;
+  route: ShiftRoute;
   trips?: Schemas['Trip'][];
   stops?: Schemas['Stop'][];
   picked?: Picked;
   onPick?: (p: Picked) => void;
 }) {
-  const { api } = useSession();
   const settings = useSettings();
-  const [points, setPoints] = useState<RoutePoint[] | null>(null);
-  const [source, setSource] = useState<'raw' | 'archive'>('raw');
-  const [note, setNote] = useState<string | null>(null);
+  const { points, source, note } = route;
   const [step, setStep] = useState(0);
-
-  useEffect(() => {
-    let live = true;
-    void unwrap(api.GET('/shifts/{ref}/route', { params: { path: { ref: String(shiftId) } } }))
-      .then((r) => {
-        if (!live) return;
-        setSource(r.source);
-        setPoints(toPoints(r));
-        setStep(0);
-      })
-      .catch((e) => {
-        if (!live) return;
-        setPoints([]);
-        // 404 is the normal "no route" answer: replay off on the server, or nothing recorded.
-        setNote(
-          e instanceof ApiError && e.status === 404
-            ? 'No route is available for this shift.'
-            : 'The route could not be loaded.',
-        );
-      });
-    return () => {
-      live = false;
-    };
-  }, [api, shiftId]);
+  useEffect(() => setStep(0), [points]);
 
   const cursor = useMemo(
     () => (points && points.length ? positionAt(points, timeAt(points, step, STEPS)) : null),

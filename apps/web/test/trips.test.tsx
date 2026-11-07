@@ -102,9 +102,10 @@ describe('timeline in shift detail', () => {
     expect(screen.getByText('3 trips')).toBeTruthy();
   });
 
-  it('says so when the shift has no trips, and when trips cannot be read', async () => {
+  it('says so when nothing was recorded, and when trips cannot be read', async () => {
     open(settingsFixture(), []);
-    expect(await screen.findByText('No trips were recorded.')).toBeTruthy();
+    expect(await screen.findByText('No route for this shift')).toBeTruthy();
+    expect(screen.getByText('Start and end only')).toBeTruthy();
     cleanup();
     renderApp({ ...signedIn(), 'GET /shifts/1': () => ({ body: shift() }) }, '/shifts/1');
     expect(await screen.findByText(/Trips could not be loaded/)).toBeTruthy();

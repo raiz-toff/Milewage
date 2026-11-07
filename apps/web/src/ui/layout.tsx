@@ -23,13 +23,17 @@ export function PageHeader({
   );
 }
 
-/** A titled card. `label` makes it a named region (tests and screen readers find it by name). */
+/**
+ * A titled card. `label` makes it a named region (tests and screen readers find it by name).
+ * `bare` drops the card and the title, for a section shown inside another card.
+ */
 export function Section({
   title,
   description,
   action,
   label,
   className,
+  bare,
   children,
 }: {
   title?: ReactNode;
@@ -37,10 +41,18 @@ export function Section({
   action?: ReactNode;
   label?: string;
   className?: string;
+  bare?: boolean;
   children: ReactNode;
 }) {
+  const region = label ? { role: 'region', 'aria-label': label } : {};
+  if (bare)
+    return (
+      <div className={cn('space-y-4', className)} {...region}>
+        {children}
+      </div>
+    );
   return (
-    <Card className={className} {...(label ? { role: 'region', 'aria-label': label } : {})}>
+    <Card className={className} {...region}>
       {title || action ? (
         <div className="flex items-start justify-between gap-4 px-(--card-spacing)">
           <div className="space-y-1">

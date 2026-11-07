@@ -282,7 +282,7 @@ describe('shift detail', () => {
     );
     const checks = await screen.findByRole('region', { name: 'Checks' });
     expect(
-      within(checks)
+      within(within(checks).getByRole('list', { name: 'Checks' }))
         .getAllByRole('listitem')
         .map((li) => li.textContent),
     ).toEqual([
@@ -291,6 +291,10 @@ describe('shift detail', () => {
       'new_flag',
       'The phone and the server worked out different totals.',
     ]);
+    // What to do about them, once each (gap_large: the phone's permissions).
+    expect(within(checks).getByRole('list', { name: 'What to do' }).textContent).toMatch(
+      /^In the MileWage phone app, open Permissions: location “Allow all the time”/,
+    );
     expect(screen.getByRole('link', { name: '1 to review' }).getAttribute('href')).toBe('#checks');
     cleanup();
     renderApp({ ...signedIn(), 'GET /shifts/2': () => ({ body: shift(2) }) }, '/shifts/2');

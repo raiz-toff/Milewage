@@ -180,9 +180,10 @@ describe('stops warnings (05 section 3.1a)', () => {
     expect(await screen.findByText(/Label not applied/)).toBeTruthy();
   });
 
-  it('says when no stop was detected', async () => {
+  it('shows no empty Label stops card when no stop was detected', async () => {
     open([]);
-    expect(await screen.findByText('No stops were detected.')).toBeTruthy();
+    expect(await screen.findByText('1 trip · 0 stops')).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Stops' })).toBeNull();
   });
 
   it('pure helpers: stacked detection and money parsing', () => {
