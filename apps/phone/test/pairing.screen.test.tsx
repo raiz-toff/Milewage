@@ -10,6 +10,7 @@ import {
   QR,
   SETTINGS,
 } from './support/mock';
+import { finishSetup } from './support/firstRun';
 
 jest.mock(
   'react-native-safe-area-context',
@@ -22,12 +23,6 @@ const okServer = () =>
       json(201, { device_id: 7, device_token: DEVICE_TOKEN, settings: SETTINGS }),
     'GET /settings': () => json(200, { ...SETTINGS, distance_unit: 'km' }),
   });
-
-/** After connecting from the first run: Connected, Ready, then Home. */
-const finishSetup = async () => {
-  fireEvent.press(await screen.findByRole('button', { name: 'Next' }));
-  fireEvent.press(await screen.findByRole('button', { name: 'Go to home' }));
-};
 
 describe('settings screen', () => {
   it('pairs from a pasted link, then shows flag-driven lines and unpairs', async () => {

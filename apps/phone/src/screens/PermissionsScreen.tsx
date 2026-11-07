@@ -12,6 +12,7 @@ import {
 } from 'lucide-react-native';
 import {
   advance,
+  BATTERY_VISITED,
   canStartShift,
   describeLadder,
   initialLadder,
@@ -65,7 +66,7 @@ const ACTIONS: Record<StepId, string> = {
 
 export function PermissionsScreen({ navigation }: ScreenProps<'Permissions'>) {
   const toast = useToast();
-  const { permissions, tracker } = useServices();
+  const { permissions, tracker, plain } = useServices();
   const [state, setState] = useState<LadderState>(initialLadder());
 
   const reread = useCallback(async () => {
@@ -87,7 +88,10 @@ export function PermissionsScreen({ navigation }: ScreenProps<'Permissions'>) {
 
   const onAction = async () => {
     try {
-      if (view.next === 'battery') tracker.requestBatteryOptimizationSettings();
+      if (view.next === 'battery') {
+        tracker.requestBatteryOptimizationSettings();
+        await plain.set(BATTERY_VISITED, '1'); // for the Home checklist
+      }
       setState(await advance(permissions, state));
     } catch {
       toast.show({

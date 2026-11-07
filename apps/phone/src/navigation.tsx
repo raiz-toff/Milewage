@@ -6,6 +6,7 @@ import { ConnectedScreen } from './firstrun/ConnectedScreen';
 import { ConnectScreen } from './firstrun/ConnectScreen';
 import type { Gate } from './firstrun/gate';
 import { ReadyScreen } from './firstrun/ReadyScreen';
+import { SetupStepScreen } from './firstrun/SetupStepScreen';
 import { ServerSetupScreen } from './firstrun/ServerSetupScreen';
 import { TailscaleScreen } from './firstrun/TailscaleScreen';
 import { WelcomeScreen } from './firstrun/WelcomeScreen';
@@ -22,6 +23,7 @@ export type RootStackParamList = {
   ServerSetup: undefined;
   Tailscale: undefined;
   Connected: undefined;
+  SetupStep: undefined;
   Ready: undefined;
   /** `pairLink`: a `milewage://pair` link that opened the app, to pair from after asking. */
   Connect: { pairLink?: string } | undefined;
@@ -59,6 +61,7 @@ export function RootNavigator({ gate }: { gate: Gate }) {
       ) : gate === 'setup' ? (
         <Stack.Group key="setup">
           <Stack.Screen name="Connected" component={ConnectedScreen} />
+          <Stack.Screen name="SetupStep" component={SetupStepScreen} />
           <Stack.Screen name="Ready" component={ReadyScreen} />
         </Stack.Group>
       ) : (

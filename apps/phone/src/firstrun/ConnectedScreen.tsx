@@ -80,7 +80,7 @@ export function ConnectedScreen({ navigation }: ScreenProps<'Connected'>) {
           : 'Reading what your server sent.'
       }
       footer={
-        <Button size="lg" disabled={!seen} onPress={() => navigation.navigate('Ready')}>
+        <Button size="lg" disabled={!seen} onPress={() => navigation.navigate('SetupStep')}>
           <Text>Next</Text>
         </Button>
       }

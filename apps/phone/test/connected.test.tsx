@@ -1,5 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { App } from '../src/App';
+import { FakePermissions } from '../src/permissions/fake';
+import { FakeTracker } from '../src/tracker/fake';
+import { finishSetup } from './support/firstRun';
 import { DEVICE_TOKEN, json, makeServices, mockServer, QR, SETTINGS } from './support/mock';
 
 jest.mock(
@@ -24,7 +27,7 @@ const connect = async () => {
   fireEvent.press(screen.getByRole('button', { name: 'Connect' }));
 };
 
-describe('after connecting (plan 24 screens 5 and 10)', () => {
+describe('after connecting (plan 24 screens 5 to 10)', () => {
   it('shows what the server sent, then Ready, then Home', async () => {
     render(
       <App services={makeServices(serverWith(() => [{ id: 3, name: 'Civic' }]).fetch).services} />,
@@ -34,9 +37,11 @@ describe('after connecting (plan 24 screens 5 and 10)', () => {
     expect(screen.getByText('ON')).toBeTruthy();
     expect(screen.getByText('Civic')).toBeTruthy();
     expect(screen.queryByText(/add your vehicle/)).toBeNull();
-    fireEvent.press(screen.getByRole('button', { name: 'Next' }));
-    fireEvent.press(await screen.findByRole('button', { name: 'Go to home' }));
+    await finishSetup();
     expect(await screen.findByText('No shift running.')).toBeTruthy();
+    // Every step was left for later, so Home lists them.
+    expect(screen.getByText('Allow location all the time')).toBeTruthy();
+    expect(screen.getByText('Keep MileWage running')).toBeTruthy();
   });
 
   it('no vehicle: sends the driver to the web, and Check again picks it up', async () => {
@@ -53,5 +58,49 @@ describe('after connecting (plan 24 screens 5 and 10)', () => {
   it('a phone already connected before this update goes straight to Home', async () => {
     render(<App services={makeServices(serverWith(() => []).fetch, { paired: true }).services} />);
     expect(await screen.findByText('No shift running.')).toBeTruthy();
+  });
+});
+
+describe('permission steps (plan 24 screens 6 to 9)', () => {
+  it('asks one at a time in the ladder order, then Ready', async () => {
+    const permissions = new FakePermissions();
+    const tracker = new FakeTracker();
+    const { services } = makeServices(serverWith(() => [{ id: 3, name: 'Civic' }]).fetch, {
+      permissions,
+      tracker,
+    });
+    render(<App services={services} />);
+    await connect();
+    fireEvent.press(await screen.findByRole('button', { name: 'Next' }));
+    for (const action of [
+      'I understand',
+      'Allow location',
+      'Open settings',
+      'Allow movement',
+      'Allow notifications',
+      'Open battery settings',
+    ]) {
+      fireEvent.press(await screen.findByRole('button', { name: action }));
+    }
+    expect(await screen.findByText("You're ready")).toBeTruthy();
+    expect(permissions.requests).toEqual(['foreground', 'background', 'activity', 'notifications']);
+    expect(tracker.batterySettingsOpened).toBe(1);
+  });
+
+  it('a step already allowed is not shown', async () => {
+    const permissions = new FakePermissions({
+      foregroundLocation: 'granted',
+      backgroundLocation: 'granted',
+      activityRecognition: 'granted',
+      notifications: 'granted',
+    });
+    const { services, plain } = makeServices(serverWith(() => []).fetch, { permissions });
+    plain.data.set('perm.batteryVisited', '1');
+    render(<App services={services} />);
+    await connect();
+    fireEvent.press(await screen.findByRole('button', { name: 'Next' }));
+    fireEvent.press(await screen.findByRole('button', { name: 'I understand' }));
+    expect(await screen.findByText("You're ready")).toBeTruthy();
+    expect(permissions.requests).toEqual([]);
   });
 });
