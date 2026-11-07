@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { App } from '../src/App';
 import { FakePermissions } from '../src/permissions/fake';
 import { json } from './support/mock';
-import { server, setup } from './support/shiftKit';
+import { ID, server, setup } from './support/shiftKit';
 
 jest.mock(
   'react-native-safe-area-context',
@@ -58,5 +58,23 @@ describe('no dead ends', () => {
     expect(await screen.findByText('That odometer reading is not a number.')).toBeTruthy();
     expect(services.shift.current).toBeNull();
     expect(screen.queryByText('Shift running')).toBeNull();
+  });
+
+  it('a shift that is gone shows why and a way back', async () => {
+    const { services } = setup(server({ 'POST /shifts': () => down() }), {
+      paired: true,
+      permissions: allowed(),
+    });
+    await services.shift.start({ vehicleId: 3 });
+    await services.shift.end();
+    render(<App services={services} />);
+    fireEvent.press(await screen.findByRole('button', { name: 'Shifts' }));
+    const row = await screen.findByRole('button', { name: /^Shift / });
+    // Deleted on the server while the list was open, as a sync tombstone would do.
+    await services.shifts.remove(ID);
+    fireEvent.press(row);
+    expect(await screen.findByText('This shift is no longer on this phone.')).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: 'Back to shifts' }));
+    expect(await screen.findByText('No shifts yet.')).toBeTruthy();
   });
 });
