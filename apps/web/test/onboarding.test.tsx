@@ -246,7 +246,9 @@ describe('onboarding wizard (plan 23)', () => {
         },
       }),
       // The server has the app file: the step offers it beside the code (plan 24 section 4.3).
-      'HEAD /app/android.apk': () => ({}),
+      'GET /app': () => ({
+        body: { apk: { size_bytes: 1, updated_at: 1, version: null }, store_url: null },
+      }),
       // The wizard reads the list once; the step's first check finds the phone.
       'GET /devices': () => ({
         body: ++asked > 1 ? [{ ...phone, last_seen_at: 2, revoked_at: null }] : [],

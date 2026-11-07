@@ -36,7 +36,13 @@ function server(initial = [phone()], apk = false, base = 'https://host') {
             body: { code: 'validation_failed', detail: 'The address must start with https://' },
           }
         : { status: 201, body: body?.base_url ? code(body.base_url, 'driver') : code(base) },
-    ...(apk ? { 'HEAD /app/android.apk': () => ({}) } : {}),
+    ...(apk
+      ? {
+          'GET /app': () => ({
+            body: { apk: { size_bytes: 1, updated_at: 1, version: null }, store_url: null },
+          }),
+        }
+      : {}),
     'PATCH /devices/1': ({ body }: { body: unknown }) => {
       devices = [phone({ name: (body as { name: string }).name })];
       return { body: devices[0] };
@@ -84,7 +90,7 @@ describe('devices page', () => {
     const open = await screen.findByRole('link', { name: 'Open in the MileWage app' });
     expect(open.getAttribute('href')).toBe('milewage://pair?v=1&u=https%3A%2F%2Fhost&t=mwp_x');
     const get = await screen.findByRole('link', { name: 'Get the app' });
-    expect(get.getAttribute('href')).toBe('/api/v1/app/android.apk');
+    expect(get.getAttribute('href')).toBe('/app');
     agent.mockRestore();
   });
 

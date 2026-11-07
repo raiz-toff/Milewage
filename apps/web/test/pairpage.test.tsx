@@ -16,7 +16,11 @@ afterEach(() => {
 const open = (hash: string, apk: boolean, agent = 'Mozilla/5.0 (Linux; Android 15)') => {
   history.replaceState(null, '', `/pair${hash}`);
   vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(agent);
-  const fetch = vi.fn(async () => new Response(null, { status: apk ? 200 : 404 }));
+  const info = {
+    apk: apk ? { size_bytes: 1, updated_at: 1, version: null } : null,
+    store_url: null,
+  };
+  const fetch = vi.fn(async () => Response.json({ ...info, page_url: '', base_url: '' }));
   vi.stubGlobal('fetch', fetch);
   render(<PairPage />);
   return fetch;
@@ -28,9 +32,11 @@ describe('pair page', () => {
     const link = screen.getByRole('link', { name: 'Open in the MileWage app' });
     const base = encodeURIComponent(location.origin);
     expect(link.getAttribute('href')).toBe(`milewage://pair?v=1&u=${base}&t=${TOKEN}`);
-    expect(await screen.findByRole('link', { name: 'Get the app' })).toBeTruthy();
+    // Get the app opens the download page (store link, app file, how to install).
+    const get = await screen.findByRole('link', { name: 'Get the app' });
+    expect(get.getAttribute('href')).toBe('/app');
     const req = (fetch.mock.calls[0] as unknown as [Request])[0];
-    expect([req.method, new URL(req.url).pathname]).toEqual(['HEAD', '/api/v1/app/android.apk']);
+    expect([req.method, new URL(req.url).pathname]).toEqual(['GET', '/api/v1/app']);
   });
 
   it('no app file: no Get the app; a broken link says what to do', async () => {

@@ -13,10 +13,11 @@ describe('Caddyfile screen list', () => {
 
   it('turns a pattern into its bare path and its wildcard', () => {
     const a = spaPaths([{ path: '/a/*', label: 'A', element: null }]);
-    expect(a).toEqual(['/', '/pair', '/onboarding', '/onboarding/*', '/a', '/a/*']);
+    expect(a).toEqual(['/', '/pair', '/app', '/onboarding', '/onboarding/*', '/a', '/a/*']);
     expect(spaPaths([{ path: '/b', label: 'B', element: null }])).toEqual([
       '/',
       '/pair',
+      '/app',
       '/onboarding',
       '/onboarding/*',
       '/b',
