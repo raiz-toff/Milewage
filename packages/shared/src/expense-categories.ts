@@ -1,4 +1,4 @@
-// Expense categories (18 section 5.1): data, not a table. Mapping a category to a T2125 or
+// Expense categories (18 section 5.1, two added in 21 section 3.6c): data, not a table. Mapping a category to a T2125 or
 // Schedule C line is out of this version because the line numbers are not verified (11 section 4).
 
 export interface ExpenseCategory {
@@ -38,6 +38,15 @@ export const EXPENSE_CATEGORIES: readonly ExpenseCategory[] = [
   c('licensing', 'Licence and registration', { vehicle_related: true }),
   c('interest', 'Loan interest', { vehicle_related: true }),
   c('leasing', 'Lease payments', { vehicle_related: true }),
+  // 21 section 3.6c: short-term rent and instalments towards owning the vehicle. Covered by a
+  // standard mileage rate as the IRS treats lease payments (Publication 463). A finance or
+  // hire-purchase payment includes the price of the vehicle, so it is not deductible by default.
+  c('vehicle_rental', 'Vehicle rental', { vehicle_related: true, covered_by_standard_rate: true }),
+  c('vehicle_finance', 'Finance or hire-purchase payments', {
+    vehicle_related: true,
+    covered_by_standard_rate: true,
+    default_deductible: false,
+  }),
   c('fees', 'Platform and service fees'),
   c('phone', 'Phone', { default_business_pct: 50 }),
   c('data_plan', 'Data plan', { default_business_pct: 50 }),

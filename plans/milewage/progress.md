@@ -1036,3 +1036,13 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Tests: `apps/server/test/ownership.test.ts` (4: default and each value, 422 for unknown and null, sync feed, migration on a database with vehicles, shifts and readings); `vehicles.test.ts` and the `core/0008` rebuild test in `profile.test.ts` updated for the new column; phone `pull.test.ts` (a vehicle with `ownership` and an unknown future value caches as before).
 - Not done: expense categories (V2), web form (V3).
 - Expected conflicts: `openapi.yaml`, `packages/shared/generated/*` and `progress.md` with Tracks J and L; `core/0009` if another track adds a core migration (rename to the next number).
+
+## PR V2 — Vehicles: rental and finance expense categories (Track V)
+
+- Branch `pr-V2-vehicle-cost-categories` (pushed, not merged), stacked on `pr-V1-vehicle-ownership`.
+- Done: two expense categories (`packages/shared/src/expense-categories.ts`): `vehicle_rental` "Vehicle rental" and `vehicle_finance` "Finance or hire-purchase payments", both vehicle related. `leasing` ("Lease payments") and `interest` ("Loan interest") already existed and are unchanged. The web Expenses form, CSV import (by slug or label) and the reports pick them up from the registry with no other change. `18` §5.1 points to `21` §3.6c.
+- Standards checked: [IRS Publication 463](https://www.irs.gov/publications/p463) (with the standard mileage rate "you can't deduct depreciation, lease payments, …"); [QuickBooks Schedule C categories](https://quickbooks.intuit.com/learn-support/en-us/help-article/expense-accounts/schedule-c-expense-categories-quickbooks-self/L1viz8KIU_US_en_US) ("Vehicle lease", "Vehicle loan interest"; the loan itself is not an expense); [Schedule C](https://www.irs.gov/pub/irs-pdf/f1040sc.pdf) line 20a (rent or lease of vehicles).
+- Assumption (owner to confirm): `vehicle_finance` is not deductible by default (a repayment includes the price of the vehicle); the driver can tick it. Both new categories count as covered by a standard mileage rate, so on a car under that method they are flagged as counting twice, as fuel is. `leasing` keeps Comma's setting; changing it is a country rule (J7).
+- Tests: `apps/server/test/vehicle-costs.test.ts` (3: the list and flags, finance not deductible until ticked, the double-count flag on a car and not on a scooter or an actual-expense vehicle). All 3 fail without the change.
+- Not done: web vehicle form (V3). No per-country relabelling (J7).
+- Expected conflicts: `progress.md`; `expense-categories.ts` if Track J moves categories into the country contract (J7).
