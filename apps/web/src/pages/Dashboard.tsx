@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { useSession, useSettings } from '../session';
-import { GoalRing, RegionPrompt, SetupChecklist } from './DashboardExtras';
+import { GoalRing, Notices, SetupChecklist } from './DashboardExtras';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { EmptyState, PageHeader, Section } from '../ui/layout';
@@ -129,16 +129,52 @@ export function Dashboard({ now }: { now?: number }) {
   const settings = useSettings();
   const at = now ?? Date.now();
   const [period, setPeriod] = useState('week');
+  const [ref, wide] = useWide(896);
+  const hero = <DashboardHero now={at} period={period} onPeriod={setPeriod} />;
+  const goal = settings.modules.goals ? <GoalRing /> : null;
   return (
-    <section className="space-y-6">
+    <section ref={ref} className="space-y-6">
       <Greeting now={at} />
-      <RegionPrompt />
-      <DashboardHero now={at} period={period} onPeriod={setPeriod} />
-      <div className="grid items-start gap-4 lg:grid-cols-2">
-        <SetupChecklist />
-        {settings.modules.goals ? <GoalRing /> : null}
+      <div className="space-y-3 empty:hidden">
+        <Notices today={localDate(at, settings.timezone)} />
       </div>
-      <RecentShifts />
+      {wide ? (
+        // Wide: setup and goal form a side column; without either the main column takes it all.
+        <div className="grid grid-cols-[minmax(0,1fr)_20rem] items-start gap-6 has-[>[data-side]:empty]:grid-cols-1">
+          <div className="min-w-0 space-y-6">
+            {hero}
+            <RecentShifts />
+          </div>
+          <div data-side="" className="space-y-4 empty:hidden">
+            <SetupChecklist />
+            {goal}
+          </div>
+        </div>
+      ) : (
+        // Narrow: one column with setup first while it is unfinished (Comma has it below the goal).
+        <div className="space-y-6">
+          <SetupChecklist />
+          {hero}
+          {goal}
+          <RecentShifts />
+        </div>
+      )}
     </section>
   );
+}
+
+/** Whether the element is at least `px` wide (the sidebar takes part of the window). */
+function useWide(px: number) {
+  const ref = useRef<HTMLElement>(null);
+  const [wide, setWide] = useState(false);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setWide(el.clientWidth >= px);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [px]);
+  return [ref, wide] as const;
 }

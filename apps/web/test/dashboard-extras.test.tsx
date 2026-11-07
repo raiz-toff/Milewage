@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PERIODS } from '../src/pages/Dashboard';
 import { renderApp, settingsFixture, signedIn, DASHBOARD } from './support/kit';
@@ -66,6 +66,9 @@ function open(
     backups?: object[];
     devices?: object[];
     platforms?: object[];
+    shifts?: object[];
+    notifications?: object[];
+    streak?: number;
   },
   modules: object = {},
 ) {
@@ -78,12 +81,108 @@ function open(
       'GET /backups': () => ({ body: world.backups ?? [] }),
       'GET /devices': () => ({ body: world.devices ?? [] }),
       'GET /platforms': () => ({ body: world.platforms ?? [] }),
+      'GET /shifts': () => ({ body: { items: world.shifts ?? [], next_cursor: null } }),
+      'GET /notifications': () => ({
+        body: { items: world.notifications ?? [], next_cursor: null, unread_count: 0 },
+      }),
+      'GET /progress': () => ({
+        body: {
+          xp: 0,
+          level: 1,
+          xp_into_level: 0,
+          xp_per_level: 100,
+          challenges: [],
+          badges: [],
+          streak: { days: world.streak ?? 0, freezes_held: 0, at_risk: false },
+        },
+      }),
     },
     '/dashboard',
   );
 }
 
+const shift = (id: number, review: boolean) => ({
+  id,
+  local_date: '2027-01-14',
+  started_at: 1,
+  ended_at: 2,
+  status: 'ended',
+  segmenter: 'whole_shift',
+  total_m: 1000,
+  active_m: 1000,
+  deadhead_m: 0,
+  deduction_cents: null,
+  notes: null,
+  flags: review ? [{ code: 'gap_counted', severity: 'review' }] : [{ code: 'x', severity: 'info' }],
+});
+
 describe('dashboard checklist and goal ring (18 section 13)', () => {
+  it('shows the streak with the goal while the progress module runs', async () => {
+    open({ goals: [goal()], streak: 6 });
+    expect(await screen.findByText('6-day streak')).toBeTruthy();
+    cleanup();
+    const off = open({ goals: [goal()], streak: 6 }, { progress: false });
+    await screen.findByRole('group', { name: 'Goal' });
+    expect(screen.queryByText(/streak/)).toBeNull();
+    expect(off.calls.some((c) => c.path === '/progress')).toBe(false);
+  });
+
+  it('notices: shifts to review in the last 30 days and a backup problem, each with a link', async () => {
+    const s = open({
+      shifts: [shift(1, true), shift(2, false), shift(3, true)],
+      notifications: [
+        {
+          id: 1,
+          kind: 'backup_overdue',
+          body_key: 'backup.overdue',
+          ref: '',
+          created_at: 1,
+          read_at: null,
+        },
+      ],
+    });
+    const review = (await screen.findByText(/2 shifts from the last 30 days have checks/)).closest(
+      '[role="note"]',
+    )!;
+    expect(
+      within(review as HTMLElement)
+        .getByRole('link', { name: 'Review shifts' })
+        .getAttribute('href'),
+    ).toBe('/shifts');
+    const backup = (await screen.findByText(/No successful backup/)).closest('[role="note"]')!;
+    expect(
+      within(backup as HTMLElement)
+        .getByRole('link', { name: 'Open Backups' })
+        .getAttribute('href'),
+    ).toBe('/backups');
+    expect(
+      s.calls.find((c) => c.path === '/shifts' && c.query.includes('from=2026-12-17'))!.query,
+    ).toContain('to=2027-01-15');
+    cleanup();
+    open({ shifts: [shift(2, false)] }, { notifications: false });
+    await screen.findByRole('group', { name: 'Finish setting up' });
+    expect(screen.queryByText(/checks to review|No successful backup/)).toBeNull();
+  });
+
+  it('wide: setup and goal sit in a side column after the hero and the shifts; narrow: setup first', async () => {
+    open({ goals: [goal()] });
+    const card = await screen.findByRole('group', { name: 'Finish setting up' });
+    const hero = await screen.findByRole('region', { name: 'Earned' });
+    expect(card.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    cleanup();
+    const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1000);
+    try {
+      open({ goals: [goal()] });
+      const side = (await screen.findByRole('group', { name: 'Finish setting up' })).parentElement!;
+      expect(side.hasAttribute('data-side')).toBe(true);
+      expect(await within(side).findByRole('group', { name: 'Goal' })).toBeTruthy();
+      const recent = await screen.findByRole('region', { name: 'Recent shifts' });
+      expect(recent.compareDocumentPosition(side) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    } finally {
+      width.mockRestore();
+    }
+  });
+
   it('lists what is not done from server state, for the modules that are on', async () => {
     open({ vehicles: [vehicle] });
     const card = await screen.findByRole('group', { name: 'Finish setting up' });
@@ -127,7 +226,11 @@ describe('dashboard checklist and goal ring (18 section 13)', () => {
   it('shows the first active goal as the ring, and nothing without a goal or with the module off', async () => {
     open({ vehicles: [vehicle], goals: [goal({ id: 2, label: 'Paused', active: false }), goal()] });
     const ring = await screen.findByRole('group', { name: 'Goal' });
-    expect(ring.textContent).toMatch(/Weekly pay.*\$250\.00 of \$500\.00/);
+    expect(ring.textContent).toMatch(/Weekly goal.*Weekly pay.*50%.*\$250\.00 of \$500\.00/);
+    expect(within(ring).getByRole('progressbar').getAttribute('aria-valuenow')).toBe('50');
+    expect(within(ring).getByRole('link', { name: 'Open Goals' }).getAttribute('href')).toBe(
+      '/goals',
+    );
     cleanup();
     open({ goals: [] });
     await screen.findByRole('group', { name: 'Finish setting up' });
