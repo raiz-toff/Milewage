@@ -1,5 +1,5 @@
 import { countryPacks } from '@milewage/shared';
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { App } from '../src/App';
 import { summarize, weekStart } from '../src/store/summary';
 import { drive, server, setup } from './support/shiftKit';
@@ -81,7 +81,11 @@ describe('home summary', () => {
     clock.t += 100_000;
     await services.shift.end();
     render(<App services={services} />);
-    expect(await screen.findByText(/This week: .* mi · deduction value \$/)).toBeTruthy();
-    expect(screen.getAllByText(/includes 1 shift not yet on the server/).length).toBe(2);
+    expect((await screen.findByLabelText('Distance this week')).props.children).toMatch(/ mi$/);
+    expect(screen.getByLabelText(/^Deduction value \$/)).toBeTruthy();
+    expect(screen.getByText('This week includes 1 shift not yet on the server.')).toBeTruthy();
+    fireEvent.press(screen.getByRole('tab', { name: 'This month' }));
+    expect(screen.getByLabelText('Distance this month')).toBeTruthy();
+    expect(screen.getByText('This month includes 1 shift not yet on the server.')).toBeTruthy();
   });
 });

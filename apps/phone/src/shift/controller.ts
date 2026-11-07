@@ -74,6 +74,8 @@ export interface ShiftDeps {
 
 const KEY = 'shift.active';
 const K_VEHICLE = 'shift.lastVehicle';
+/** The last vehicle list from the server, for starting a shift offline. */
+const K_VEHICLES = 'shift.vehicles';
 
 /** Start / end shift (09 section 5, 08 section 4.2, 02). Record first, tell the server second. */
 export class ShiftController {
@@ -118,10 +120,26 @@ export class ShiftController {
     );
   }
 
-  async vehicles(): Promise<Vehicle[]> {
+  /**
+   * The driver's vehicles. Each answer from the server is kept, so a shift can still be started
+   * with no connection (the vehicle list was a dead end offline). Throws only when the server
+   * cannot be reached and nothing was ever kept; `offline` says the list came from the copy.
+   */
+  async vehicles(): Promise<Vehicle[] & { offline?: boolean }> {
     const s = await this.d.session();
     if (!s) return [];
-    return (await s.client.request<Vehicle[]>('GET', '/vehicles')).data;
+    try {
+      const list = (await s.client.request<Vehicle[]>('GET', '/vehicles')).data;
+      await this.d.store.set(
+        K_VEHICLES,
+        JSON.stringify(list.map(({ id, name }) => ({ id, name }))),
+      );
+      return list;
+    } catch (e) {
+      const kept = await this.d.store.get(K_VEHICLES);
+      if (!kept) throw e;
+      return Object.assign(JSON.parse(kept) as Vehicle[], { offline: true });
+    }
   }
 
   async start(opts: { vehicleId: number; odometerStartM?: number | null }): Promise<StartResult> {

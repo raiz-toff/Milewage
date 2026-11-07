@@ -1,19 +1,23 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { View } from 'react-native';
+import { AlertTriangle, CloudCheck, CloudOff } from 'lucide-react-native';
+import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
+import { Button } from '../components/ui/button';
+import { Text } from '../components/ui/text';
 import { useServices } from '../services';
 import { reminderFor, type SyncStatus } from '../sync/status';
-import { useTheme } from '../theme/theme';
+import { useColors } from '../theme/theme';
 
 const DAY = 86_400_000;
 const K_REMINDER = 'reminder.lastShownAt';
 
 /**
- * The one banner on the home screen (15 section 4.3, 4.4): what is not on the server yet, the
- * colour state, any red-state sentence, and the unsynced reminder (3 days, then daily, stronger
- * from 7). The reminder is shown here only: an operating-system notification adapter is not wired.
+ * The one sync notice on the home screen (15 section 4.3, 4.4): what is not on the server yet,
+ * any red-state sentence, and the unsynced reminder (3 days, then daily, stronger from 7).
+ * All synced is one quiet line; anything waiting is an alert.
  */
 export function SyncBanner({ onSettings }: { onSettings: () => void }) {
-  const theme = useTheme();
+  const C = useColors();
   const { status, sync, monitor, plain, shift, uploader, runner } = useServices();
   const [s, setS] = useState<SyncStatus | null>(null);
   const [reminder, setReminder] = useState('');
@@ -37,41 +41,54 @@ export function SyncBanner({ onSettings }: { onSettings: () => void }) {
   }, [sync, refresh]);
 
   if (!s) return null;
-  const colour = { green: theme.accent, yellow: theme.text, red: theme.text }[s.color];
   const days = s.oldestAt === null ? 0 : Math.floor((Date.now() - s.oldestAt) / DAY);
   const wrong = monitor.wrongServer;
+  const label = `Sync status ${s.color}`;
+
+  if (s.color === 'green' && s.unsyncedShifts === 0 && !s.message && !wrong && reminder === '') {
+    return (
+      <View accessibilityLabel={label} className="flex-row items-center justify-center gap-2">
+        <CloudCheck size={14} color={C.mutedForeground} />
+        <Text variant="muted">Everything is on the server.</Text>
+      </View>
+    );
+  }
+
   return (
-    <View accessibilityLabel={`Sync status ${s.color}`} style={{ marginTop: 12 }}>
-      <Text style={{ color: colour }}>
+    <Alert
+      accessibilityLabel={label}
+      variant={s.color === 'red' ? 'destructive' : 'default'}
+      icon={s.color === 'red' ? AlertTriangle : CloudOff}
+    >
+      <AlertTitle>
         {s.unsyncedShifts === 0
           ? 'Everything is on the server.'
           : `Not yet on server: ${s.unsyncedShifts} ${s.unsyncedShifts === 1 ? 'shift' : 'shifts'} · ${s.unsyncedPoints} points · oldest ${days} days ago`}
-      </Text>
-      {s.message && (
-        <Text accessibilityRole="alert" style={{ color: theme.text }}>
-          {s.message}
-        </Text>
-      )}
-      {reminder !== '' && <Text style={{ color: theme.text }}>{reminder}</Text>}
+      </AlertTitle>
+      {s.message && <AlertDescription accessibilityRole="alert">{s.message}</AlertDescription>}
+      {reminder !== '' && <AlertDescription>{reminder}</AlertDescription>}
       {wrong && (
-        <>
-          <Pressable
-            accessibilityRole="button"
+        <View className="flex-row flex-wrap gap-2 pt-1">
+          <Button
+            variant="outline"
+            size="sm"
             onPress={() => {
               monitor.clearWrongServer();
               void refresh();
             }}
           >
-            <Text style={{ color: theme.accent }}>Check the address</Text>
-          </Pressable>
-          <Pressable accessibilityRole="button" onPress={onSettings}>
-            <Text style={{ color: theme.accent }}>Re-pair to the new server</Text>
-          </Pressable>
-        </>
+            <Text>Check the address</Text>
+          </Button>
+          <Button variant="outline" size="sm" onPress={onSettings}>
+            <Text>Re-pair to the new server</Text>
+          </Button>
+        </View>
       )}
       {s.unsyncedShifts > 0 && !wrong && (
-        <Pressable
-          accessibilityRole="button"
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-1 self-start"
           disabled={busy}
           onPress={async () => {
             setBusy(true);
@@ -83,9 +100,9 @@ export function SyncBanner({ onSettings }: { onSettings: () => void }) {
             await refresh();
           }}
         >
-          <Text style={{ color: theme.accent }}>Sync now</Text>
-        </Pressable>
+          <Text>{busy ? 'Sending…' : 'Sync now'}</Text>
+        </Button>
       )}
-    </View>
+    </Alert>
   );
 }
