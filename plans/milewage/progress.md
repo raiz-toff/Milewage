@@ -1517,3 +1517,17 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Visual check: a sheet of every built-in plus custom examples at 28 and 20 px, with logos on and off, light and dark (`/tmp/claude-1000/-home-coder-Production-milewage/36d23177-8421-4bf2-8eda-bc483d8cb560/scratchpad/platform-logos/badges-sheet.png`). The Uber Eats wordmark is small at 20 px but readable.
 - Not done: using the badge on screens (PL2).
 - Assumption (owner to confirm): as PL0 (logos on for the five; Skip and Foodora colours are best guesses).
+
+## PR PL2 — Platform badges on the web screens (plan 25)
+
+- Branch `pr-PL2-platform-badges-in-ui` (pushed, not merged), on `pr-PL1-platform-badge`.
+- Done (plan 25 section 4.4):
+  - Settings › Your platforms: a 28 px badge on each row (faded when the platform is off); a stored emoji now shows in the badge instead of before the name; new line "Platform names and logos belong to their owners. MileWage is not affiliated with them."
+  - Onboarding › Your apps: the badge inside each checkbox's label (hidden from screen readers, so each box is still named by the platform).
+  - Shift page: each platform with earnings in the header line, the Earnings rows, the Platform select (options and the closed select, through a new optional `icon` on `PickOption`), and the entries ledger's rows and "Line platform" select. `EarnedSummary.platforms` now carries the platforms, not only their names. The badge's mark is filled with its own colour, so a focused select option does not repaint it.
+  - Analytics › Income sources: badge and the platform's name (it showed the raw slug, e.g. `doordash`), through `usePlatformOf` (`apps/web/src/platforms/usePlatforms.ts`).
+  - Badge corners are now proportional (22 %), so 20 and 28 px badges have the same shape.
+- Tests: `platforms.test.tsx` (DoorDash's mark, a custom platform's initials, the not-affiliated line), `onboarding.test.tsx` (badge in the label, hidden), `shiftearnings.test.tsx` (row, Platform select, ledger row and Line platform select), `shifts.test.tsx` (header: mark for DoorDash, initials for an unknown slug; what a screen reader reads is unchanged), `analytics.test.tsx` (name, not slug, and badge). `npm run verify` green.
+- Visual check: headless Chromium (Playwright cache, `playwright-core` borrowed from another project; script in the session scratchpad, nothing added to the repo) on the Vite dev server with the API answered by fixtures (every built-in platform, Grubhub switched off, two custom ones, one with a stored colour; a shift with three platforms; analytics with seven sources). Settings › Platforms, the shift page (top and earnings), Analytics and onboarding apps at 390 and 1280 px, light and dark: no sideways scroll, no page errors. Screenshots in `/tmp/claude-1000/-home-coder-Production-milewage/36d23177-8421-4bf2-8eda-bc483d8cb560/scratchpad/platform-logos`. Found and fixed: at 20 px shadcn's `rounded-md` (8 px) made the badge look round.
+- Not done: the dashboard's recent shifts (another builder is redesigning `Dashboard.tsx` / `DashboardExtras.tsx`; drop in `PlatformName` from `apps/web/src/platforms/PlatformBadge.tsx`); the shifts list (the API has no platforms per shift); a colour or emoji picker for platforms (the API accepts both; no screen sets them); the phone.
+- Assumption (owner to confirm): as PL0 (logos on for five platforms; `SHOW_PLATFORM_LOGOS = false` shows initials everywhere).

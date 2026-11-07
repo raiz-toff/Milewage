@@ -82,9 +82,10 @@ describe('analytics screen (module analytics)', () => {
     expect(figures.textContent).toMatch(/Net take-home\$220\.00/);
     expect(screen.getByText(/Not enough shifts to project/)).toBeTruthy();
     expect(screen.getByText(/estimated from detected stops/)).toBeTruthy();
-    expect(screen.getByRole('region', { name: 'Income sources' }).textContent).toMatch(
-      /doordash: \$300\.00 \(100%\)/,
-    );
+    const sources = screen.getByRole('region', { name: 'Income sources' });
+    // The platform's name and badge (plan 25), not its slug.
+    expect(sources.textContent).toMatch(/DoorDash: \$300\.00 \(100%\)/);
+    expect(sources.querySelector('[data-platform="doordash"]')).not.toBeNull();
     expect(screen.getByRole('region', { name: 'Work rhythm' }).textContent).toMatch(
       /Busiest weekday: Tuesday/,
     );

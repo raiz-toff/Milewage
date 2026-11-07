@@ -104,7 +104,7 @@ export function PlatformBadge({
       data-platform={platform.slug}
       data-look={look.kind}
       className={cn(
-        'inline-flex shrink-0 items-center justify-center rounded-md leading-none font-semibold select-none',
+        'inline-flex shrink-0 items-center justify-center rounded-[22%] leading-none font-semibold select-none',
         size === 'sm' ? 'size-5 text-[9px]' : 'size-7 text-xs',
         look.bg === null && 'bg-muted text-muted-foreground shadow-[inset_0_0_0_1px_var(--border)]',
         className,
@@ -112,7 +112,12 @@ export function PlatformBadge({
       style={style}
     >
       {look.kind === 'mark' ? (
-        <svg viewBox="0 0 24 24" className="size-[60%]" fill="currentColor" aria-hidden>
+        <svg
+          viewBox="0 0 24 24"
+          className="size-[60%]"
+          fill={look.fg ?? 'currentColor'}
+          aria-hidden
+        >
           <path d={look.path} />
         </svg>
       ) : look.kind === 'emoji' ? (

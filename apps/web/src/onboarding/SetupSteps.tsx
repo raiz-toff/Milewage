@@ -4,6 +4,8 @@ import { Label } from '@/components/ui/label';
 import { unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { slugOf } from '../pages/Platforms';
+import { PlatformBadge } from '../platforms/PlatformBadge';
+import type { PlatformLike } from '../platforms/PlatformBadge';
 import { KINDS, OWNERSHIP } from '../pages/Vehicles';
 import { useSession } from '../session';
 import { Field, SelectField } from '../ui/form';
@@ -23,18 +25,24 @@ export const appsAnswered = (c: OnboardingCtx) => listedApps(c).some((p) => p.cu
 function Tick({
   id,
   label,
+  platform,
   checked,
   onChange,
 }: {
   id: string;
   label: string;
+  /** Shows the platform's badge before the name (plan 25). */
+  platform?: PlatformLike;
   checked: boolean;
   onChange: (on: boolean) => void;
 }) {
   return (
     <div className="flex items-center gap-3">
       <Checkbox id={id} checked={checked} onCheckedChange={(v) => onChange(v === true)} />
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id}>
+        {platform ? <PlatformBadge platform={platform} /> : null}
+        {label}
+      </Label>
     </div>
   );
 }
@@ -73,6 +81,7 @@ export function AppsStep({ ctx, next }: StepProps) {
             key={p.slug}
             id={`app-${p.slug}`}
             label={p.label}
+            platform={p}
             checked={on.includes(p.slug)}
             onChange={(v) =>
               setOn((list) => (v ? [...list, p.slug] : list.filter((s) => s !== p.slug)))

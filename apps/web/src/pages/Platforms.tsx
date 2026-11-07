@@ -7,6 +7,7 @@ import { Button as UiButton } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useSession } from '../session';
 import { Button, Field, FormError } from '../ui/form';
+import { PlatformBadge } from '../platforms/PlatformBadge';
 
 type Platform = Schemas['Platform'];
 
@@ -78,11 +79,11 @@ export function PlatformsCard() {
         <ul className="divide-y rounded-lg border">
           {list.map((p) => (
             <li key={p.slug} className="flex items-center gap-3 px-3 py-2">
+              <PlatformBadge platform={p} size="md" className={p.active ? '' : 'opacity-50'} />
               <label
                 htmlFor={`platform-${p.slug}`}
                 className={`flex-1 text-sm ${p.active ? '' : 'text-muted-foreground line-through'}`}
               >
-                {p.emoji ? `${p.emoji} ` : ''}
                 {p.label}
               </label>
               {p.custom ? (
@@ -120,6 +121,9 @@ export function PlatformsCard() {
       </form>
       <p className="text-xs text-muted-foreground">
         An inactive platform drops out of the pickers; its past labels and earnings stay.
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Platform names and logos belong to their owners. MileWage is not affiliated with them.
       </p>
     </section>
   );

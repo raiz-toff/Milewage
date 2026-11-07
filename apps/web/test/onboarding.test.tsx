@@ -142,6 +142,10 @@ describe('onboarding wizard (plan 23)', () => {
     expect(screen.getByRole('checkbox', { name: 'Uber Eats' }).getAttribute('aria-checked')).toBe(
       'false',
     );
+    // Each app's badge sits in its label, hidden from screen readers (the name says it).
+    expect(
+      document.querySelector('label[for="app-uber_eats"] [aria-hidden="true"]')?.textContent,
+    ).toBe('UE');
     // The built-in "Other" is left alone: "Another app" names the driver's own.
     expect(screen.queryByRole('checkbox', { name: 'Other' })).toBeNull();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Uber Eats' }));

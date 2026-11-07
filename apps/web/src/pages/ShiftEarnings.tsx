@@ -9,6 +9,9 @@ import { EarningLedger } from './EarningLedger';
 import type { EarnedSummary } from './ShiftFacts';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
+import { PlatformBadge, PlatformName } from '../platforms/PlatformBadge';
+import type { PlatformLike } from '../platforms/PlatformBadge';
+import { builtinPlatform } from '@milewage/shared';
 
 type Earnings = Schemas['ShiftEarnings'];
 type Platform = Schemas['Platform'];
@@ -54,10 +57,13 @@ export function ShiftEarnings({
     void load();
   }, [load]);
 
-  const options =
-    platforms.length > 0
-      ? platforms.map((p) => ({ value: p.slug, label: p.label }))
-      : [{ value: 'other', label: 'Other' }];
+  const known: PlatformLike[] =
+    platforms.length > 0 ? platforms : [{ slug: 'other', label: 'Other' }];
+  const options = known.map((p) => ({
+    value: p.slug,
+    label: p.label,
+    icon: <PlatformBadge platform={p} />,
+  }));
   async function save(e: FormEvent) {
     e.preventDefault();
     const platform = options.some((o) => o.value === form.platform)
@@ -103,15 +109,18 @@ export function ShiftEarnings({
     }
   }
 
-  const label = (slug: string) => options.find((o) => o.value === slug)?.label ?? slug;
-  const names = data?.effective.map((r) => label(r.platform)).join('\n');
+  /** A platform by slug: the driver's list, else the built-in name, else the slug itself. */
+  const platformOf = (slug: string): PlatformLike =>
+    known.find((p) => p.slug === slug) ?? { slug, label: builtinPlatform(slug)?.label ?? slug };
+  const label = (slug: string) => platformOf(slug).label;
+  const shown = JSON.stringify(data?.effective.map((r) => platformOf(r.platform)));
   useEffect(() => {
-    if (!data || names === undefined) return;
+    if (!data) return;
     onSummary?.({
       cents: data.effective.length ? data.effective.reduce((t, r) => t + r.total_cents, 0) : null,
-      platforms: names === '' ? [] : names.split('\n'),
+      platforms: JSON.parse(shown) as PlatformLike[],
     });
-  }, [data, names, onSummary]);
+  }, [data, shown, onSummary]);
 
   return (
     <Section label="Earnings" title="Earnings">
@@ -122,10 +131,10 @@ export function ShiftEarnings({
         <ul className="space-y-1">
           {data.effective.map((r) => (
             <li key={r.platform} className="flex items-center gap-3">
-              <span>
+              <PlatformName platform={platformOf(r.platform)}>
                 {label(r.platform)}: {formatMoney(r.total_cents, currency)}
                 {r.orders !== null ? `, ${r.orders} orders` : ''}
-              </span>
+              </PlatformName>
               <span className="text-sm text-muted-foreground">
                 {r.source === 'labels' ? 'from stop labels' : 'entered by you'}
               </span>

@@ -6,6 +6,8 @@ import { describe, unwrap } from '../api/client';
 import { formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
 import { FormError } from '../ui/form';
+import { PlatformName } from '../platforms/PlatformBadge';
+import { usePlatformOf } from '../platforms/usePlatforms';
 import { localDate } from './Dashboard';
 
 type Mode = 'week' | 'month' | 'year';
@@ -42,6 +44,7 @@ const GROUPS = [
 export function AnalyticsPage() {
   const { api } = useSession();
   const { timezone, currency, week_start: weekStart } = useSettings();
+  const platformOf = usePlatformOf();
   const [mode, setMode] = useState<Mode>('week');
   const [offset, setOffset] = useState(0);
   const [data, setData] = useState<Data | null>(null);
@@ -199,9 +202,10 @@ export function AnalyticsPage() {
               <ul className="space-y-3 text-sm">
                 {data.sources.map((s: Data) => (
                   <li key={s.platform} className="space-y-1.5">
-                    <p className="tabular-nums">
-                      {s.platform}: {money(s.earnings_cents)} ({Math.round((s.share ?? 0) * 100)}%)
-                    </p>
+                    <PlatformName platform={platformOf(s.platform)} className="tabular-nums">
+                      {platformOf(s.platform).label}: {money(s.earnings_cents)} (
+                      {Math.round((s.share ?? 0) * 100)}%)
+                    </PlatformName>
                     <div className="h-2 overflow-hidden rounded-full bg-muted">
                       <div
                         className="h-2 rounded-full bg-primary"
