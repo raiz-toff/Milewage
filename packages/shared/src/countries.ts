@@ -2,22 +2,9 @@
 // The deduction is NEVER stored; it is computed at read time from total_m and the pack for the shift's date.
 // Nothing here is a compliance claim: a rate is a published figure, not advice (17 R9).
 
-export type VehicleKind =
-  'car' | 'motorcycle' | 'van' | 'bicycle' | 'ebike' | 'scooter' | 'walking';
+import { notAutomobile, type DeductionInput } from './countries/index';
 
-/** Not an automobile: no mileage allowance rate applies (18 section 4.1). */
-export const notAutomobile = (kind: VehicleKind) =>
-  kind === 'bicycle' || kind === 'ebike' || kind === 'scooter' || kind === 'walking';
-
-export interface DeductionInput {
-  /** Business metres of the trip, shift or period slice being valued. */
-  totalM: number;
-  /** Business metres already driven in the same rate period (calendar year, tax year) before this slice. */
-  priorM: number;
-  /** Local date `YYYY-MM-DD` of the shift. */
-  date: string;
-  vehicleKind: VehicleKind;
-}
+export * from './countries/index';
 
 export interface CountryPack {
   /** ISO 3166-1 alpha-2, upper case. */
