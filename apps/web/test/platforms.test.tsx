@@ -54,12 +54,12 @@ describe('platforms card (module platforms)', () => {
   it('lists platforms, switches one off, adds a custom one and deletes it', async () => {
     const s = server();
     const doordash = await screen.findByLabelText('DoorDash');
-    // Each row has the platform's badge (plan 25) and the list says whose the logos are.
+    // Each row has the platform's badge (plan 25): initials, no bundled logo.
     const region = screen.getByRole('region', { name: 'Platforms' });
     const badge = (slug: string) => region.querySelector(`[data-platform="${slug}"]`);
-    expect(badge('doordash')?.getAttribute('data-look')).toBe('mark');
+    expect(badge('doordash')?.textContent).toBe('DD');
+    expect(badge('doordash')?.querySelector('svg, img')).toBeNull();
     expect(badge('mine')?.textContent).toBe('M');
-    expect(region.textContent).toMatch(/MileWage is not affiliated with them/);
     fireEvent.click(doordash);
     await waitFor(() =>
       expect(s.calls.find((c) => c.path === '/platforms/doordash')?.body).toEqual({

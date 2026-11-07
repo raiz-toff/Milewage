@@ -1,7 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { builtinPlatform } from '@milewage/shared';
 import { cn } from '@/lib/utils';
-import { PLATFORM_MARKS, SHOW_PLATFORM_LOGOS } from './logos';
 
 /** What a badge needs: a row of `GET /platforms`, or a slug and its name. */
 export interface PlatformLike {
@@ -63,24 +62,28 @@ export function initialsOf(label: string) {
     .toUpperCase();
 }
 
-export type BadgeLook = { bg: string | null; fg: string | null } & (
-  { kind: 'mark'; path: string } | { kind: 'emoji' | 'initials'; text: string }
-);
+export interface BadgeLook {
+  kind: 'emoji' | 'initials';
+  text: string;
+  bg: string | null;
+  fg: string | null;
+}
 
-/** What the badge shows for a platform (plan 25 section 4.1). `bg` null: the theme's neutral. */
-export function platformLook(p: PlatformLike, logos = SHOW_PLATFORM_LOGOS): BadgeLook {
+/**
+ * What the badge shows for a platform (plan 25 section 4.1): the driver's emoji, else initials.
+ * MileWage ships no platform's logo (owner decision, plan 25 section 5). `bg` null: the neutral.
+ */
+export function platformLook(p: PlatformLike): BadgeLook {
   const built = builtinPlatform(p.slug);
   const own = p.color && /^#[0-9a-f]{6}$/i.test(p.color) ? p.color : null;
   const bg = own ?? (built ? built.color : customColor(p.slug));
   const fg = bg ? inkOn(bg) : null;
   if (p.emoji) return { kind: 'emoji', text: p.emoji, bg, fg };
-  const path = logos && built?.logo ? PLATFORM_MARKS[p.slug] : undefined;
-  if (path) return { kind: 'mark', path, bg, fg };
   return { kind: 'initials', text: built ? built.initials : initialsOf(p.label), bg, fg };
 }
 
 /**
- * A platform's badge: its mark, emoji or initials on its colour. Hidden from screen readers, because
+ * A platform's badge: its emoji or initials on its colour. Hidden from screen readers, because
  * the name is written next to it; `labelled` names it, for a badge on its own.
  */
 export function PlatformBadge({
@@ -111,16 +114,7 @@ export function PlatformBadge({
       )}
       style={style}
     >
-      {look.kind === 'mark' ? (
-        <svg
-          viewBox="0 0 24 24"
-          className="size-[60%]"
-          fill={look.fg ?? 'currentColor'}
-          aria-hidden
-        >
-          <path d={look.path} />
-        </svg>
-      ) : look.kind === 'emoji' ? (
+      {look.kind === 'emoji' ? (
         <span className={size === 'sm' ? 'text-xs' : 'text-base'}>{look.text}</span>
       ) : (
         look.text

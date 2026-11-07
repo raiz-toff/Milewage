@@ -232,9 +232,9 @@ describe('shift detail', () => {
       return copy.textContent;
     };
     await waitFor(() => expect(spoken()).toMatch(/ · 4h 12m · DoorDash · skip$/));
-    // Each platform with its badge (plan 25): DoorDash's mark, initials for an unknown slug.
+    // Each platform with its badge (plan 25): initials, also for an unknown slug.
     const badge = (slug: string) => header.querySelector(`[data-platform="${slug}"]`);
-    expect(badge('doordash')?.getAttribute('data-look')).toBe('mark');
+    expect(badge('doordash')?.textContent).toBe('DD');
     expect(badge('skip')?.textContent).toBe('S');
     expect(screen.getByText('Earned').parentElement!.textContent).toBe('Earned$63.50');
   });

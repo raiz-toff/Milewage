@@ -5,10 +5,10 @@ get ideas from Comma and implement it", then: "not the milewage logo, like other
 So this plan is about the **gig platforms' marks** (DoorDash, Uber Eats, Instacart, …) next to
 their names in MileWage, as Comma shows them. It is not about a MileWage logo.
 
-**Decision for the owner (section 5):** real logos for some platforms, or coloured initials for all.
-The code supports both; switching is one constant (`SHOW_PLATFORM_LOGOS` in
-`apps/web/src/platforms/logos.ts`) or one line of data per platform (`logo: true` in
-`packages/shared/src/platforms.ts`).
+**Owner decision (2026-11-07, section 5): MileWage ships no platform's logo.** Every platform
+shows its initials (or the driver's emoji) on its colour. The driver may upload a logo image for a
+platform on their own server (section 7). Built: PL0–PL2 (badge with bundled marks), PL3 (marks
+removed), PL4 (upload).
 
 ## 1. Goal
 
@@ -122,8 +122,7 @@ name in capitals (MileWage writes the name in normal text beside the badge), the
 
 A small rounded square ("tile") in the platform's colour, holding one of:
 
-1. the platform's **mark** (one-colour Simple Icons path), when logos are on and the platform has
-   one;
+1. the **logo image the driver uploaded** for that platform (section 7);
 2. an **emoji**, when the driver set one for the platform (`platform_settings.emoji`);
 3. **initials**: one or two capital letters.
 
@@ -133,7 +132,7 @@ the page (Amazon Flex's near-black on the dark theme). Brand colours do not chan
 and dark themes: they are the platforms' identity, and the ring handles the edge.
 
 Sizes: **sm** 20 px (rows, selects, table cells), **md** 28 px (settings list, headers).
-Initials 9 / 12 px semibold; the mark fills 60 % of the tile.
+Initials 9 / 12 px semibold; an uploaded image fills the tile (`object-fit: cover`).
 
 Accessibility: `aria-hidden` by default (the name is next to it); `labelled` gives `role="img"`
 and the name as `aria-label` for a badge on its own.
@@ -143,11 +142,10 @@ and the name as `aria-label` for a badge on its own.
 `packages/shared/src/platforms.ts` gets, per built-in platform:
 
 - `color`: the brand colour, `#rrggbb`, or `null` for "Other" (neutral, the theme's muted colour);
-- `initials`: one or two letters;
-- `logo: true` when the web has the mark's artwork (section 5).
+- `initials`: one or two letters.
 
-Only hex strings and booleans go into `packages/shared`, which the phone bundles; the SVG paths stay
-in the web app (`apps/web/src/platforms/logos.ts`).
+Only hex strings go into `packages/shared`, which the phone bundles. No artwork anywhere in the
+repository.
 
 A platform's colour is chosen in this order: the driver's stored `color` → the built-in brand
 colour → for a custom platform, a colour picked from the slug (a stable hash into six colours that
@@ -158,7 +156,7 @@ first letters of the first two words ("Spark Driver" → SD), or the first lette
 
 ### 4.3 Colours and contrast
 
-| Platform      | Tile      | Source                                                        | Mark / letters | Contrast |
+| Platform      | Tile      | Source                                                        | Letters        | Contrast |
 | ------------- | --------- | ------------------------------------------------------------- | -------------- | -------- |
 | DoorDash      | `#FF3008` | Simple Icons (doordash.com/about)                             | asphalt        | 5.08     |
 | Uber Eats     | `#06C167` | Simple Icons (Uber brand assets)                              | asphalt        | 7.89     |
@@ -189,9 +187,9 @@ is beside them).
 | Shifts list                            | —    | the API has no platforms per shift; add when it does |
 
 The phone shows no platforms today; when it does, the shared colour and initials are there to use
-(`react-native-svg` is already in the phone app for marks, if the owner wants them there).
+(and the driver's uploaded logo, through the same `GET /platforms/{slug}/logo`).
 
-## 5. Real logos or initials only — trade-off and recommendation
+## 5. Real logos or initials only — trade-off and decision
 
 **Real logos**
 
@@ -208,7 +206,7 @@ The phone shows no platforms today; when it does, the shared colour and initials
 - For: no artwork of anyone else's; only the platform names (clear nominative use) and colours.
 - Against: less recognisable; looks less finished than the apps drivers compare it with.
 
-**Recommendation:** logos **on** for the five platforms whose mark Simple Icons publishes and keeps
+**Recommendation at PL0 (superseded):** logos **on** for the five platforms whose mark Simple Icons publishes and keeps
 (DoorDash, Uber Eats, Instacart, Deliveroo, Just Eat), drawn unchanged in one colour, never
 altered, never larger than 28 px, always next to the name; **initials** for Amazon Flex (Amazon
 requires approval), Grubhub and SkipTheDishes (their own marks are not in Simple Icons; the shared
@@ -216,9 +214,14 @@ Just Eat house mark may not be theirs any more), Foodora (no source), Other and 
 platform. Settings › Your platforms carries one line: "Platform names and logos belong to their
 owners. MileWage is not affiliated with them."
 
-- Assumption (owner to confirm): logos on as above. To turn every logo off: set
-  `SHOW_PLATFORM_LOGOS = false` in `apps/web/src/platforms/logos.ts`. To turn one off or on: its
-  `logo: true` in `packages/shared/src/platforms.ts` (adding one also needs its path in `logos.ts`).
+**Owner decision (2026-11-07):** "no, I want to let the user add it, it's self-hosted." MileWage
+ships **no** platform logo: PL3 removed the five Simple Icons marks, the `logo` flags and the
+`SHOW_PLATFORM_LOGOS` switch. Why: the marks are the platforms' trademarks and none of them grants a
+licence, while MileWage's code is public and runs on each driver's own server. A driver who wants a
+logo uploads one image per platform to their own server (section 7); that copy is their own,
+private use, and MileWage only stores and shows it. The "Platform names and logos belong to their
+owners" line appears only where an uploaded logo can appear (Settings › Your platforms).
+
 - Not legal advice; if MileWage is ever sold or offered as a hosted service, ask the platforms or a
   lawyer first.
 
@@ -229,9 +232,15 @@ owners. MileWage is not affiliated with them."
 | PL0 | `pr-PL0-platform-logos-plan`     | this plan                                                                                    |
 | PL1 | `pr-PL1-platform-badge`          | shared `color` / `initials` / `logo`; web `PlatformBadge`, the five marks, tests             |
 | PL2 | `pr-PL2-platform-badges-in-ui`   | the badge in the places of section 4.4, the "not affiliated" line, tests, visual check       |
+| PL3 | `pr-PL3-no-bundled-logos`        | owner decision: the five marks, `logo` flags and `SHOW_PLATFORM_LOGOS` removed; initials     |
+| PL4 | `pr-PL4-platform-logo-upload`    | the driver's own logo per platform: server routes, backups, Settings upload (section 7)      |
 
-Tests (fail without the change): the badge shows the mark for DoorDash and initials for Amazon
-Flex; with logos off, initials for all; a custom platform's stored colour wins and a missing one is
-stable for the same slug; letters and marks reach 4.5:1 on every built-in and fallback colour; the
+Tests (fail without the change): initials for every built-in platform and no bundled image; a custom platform's stored colour wins and a missing one is
+stable for the same slug; letters reach 4.5:1 on every built-in and fallback colour; the
 badge is hidden from screen readers next to the name and labelled when alone; each screen of
 section 4.4 shows the badge.
+
+## 7. The driver's own logo (PL4)
+
+Per platform, built-in or custom, the driver may upload one small image to their own server; the
+badge then shows it instead of the initials. Design, security and backups: written with PL4.

@@ -7,22 +7,20 @@ export interface BuiltinPlatform {
   label: string;
   /** Brand colour of the platform's badge (plan 25 section 4.3); null: the theme's neutral. */
   color: string | null;
-  /** One or two letters for the badge when it shows no mark. */
+  /** One or two letters for the badge. MileWage ships no platform logos (plan 25 section 5). */
   initials: string;
-  /** The web has the platform's mark (plan 25 section 5); the artwork stays in the web app. */
-  logo?: true;
 }
 
 export const BUILTIN_PLATFORMS: readonly BuiltinPlatform[] = [
-  { slug: 'doordash', label: 'DoorDash', color: '#FF3008', initials: 'DD', logo: true },
-  { slug: 'ubereats', label: 'Uber Eats', color: '#06C167', initials: 'UE', logo: true },
+  { slug: 'doordash', label: 'DoorDash', color: '#FF3008', initials: 'DD' },
+  { slug: 'ubereats', label: 'Uber Eats', color: '#06C167', initials: 'UE' },
   { slug: 'skipthedishes', label: 'SkipTheDishes', color: '#FF8000', initials: 'S' },
   { slug: 'foodora', label: 'Foodora', color: '#D70F64', initials: 'F' },
-  { slug: 'instacart', label: 'Instacart', color: '#43B02A', initials: 'I', logo: true },
+  { slug: 'instacart', label: 'Instacart', color: '#43B02A', initials: 'I' },
   { slug: 'amazonflex', label: 'Amazon Flex', color: '#232F3E', initials: 'AF' },
   { slug: 'grubhub', label: 'Grubhub', color: '#FF8000', initials: 'G' },
-  { slug: 'deliveroo', label: 'Deliveroo', color: '#00CCBC', initials: 'D', logo: true },
-  { slug: 'justeat', label: 'Just Eat', color: '#FF8000', initials: 'JE', logo: true },
+  { slug: 'deliveroo', label: 'Deliveroo', color: '#00CCBC', initials: 'D' },
+  { slug: 'justeat', label: 'Just Eat', color: '#FF8000', initials: 'JE' },
   { slug: 'other', label: 'Other', color: null, initials: '…' },
 ];
 

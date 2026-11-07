@@ -12,15 +12,14 @@ import {
   platformLook,
   PlatformName,
 } from '../src/platforms/PlatformBadge';
-import { PLATFORM_MARKS } from '../src/platforms/logos';
 
 afterEach(cleanup);
 
 const doordash = { slug: 'doordash', label: 'DoorDash' };
 
 describe('platform badge (plan 25)', () => {
-  it('shows the mark of a platform with a logo, initials for one without', () => {
-    expect(platformLook(doordash)).toMatchObject({ kind: 'mark', bg: '#FF3008' });
+  it('shows initials on the brand colour; MileWage ships no platform logo', () => {
+    expect(platformLook(doordash)).toMatchObject({ kind: 'initials', text: 'DD', bg: '#FF3008' });
     expect(platformLook({ slug: 'amazonflex', label: 'Amazon Flex' })).toMatchObject({
       kind: 'initials',
       text: 'AF',
@@ -30,15 +29,10 @@ describe('platform badge (plan 25)', () => {
     expect(platformLook({ slug: 'other', label: 'Other' })).toMatchObject({ bg: null });
   });
 
-  it('shows initials for every platform when logos are off', () => {
+  it('shows initials for every built-in platform', () => {
     for (const p of BUILTIN_PLATFORMS) {
-      expect(platformLook(p, false), p.slug).toMatchObject({ kind: 'initials', text: p.initials });
+      expect(platformLook(p), p.slug).toMatchObject({ kind: 'initials', text: p.initials });
     }
-  });
-
-  it('has a mark for each platform marked `logo`, and none for the others', () => {
-    const withLogo = BUILTIN_PLATFORMS.filter((p) => p.logo).map((p) => p.slug);
-    expect(Object.keys(PLATFORM_MARKS).sort()).toEqual([...withLogo].sort());
   });
 
   it("uses a custom platform's own colour, else a stable one from its slug", () => {
@@ -77,7 +71,7 @@ describe('platform badge (plan 25)', () => {
     cleanup();
     render(<PlatformBadge platform={doordash} labelled size="md" />);
     const badge = screen.getByRole('img', { name: 'DoorDash' });
-    expect(badge.getAttribute('data-look')).toBe('mark');
-    expect(badge.querySelector('path')?.getAttribute('d')).toBe(PLATFORM_MARKS.doordash);
+    expect(badge.getAttribute('data-look')).toBe('initials');
+    expect(badge.textContent).toBe('DD');
   });
 });

@@ -50,7 +50,7 @@ describe('platforms slot (plan 21, J2)', () => {
   test('every shared platform is offered somewhere, and the shared list has no country tags', () => {
     const offered = new Set(countryModules.list().flatMap((c) => slugs(c) ?? []));
     for (const p of BUILTIN_PLATFORMS) expect(offered.has(p.slug), p.slug).toBe(true);
-    const allowed = ['color', 'initials', 'label', 'logo', 'slug'];
+    const allowed = ['color', 'initials', 'label', 'slug'];
     for (const p of BUILTIN_PLATFORMS)
       expect(allowed).toEqual(expect.arrayContaining(Object.keys(p)));
   });
@@ -61,13 +61,5 @@ describe('platforms slot (plan 21, J2)', () => {
       expect([...p.initials].length, p.slug).toBeGreaterThan(0);
       expect([...p.initials].length, p.slug).toBeLessThanOrEqual(2);
     }
-    // Marks only where plan 25 section 5 allows them: never Amazon's.
-    expect(BUILTIN_PLATFORMS.filter((p) => p.logo).map((p) => p.slug)).toEqual([
-      'doordash',
-      'ubereats',
-      'instacart',
-      'deliveroo',
-      'justeat',
-    ]);
   });
 });

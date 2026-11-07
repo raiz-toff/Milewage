@@ -122,9 +122,6 @@ export function PlatformsCard() {
       <p className="text-xs text-muted-foreground">
         An inactive platform drops out of the pickers; its past labels and earnings stay.
       </p>
-      <p className="text-xs text-muted-foreground">
-        Platform names and logos belong to their owners. MileWage is not affiliated with them.
-      </p>
     </section>
   );
 }
