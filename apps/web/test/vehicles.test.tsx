@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { renderApp, settingsFixture, signedIn } from './support/kit';
+import { renderApp, settingsFixture, signedIn, pick, menu, optionsOf } from './support/kit';
 
 afterEach(cleanup);
 
@@ -92,7 +92,7 @@ describe('vehicles page', () => {
     const s = server();
     await screen.findByText('Corolla');
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Cargo bike' } });
-    fireEvent.change(screen.getByLabelText('Type'), { target: { value: 'bicycle' } });
+    pick(screen.getByLabelText('Type'), 'bicycle');
     fireEvent.click(screen.getByRole('button', { name: 'Add vehicle' }));
     expect(await screen.findByText('Cargo bike')).toBeTruthy();
     const post = s.calls.find((c) => c.method === 'POST' && c.path === '/vehicles');
@@ -102,11 +102,12 @@ describe('vehicles page', () => {
   it('renames and retypes a vehicle', async () => {
     const s = server();
     await screen.findByText('Corolla');
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    menu('Corolla', 'Edit');
     fireEvent.change(screen.getByLabelText('New name for Corolla'), { target: { value: 'Van' } });
-    fireEvent.change(screen.getByLabelText('Type of Corolla'), { target: { value: 'van' } });
+    pick(screen.getByLabelText('Type of Corolla'), 'van');
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findAllByRole('cell', { name: 'Van' })).toHaveLength(2);
+    // the new name and the new type
+    await waitFor(() => expect(screen.getAllByText('Van')).toHaveLength(2));
     const patch = s.calls.find((c) => c.method === 'PATCH');
     expect(patch?.body).toEqual({
       ...{ name: 'Van', kind: 'van' },
@@ -117,7 +118,7 @@ describe('vehicles page', () => {
   it('edits details and sets the default vehicle', async () => {
     const s = server();
     await screen.findByText('Corolla');
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    menu('Corolla', 'Edit');
     fireEvent.change(screen.getByLabelText('Make of Corolla'), { target: { value: 'Toyota' } });
     fireEvent.change(screen.getByLabelText('Year of Corolla'), { target: { value: '2020' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -131,20 +132,25 @@ describe('vehicles page', () => {
   it('offers the e-bike, scooter and on-foot types', async () => {
     server();
     await screen.findByText('Corolla');
-    const options = Array.from((screen.getByLabelText('Type') as HTMLSelectElement).options).map(
-      (o) => o.value,
-    );
-    expect(options).toEqual(['car', 'van', 'motorcycle', 'bicycle', 'ebike', 'scooter', 'walking']);
+    expect(optionsOf('Type')).toEqual([
+      'car',
+      'van',
+      'motorcycle',
+      'bicycle',
+      'ebike',
+      'scooter',
+      'walking',
+    ]);
   });
 
   it('archives a vehicle, shows it on request, and restores it', async () => {
     const s = server();
     await screen.findByText('Corolla');
-    fireEvent.click(screen.getByRole('button', { name: 'Archive' }));
+    menu('Corolla', 'Archive');
     await waitFor(() => expect(screen.queryByText('Corolla')).toBeNull());
     fireEvent.click(screen.getByLabelText('Show archived vehicles'));
     expect(await screen.findByText('archived')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+    menu('Corolla', 'Restore');
     await waitFor(() => expect(screen.getByText('active')).toBeTruthy());
     const bodies = s.calls.filter((c) => c.method === 'PATCH').map((c) => c.body);
     expect(bodies).toEqual([{ archived: true }, { archived: false }]);
@@ -163,7 +169,7 @@ describe('vehicles page', () => {
       '/vehicles',
     );
     await screen.findByText('Corolla');
-    fireEvent.click(screen.getByRole('button', { name: 'Archive' }));
+    menu('Corolla', 'Archive');
     expect(await screen.findByRole('alert')).toBeTruthy();
   });
 });

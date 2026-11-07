@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
+import { DatabaseBackup } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { EmptyState, PageHeader, Section, StatCard, TableBox, tableClass } from '../ui/layout';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { formatDateTime } from '../format';
@@ -99,75 +102,85 @@ export function Backups() {
 
   return (
     <section className="space-y-6">
-      <h1 className="font-heading text-2xl">Backups</h1>
+      <PageHeader
+        title="Backups"
+        description="A backup can be made once every 15 minutes. Each one is checked after it is written."
+      >
+        <Button type="button" busy={busy} onClick={() => void run()}>
+          <DatabaseBackup />
+          Back up now
+        </Button>
+      </PageHeader>
       {warnings.map((w) => (
-        <p key={w} role="status" className="rounded border border-line bg-card p-3 text-sm">
+        <p
+          key={w}
+          role="status"
+          className="rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm"
+        >
           {w}
         </p>
       ))}
-      <div className="space-y-3 rounded border border-line bg-card p-4">
-        <Button type="button" busy={busy} onClick={() => void run()}>
-          Back up now
-        </Button>
-        <p className="text-sm text-muted">
-          A backup can be made once every 15 minutes. Each one is checked after it is written.
-        </p>
-        <FormError message={error} />
-      </div>
-      {backups === null ? (
-        <p className="text-muted">Loading</p>
-      ) : backups.length === 0 ? (
-        <p className="text-muted">No backup has been made yet.</p>
-      ) : (
-        <table className="w-full text-left">
-          <thead className="text-sm text-muted">
-            <tr>
-              <th className="pb-2 font-normal">When</th>
-              <th className="font-normal">Kind</th>
-              <th className="font-normal">Size</th>
-              <th className="font-normal">Check</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {backups.map((b) => (
-              <tr key={b.id} className="border-t border-line">
-                <td className="py-2 pr-4 font-mono text-sm">
-                  {formatDateTime(b.created_at, timezone)}
-                </td>
-                <td className="pr-4 text-muted">{TRIGGER[b.trigger]}</td>
-                <td className="pr-4 text-muted">{mb(b.size_bytes)}</td>
-                <td className="pr-4">{b.integrity_ok ? 'passed' : 'FAILED'}</td>
-                <td className="text-right">
-                  {modules.backup_download ? (
-                    <a
-                      className="text-accent"
-                      href={`/api/v1/backups/${b.id}/download`}
-                      onClick={() => setDownloaded(true)}
-                    >
-                      Download
-                    </a>
-                  ) : null}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <FormError message={error} />
+      {status ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatCard label="Version" value={status.app_version} />
+          <StatCard label="Database" value={mb(status.db_bytes + status.wal_bytes)} />
+          <StatCard label="Free disk" value={mb(status.disk_free_bytes)} />
+          <StatCard label="Paired phones" value={status.paired_device_count} />
+        </div>
+      ) : null}
+      <Section title="Backups on this server">
+        {backups === null ? (
+          <p className="text-sm text-muted-foreground">Loading</p>
+        ) : backups.length === 0 ? (
+          <EmptyState>No backup has been made yet.</EmptyState>
+        ) : (
+          <TableBox>
+            <table className={tableClass}>
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Kind</th>
+                  <th>Size</th>
+                  <th>Check</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {backups.map((b) => (
+                  <tr key={b.id} className="border-t border-border">
+                    <td className="py-2 pr-4 tabular-nums text-sm">
+                      {formatDateTime(b.created_at, timezone)}
+                    </td>
+                    <td className="pr-4 text-muted-foreground">{TRIGGER[b.trigger]}</td>
+                    <td className="pr-4 text-muted-foreground">{mb(b.size_bytes)}</td>
+                    <td>
+                      {b.integrity_ok ? (
+                        <Badge variant="secondary">passed</Badge>
+                      ) : (
+                        <Badge variant="destructive">FAILED</Badge>
+                      )}
+                    </td>
+                    <td className="text-right">
+                      {modules.backup_download ? (
+                        <a
+                          className="font-medium underline decoration-primary decoration-2 underline-offset-4"
+                          href={`/api/v1/backups/${b.id}/download`}
+                          onClick={() => setDownloaded(true)}
+                        >
+                          Download
+                        </a>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableBox>
+        )}
+      </Section>
       {status && modules.backup_download ? (
         <Offsite offsite={status.offsite} downloaded={downloaded} onChange={acknowledge} />
-      ) : null}
-      {status ? (
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-4">
-          <dt className="text-muted">Version</dt>
-          <dd>{status.app_version}</dd>
-          <dt className="text-muted">Database</dt>
-          <dd>{mb(status.db_bytes + status.wal_bytes)}</dd>
-          <dt className="text-muted">Free disk</dt>
-          <dd>{mb(status.disk_free_bytes)}</dd>
-          <dt className="text-muted">Paired phones</dt>
-          <dd>{status.paired_device_count}</dd>
-        </dl>
       ) : null}
     </section>
   );
@@ -190,12 +203,8 @@ function Offsite({
   const at = offsite.synced_elsewhere_at;
   const stale = at !== null && Date.now() - at > 90 * DAY;
   return (
-    <section
-      aria-label="Off-site copy"
-      className="space-y-2 rounded border border-line bg-card p-4"
-    >
-      <h2 className="font-heading text-lg">Off-site copy</h2>
-      <p className="text-sm text-muted">
+    <Section label="Off-site copy" title="Off-site copy">
+      <p className="text-sm text-muted-foreground">
         Last download:{' '}
         {downloaded
           ? 'just now'
@@ -206,18 +215,19 @@ function Offsite({
       <label className="flex items-center gap-2">
         <input
           type="checkbox"
+          className="size-4 accent-primary"
           checked={at !== null && !stale}
           onChange={(e) => onChange(e.target.checked)}
         />
         <span>My backup folder is synced to another place</span>
       </label>
       {at !== null ? (
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           {stale
             ? `Confirmed ${formatDateTime(at, timezone)}. That is over 90 days ago: tick the box again if it is still true.`
             : `Confirmed ${formatDateTime(at, timezone)}. You will be asked again after 90 days.`}
         </p>
       ) : null}
-    </section>
+    </Section>
   );
 }

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fileNameOf, spanDays } from '../src/pages/Exports';
 import type { Modules } from '../src/api/client';
 import { shift } from './support/fixtures';
-import { renderApp, settingsFixture, signedIn } from './support/kit';
+import { renderApp, settingsFixture, signedIn, pick } from './support/kit';
 import type { Handler } from './support/kit';
 
 const saved: { name: string; blob: Blob }[] = [];
@@ -72,8 +72,8 @@ describe('exports screen', () => {
 
   it('downloads the period with vehicle and level, and saves under the server name', async () => {
     const { calls } = open();
-    fireEvent.change(await screen.findByLabelText('Vehicle'), { target: { value: '2' } });
-    fireEvent.change(screen.getByLabelText('CSV rows'), { target: { value: 'shift' } });
+    pick(await screen.findByLabelText('Vehicle'), '2');
+    pick(screen.getByLabelText('CSV rows'), 'shift');
     fireEvent.click(screen.getByRole('button', { name: 'Download CSV' }));
     await waitFor(() => expect(saved.length).toBe(1));
     expect(saved[0]!.name).toBe('milewage-trips.csv');
@@ -92,8 +92,8 @@ describe('exports screen', () => {
         },
       },
     );
-    fireEvent.change(await screen.findByLabelText('Vehicle'), { target: { value: '2' } });
-    fireEvent.change(screen.getByLabelText('CSV rows'), { target: { value: 'shift' } });
+    pick(await screen.findByLabelText('Vehicle'), '2');
+    pick(screen.getByLabelText('CSV rows'), 'shift');
     fireEvent.click(screen.getByRole('button', { name: 'Download CSV' }));
     await waitFor(() => expect(seen.length).toBe(1));
     const q = new URLSearchParams(seen[0]);

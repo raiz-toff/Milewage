@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Button as UiButton } from '@/components/ui/button';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
 import { useSession } from '../session';
@@ -102,9 +103,9 @@ export function Setup({ onRestore }: { onRestore?: () => void } = {}) {
         </Button>
       </form>
       {onRestore ? (
-        <button type="button" className="text-sm text-muted hover:text-ink" onClick={onRestore}>
+        <UiButton type="button" variant="ghost" size="sm" onClick={onRestore}>
           Restore from a backup instead
-        </button>
+        </UiButton>
       ) : null}
     </Card>
   );

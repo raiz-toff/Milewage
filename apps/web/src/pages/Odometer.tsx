@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { EmptyState, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
+import { Button as UiButton } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
@@ -132,12 +134,12 @@ export function OdometerPage() {
   }
 
   if (vehicles === null)
-    return error ? <FormError message={error} /> : <p className="text-muted">Loading</p>;
+    return error ? <FormError message={error} /> : <p className="text-muted-foreground">Loading</p>;
   if (vehicles.length === 0)
     return (
-      <section className="space-y-2">
-        <h1 className="font-heading text-2xl">Odometer</h1>
-        <p className="text-muted">There is no vehicle yet. Add one on the Vehicles screen first.</p>
+      <section className="space-y-6">
+        <PageHeader title="Odometer" />
+        <EmptyState>There is no vehicle yet. Add one on the Vehicles screen first.</EmptyState>
       </section>
     );
 
@@ -152,67 +154,76 @@ export function OdometerPage() {
 
   return (
     <section className="space-y-6">
-      <h1 className="font-heading text-2xl">Odometer</h1>
-      {vehicles.length > 1 ? (
-        <SelectField
-          label="Vehicle"
-          value={vehicleId}
-          onChange={setVehicleId}
-          options={vehicles.map((v) => ({ value: String(v.id), label: v.name }))}
-        />
-      ) : null}
+      <PageHeader
+        title="Odometer"
+        description={
+          country === 'CA'
+            ? undefined
+            : 'Readings are optional. Enter them if your tax office asks.'
+        }
+      >
+        {vehicles.length > 1 ? (
+          <SelectField
+            label="Vehicle"
+            value={vehicleId}
+            onChange={setVehicleId}
+            options={vehicles.map((v) => ({ value: String(v.id), label: v.name }))}
+          />
+        ) : null}
+      </PageHeader>
 
       {country === 'CA' ? (
-        <div role="note" className="space-y-1 rounded border border-line bg-card p-3 text-sm">
+        <div
+          role="note"
+          className="space-y-1 rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm"
+        >
           <p>
             The CRA asks for the odometer reading at the start and end of each fiscal year.
             {missingStart ? ` There is no year-start reading for ${year} yet.` : ''}
           </p>
-          <p className="text-muted">
+          <p className="text-muted-foreground">
             A full 12-month logbook can serve as a base year; a 3-month sample can then be used
             while your use stays within 10% of the base year. MileWage stores the readings but has
             no base-year or sample mode. Check the rules with the CRA.
           </p>
         </div>
-      ) : (
-        <p className="text-sm text-muted">
-          Readings are optional. Enter them if your tax office asks.
-        </p>
-      )}
+      ) : null}
 
-      <form
-        className="grid max-w-xl gap-3 sm:grid-cols-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void add();
-        }}
-      >
-        <SelectField
-          label="Reading"
-          value={kind}
-          onChange={(v) => setKind(v as Kind)}
-          options={[
-            { value: 'year_start', label: 'Year start' },
-            { value: 'year_end', label: 'Year end' },
-          ]}
-        />
-        <Field label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        <Field
-          label={`Odometer (${unit})`}
-          inputMode="decimal"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-        />
-        <div className="flex items-end">
-          <Button type="submit" busy={busy || value.trim() === ''}>
-            Add reading
-          </Button>
-        </div>
-      </form>
-      <FormError message={error} />
+      <Section title="Add a fiscal-year reading">
+        <form
+          className="grid gap-3 sm:grid-cols-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void add();
+          }}
+        >
+          <SelectField
+            label="Reading"
+            value={kind}
+            onChange={(v) => setKind(v as Kind)}
+            options={[
+              { value: 'year_start', label: 'Year start' },
+              { value: 'year_end', label: 'Year end' },
+            ]}
+          />
+          <Field label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <Field
+            label={`Odometer (${unit})`}
+            inputMode="decimal"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+          />
+          <div className="flex items-end">
+            <Button type="submit" busy={busy || value.trim() === ''}>
+              Add reading
+            </Button>
+          </div>
+        </form>
+        <FormError message={error} />
+      </Section>
 
       {readings === null ? (
-        <p className="text-muted">Loading</p>
+        <p className="text-muted-foreground">Loading</p>
       ) : (
         <>
           <ReadingsTable title="Fiscal year" rows={yearReadings} onDelete={remove} />
@@ -234,50 +245,58 @@ function ReadingsTable({
 }) {
   const { distance_unit: unit, timezone } = useSettings();
   return (
-    <section aria-label={title} className="space-y-2">
-      <h2 className="font-heading text-lg">{title}</h2>
+    <Section label={title} title={<>{title}</>}>
       {rows.length === 0 ? (
-        <p className="text-muted">No readings.</p>
+        <EmptyState>No readings.</EmptyState>
       ) : (
-        <table className="w-full text-left">
-          <caption className="sr-only">{title} readings</caption>
-          <thead className="text-sm text-muted">
-            <tr>
-              <th className="pb-2 font-normal">When</th>
-              <th className="font-normal">Kind</th>
-              <th className="text-right font-normal">Reading</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="border-t border-line">
-                <td className="py-2 pr-4 font-mono text-sm">
-                  {formatDateTime(r.recorded_at, timezone)}
-                </td>
-                <td className="pr-4 text-muted">{KIND_TEXT[r.kind]}</td>
-                <td className="pr-4 text-right font-mono">{formatDistance(r.reading_m, unit)}</td>
-                <td className="text-right">
-                  {r.shift_id !== null ? (
-                    <Link className="text-accent" to={`/shifts/${r.shift_id}`}>
-                      Shift
-                    </Link>
-                  ) : null}
-                  {onDelete ? (
-                    <button
-                      type="button"
-                      className="ml-3 text-muted hover:text-ink"
-                      onClick={() => onDelete(r)}
-                    >
-                      Delete
-                    </button>
-                  ) : null}
-                </td>
+        <TableBox>
+          <table className={tableClass}>
+            <caption className="sr-only">{title} readings</caption>
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Kind</th>
+                <th className="text-right">Reading</th>
+                <th />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} className="border-t border-border">
+                  <td className="py-2 pr-4 tabular-nums text-sm">
+                    {formatDateTime(r.recorded_at, timezone)}
+                  </td>
+                  <td className="pr-4 text-muted-foreground">{KIND_TEXT[r.kind]}</td>
+                  <td className="pr-4 text-right tabular-nums">
+                    {formatDistance(r.reading_m, unit)}
+                  </td>
+                  <td className="text-right">
+                    {r.shift_id !== null ? (
+                      <Link
+                        className="font-medium underline decoration-primary decoration-2 underline-offset-4"
+                        to={`/shifts/${r.shift_id}`}
+                      >
+                        Shift
+                      </Link>
+                    ) : null}
+                    {onDelete ? (
+                      <UiButton
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="ml-3"
+                        onClick={() => onDelete(r)}
+                      >
+                        Delete
+                      </UiButton>
+                    ) : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableBox>
       )}
-    </section>
+    </Section>
   );
 }

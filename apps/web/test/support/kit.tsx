@@ -1,9 +1,90 @@
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { App } from '../../src/App';
 import { createApi } from '../../src/api/client';
 import type { Modules, Settings } from '../../src/api/client';
 import { SessionProvider } from '../../src/session';
+
+// jsdom has no matchMedia; the shadcn sidebar and the theme switcher query it.
+if (typeof window !== 'undefined' && !window.matchMedia) {
+  window.matchMedia = (query: string) =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }) as MediaQueryList;
+}
+// jsdom 29's Blob has no stream(), which Node's Request calls to read a File body (receipt upload).
+if (typeof Blob !== 'undefined' && !Blob.prototype.stream) {
+  Blob.prototype.stream = function stream(this: Blob) {
+    return new ReadableStream<Uint8Array>({
+      start: async (controller) => {
+        controller.enqueue(new Uint8Array(await this.arrayBuffer()));
+        controller.close();
+      },
+    }) as ReturnType<Blob['stream']>;
+  };
+}
+// jsdom has no ResizeObserver either; Radix's Switch measures its thumb with it.
+if (typeof window !== 'undefined' && !window.ResizeObserver) {
+  window.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
+// Radix Select scrolls the chosen option into view and checks pointer capture; jsdom has neither.
+if (typeof Element !== 'undefined') {
+  Element.prototype.scrollIntoView ??= () => {};
+  Element.prototype.hasPointerCapture ??= () => false;
+  Element.prototype.releasePointerCapture ??= () => {};
+}
+
+/** Choose `value` in the dropdown (shadcn Select) named `label`, or in the given trigger. */
+export function pick(target: string | HTMLElement, value: string) {
+  const trigger = typeof target === 'string' ? screen.getByLabelText(target) : target;
+  fireEvent.click(trigger);
+  const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(
+    (o) => o.getAttribute('data-value') === value,
+  );
+  if (!option) throw new Error(`No option "${value}" in ${trigger.textContent ?? 'dropdown'}`);
+  fireEvent.click(option);
+}
+
+const actionsFor = (name: string | RegExp) =>
+  screen.getByRole('button', {
+    name:
+      typeof name === 'string'
+        ? `Actions for ${name}`
+        : new RegExp(`^Actions for .*${name.source}`),
+  });
+
+/** Open a row's "..." menu (shadcn DropdownMenu); `name` is the row's name or a part of it. */
+export function openMenu(name: string | RegExp) {
+  fireEvent.keyDown(actionsFor(name), { key: 'Enter' });
+}
+
+/** Open a row's "..." menu and choose `item`. */
+export function menu(name: string | RegExp, item: string | RegExp) {
+  openMenu(name);
+  fireEvent.click(screen.getByRole('menuitem', { name: item }));
+}
+
+/** The values a dropdown offers, read by opening it and closing it again. */
+export function optionsOf(target: string | HTMLElement): string[] {
+  const trigger = typeof target === 'string' ? screen.getByLabelText(target) : target;
+  fireEvent.click(trigger);
+  const values = [...document.querySelectorAll('[role="option"]')].map(
+    (o) => o.getAttribute('data-value') ?? '',
+  );
+  fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+  return values;
+}
 
 export type Handler = (req: { body: unknown; url: URL }) => {
   status?: number;

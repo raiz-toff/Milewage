@@ -33,19 +33,19 @@ export function RecoveryKey({ recoveryKey }: { recoveryKey?: string }) {
     <Card title="Save your recovery key">
       {recoveryKey ? (
         <>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             Backups are encrypted. This key is the only way to open them if the server is lost. It
             is shown once and MileWage does not keep it. Store it in a password manager.
           </p>
           <code
             data-testid="recovery-key"
-            className="block break-all rounded border border-line bg-bg p-3 font-mono text-sm"
+            className="block break-all rounded-lg border bg-muted/40 p-3 font-mono text-sm"
           >
             {recoveryKey}
           </code>
         </>
       ) : (
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Setup is not finished. The key cannot be shown again. Enter the last 6 characters of the
           recovery key you saved.
         </p>

@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { useSession, useSettings } from '../session';
-import { Button, FormError, SelectField } from '../ui/form';
+import { Button as UiButton } from '@/components/ui/button';
+import { Button, Field, FormError, SelectField } from '../ui/form';
 
 type Preview = Schemas['ImportPreview'];
 type Result = Schemas['ImportResult'];
@@ -76,7 +77,7 @@ export function ImportCard() {
   ];
   return (
     <section aria-label="Import" className="space-y-3">
-      <h2 className="font-heading text-lg">Import a CSV file</h2>
+      <h2 className="text-base leading-snug font-medium">Import a CSV file</h2>
       <FormError message={error} />
       <SelectField
         label="What is in the file"
@@ -88,14 +89,12 @@ export function ImportCard() {
         }}
         options={kinds}
       />
-      <label className="block space-y-1">
-        <span className="text-sm text-muted">CSV file</span>
-        <input
-          type="file"
-          accept=".csv,text/csv"
-          onChange={(e) => void pick(e.target.files?.[0])}
-        />
-      </label>
+      <Field
+        label="CSV file"
+        type="file"
+        accept=".csv,text/csv"
+        onChange={(e) => void pick(e.target.files?.[0])}
+      />
       {text !== null && preview === null ? (
         <Button type="button" onClick={() => void run({})}>
           Preview {fileName}
@@ -122,18 +121,14 @@ export function ImportCard() {
             ))}
           </div>
           <div className="flex gap-3">
-            <button
-              type="button"
-              className="rounded border border-line px-3 py-2"
-              onClick={() => void run(mapping)}
-            >
+            <UiButton type="button" variant="outline" onClick={() => void run(mapping)}>
               Check again
-            </button>
+            </UiButton>
             <Button type="button" busy={preview.summary.ok === 0} onClick={() => void commit()}>
               Import {preview.summary.ok} rows
             </Button>
           </div>
-          <ul className="text-sm text-muted">
+          <ul className="text-sm text-muted-foreground">
             {preview.rows
               .filter((r) => r.status === 'error')
               .slice(0, 10)
@@ -151,7 +146,7 @@ export function ImportCard() {
           {result.errors} had problems.
         </p>
       ) : null}
-      <p className="text-xs text-muted">
+      <p className="text-xs text-muted-foreground">
         Dates are YYYY-MM-DD and times HH:MM. Imported shifts are marked as imported in every
         export, because their distance was typed, not tracked.
       </p>

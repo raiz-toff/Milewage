@@ -2,12 +2,12 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { changes } from '../src/pages/SettingsPage';
-import { renderApp, settingsFixture, signedIn } from './support/kit';
+import { renderApp, settingsFixture, signedIn, pick, optionsOf } from './support/kit';
 import type { Handler } from './support/kit';
 
 afterEach(cleanup);
 
-function server(initial = settingsFixture(), patch?: Handler) {
+function server(initial = settingsFixture(), patch?: Handler, url = '/settings') {
   let current = initial;
   return renderApp(
     {
@@ -31,26 +31,44 @@ function server(initial = settingsFixture(), patch?: Handler) {
           return { body: current };
         }),
     },
-    '/settings',
+    url,
   );
 }
 
+/** Opens a settings page from the section list, as a click would. */
+const go = async (label: string) =>
+  fireEvent.click(
+    within(await screen.findByRole('navigation', { name: 'Settings sections' })).getByRole('link', {
+      name: label,
+    }),
+  );
+
 const save = () => screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement;
+
+/** The On/Off badge next to a module name in the Modules card. */
+const flag = (name: string) =>
+  within(screen.getByRole('region', { name: 'Modules' })).getByText(name).nextElementSibling
+    ?.textContent;
 
 describe('settings page', () => {
   it('shows the saved values and keeps Save disabled until something changes', async () => {
     server();
+    expect(((await screen.findByLabelText('Name')) as HTMLInputElement).value).toBe('');
+    await go('Units and format');
     expect(((await screen.findByLabelText('Currency')) as HTMLInputElement).value).toBe('CAD');
-    expect((screen.getByLabelText('Keep raw GPS points (days)') as HTMLInputElement).value).toBe(
-      '90',
-    );
+    await go('Tracking');
+    expect(
+      ((await screen.findByLabelText('Keep raw GPS points (days)')) as HTMLInputElement).value,
+    ).toBe('90');
     expect(save().disabled).toBe(true);
   });
 
   it('sends only the changed fields and shows what the server returned', async () => {
-    const { calls } = server();
-    fireEvent.change(await screen.findByLabelText('Distance unit'), { target: { value: 'mi' } });
-    fireEvent.change(screen.getByLabelText('Keep raw GPS points (days)'), {
+    const { calls } = server(settingsFixture(), undefined, '/settings/units');
+    pick(await screen.findByLabelText('Distance unit'), 'mi');
+    // An unsaved edit survives moving to another settings page and is saved from there.
+    await go('Tracking');
+    fireEvent.change(await screen.findByLabelText('Keep raw GPS points (days)'), {
       target: { value: '120' },
     });
     fireEvent.click(save());
@@ -63,24 +81,30 @@ describe('settings page', () => {
   });
 
   it('turns stops off and reads the effective flag back', async () => {
-    const { calls } = server();
-    const box = (await screen.findByLabelText(/Detect stops/)) as HTMLInputElement;
-    expect(box.checked).toBe(true);
-    fireEvent.click(box);
+    const { calls } = server(settingsFixture(), undefined, '/settings/tracking');
+    const toggle = await screen.findByRole('switch', { name: /Detect stops/ });
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(toggle);
     fireEvent.click(save());
     await screen.findByRole('status');
     expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ stops_enabled: false });
-    expect(screen.getByText('stops: off')).toBeTruthy();
+    await go('Modules');
+    await screen.findByRole('region', { name: 'Modules' });
+    expect(flag('stops')).toBe('Off');
   });
 
   it('shows the server validation error and keeps the draft', async () => {
-    server(settingsFixture(), () => ({
-      status: 422,
-      body: {
-        code: 'validation_failed',
-        errors: [{ path: '/timezone', message: 'must be an IANA time zone name' }],
-      },
-    }));
+    server(
+      settingsFixture(),
+      () => ({
+        status: 422,
+        body: {
+          code: 'validation_failed',
+          errors: [{ path: '/timezone', message: 'must be an IANA time zone name' }],
+        },
+      }),
+      '/settings/units',
+    );
     fireEvent.change(await screen.findByLabelText(/Time zone/), { target: { value: 'Mars/Base' } });
     fireEvent.click(save());
     expect((await screen.findByRole('alert')).textContent).toBe(
@@ -91,16 +115,18 @@ describe('settings page', () => {
 
   it('offers only the countries the server lists and shows the module flags', async () => {
     server(settingsFixture({ modules: { countries: ['CA', 'GB'], live: false } }));
-    const country = (await screen.findByLabelText('Country')) as HTMLSelectElement;
-    expect([...country.options].map((o) => o.value)).toEqual(['CA', 'GB']);
+    expect(optionsOf(await screen.findByLabelText('Country'))).toEqual(['CA', 'GB']);
+    await go('Modules');
+    await screen.findByRole('region', { name: 'Modules' });
+    expect(flag('live')).toBe('Off');
+    expect(flag('sync')).toBe('On');
     const mods = screen.getByRole('region', { name: 'Modules' });
-    expect(within(mods).getByText('live: off')).toBeTruthy();
-    expect(within(mods).getByText('Exporters: csv, gpx, geojson')).toBeTruthy();
+    expect(['csv', 'gpx', 'geojson'].every((f) => within(mods).getByText(f))).toBe(true);
   });
 
   it('hides the diagnostics level when the diagnostics module is off', async () => {
-    server(settingsFixture({ modules: { diagnostics: false } }));
-    await screen.findByLabelText('Currency');
+    server(settingsFixture({ modules: { diagnostics: false } }), undefined, '/settings/tracking');
+    await screen.findByLabelText('Keep raw GPS points (days)');
     expect(screen.queryByLabelText('Diagnostics level')).toBeNull();
   });
 
@@ -127,8 +153,9 @@ describe('settings page', () => {
     const { calls } = server();
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Sam' } });
     fireEvent.change(screen.getByLabelText(/^Region/), { target: { value: 'on' } });
-    fireEvent.change(screen.getByLabelText('Week starts on'), { target: { value: '0' } });
-    fireEvent.change(screen.getByLabelText('Time format'), { target: { value: '12h' } });
+    await go('Units and format');
+    pick(await screen.findByLabelText('Week starts on'), '0');
+    pick(screen.getByLabelText('Time format'), '12h');
     fireEvent.click(save());
     await screen.findByRole('status');
     expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({
@@ -137,14 +164,15 @@ describe('settings page', () => {
       week_start: 0,
       time_format: '12h',
     });
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: '' } });
+    await go('General');
+    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: '' } });
     fireEvent.click(save());
     await waitFor(() => expect(calls.filter((c) => c.method === 'PATCH')).toHaveLength(2));
     expect(calls.filter((c) => c.method === 'PATCH')[1]?.body).toEqual({ display_name: null });
   });
 
   it('upper-cases the currency while typing and saves it', async () => {
-    server();
+    server(settingsFixture(), undefined, '/settings/units');
     fireEvent.change(await screen.findByLabelText('Currency'), { target: { value: 'usd' } });
     expect((screen.getByLabelText('Currency') as HTMLInputElement).value).toBe('USD');
     fireEvent.click(save());

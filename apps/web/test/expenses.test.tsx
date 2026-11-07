@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { bodyOf } from '../src/pages/Expenses';
-import { renderApp, settingsFixture, signedIn } from './support/kit';
+import { renderApp, settingsFixture, signedIn, menu } from './support/kit';
 
 afterEach(cleanup);
 
@@ -127,7 +127,7 @@ describe('expenses screen (module expenses)', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /Remind me in a week/ }));
     await waitFor(() => expect(s.calls.some((c) => c.path === '/expenses/9/snooze')).toBe(true));
-    fireEvent.click(screen.getByRole('button', { name: /Delete Shell/ }));
+    menu(/Shell/, 'Delete');
     await waitFor(() => expect(s.calls.some((c) => c.method === 'DELETE')).toBe(true));
   });
 
@@ -147,7 +147,7 @@ describe('expenses screen (module expenses)', () => {
     expect(screen.getByRole('link', { name: 'View receipt' }).getAttribute('href')).toBe(
       '/api/v1/expenses/2/receipt',
     );
-    fireEvent.click(screen.getByRole('button', { name: /Remove receipt of Esso/ }));
+    menu(/Esso/, 'Remove receipt');
     await waitFor(() =>
       expect(s.calls.some((c) => c.method === 'DELETE' && c.path === '/expenses/2/receipt')).toBe(
         true,

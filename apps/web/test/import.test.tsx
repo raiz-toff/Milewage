@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { renderApp, settingsFixture, signedIn } from './support/kit';
+import { renderApp, settingsFixture, signedIn, pick, optionsOf } from './support/kit';
 
 afterEach(cleanup);
 
@@ -24,7 +24,7 @@ function open(modules: object = {}) {
         body: { kind: 'expenses', imported: 2, duplicates: 0, errors: 1, error_rows: [] },
       }),
     },
-    '/settings',
+    '/settings/import',
   );
 }
 const file = () =>
@@ -45,7 +45,7 @@ describe('import card (module import)', () => {
     expect(screen.getByText('Row 3: amount is not a positive amount')).toBeTruthy();
     expect(s.calls.some((c) => c.path === '/imports/expenses')).toBe(false); // nothing written yet
     expect(s.calls[s.calls.length - 1]?.contentType).toBe('text/csv');
-    fireEvent.change(screen.getByLabelText('Column for merchant'), { target: { value: 'Date' } });
+    pick(screen.getByLabelText('Column for merchant'), 'Date');
     fireEvent.click(screen.getByRole('button', { name: 'Import 2 rows' }));
     expect(await screen.findByRole('status')).toBeTruthy();
     expect(screen.getByRole('status').textContent).toMatch(/Imported 2 rows/);
@@ -62,7 +62,7 @@ describe('import card (module import)', () => {
           body: { code: 'validation_failed', detail: 'the file needs a header row' },
         }),
       },
-      '/settings',
+      '/settings/import',
     );
     await choose();
     fireEvent.click(await screen.findByRole('button', { name: /Preview/ }));
@@ -71,11 +71,12 @@ describe('import card (module import)', () => {
 
   it('offers only shifts when the expenses module is off, and nothing when import is off', async () => {
     open({ expenses: false });
-    const select = (await screen.findByLabelText('What is in the file')) as HTMLSelectElement;
-    expect(Array.from(select.options).map((o) => o.value)).toEqual(['shifts']);
+    expect(optionsOf(await screen.findByLabelText('What is in the file'))).toEqual(['shifts']);
     cleanup();
     const s = open({ import: false });
-    await screen.findByLabelText('Currency');
+    await screen.findByLabelText('Name');
+    const sections = screen.getByRole('navigation', { name: 'Settings sections' });
+    expect(within(sections).queryByRole('link', { name: 'Import' })).toBeNull();
     expect(screen.queryByRole('region', { name: 'Import' })).toBeNull();
     await waitFor(() => expect(s.calls.some((c) => c.path.startsWith('/imports'))).toBe(false));
   });

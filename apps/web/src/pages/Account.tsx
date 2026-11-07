@@ -40,8 +40,10 @@ export function Account() {
 
   return (
     <section aria-label="Account" className="space-y-3">
-      <h2 className="font-heading text-lg">Change password</h2>
-      <p className="text-sm text-muted">The new password needs at least {MIN} characters.</p>
+      <h2 className="text-base leading-snug font-medium">Change password</h2>
+      <p className="text-sm text-muted-foreground">
+        The new password needs at least {MIN} characters.
+      </p>
       <form onSubmit={(e) => void save(e)} className="space-y-3">
         <Field
           label="Current password"
@@ -66,7 +68,7 @@ export function Account() {
         />
         <FormError message={error} />
         {note ? (
-          <p role="status" className="text-sm text-accent">
+          <p role="status" className="text-sm font-medium">
             {note}
           </p>
         ) : null}

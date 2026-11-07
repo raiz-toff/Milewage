@@ -1,6 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import type { ReactNode } from 'react';
+import { ArrowDown, ArrowUp, Copy } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export interface Column<T> {
   key: string;
@@ -93,50 +95,67 @@ export function SortTable<T>({
     <div className="space-y-2">
       <div className="flex items-center justify-end gap-3 text-sm">
         {copied ? (
-          <span role="status" className="text-muted">
+          <span role="status" className="text-muted-foreground">
             {copied}
           </span>
         ) : null}
-        <button type="button" className="text-muted hover:text-ink" onClick={() => void copy()}>
+        <Button type="button" variant="ghost" size="sm" onClick={() => void copy()}>
+          <Copy />
           Copy CSV
-        </button>
+        </Button>
       </div>
-      <table className="w-full text-left">
-        <caption className="sr-only">{caption}</caption>
-        <thead className="text-sm text-muted">
-          <tr>
-            {columns.map((c) => (
-              <th
-                key={c.key}
-                scope="col"
-                aria-sort={
-                  sort?.key === c.key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'
-                }
-                className={`pb-2 font-normal ${c.numeric ? 'text-right' : ''}`}
-              >
-                <button type="button" onClick={() => toggle(c.key)} className="hover:text-ink">
-                  {c.label}
-                </button>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody ref={body} onKeyDown={onKeyDown}>
-          {shown.map((row, i) => (
-            <tr
-              key={rowKey(row)}
-              tabIndex={i === 0 ? 0 : -1}
-              className="border-t border-line focus:bg-card focus:outline focus:outline-1 focus:outline-accent"
-            >
+      <div className="overflow-x-auto rounded-lg border">
+        <table className="w-full text-left text-sm">
+          <caption className="sr-only">{caption}</caption>
+          <thead className="bg-muted/50 text-muted-foreground">
+            <tr>
               {columns.map((c) => (
-                <td key={c.key} className={`py-2 pr-4 ${c.numeric ? 'text-right font-mono' : ''}`}>
-                  {c.render(row)}
-                </td>
+                <th
+                  key={c.key}
+                  scope="col"
+                  aria-sort={
+                    sort?.key === c.key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'
+                  }
+                  className={`h-10 px-3 font-medium whitespace-nowrap ${c.numeric ? 'text-right' : ''}`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggle(c.key)}
+                    className="inline-flex items-center gap-1 hover:text-foreground"
+                  >
+                    {c.label}
+                    {sort?.key === c.key ? (
+                      sort.dir === 'asc' ? (
+                        <ArrowUp className="size-3.5" />
+                      ) : (
+                        <ArrowDown className="size-3.5" />
+                      )
+                    ) : null}
+                  </button>
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody ref={body} onKeyDown={onKeyDown}>
+            {shown.map((row, i) => (
+              <tr
+                key={rowKey(row)}
+                tabIndex={i === 0 ? 0 : -1}
+                className="border-t transition-colors hover:bg-muted/40 focus:bg-muted/60 focus:outline-none"
+              >
+                {columns.map((c) => (
+                  <td
+                    key={c.key}
+                    className={`px-3 py-2.5 ${c.numeric ? 'text-right whitespace-nowrap tabular-nums' : ''}`}
+                  >
+                    {c.render(row)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

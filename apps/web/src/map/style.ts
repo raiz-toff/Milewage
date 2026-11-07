@@ -1,16 +1,21 @@
 import type { StyleSpecification } from 'maplibre-gl';
-import { colors } from '@milewage/shared/src/tokens';
+
+/** Map colours from the MileWage palette (src/index.css): card surface, Lane yellow route, Signal blue live position. */
+const palette = {
+  dark: { canvas: '#181b1e', route: '#ffc21f', live: '#4c8dff' },
+  light: { canvas: '#ffffff', route: '#ffc21f', live: '#2f6fe0' },
+} as const;
 
 /**
  * A style with no basemap: one plain background and nothing to download (05 section 3.2).
  * The route and markers are drawn over it, so the map works with no tile server at all.
  */
 export function blankStyle(dark: boolean): StyleSpecification {
-  const c = dark ? colors.dark : colors.light;
+  const c = dark ? palette.dark : palette.light;
   return {
     version: 8,
     sources: {},
-    layers: [{ id: 'background', type: 'background', paint: { 'background-color': c.card } }],
+    layers: [{ id: 'background', type: 'background', paint: { 'background-color': c.canvas } }],
   };
 }
 
@@ -23,4 +28,11 @@ export function chooseStyle(url: string | undefined, dark: boolean): string | St
   return trimmed ? trimmed : blankStyle(dark);
 }
 
-export const routeColor = (dark: boolean) => (dark ? colors.dark.accent : colors.light.accent);
+export const routeColor = (dark: boolean) => (dark ? palette.dark : palette.light).route;
+
+/** Signal blue is kept for the live position only. */
+export const liveColor = (dark: boolean) => (dark ? palette.dark : palette.light).live;
+
+/** The app's theme (the `.dark` class set by src/theme.ts), not the OS setting. */
+export const isDarkTheme = () =>
+  typeof document !== 'undefined' && document.documentElement.classList.contains('dark');

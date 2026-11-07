@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { PageHeader, Section } from '../ui/layout';
+import { Button as UiButton } from '@/components/ui/button';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { formatMoney } from '../format';
@@ -66,36 +68,39 @@ export function TaxPage() {
   const est = report.estimate;
   return (
     <section className="space-y-6">
-      <h1 className="font-heading text-2xl">Tax</h1>
+      <PageHeader
+        title="Tax"
+        description="What to set aside for income tax, and the dates it is due."
+      >
+        <div className="w-28">
+          <Field
+            label="Tax year"
+            type="number"
+            min={2000}
+            max={2100}
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value) || year)}
+          />
+        </div>
+      </PageHeader>
       <FormError message={error} />
-      <div className="flex items-end gap-3">
-        <Field
-          label="Tax year"
-          type="number"
-          min={2000}
-          max={2100}
-          value={year}
-          onChange={(e) => setYear(Number(e.target.value) || year)}
-        />
-      </div>
       {report.unverified && report.supported ? (
-        <p role="alert" className="rounded border border-line bg-card p-3 text-sm">
+        <p role="alert" className="rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm">
           Unverified rates: the figures below have not been checked against the official
           publications. Treat them as a planning guide only.
         </p>
       ) : null}
       {report.notices.map((n) => (
-        <p key={n} role="note" className="text-sm text-muted">
+        <p key={n} role="note" className="text-sm text-muted-foreground">
           {n}
         </p>
       ))}
 
-      {report.supported ? (
-        <>
-          <section aria-label="Estimate" className="space-y-2">
-            <h2 className="font-heading text-lg">Estimate for {year}</h2>
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        {report.supported ? (
+          <Section label="Estimate" title={<>Estimate for {year}</>}>
             {report.income && est ? (
-              <table className="w-full max-w-xl text-left">
+              <table className="w-full text-left text-sm">
                 <caption className="sr-only">Estimate</caption>
                 <tbody>
                   {[
@@ -115,25 +120,37 @@ export function TaxPage() {
                     ['Set aside in total', money(est.total_set_aside_cents)],
                     ['Quarterly instalment (a quarter)', money(est.instalment_cents)],
                   ].map(([k, v]) => (
-                    <tr key={k} className="border-t border-line">
-                      <th scope="row" className="py-1 pr-4 font-normal text-muted">
+                    <tr
+                      key={k}
+                      className={
+                        k === 'Set aside in total'
+                          ? 'border-t-2 border-foreground/20 font-semibold'
+                          : 'border-t first:border-t-0'
+                      }
+                    >
+                      <th
+                        scope="row"
+                        className={`py-2 pr-4 font-normal ${k === 'Set aside in total' ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
+                      >
                         {k}
                       </th>
-                      <td className="text-right">{v}</td>
+                      <td className="py-2 text-right tabular-nums">{v}</td>
                     </tr>
                   ))}
                   {est.sales_tax ? (
-                    <tr className="border-t border-line">
-                      <th scope="row" className="py-1 pr-4 font-normal text-muted">
+                    <tr className="border-t">
+                      <th scope="row" className="py-2 pr-4 font-normal text-muted-foreground">
                         Sales tax owing (collected − credits)
                       </th>
-                      <td className="text-right">{money(est.sales_tax.owing_cents)}</td>
+                      <td className="py-2 text-right tabular-nums">
+                        {money(est.sales_tax.owing_cents)}
+                      </td>
                     </tr>
                   ) : null}
                 </tbody>
               </table>
             ) : null}
-            <div className="flex flex-wrap items-end gap-4">
+            <div className="flex flex-wrap items-end gap-4 border-t pt-4">
               <Field
                 label="Set-aside rate (%)"
                 inputMode="decimal"
@@ -150,7 +167,7 @@ export function TaxPage() {
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 accent-[var(--mw-accent)]"
+                  className="size-4 accent-primary"
                   checked={report.sales_tax_registered}
                   onChange={(e) => void putYear({ sales_tax_registered: e.target.checked })}
                 />
@@ -165,97 +182,115 @@ export function TaxPage() {
                 />
               ) : null}
             </div>
-          </section>
+          </Section>
+        ) : (
+          <div />
+        )}
+        <div className="space-y-6">
+          {report.supported ? (
+            <>
+              {report.slip_alerts.length > 0 ? (
+                <Section label="Slip alerts" title="Information slips">
+                  {report.slip_alerts.map((a) => (
+                    <p key={a.platform} className="text-sm">
+                      {a.platform}: {money(a.total_cents)} is above {money(a.threshold_cents)}, so
+                      expect a {a.slip}.
+                    </p>
+                  ))}
+                </Section>
+              ) : null}
 
-          {report.slip_alerts.length > 0 ? (
-            <section aria-label="Slip alerts" className="space-y-1">
-              <h2 className="font-heading text-lg">Information slips</h2>
-              {report.slip_alerts.map((a) => (
-                <p key={a.platform} className="text-sm">
-                  {a.platform}: {money(a.total_cents)} is above {money(a.threshold_cents)}, so
-                  expect a {a.slip}.
-                </p>
-              ))}
-            </section>
+              <Section label="Deadlines" title="Deadlines">
+                <ul className="divide-y text-sm">
+                  {report.deadlines.map((d) => (
+                    <li key={d.date} className="flex gap-4 py-2 first:pt-0 last:pb-0">
+                      <span className="w-24 shrink-0 tabular-nums text-muted-foreground">
+                        {d.date}
+                      </span>
+                      <span>{d.label}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Section>
+            </>
           ) : null}
 
-          <section aria-label="Deadlines" className="space-y-1">
-            <h2 className="font-heading text-lg">Deadlines</h2>
-            <ul className="text-sm">
-              {report.deadlines.map((d) => (
-                <li key={d.date}>
-                  <span className="font-mono">{d.date}</span> {d.label}
+          <Section label="Tax jar" title="Tax jar">
+            <p className="text-sm text-muted-foreground">
+              Your own record of what you set aside. Nothing here moves money.
+            </p>
+            {jar ? (
+              <div className="space-y-2">
+                <p className="text-lg font-medium tabular-nums">
+                  Set aside {money(jar.balance_cents)}
+                  {jar.target_cents === null ? '' : ` of ${money(jar.target_cents)} target`}
+                </p>
+                {jar.target_cents ? (
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-2 rounded-full bg-primary"
+                      style={{
+                        width: `${Math.min(100, (jar.balance_cents / jar.target_cents) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="flex flex-wrap items-end gap-3">
+              {[1000, 5000, 10000].map((c) => (
+                <UiButton
+                  key={c}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void addJar(c)}
+                >
+                  + {money(c)}
+                </UiButton>
+              ))}
+              <Field
+                label="Amount"
+                inputMode="decimal"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+              <Button
+                type="button"
+                busy={!Number.isFinite(toCents(amount)) || toCents(amount) === 0}
+                onClick={() => {
+                  void addJar(toCents(amount));
+                  setAmount('');
+                }}
+              >
+                Add to jar
+              </Button>
+            </div>
+            <ul className="divide-y text-sm">
+              {jar?.entries.map((e) => (
+                <li key={e.id} className="flex items-center gap-3 py-1.5">
+                  <span className="tabular-nums">{e.entered_on}</span>
+                  <span>{money(e.amount_cents)}</span>
+                  <span className="text-muted-foreground">{e.note}</span>
+                  <UiButton
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Delete jar entry ${e.entered_on} ${money(e.amount_cents)}`}
+                    onClick={() =>
+                      void act(() =>
+                        unwrap(api.DELETE('/tax/jar/{id}', { params: { path: { id: e.id } } })),
+                      )
+                    }
+                  >
+                    Delete
+                  </UiButton>
                 </li>
               ))}
             </ul>
-          </section>
-        </>
-      ) : null}
-
-      <section aria-label="Tax jar" className="space-y-2">
-        <h2 className="font-heading text-lg">Tax jar</h2>
-        <p className="text-sm text-muted">
-          Your own record of what you set aside. Nothing here moves money.
-        </p>
-        {jar ? (
-          <p>
-            Set aside {money(jar.balance_cents)}
-            {jar.target_cents === null ? '' : ` of ${money(jar.target_cents)} target`}
-          </p>
-        ) : null}
-        <div className="flex flex-wrap items-end gap-3">
-          {[1000, 5000, 10000].map((c) => (
-            <button
-              key={c}
-              type="button"
-              className="rounded border border-line px-3 py-2 text-sm"
-              onClick={() => void addJar(c)}
-            >
-              + {money(c)}
-            </button>
-          ))}
-          <Field
-            label="Amount"
-            inputMode="decimal"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-          <Button
-            type="button"
-            busy={!Number.isFinite(toCents(amount)) || toCents(amount) === 0}
-            onClick={() => {
-              void addJar(toCents(amount));
-              setAmount('');
-            }}
-          >
-            Add to jar
-          </Button>
+          </Section>
         </div>
-        <ul className="text-sm">
-          {jar?.entries.map((e) => (
-            <li key={e.id} className="flex gap-3">
-              <span className="font-mono">{e.entered_on}</span>
-              <span>{money(e.amount_cents)}</span>
-              <span className="text-muted">{e.note}</span>
-              <button
-                type="button"
-                className="text-muted hover:text-ink"
-                aria-label={`Delete jar entry ${e.entered_on} ${money(e.amount_cents)}`}
-                onClick={() =>
-                  void act(() =>
-                    unwrap(api.DELETE('/tax/jar/{id}', { params: { path: { id: e.id } } })),
-                  )
-                }
-              >
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-      <p className="max-w-xl text-sm text-muted">
-        Estimates to bring to an accountant, not tax advice. MileWage does not file anything.
-      </p>
+      </div>
     </section>
   );
 }

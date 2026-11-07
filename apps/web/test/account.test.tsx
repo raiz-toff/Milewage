@@ -14,7 +14,7 @@ function open(status = 204) {
         body: status === 204 ? undefined : { code: 'unauthorized' },
       }),
     } as never,
-    '/settings',
+    '/settings/account',
   );
 }
 

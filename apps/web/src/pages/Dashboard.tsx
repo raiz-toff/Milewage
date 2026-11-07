@@ -4,7 +4,13 @@ import type { Schemas } from '../api/client';
 import { formatDistance, formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
 import { GoalRing, SetupChecklist } from './DashboardExtras';
-import { Est } from './Shifts';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Picker } from '../ui/form';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState, PageHeader, Section } from '../ui/layout';
+import { Est, ShiftCard } from './Shifts';
 
 type Summary = Schemas['Summary'];
 
@@ -70,11 +76,53 @@ function Metric({
   note?: string;
 }) {
   return (
-    <section aria-label={title} className="space-y-1 rounded border border-line bg-card p-4">
-      <h2 className="text-sm text-muted">{title}</h2>
-      <p className="font-mono text-2xl">{children}</p>
-      {note ? <p className="text-sm text-muted">{note}</p> : null}
-    </section>
+    <Card role="region" aria-label={title}>
+      <CardContent className="space-y-2">
+        <h2 className="text-sm text-muted-foreground">{title}</h2>
+        <p className="text-3xl font-semibold tracking-tight tabular-nums">{children}</p>
+        {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** The latest few shifts, as on the Shifts page. Hidden when they cannot be read. */
+function RecentShifts() {
+  const { api } = useSession();
+  const settings = useSettings();
+  const [rows, setRows] = useState<Schemas['Shift'][] | null>(null);
+  useEffect(() => {
+    let live = true;
+    void unwrap(api.GET('/shifts', { params: { query: { limit: 5 } } }))
+      .then((p) => live && setRows(p.items))
+      .catch(() => live && setRows(null));
+    return () => {
+      live = false;
+    };
+  }, [api]);
+  if (!rows) return null;
+  return (
+    <Section
+      title="Recent shifts"
+      label="Recent shifts"
+      action={
+        <Button asChild variant="ghost" size="sm">
+          <Link to="/shifts">View all</Link>
+        </Button>
+      }
+    >
+      {rows.length === 0 ? (
+        <EmptyState>No shifts yet. Shifts start on the phone.</EmptyState>
+      ) : (
+        <ul className="space-y-3">
+          {rows.map((s) => (
+            <li key={s.id}>
+              <ShiftCard shift={s} settings={settings} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
   );
 }
 
@@ -111,36 +159,37 @@ export function Dashboard({ now }: { now?: number }) {
   const unit = settings.distance_unit;
   return (
     <section className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-heading text-2xl">Dashboard</h1>
-        <label className="text-sm text-muted">
-          Period{' '}
-          <select
-            className="rounded border border-line bg-bg px-2 py-1 text-ink"
+      <PageHeader
+        title="Dashboard"
+        description={
+          <span className="tabular-nums">
+            {from} to {to}
+          </span>
+        }
+      >
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <label htmlFor="dashboard-period">Period</label>
+          <Picker
+            id="dashboard-period"
+            className="w-auto min-w-32"
             value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-          >
-            {PERIODS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <p className="font-mono text-sm text-muted">
-        {from} to {to}
-      </p>
-      {settings.modules.goals ? <GoalRing /> : null}
-      <SetupChecklist />
+            onChange={setPeriod}
+            options={PERIODS.map((p) => ({ value: p.id, label: p.label }))}
+          />
+        </div>
+      </PageHeader>
       {error ? (
-        <p role="alert" className="text-muted">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : summary === null ? (
-        <p className="text-muted">Loading</p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Skeleton className="h-32 rounded-xl" />
+          <Skeleton className="h-32 rounded-xl" />
+          <Skeleton className="h-32 rounded-xl" />
+        </div>
       ) : (
-        <>
+        <div className="space-y-2">
           <div className="grid gap-4 sm:grid-cols-3">
             <Metric
               title="Hourly earnings"
@@ -180,13 +229,20 @@ export function Dashboard({ now }: { now?: number }) {
               </Metric>
             )}
           </div>
-          {stops ? <p className="text-sm text-muted">* estimated from detected stops</p> : null}
-          <p className="text-sm text-muted">
-            {summary.shift_count} {summary.shift_count === 1 ? 'shift' : 'shifts'},{' '}
-            {summary.hours.toFixed(1)} hours, {formatDistance(summary.total_m, unit)} in total.
-          </p>
-        </>
+          <div className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
+            <p className="tabular-nums">
+              {summary.shift_count} {summary.shift_count === 1 ? 'shift' : 'shifts'},{' '}
+              {summary.hours.toFixed(1)} hours, {formatDistance(summary.total_m, unit)} in total.
+            </p>
+            {stops ? <p>* estimated from detected stops</p> : null}
+          </div>
+        </div>
       )}
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <SetupChecklist />
+        {settings.modules.goals ? <GoalRing /> : null}
+      </div>
+      <RecentShifts />
     </section>
   );
 }

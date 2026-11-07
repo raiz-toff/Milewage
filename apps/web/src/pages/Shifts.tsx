@@ -1,13 +1,19 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Link, Route, Routes, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { PageHeader, Section, StatCard } from '../ui/layout';
+import { Link, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import { describe, unwrap } from '../api/client';
 import type { Schemas, Settings } from '../api/client';
-import { formatDateTime, formatDistance, formatDuration, formatMoney } from '../format';
+import { formatDateTime, formatDistance, formatDuration, formatMoney, formatTime } from '../format';
 import { RouteView } from '../map/RouteView';
 import { useSession, useSettings } from '../session';
-import { SortTable } from '../ui/SortTable';
-import type { Column } from '../ui/SortTable';
 import { Button, FormError } from '../ui/form';
+import { localDate } from './Dashboard';
 import { ExportButtons } from './Exports';
 import { ShiftEarnings } from './ShiftEarnings';
 import { ShiftOdometer } from './ShiftOdometer';
@@ -29,154 +35,369 @@ export function Est() {
   );
 }
 
-function columns(settings: Settings): Column<Shift>[] {
-  const unit = settings.distance_unit;
-  const split = settings.modules.stops;
-  const dist = (pick: (s: Shift) => number | null, estimated: boolean) => (s: Shift) =>
-    estimated && !showsSplit(s, settings) ? '—' : formatDistance(pick(s), unit);
-  const cols: Column<Shift>[] = [
-    {
-      key: 'date',
-      label: 'Date',
-      sortValue: (s) => s.started_at,
-      text: (s) => s.local_date,
-      render: (s) => (
-        <Link className="text-accent hover:underline" to={`/shifts/${s.id}`}>
-          {s.local_date}
-        </Link>
-      ),
-    },
-    {
-      key: 'duration',
-      label: 'Duration',
-      sortValue: (s) => (s.ended_at === null ? null : s.ended_at - s.started_at),
-      text: (s) => formatDuration(s.started_at, s.ended_at),
-      render: (s) => formatDuration(s.started_at, s.ended_at),
-    },
-    {
-      key: 'total',
-      label: 'Total',
-      numeric: true,
-      sortValue: (s) => s.total_m,
-      text: dist((s) => s.total_m, false),
-      render: dist((s) => s.total_m, false),
-    },
-  ];
-  if (split) {
-    cols.push(
-      {
-        key: 'active',
-        label: 'Active*',
-        numeric: true,
-        sortValue: (s) => (showsSplit(s, settings) ? s.active_m : null),
-        text: dist((s) => s.active_m, true),
-        render: dist((s) => s.active_m, true),
-      },
-      {
-        key: 'deadhead',
-        label: 'Deadhead*',
-        numeric: true,
-        sortValue: (s) => (showsSplit(s, settings) ? s.deadhead_m : null),
-        text: dist((s) => s.deadhead_m, true),
-        render: dist((s) => s.deadhead_m, true),
-      },
-    );
-  }
-  cols.push(
-    {
-      key: 'flags',
-      label: 'Flags',
-      numeric: true,
-      sortValue: (s) => s.flags?.length ?? 0,
-      render: (s) => String(s.flags?.length ?? 0),
-    },
-    { key: 'status', label: 'Status', sortValue: (s) => s.status, render: (s) => s.status },
-  );
-  return cols;
+const DAY_MS = 86_400_000;
+const utcMs = (d: string) => Date.parse(`${d}T00:00:00Z`);
+const isDate = (d: string | null): d is string => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d);
+
+export const addDays = (d: string, n: number) =>
+  new Date(utcMs(d) + n * DAY_MS).toISOString().slice(0, 10);
+
+/** The first day of the week holding `d`, with the driver's week start (0 Sunday, 1 Monday). */
+export const weekOf = (d: string, weekStart: number) =>
+  addDays(d, -((new Date(utcMs(d)).getUTCDay() - weekStart + 7) % 7));
+
+/** A calendar date as words; the date is already local, so it is formatted as UTC. */
+const dateWords = (d: string, opts: Intl.DateTimeFormatOptions) =>
+  new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', ...opts }).format(utcMs(d));
+
+/** "Nov 13 – 19, 2023", or "Oct 30 – Nov 5, 2023" when the week spans two months. */
+const weekWords = (from: string, to: string) => {
+  const start = dateWords(from, { month: 'short', day: 'numeric' });
+  const end =
+    from.slice(0, 7) === to.slice(0, 7)
+      ? String(Number(to.slice(8)))
+      : dateWords(to, { month: 'short', day: 'numeric' });
+  return `${start} – ${end}, ${to.slice(0, 4)}`;
+};
+
+type Summary = Schemas['Summary'];
+interface DayBucket {
+  start: string;
+  earnings_cents: number | null;
+  hours: number;
+  hourly_cents: number | null;
+}
+interface WeekData {
+  shifts: Shift[];
+  summary: Summary;
+  /** Per-day earnings from the analytics module; null when that module is off. */
+  buckets: DayBucket[] | null;
 }
 
-export function ShiftList() {
+/** Everything the week view needs: the week's shifts (all pages), its summary, and per-day earnings. */
+function useWeek(from: string, to: string) {
   const { api } = useSession();
   const settings = useSettings();
-  const [rows, setRows] = useState<Shift[] | null>(null);
-  const [next, setNext] = useState<string | null>(null);
-  const [status, setStatus] = useState('');
+  const analyticsOn = settings.modules.analytics;
+  const [data, setData] = useState<WeekData | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(
-    async (cursor?: string) => {
-      setError(null);
-      try {
-        const query = {
-          limit: 50,
-          ...(cursor ? { cursor } : {}),
-          ...(status ? { status: status as Shift['status'] } : {}),
-        };
-        const page = await unwrap(api.GET('/shifts', { params: { query } }));
-        setRows((old) => (cursor && old ? [...old, ...page.items] : page.items));
-        setNext(page.next_cursor ?? null);
-      } catch (e) {
-        setError(describe(e));
-      }
-    },
-    [api, status],
-  );
   useEffect(() => {
-    setRows(null);
-    void load();
-  }, [load]);
+    let live = true;
+    setData(null);
+    setError(null);
+    async function allShifts() {
+      const out: Shift[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await unwrap(
+          api.GET('/shifts', {
+            params: { query: { from, to, limit: 200, ...(cursor ? { cursor } : {}) } },
+          }),
+        );
+        out.push(...page.items);
+        cursor = page.next_cursor ?? undefined;
+      } while (cursor);
+      return out;
+    }
+    Promise.all([
+      allShifts(),
+      unwrap(api.GET('/summary', { params: { query: { from, to } } })),
+      analyticsOn
+        ? unwrap(
+            api.GET('/analytics', {
+              params: { query: { from, to, group: 'trends', bucket: 'day' } },
+            }),
+          ).then((r) => (r.data as { buckets?: DayBucket[] } | null)?.buckets ?? [])
+        : Promise.resolve(null),
+    ])
+      .then(([shifts, summary, buckets]) => live && setData({ shifts, summary, buckets }))
+      .catch((e) => live && setError(describe(e)));
+    return () => {
+      live = false;
+    };
+  }, [api, from, to, analyticsOn]);
+  return { data, error };
+}
+
+/** Earnings are "not entered" when nobody typed or labelled them, never zero (05 section 3.1a). */
+const earnedWords = (cents: number | null, currency: string) =>
+  cents === null ? 'not entered' : formatMoney(cents, currency);
+
+function StatusBadge({ shift }: { shift: Shift }) {
+  if (shift.status === 'active')
+    return (
+      <Badge variant="outline" className="gap-1.5">
+        <span className="size-1.5 animate-pulse rounded-full bg-primary" />
+        In progress
+      </Badge>
+    );
+  if (shift.status === 'finalized') return <Badge variant="secondary">Reviewed</Badge>;
+  return null;
+}
+
+export function ShiftCard({ shift, settings }: { shift: Shift; settings: Settings }) {
+  const unit = settings.distance_unit;
+  const tz = settings.timezone;
+  const split = showsSplit(shift, settings);
+  const review = shift.flags?.filter((f) => f.severity === 'review').length ?? 0;
+  return (
+    <Link
+      to={`/shifts/${shift.id}`}
+      className="block rounded-xl border bg-card p-4 transition-colors hover:bg-accent/60 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium">
+              {dateWords(shift.local_date, { weekday: 'long', month: 'short', day: 'numeric' })}
+            </span>
+            <StatusBadge shift={shift} />
+            {review > 0 ? (
+              <Badge variant="outline" className="border-primary/60">
+                {review} to review
+              </Badge>
+            ) : null}
+          </div>
+          <p className="text-sm text-muted-foreground tabular-nums">
+            {formatTime(shift.started_at, tz)} –{' '}
+            {shift.ended_at ? formatTime(shift.ended_at, tz) : 'now'} ·{' '}
+            {formatDuration(shift.started_at, shift.ended_at)}
+          </p>
+          {shift.notes ? (
+            <p className="truncate text-sm text-muted-foreground italic">“{shift.notes}”</p>
+          ) : null}
+        </div>
+        <div className="shrink-0 text-right">
+          <div className="tabular-nums text-lg font-semibold">
+            {formatDistance(shift.total_m, unit)}
+          </div>
+          {split ? (
+            <div className="text-xs text-muted-foreground tabular-nums">
+              {formatDistance(shift.active_m, unit)} active
+              <Est />
+            </div>
+          ) : null}
+          {shift.deduction_cents !== null ? (
+            <div className="text-xs text-muted-foreground tabular-nums">
+              {formatMoney(shift.deduction_cents, settings.currency)} deduction
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+/** The week of shifts (Comma's layout): week total, a bar per day, week figures, then the list. */
+export function ShiftList() {
+  const settings = useSettings();
+  const unit = settings.distance_unit;
+  const currency = settings.currency;
+  const [params, setParams] = useSearchParams();
+  const today = localDate(Date.now(), settings.timezone);
+  const thisWeek = weekOf(today, settings.week_start);
+  const asked = params.get('week');
+  const from = weekOf(isDate(asked) ? asked : today, settings.week_start);
+  const to = addDays(from, 6);
+  const { data, error } = useWeek(from, to);
+  const [day, setDay] = useState<string | null>(null);
+  useEffect(() => setDay(null), [from]);
+
+  const go = (week: string) => setParams(week === thisWeek ? {} : { week });
+
+  const shifts = [...(data?.shifts ?? [])].sort((a, b) => b.started_at - a.started_at);
+  const earnedWeek = data?.summary.earnings_cents ?? null;
+  // Bars show money when there is money and a per-day breakdown of it; otherwise distance.
+  const byMoney = earnedWeek !== null && data?.buckets != null;
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(from, i);
+    const own = shifts.filter((s) => s.local_date === date);
+    return {
+      date,
+      shifts: own,
+      distance: own.reduce((t, s) => t + (s.total_m ?? 0), 0),
+      earned: data?.buckets?.find((b) => b.start === date)?.earnings_cents ?? null,
+    };
+  });
+  const valueOf = (d: (typeof days)[number]) => (byMoney ? (d.earned ?? 0) : d.distance);
+  const words = (d: (typeof days)[number]) =>
+    byMoney ? earnedWords(d.earned, currency) : formatDistance(d.distance, unit);
+  const high = Math.max(0, ...days.map(valueOf));
+  const picked = days.find((d) => d.date === day) ?? null;
+  const listed = picked ? picked.shifts : shifts;
+  const anySplit = listed.some((s) => showsSplit(s, settings));
+  const weekDistance = days.reduce((t, d) => t + d.distance, 0);
+
+  const hero = picked
+    ? words(picked)
+    : earnedWeek !== null
+      ? formatMoney(earnedWeek, currency)
+      : formatDistance(weekDistance, unit);
+  const heroLabel = picked
+    ? dateWords(picked.date, { weekday: 'long', month: 'short', day: 'numeric' })
+    : weekWords(from, to);
 
   return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="font-heading text-2xl">Shifts</h1>
-        <label className="text-sm text-muted">
-          Status{' '}
-          <select
-            className="rounded border border-line bg-bg px-2 py-1 text-ink"
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-          >
-            <option value="">All</option>
-            <option value="active">Active</option>
-            <option value="ended">Ended</option>
-            <option value="finalized">Finalized</option>
-          </select>
-        </label>
+    <section className="mx-auto max-w-3xl space-y-6">
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold tracking-tight">Shifts</h1>
+        {from !== thisWeek ? (
+          <UiButton variant="outline" size="sm" onClick={() => go(thisWeek)}>
+            This week
+          </UiButton>
+        ) : null}
       </div>
-      <FormError message={error} />
-      {rows === null ? (
-        <p className="text-muted">Loading</p>
-      ) : rows.length === 0 ? (
-        <p className="text-muted">No shifts yet. Start one on the phone.</p>
-      ) : (
-        <>
-          <SortTable
-            caption="Shifts"
-            columns={columns(settings)}
-            rows={rows}
-            rowKey={(s) => s.id}
-            initialSort={{ key: 'date', dir: 'desc' }}
+
+      <div className="flex items-center justify-between gap-2">
+        <UiButton
+          variant="ghost"
+          size="icon"
+          aria-label="Previous week"
+          onClick={() => go(addDays(from, -7))}
+        >
+          <ChevronLeft />
+        </UiButton>
+        <div className="min-w-0 text-center">
+          <div className="text-sm text-muted-foreground">{heroLabel}</div>
+          <div
+            aria-live="polite"
+            className="truncate tabular-nums text-4xl font-semibold tracking-tight sm:text-5xl"
+          >
+            {data ? hero : <Skeleton className="mx-auto mt-1 h-10 w-40" />}
+          </div>
+          {data ? (
+            <div className="mt-1 text-xs text-muted-foreground">
+              {byMoney || (!picked && earnedWeek !== null) ? 'earned' : 'driven'} ·{' '}
+              {picked ? picked.shifts.length : data.summary.shift_count}{' '}
+              {(picked ? picked.shifts.length : data.summary.shift_count) === 1
+                ? 'shift'
+                : 'shifts'}
+            </div>
+          ) : null}
+        </div>
+        <UiButton
+          variant="ghost"
+          size="icon"
+          aria-label="Next week"
+          disabled={from >= thisWeek}
+          onClick={() => go(addDays(from, 7))}
+        >
+          <ChevronRight />
+        </UiButton>
+      </div>
+
+      <Card>
+        <CardContent>
+          <div className="relative flex h-40 items-stretch gap-2 sm:gap-3">
+            {high > 0 ? (
+              <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-2">
+                <div className="flex-1 border-t border-dashed" />
+                <span className="text-[11px] text-muted-foreground tabular-nums">
+                  High {byMoney ? formatMoney(high, currency) : formatDistance(high, unit)}
+                </span>
+              </div>
+            ) : null}
+            {days.map((d) => {
+              const selected = d.date === day;
+              const value = valueOf(d);
+              const pct = high > 0 ? (value / high) * 100 : 0;
+              const dim = day !== null && !selected;
+              return (
+                <button
+                  key={d.date}
+                  type="button"
+                  aria-pressed={selected}
+                  aria-label={`${dateWords(d.date, { weekday: 'long' })}: ${words(d)}`}
+                  onClick={() => setDay(selected ? null : d.date)}
+                  className="group flex flex-1 flex-col items-center gap-2 rounded-md pt-6 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                >
+                  <div className="flex w-full flex-1 items-end justify-center">
+                    <div
+                      className={cn(
+                        'w-full max-w-12 rounded-md transition-all',
+                        value > 0 ? 'bg-primary' : 'bg-muted',
+                        dim && 'opacity-35',
+                        !dim && 'group-hover:opacity-90',
+                      )}
+                      style={{ height: `${value > 0 ? Math.max(pct, 6) : 3}%` }}
+                    />
+                  </div>
+                  <span
+                    className={cn(
+                      'text-xs',
+                      selected || d.date === today
+                        ? 'font-semibold text-foreground'
+                        : 'text-muted-foreground',
+                    )}
+                  >
+                    {dateWords(d.date, { weekday: 'short' })}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {data ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatCard label="Hours" value={`${data.summary.hours.toFixed(1)} h`} />
+          <StatCard
+            label="Distance"
+            value={formatDistance(data.summary.total_m, unit)}
+            sub={
+              settings.modules.stops && shifts.some((s) => showsSplit(s, settings)) ? (
+                <>
+                  {formatDistance(data.summary.active_m, unit)} active
+                  <Est />
+                </>
+              ) : undefined
+            }
           />
-          {settings.modules.stops ? (
-            <p className="text-sm text-muted">* estimated from detected stops</p>
-          ) : null}
-          {next ? (
-            <Button type="button" onClick={() => void load(next)}>
-              Load more
-            </Button>
-          ) : null}
-        </>
-      )}
+          <StatCard label="Deduction" value={formatMoney(data.summary.deduction_cents, currency)} />
+          <StatCard
+            label="Hourly earnings"
+            value={earnedWords(data.summary.hourly_earnings_cents, currency)}
+          />
+        </div>
+      ) : null}
+
+      <div className="space-y-3">
+        <h2 className="text-sm font-medium text-muted-foreground">
+          {picked ? `Shifts on ${dateWords(picked.date, { weekday: 'long' })}` : 'Shifts this week'}
+        </h2>
+        <FormError message={error} />
+        {!data && !error ? (
+          <div className="space-y-3">
+            <Skeleton className="h-20 w-full rounded-xl" />
+            <Skeleton className="h-20 w-full rounded-xl" />
+          </div>
+        ) : data && listed.length === 0 ? (
+          <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+            {picked ? 'No shifts on this day.' : 'No shifts this week. Shifts start on the phone.'}
+          </div>
+        ) : (
+          <ul aria-label="Shifts" className="space-y-3">
+            {listed.map((s) => (
+              <li key={s.id}>
+                <ShiftCard shift={s} settings={settings} />
+              </li>
+            ))}
+          </ul>
+        )}
+        {anySplit ? (
+          <p className="text-xs text-muted-foreground">* estimated from detected stops</p>
+        ) : null}
+      </div>
     </section>
   );
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex justify-between gap-6 border-t border-line py-2 first:border-t-0">
-      <dt className="text-muted">{label}</dt>
-      <dd className="font-mono">{children}</dd>
+    <div className="flex justify-between gap-6 border-t py-2 first:border-t-0 first:pt-0">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="text-right tabular-nums">{children}</dd>
     </div>
   );
 }
@@ -223,117 +444,164 @@ export function ShiftDetail() {
 
   if (error && !shift)
     return (
-      <p role="alert" className="text-muted">
+      <p role="alert" className="text-muted-foreground">
         {error}
       </p>
     );
-  if (!shift) return <p className="text-muted">Loading</p>;
+  if (!shift) return <p className="text-muted-foreground">Loading</p>;
   const split = showsSplit(shift, settings);
   const tz = settings.timezone;
 
+  const unit = settings.distance_unit;
   return (
     <section className="space-y-6">
-      <Link to="/shifts" className="text-sm text-muted hover:text-ink">
-        All shifts
-      </Link>
-      <h1 className="font-heading text-2xl">Shift on {shift.local_date}</h1>
-      <dl className="max-w-md">
-        <Row label="Started">{formatDateTime(shift.started_at, tz)}</Row>
-        <Row label="Ended">
-          {shift.ended_at ? formatDateTime(shift.ended_at, tz) : 'in progress'}
-        </Row>
-        <Row label="Duration">{formatDuration(shift.started_at, shift.ended_at)}</Row>
-        <Row label="Total">{formatDistance(shift.total_m, settings.distance_unit)}</Row>
-        {split ? (
-          <>
-            <Row label="Active">
-              {formatDistance(shift.active_m, settings.distance_unit)}
-              <Est />
-            </Row>
-            <Row label="Deadhead">
-              {formatDistance(shift.deadhead_m, settings.distance_unit)}
-              <Est />
-            </Row>
-          </>
-        ) : null}
-        <Row label="Personal">{formatDistance(shift.personal_m, settings.distance_unit)}</Row>
-        <Row label="Deduction">{formatMoney(shift.deduction_cents, settings.currency)}</Row>
-        <Row label="Status">{shift.status}</Row>
-        {shift.recon_status ? <Row label="Phone check">{shift.recon_status}</Row> : null}
-      </dl>
-      {split ? <p className="text-sm text-muted">* estimated from detected stops</p> : null}
-
-      <section aria-label="Flags" className="space-y-2">
-        <h2 className="font-heading text-lg">Flags</h2>
-        {shift.flags?.length ? (
-          <ul className="space-y-1">
-            {shift.flags.map((f, i) => (
-              <li
-                key={`${f.code}-${i}`}
-                className={f.severity === 'review' ? 'text-ink' : 'text-muted'}
-              >
-                {f.code}
-                <span className="ml-2 text-xs uppercase text-muted">{f.severity}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-muted">None.</p>
-        )}
-      </section>
-
-      <section aria-label="Trips" className="space-y-2">
-        <h2 className="font-heading text-lg">Trips</h2>
-        <TripsTable shift={shift} split={split} reloadKey={shift.calculated_at ?? 0} />
-      </section>
-
-      {settings.modules.stops ? (
-        <section aria-label="Stops" className="space-y-2">
-          <h2 className="font-heading text-lg">Stops</h2>
-          <StopsPanel shift={shift} onShift={setShift} />
-        </section>
-      ) : null}
-
-      {settings.modules.earnings && shift.status !== 'active' ? (
-        <ShiftEarnings shift={shift} />
-      ) : null}
-
-      {settings.modules.replay ? <RouteView shiftId={shift.id} /> : null}
-
-      <ShiftOdometer shift={shift} />
-
-      {settings.modules.exporters.length > 0 ? (
-        <section aria-label="Export" className="space-y-2">
-          <h2 className="font-heading text-lg">Export this shift</h2>
-          <ExportButtons selection={{ shift_id: shift.id }} />
-        </section>
-      ) : null}
-
-      <section className="max-w-md space-y-2">
-        <label className="block text-sm text-muted" htmlFor="notes">
-          Notes
-        </label>
-        <textarea
-          id="notes"
-          className="w-full rounded border border-line bg-bg p-2 text-ink"
-          rows={3}
-          maxLength={2000}
-          value={notes}
-          onChange={(e) => {
-            setSaved(false);
-            setNotes(e.target.value);
-          }}
-        />
-        <FormError message={error} />
-        <Button type="button" busy={notes === (shift.notes ?? '')} onClick={() => void saveNotes()}>
-          Save notes
-        </Button>
-        {saved ? (
-          <span role="status" className="ml-3 text-sm text-accent">
-            Saved.
+      <UiButton asChild variant="ghost" size="sm" className="-ml-2">
+        <Link to={`/shifts?week=${weekOf(shift.local_date, settings.week_start)}`}>
+          <ChevronLeft />
+          All shifts
+        </Link>
+      </UiButton>
+      <PageHeader
+        title={`Shift on ${shift.local_date}`}
+        description={
+          <span className="tabular-nums">
+            {dateWords(shift.local_date, { weekday: 'long' })} · {formatTime(shift.started_at, tz)}{' '}
+            – {shift.ended_at ? formatTime(shift.ended_at, tz) : 'now'}
           </span>
+        }
+      >
+        <StatusBadge shift={shift} />
+      </PageHeader>
+
+      <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <StatCard label="Total" value={formatDistance(shift.total_m, unit)} />
+          {split ? (
+            <>
+              <StatCard
+                label="Active"
+                value={
+                  <>
+                    {formatDistance(shift.active_m, unit)}
+                    <Est />
+                  </>
+                }
+              />
+              <StatCard
+                label="Deadhead"
+                value={
+                  <>
+                    {formatDistance(shift.deadhead_m, unit)}
+                    <Est />
+                  </>
+                }
+              />
+            </>
+          ) : null}
+          <StatCard label="Duration" value={formatDuration(shift.started_at, shift.ended_at)} />
+          <StatCard
+            label="Deduction"
+            value={formatMoney(shift.deduction_cents, settings.currency)}
+          />
+        </div>
+        {split ? (
+          <p className="text-xs text-muted-foreground">* estimated from detected stops</p>
         ) : null}
-      </section>
+      </div>
+
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-6">
+          {settings.modules.replay ? <RouteView shiftId={shift.id} /> : null}
+          <Section label="Trips" title="Trips">
+            <TripsTable shift={shift} split={split} reloadKey={shift.calculated_at ?? 0} />
+          </Section>
+          {settings.modules.stops ? (
+            <Section label="Stops" title="Stops">
+              <StopsPanel shift={shift} onShift={setShift} />
+            </Section>
+          ) : null}
+          {settings.modules.earnings && shift.status !== 'active' ? (
+            <ShiftEarnings shift={shift} />
+          ) : null}
+        </div>
+
+        <div className="space-y-6">
+          <Section title="Details">
+            <dl className="text-sm">
+              <Row label="Started">{formatDateTime(shift.started_at, tz)}</Row>
+              <Row label="Ended">
+                {shift.ended_at ? formatDateTime(shift.ended_at, tz) : 'in progress'}
+              </Row>
+              <Row label="Personal">{formatDistance(shift.personal_m, unit)}</Row>
+              <Row label="Status">{shift.status}</Row>
+              {shift.recon_status ? <Row label="Phone check">{shift.recon_status}</Row> : null}
+            </dl>
+          </Section>
+
+          <Section label="Flags" title="Flags">
+            {shift.flags?.length ? (
+              <ul className="space-y-2">
+                {shift.flags.map((f, i) => (
+                  <li key={`${f.code}-${i}`} className="flex items-center justify-between gap-3">
+                    <span
+                      className={
+                        f.severity === 'review' ? 'text-sm' : 'text-sm text-muted-foreground'
+                      }
+                    >
+                      {f.code}
+                    </span>
+                    <Badge variant={f.severity === 'review' ? 'outline' : 'secondary'}>
+                      {f.severity}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">None.</p>
+            )}
+          </Section>
+
+          <ShiftOdometer shift={shift} />
+
+          <Section title="Notes">
+            <label className="sr-only" htmlFor="notes">
+              Notes
+            </label>
+            <textarea
+              id="notes"
+              className="w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+              rows={3}
+              maxLength={2000}
+              value={notes}
+              onChange={(e) => {
+                setSaved(false);
+                setNotes(e.target.value);
+              }}
+            />
+            <FormError message={error} />
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                busy={notes === (shift.notes ?? '')}
+                onClick={() => void saveNotes()}
+              >
+                Save notes
+              </Button>
+              {saved ? (
+                <span role="status" className="text-sm text-muted-foreground">
+                  Saved.
+                </span>
+              ) : null}
+            </div>
+          </Section>
+
+          {settings.modules.exporters.length > 0 ? (
+            <Section label="Export" title="Export this shift">
+              <ExportButtons selection={{ shift_id: shift.id }} />
+            </Section>
+          ) : null}
+        </div>
+      </div>
     </section>
   );
 }

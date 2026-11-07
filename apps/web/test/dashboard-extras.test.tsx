@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { cleanup, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PERIODS } from '../src/pages/Dashboard';
-import { renderApp, settingsFixture, signedIn } from './support/kit';
+import { renderApp, settingsFixture, signedIn, pick } from './support/kit';
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
@@ -126,9 +126,9 @@ describe('dashboard checklist and goal ring (18 section 13)', () => {
   it('the Today and This week periods ask /summary for one day and for the week from the week start', async () => {
     const s = open({});
     await screen.findByLabelText(/Period/);
-    fireEvent.change(screen.getByLabelText(/Period/), { target: { value: 'week' } });
+    pick(screen.getByLabelText(/Period/), 'week');
     await screen.findByText('2027-01-11 to 2027-01-15');
-    fireEvent.change(screen.getByLabelText(/Period/), { target: { value: 'today' } });
+    pick(screen.getByLabelText(/Period/), 'today');
     await screen.findByText('2027-01-15 to 2027-01-15');
     expect(s.calls.filter((c) => c.path === '/summary').length).toBe(3);
     expect(

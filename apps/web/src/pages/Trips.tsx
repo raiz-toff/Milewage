@@ -45,9 +45,9 @@ export function TripsTable({
     };
   }, [api, shift.id, reloadKey]);
 
-  if (error) return <p className="text-muted">Trips could not be loaded. {error}</p>;
-  if (trips === null) return <p className="text-muted">Loading trips</p>;
-  if (trips.length === 0) return <p className="text-muted">No trips were recorded.</p>;
+  if (error) return <p className="text-muted-foreground">Trips could not be loaded. {error}</p>;
+  if (trips === null) return <p className="text-muted-foreground">Loading trips</p>;
+  if (trips.length === 0) return <p className="text-muted-foreground">No trips were recorded.</p>;
 
   const tz = settings.timezone;
   const unit = settings.distance_unit;

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { renderApp, settingsFixture } from './support/kit';
+import { renderApp, settingsFixture, pick } from './support/kit';
 
 afterEach(cleanup);
 
@@ -95,7 +95,7 @@ describe('setup wizard', () => {
     await screen.findByRole('heading', { name: 'Set up MileWage' });
     type('Username', 'rider');
     type('Password', 'a long enough password');
-    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'US' } });
+    pick(screen.getByLabelText('Country'), 'US');
     click('Create account');
     expect((await screen.findByTestId('recovery-key')).textContent).toBe(
       'AGE-SECRET-KEY-1XYZabc123',

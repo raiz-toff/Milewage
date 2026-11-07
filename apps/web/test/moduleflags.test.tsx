@@ -64,6 +64,25 @@ const open = (modules: Partial<Modules>, url: string) =>
     {
       ...signedIn(settingsFixture({ modules })),
       'GET /shifts': () => ({ body: { items: [shift], next_cursor: null } }),
+      'GET /summary': () => ({
+        body: {
+          from: '2023-11-13',
+          to: '2023-11-19',
+          shift_count: 1,
+          hours: 4,
+          earnings_cents: null,
+          tips_cents: null,
+          active_m: 0,
+          deadhead_m: 0,
+          personal_m: 0,
+          total_m: 10_000,
+          deduction_cents: null,
+          hourly_earnings_cents: null,
+        },
+      }),
+      'GET /analytics': () => ({
+        body: { from: '2023-11-13', to: '2023-11-19', group: 'trends', data: { buckets: [] } },
+      }),
       'GET /shifts/1': () => ({ body: shift }),
       'GET /shifts/1/route': () => ({ body: routeBody }),
       'GET /devices': () => ({ body: [] }),
@@ -89,6 +108,7 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
       'Backups',
       'Settings',
     ]);
+    expect(screen.queryByRole('link', { name: /^Notifications/ })).toBeNull();
   });
 
   it('with every module on, the navigation lists each screen', async () => {
@@ -97,20 +117,23 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
       'Dashboard',
       'Live map',
       'Shifts',
-      'Expenses',
-      'Analytics',
-      'Goals',
-      'Tax',
-      'Notifications',
-      'Progress',
       'Schedule',
+      'Analytics',
+      'Expenses',
+      'Goals',
+      'Progress',
+      'Tax',
+      'Exports',
       'Vehicles',
       'Odometer',
-      'Exports',
       'Devices',
       'Backups',
       'Settings',
     ]);
+    // Notifications is the header bell, not a sidebar entry.
+    expect(screen.getByRole('link', { name: /^Notifications/ }).getAttribute('href')).toBe(
+      '/notifications',
+    );
   });
 
   it('the screen registry: a rule exists only for module-owned screens, core has none', () => {
@@ -138,9 +161,9 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
   });
 
   it('stops off: no split in the list or the detail, and no estimate marker anywhere', async () => {
-    open({ stops: false }, '/shifts');
-    await screen.findByRole('table');
-    expect(screen.queryByRole('columnheader', { name: /Active/ })).toBeNull();
+    open({ stops: false }, '/shifts?week=2023-11-13');
+    await screen.findByRole('list', { name: 'Shifts' });
+    expect(screen.queryByText(/km active/)).toBeNull();
     expect(screen.queryByText(/estimated/)).toBeNull();
     cleanup();
     open({ stops: false }, '/shifts/1');
@@ -158,14 +181,14 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
   });
 
   it('diagnostics off: the diagnostics level setting is gone, the rest of settings stays', async () => {
-    open({ diagnostics: false }, '/settings');
-    await screen.findByLabelText('Currency');
+    open({ diagnostics: false }, '/settings/tracking');
+    await screen.findByLabelText('Keep raw GPS points (days)');
     expect(screen.queryByLabelText('Diagnostics level')).toBeNull();
     expect(screen.getByLabelText(/Detect stops/)).toBeTruthy();
   });
 
   it('diagnostics on: the level setting is there', async () => {
-    open({ diagnostics: true }, '/settings');
+    open({ diagnostics: true }, '/settings/tracking');
     expect(await screen.findByLabelText('Diagnostics level')).toBeTruthy();
   });
 });

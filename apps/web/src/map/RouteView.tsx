@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { Section } from '../ui/layout';
 import { ApiError, unwrap } from '../api/client';
 import { formatTime } from '../format';
 import { useSession, useSettings } from '../session';
@@ -46,43 +47,42 @@ export function RouteView({ shiftId }: { shiftId: number }) {
     [points, step],
   );
 
-  if (points === null) return <p className="text-muted">Loading route</p>;
+  if (points === null) return <p className="text-muted-foreground">Loading route</p>;
   if (points.length === 0)
-    return <p className="text-muted">{note ?? 'No route points were recorded.'}</p>;
+    return <p className="text-muted-foreground">{note ?? 'No route points were recorded.'}</p>;
 
   const tz = settings.timezone;
   return (
-    <section aria-label="Route" className="space-y-3">
-      <h2 className="font-heading text-lg">Route</h2>
-      <Suspense fallback={<p className="text-muted">Loading map</p>}>
+    <Section label="Route" title="Route">
+      <Suspense fallback={<p className="text-muted-foreground">Loading map</p>}>
         <MapView points={points} cursor={cursor} />
       </Suspense>
       <div className="flex items-center gap-4">
         <input
           type="range"
           aria-label="Replay position"
-          className="flex-1 accent-[var(--mw-accent)]"
+          className="flex-1 accent-primary"
           min={0}
           max={STEPS}
           value={step}
           onChange={(e) => setStep(Number(e.target.value))}
         />
         {cursor ? (
-          <output className="w-64 font-mono text-sm text-muted">
+          <output className="w-64 tabular-nums text-sm text-muted-foreground">
             {formatTime(cursor.t, tz)} · {speedIn(cursor.speed, settings.distance_unit)}
           </output>
         ) : null}
       </div>
       {cursor ? (
-        <p className="font-mono text-xs text-muted">
+        <p className="tabular-nums text-xs text-muted-foreground">
           {cursor.lat.toFixed(5)}, {cursor.lon.toFixed(5)}
         </p>
       ) : null}
       {source === 'archive' ? (
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Simplified route: raw points were archived (speed unavailable).
         </p>
       ) : null}
-    </section>
+    </Section>
   );
 }

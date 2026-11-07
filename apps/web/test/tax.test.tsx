@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { renderApp, settingsFixture, signedIn } from './support/kit';
+import { renderApp, settingsFixture, signedIn, pick } from './support/kit';
 
 afterEach(cleanup);
 
@@ -179,9 +179,7 @@ describe('vehicle tax-year panel', () => {
         '/vehicles',
       );
     const on = mk(true);
-    fireEvent.change(await screen.findByLabelText(/Deduct Corolla in/), {
-      target: { value: 'actual_expenses' },
-    });
+    pick(await screen.findByLabelText(/Deduct Corolla in/), 'actual_expenses');
     await waitFor(() => expect(on.calls.some((c) => c.method === 'PUT')).toBe(true));
     expect(on.calls.find((c) => c.method === 'PUT')?.body).toEqual({ method: 'actual_expenses' });
     cleanup();

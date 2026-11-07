@@ -1,11 +1,152 @@
-@import '@fontsource/dm-sans/400.css';
-@import '@fontsource/dm-sans/500.css';
-@import '@fontsource/dm-serif-display/400.css';
-@import '@fontsource/dm-mono/400.css';
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
 
-body {
-  @apply bg-bg font-sans text-ink antialiased;
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: 'Geist Variable', sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-earned: var(--earned);
+  --color-spent: var(--spent);
+  --color-signal: var(--signal);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/*
+ * MileWage palette. Lane yellow #FFC21F is the brand and the primary action; Asphalt #101214 is
+ * canvas, ink and outlines; Signal blue #4C8DFF marks the live position only; Earned #34D399 is
+ * money in and Spent #FF6B5E money out. Dark is the in-car default (phone); light is the web
+ * default. The light theme keeps the hues but darkens text-weight greys and money colours so
+ * they stay readable on white.
+ */
+:root {
+  --background: #f5f6f8;
+  --foreground: #101214;
+  --card: #ffffff;
+  --card-foreground: #101214;
+  --popover: #ffffff;
+  --popover-foreground: #101214;
+  --primary: #ffc21f;
+  --primary-foreground: #101214;
+  --secondary: #eceef0;
+  --secondary-foreground: #101214;
+  --muted: #eceef0;
+  --muted-foreground: #5c636b;
+  --accent: #eceef0;
+  --accent-foreground: #101214;
+  --destructive: #d93f33;
+  --border: #e1e4e8;
+  --input: #d3d7dc;
+  --ring: #ffc21f;
+  --earned: #0f9f6e;
+  --spent: #d93f33;
+  --signal: #2f6fe0;
+  --chart-1: #ffc21f;
+  --chart-2: #0f9f6e;
+  --chart-3: #2f6fe0;
+  --chart-4: #d93f33;
+  --chart-5: #8b939c;
+  --radius: 0.625rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #101214;
+  --sidebar-primary: #ffc21f;
+  --sidebar-primary-foreground: #101214;
+  --sidebar-accent: #eceef0;
+  --sidebar-accent-foreground: #101214;
+  --sidebar-border: #e1e4e8;
+  --sidebar-ring: #ffc21f;
+}
+
+.dark {
+  --background: #101214;
+  --foreground: #eceef0;
+  --card: #181b1e;
+  --card-foreground: #eceef0;
+  --popover: #181b1e;
+  --popover-foreground: #eceef0;
+  --primary: #ffc21f;
+  --primary-foreground: #101214;
+  --secondary: #262a2f;
+  --secondary-foreground: #eceef0;
+  --muted: #262a2f;
+  --muted-foreground: #8b939c;
+  --accent: #262a2f;
+  --accent-foreground: #eceef0;
+  --destructive: #ff6b5e;
+  --border: #262a2f;
+  --input: #262a2f;
+  --ring: #ffc21f;
+  --earned: #34d399;
+  --spent: #ff6b5e;
+  --signal: #4c8dff;
+  --chart-1: #ffc21f;
+  --chart-2: #34d399;
+  --chart-3: #4c8dff;
+  --chart-4: #ff6b5e;
+  --chart-5: #8b939c;
+  --sidebar: #101214;
+  --sidebar-foreground: #eceef0;
+  --sidebar-primary: #ffc21f;
+  --sidebar-primary-foreground: #101214;
+  --sidebar-accent: #262a2f;
+  --sidebar-accent-foreground: #eceef0;
+  --sidebar-border: #262a2f;
+  --sidebar-ring: #ffc21f;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+  html {
+    @apply font-sans;
+  }
 }

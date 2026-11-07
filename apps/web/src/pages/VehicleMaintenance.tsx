@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Button as UiButton } from '@/components/ui/button';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
@@ -86,22 +87,19 @@ export function VehicleMaintenance({ vehicleId, name }: { vehicleId: number; nam
   }
 
   return (
-    <section
-      aria-label={`Maintenance of ${name}`}
-      className="mt-2 space-y-2 rounded border border-line p-3"
-    >
+    <section aria-label={`Maintenance of ${name}`} className="mt-2 space-y-2 rounded-lg border p-3">
       <FormError message={error} />
       {logs === null ? null : logs.length === 0 ? (
-        <p className="text-sm text-muted">No service entries yet.</p>
+        <p className="text-sm text-muted-foreground">No service entries yet.</p>
       ) : (
         <ul className="space-y-1 text-sm">
           {logs.map((l) => (
             <li key={l.id} className="flex flex-wrap gap-3">
-              <span className="font-mono">{l.serviced_on}</span>
+              <span className="tabular-nums">{l.serviced_on}</span>
               <span>{label(l.kind)}</span>
               {l.cost_cents === null ? null : <span>{formatMoney(l.cost_cents, currency)}</span>}
               {l.odometer_m === null ? null : (
-                <span className="text-muted">
+                <span className="text-muted-foreground">
                   {Math.round(l.odometer_m / (unit === 'km' ? 1000 : 1609.344)).toLocaleString(
                     'en-CA',
                   )}{' '}
@@ -109,16 +107,17 @@ export function VehicleMaintenance({ vehicleId, name }: { vehicleId: number; nam
                 </span>
               )}
               {l.double_counts ? (
-                <span className="text-muted">covered by the mileage rate</span>
+                <span className="text-muted-foreground">covered by the mileage rate</span>
               ) : null}
-              <button
+              <UiButton
                 type="button"
-                className="text-muted hover:text-ink"
+                variant="ghost"
+                size="sm"
                 aria-label={`Delete service ${l.serviced_on} ${label(l.kind)}`}
                 onClick={() => void remove(l.id)}
               >
                 Delete
-              </button>
+              </UiButton>
             </li>
           ))}
         </ul>

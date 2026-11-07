@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { boundsOf, lineOf, positionAt, speedIn, stepOf, timeAt, toPoints } from '../src/map/route';
-import { blankStyle, chooseStyle } from '../src/map/style';
+import { blankStyle, chooseStyle, liveColor, routeColor } from '../src/map/style';
 
 const route = {
   source: 'raw' as const,
@@ -76,12 +76,14 @@ describe('map style', () => {
     expect(chooseStyle(' /tiles/style.json ', true)).toBe('/tiles/style.json');
   });
 
-  it('takes its colours from the shared tokens, per theme', () => {
+  it('takes its colours from the MileWage palette, per theme', () => {
     const bg = (d: boolean) =>
       (blankStyle(d).layers[0] as { paint: { 'background-color': string } }).paint[
         'background-color'
       ];
-    expect(bg(true)).toBe('#16161A');
-    expect(bg(false)).toBe('#FCFCFD');
+    expect(bg(true)).toBe('#181b1e');
+    expect(bg(false)).toBe('#ffffff');
+    expect(routeColor(true)).toBe('#ffc21f');
+    expect(liveColor(true)).toBe('#4c8dff');
   });
 });

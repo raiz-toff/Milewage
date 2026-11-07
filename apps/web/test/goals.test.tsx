@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { targetOf, valueText } from '../src/pages/Goals';
-import { renderApp, settingsFixture, signedIn } from './support/kit';
+import { renderApp, settingsFixture, signedIn, pick, menu } from './support/kit';
 
 afterEach(cleanup);
 
@@ -75,7 +75,7 @@ describe('goals screen (module goals)', () => {
     const s = open();
     await screen.findByText('Weekly pay');
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Hours' } });
-    fireEvent.change(screen.getByLabelText('Measure'), { target: { value: 'hours' } });
+    pick(screen.getByLabelText('Measure'), 'hours');
     fireEvent.change(screen.getByLabelText('Target'), { target: { value: '20' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add goal' }));
     await waitFor(() => expect(s.calls.some((c) => c.method === 'POST')).toBe(true));
@@ -85,11 +85,11 @@ describe('goals screen (module goals)', () => {
       period: 'weekly',
       target: 1200,
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Pause Weekly pay' }));
+    menu('Weekly pay', 'Pause');
     await waitFor(() =>
       expect(s.calls.find((c) => c.method === 'PATCH')?.body).toEqual({ active: false }),
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Weekly pay' }));
+    menu('Weekly pay', 'Delete');
     await waitFor(() => expect(s.calls.some((c) => c.method === 'DELETE')).toBe(true));
   });
 

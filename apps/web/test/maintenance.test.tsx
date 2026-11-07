@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { renderApp, settingsFixture, signedIn } from './support/kit';
+import { renderApp, settingsFixture, signedIn, pick } from './support/kit';
 
 afterEach(cleanup);
 
@@ -63,7 +63,7 @@ describe('vehicle service log (module maintenance)', () => {
     expect(await screen.findByText('$89.00')).toBeTruthy();
     expect(screen.getByText('54,000 km')).toBeTruthy();
     expect(screen.getByText('covered by the mileage rate')).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Service'), { target: { value: 'tires' } });
+    pick(screen.getByLabelText('Service'), 'tires');
     fireEvent.change(screen.getByLabelText(/^Cost/), { target: { value: '640.50' } });
     fireEvent.change(screen.getByLabelText('Odometer (km)'), { target: { value: '54100' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add service' }));

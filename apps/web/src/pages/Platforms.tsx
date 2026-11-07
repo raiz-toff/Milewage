@@ -2,6 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
+import { Trash2 } from 'lucide-react';
+import { Button as UiButton } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { useSession } from '../session';
 import { Button, Field, FormError } from '../ui/form';
 
@@ -63,52 +66,55 @@ export function PlatformsCard() {
 
   return (
     <section aria-label="Platforms" className="space-y-3">
-      <h2 className="font-heading text-lg">Platforms</h2>
+      <h2 className="text-base leading-snug font-medium">Platforms</h2>
       <FormError message={error} />
       {list === null ? (
-        <p className="text-muted">Loading</p>
+        <p className="text-muted-foreground">Loading</p>
       ) : (
-        <ul className="space-y-1">
+        <ul className="divide-y rounded-lg border">
           {list.map((p) => (
-            <li key={p.slug} className="flex items-center gap-3">
-              <label className="flex flex-1 items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 accent-[var(--mw-accent)]"
-                  checked={p.active}
-                  onChange={(e) => void put(p.slug, { active: e.target.checked })}
-                />
-                <span className={p.active ? '' : 'text-muted line-through'}>
-                  {p.emoji ? `${p.emoji} ` : ''}
-                  {p.label}
-                </span>
+            <li key={p.slug} className="flex items-center gap-3 px-3 py-2">
+              <label
+                htmlFor={`platform-${p.slug}`}
+                className={`flex-1 text-sm ${p.active ? '' : 'text-muted-foreground line-through'}`}
+              >
+                {p.emoji ? `${p.emoji} ` : ''}
+                {p.label}
               </label>
               {p.custom ? (
-                <button
+                <UiButton
                   type="button"
-                  className="text-sm text-muted hover:text-ink"
+                  variant="ghost"
+                  size="icon-sm"
                   aria-label={`Delete ${p.label}`}
                   onClick={() => void remove(p.slug)}
                 >
-                  Delete
-                </button>
+                  <Trash2 />
+                </UiButton>
               ) : null}
+              <Switch
+                id={`platform-${p.slug}`}
+                checked={p.active}
+                onCheckedChange={(on) => void put(p.slug, { active: on })}
+              />
             </li>
           ))}
         </ul>
       )}
-      <form className="flex items-end gap-3" onSubmit={(e) => void add(e)}>
-        <Field
-          label="Add a platform"
-          maxLength={40}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
+      <form className="flex items-end gap-2" onSubmit={(e) => void add(e)}>
+        <div className="flex-1">
+          <Field
+            label="Add a platform"
+            maxLength={40}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
         <Button type="submit" busy={name.trim() === ''}>
           Add
         </Button>
       </form>
-      <p className="text-xs text-muted">
+      <p className="text-xs text-muted-foreground">
         An inactive platform drops out of the pickers; its past labels and earnings stay.
       </p>
     </section>

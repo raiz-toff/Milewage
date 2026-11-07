@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Ban, Pencil, Smartphone } from 'lucide-react';
+import { RowMenu } from '../ui/RowMenu';
+import { EmptyState, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
+import { Button as UiButton } from '@/components/ui/button';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { formatDateTime, formatTime } from '../format';
@@ -30,14 +34,14 @@ function DeviceRow({ device, onChanged }: { device: Device; onChanged: () => voi
   }
 
   return (
-    <tr className="border-t border-line align-top">
+    <tr className="border-t border-border align-top">
       <td className="py-2 pr-4">
         {name === null ? (
-          <span className={revoked ? 'text-muted line-through' : ''}>{device.name}</span>
+          <span className={revoked ? 'text-muted-foreground line-through' : ''}>{device.name}</span>
         ) : (
           <input
             aria-label={`New name for ${device.name}`}
-            className="rounded border border-line bg-bg px-2 py-1"
+            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
             maxLength={64}
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -45,25 +49,19 @@ function DeviceRow({ device, onChanged }: { device: Device; onChanged: () => voi
         )}
         <FormError message={error} />
       </td>
-      <td className="pr-4 text-muted">{device.platform}</td>
-      <td className="pr-4 font-mono text-sm text-muted">
+      <td className="pr-4 text-muted-foreground">{device.platform}</td>
+      <td className="pr-4 tabular-nums text-sm text-muted-foreground">
         {device.last_seen_at ? formatDateTime(device.last_seen_at, timezone) : 'never'}
       </td>
-      <td className="pr-4 text-muted">{revoked ? 'revoked' : 'active'}</td>
-      <td className="space-x-3 text-right">
+      <td className="pr-4 text-muted-foreground">{revoked ? 'revoked' : 'active'}</td>
+      <td className="space-x-3 text-right whitespace-nowrap">
         {revoked ? null : name === null ? (
-          <>
-            <button
-              type="button"
-              className="text-muted hover:text-ink"
-              onClick={() => setName(device.name)}
-            >
-              Rename
-            </button>
-            {confirming ? (
-              <button
+          confirming ? (
+            <>
+              <UiButton
                 type="button"
-                className="text-red-400"
+                variant="destructive"
+                size="sm"
                 onClick={() =>
                   void act(() =>
                     unwrap(api.DELETE('/devices/{id}', { params: { path: { id: device.id } } })),
@@ -71,22 +69,37 @@ function DeviceRow({ device, onChanged }: { device: Device; onChanged: () => voi
                 }
               >
                 Confirm revoke
-              </button>
-            ) : (
-              <button
+              </UiButton>
+              <UiButton
                 type="button"
-                className="text-muted hover:text-ink"
-                onClick={() => setConfirming(true)}
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirming(false)}
               >
-                Revoke
-              </button>
-            )}
-          </>
+                Cancel
+              </UiButton>
+            </>
+          ) : (
+            <RowMenu
+              name={device.name}
+              actions={[
+                { label: 'Rename', icon: Pencil, onSelect: () => setName(device.name) },
+                {
+                  label: 'Revoke',
+                  icon: Ban,
+                  destructive: true,
+                  onSelect: () => setConfirming(true),
+                },
+              ]}
+            />
+          )
         ) : (
           <>
-            <button
+            <UiButton
               type="button"
-              className="text-accent"
+              variant="link"
+              size="sm"
+              className="h-auto px-0"
               disabled={!name.trim()}
               onClick={() =>
                 void act(() =>
@@ -100,10 +113,10 @@ function DeviceRow({ device, onChanged }: { device: Device; onChanged: () => voi
               }
             >
               Save
-            </button>
-            <button type="button" className="text-muted" onClick={() => setName(null)}>
+            </UiButton>
+            <UiButton type="button" variant="ghost" size="sm" onClick={() => setName(null)}>
               Cancel
-            </button>
+            </UiButton>
           </>
         )}
       </td>
@@ -141,47 +154,62 @@ export function Devices() {
 
   return (
     <section className="space-y-6">
-      <h1 className="font-heading text-2xl">Devices</h1>
-      <div className="space-y-3 rounded border border-line bg-card p-4">
+      <PageHeader
+        title="Devices"
+        description="Phones that record shifts for this server. Revoke one you lost or replaced."
+      >
         <Button type="button" onClick={() => void pair()}>
+          <Smartphone />
           Pair a phone
         </Button>
-        {pairing ? (
-          <div className="space-y-2">
-            <Qr text={pairing.qr_payload} label="Pairing code" />
-            <p className="text-sm text-muted">
-              Scan in the MileWage app. Valid once, until {formatTime(pairing.expires_at, timezone)}
-              .
-            </p>
-            <code className="block break-all font-mono text-xs text-muted">
-              {pairing.qr_payload}
-            </code>
-          </div>
-        ) : null}
-        <FormError message={error} />
-      </div>
-      {devices === null ? (
-        <p className="text-muted">Loading</p>
-      ) : devices.length === 0 ? (
-        <p className="text-muted">No phone is paired yet.</p>
-      ) : (
-        <table className="w-full text-left">
-          <thead className="text-sm text-muted">
-            <tr>
-              <th className="pb-2 font-normal">Name</th>
-              <th className="font-normal">Platform</th>
-              <th className="font-normal">Last seen</th>
-              <th className="font-normal">State</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {devices.map((d) => (
-              <DeviceRow key={d.id} device={d} onChanged={() => void load()} />
-            ))}
-          </tbody>
-        </table>
-      )}
+      </PageHeader>
+      {pairing || error ? (
+        <Section title="Pair a phone">
+          {pairing ? (
+            <div className="flex flex-wrap items-start gap-6">
+              <div className="rounded-lg border bg-white p-2">
+                <Qr text={pairing.qr_payload} label="Pairing code" />
+              </div>
+              <div className="min-w-0 flex-1 space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Scan in the MileWage app. Valid once, until{' '}
+                  {formatTime(pairing.expires_at, timezone)}.
+                </p>
+                <code className="block break-all font-mono text-xs text-muted-foreground">
+                  {pairing.qr_payload}
+                </code>
+              </div>
+            </div>
+          ) : null}
+          <FormError message={error} />
+        </Section>
+      ) : null}
+      <Section title="Paired phones">
+        {devices === null ? (
+          <p className="text-sm text-muted-foreground">Loading</p>
+        ) : devices.length === 0 ? (
+          <EmptyState>No phone is paired yet.</EmptyState>
+        ) : (
+          <TableBox>
+            <table className={tableClass}>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Platform</th>
+                  <th>Last seen</th>
+                  <th>State</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {devices.map((d) => (
+                  <DeviceRow key={d.id} device={d} onChanged={() => void load()} />
+                ))}
+              </tbody>
+            </table>
+          </TableBox>
+        )}
+      </Section>
     </section>
   );
 }

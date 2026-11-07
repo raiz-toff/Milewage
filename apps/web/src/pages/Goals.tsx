@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { EmptyState, PageHeader, Section } from '../ui/layout';
+import { Pause, Play, Trash2 } from 'lucide-react';
+import { RowMenu } from '../ui/RowMenu';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
@@ -42,8 +46,8 @@ export function GoalBar({ goal }: { goal: Goal }) {
   return (
     <div>
       <div className="flex justify-between text-sm">
-        <span>{goal.label}</span>
-        <span className="text-muted">
+        <span className="font-medium">{goal.label}</span>
+        <span className="text-muted-foreground">
           {p.value === null
             ? (p.note ?? 'unknown')
             : `${valueText(goal.metric, p.value, unit, currency)} of ${valueText(goal.metric, p.target, unit, currency)}${p.estimated ? ' (estimated)' : ''}`}
@@ -55,10 +59,10 @@ export function GoalBar({ goal }: { goal: Goal }) {
         aria-valuenow={p.ratio === null ? undefined : Math.round(p.ratio * 100)}
         aria-valuemin={0}
         aria-valuemax={100}
-        className="mt-1 h-2 rounded bg-line"
+        className="mt-1 h-2 overflow-hidden rounded-full bg-muted"
       >
         <div
-          className="h-2 rounded bg-accent"
+          className="h-2 rounded-full bg-primary"
           style={{ width: `${Math.min(100, (p.ratio ?? 0) * 100)}%` }}
         />
       </div>
@@ -119,81 +123,81 @@ export function GoalsPage() {
 
   return (
     <section className="space-y-6">
-      <h1 className="font-heading text-2xl">Goals</h1>
+      <PageHeader title="Goals" description="A goal is a number you choose; none is set for you." />
       <FormError message={error} />
-      <form className="grid max-w-3xl gap-3 sm:grid-cols-5" onSubmit={(e) => void add(e)}>
-        <Field
-          label="Name"
-          maxLength={60}
-          value={form.label}
-          onChange={(e) => setForm({ ...form, label: e.target.value })}
-        />
-        <SelectField
-          label="Measure"
-          value={form.metric}
-          onChange={(v) => setForm({ ...form, metric: v })}
-          options={METRICS}
-        />
-        <SelectField
-          label="Per"
-          value={form.period}
-          onChange={(v) => setForm({ ...form, period: v })}
-          options={PERIODS}
-        />
-        <Field
-          label="Target"
-          inputMode="decimal"
-          value={form.target}
-          onChange={(e) => setForm({ ...form, target: e.target.value })}
-        />
-        <div className="flex items-end">
-          <Button type="submit" busy={form.label.trim() === ''}>
-            Add goal
-          </Button>
-        </div>
-      </form>
+      <Section title="Add a goal">
+        <form className="grid gap-3 sm:grid-cols-5" onSubmit={(e) => void add(e)}>
+          <Field
+            label="Name"
+            maxLength={60}
+            value={form.label}
+            onChange={(e) => setForm({ ...form, label: e.target.value })}
+          />
+          <SelectField
+            label="Measure"
+            value={form.metric}
+            onChange={(v) => setForm({ ...form, metric: v })}
+            options={METRICS}
+          />
+          <SelectField
+            label="Per"
+            value={form.period}
+            onChange={(v) => setForm({ ...form, period: v })}
+            options={PERIODS}
+          />
+          <Field
+            label="Target"
+            inputMode="decimal"
+            value={form.target}
+            onChange={(e) => setForm({ ...form, target: e.target.value })}
+          />
+          <div className="flex items-end">
+            <Button type="submit" busy={form.label.trim() === ''}>
+              Add goal
+            </Button>
+          </div>
+        </form>
+      </Section>
       {goals === null ? (
-        <p className="text-muted">Loading</p>
+        <p className="text-sm text-muted-foreground">Loading</p>
       ) : goals.length === 0 ? (
-        <p className="text-muted">
-          No goals yet. A goal is a number you choose; none is set for you.
-        </p>
+        <EmptyState>No goals yet.</EmptyState>
       ) : (
-        <ul className="max-w-xl space-y-4">
+        <ul className="grid gap-4 md:grid-cols-2">
           {goals.map((g) => (
-            <li key={g.id} className="space-y-1">
+            <li key={g.id} className="space-y-3 rounded-xl border bg-card p-4">
               <GoalBar goal={g} />
-              <div className="flex gap-3 text-sm text-muted">
-                <span>{g.period}</span>
-                <button
-                  type="button"
-                  className="hover:text-ink"
-                  aria-label={`${g.active ? 'Pause' : 'Resume'} ${g.label}`}
-                  onClick={() =>
-                    void act(() =>
-                      unwrap(
-                        api.PATCH('/goals/{id}', {
-                          params: { path: { id: g.id } },
-                          body: { active: !g.active },
-                        }),
-                      ),
-                    )
-                  }
-                >
-                  {g.active ? 'Pause' : 'Resume'}
-                </button>
-                <button
-                  type="button"
-                  className="hover:text-ink"
-                  aria-label={`Delete ${g.label}`}
-                  onClick={() =>
-                    void act(() =>
-                      unwrap(api.DELETE('/goals/{id}', { params: { path: { id: g.id } } })),
-                    )
-                  }
-                >
-                  Delete
-                </button>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Badge variant="secondary">{g.period}</Badge>
+                {g.active ? null : <Badge variant="outline">paused</Badge>}
+                <span className="flex-1" />
+                <RowMenu
+                  name={g.label}
+                  actions={[
+                    {
+                      label: g.active ? 'Pause' : 'Resume',
+                      icon: g.active ? Pause : Play,
+                      onSelect: () =>
+                        void act(() =>
+                          unwrap(
+                            api.PATCH('/goals/{id}', {
+                              params: { path: { id: g.id } },
+                              body: { active: !g.active },
+                            }),
+                          ),
+                        ),
+                    },
+                    {
+                      label: 'Delete',
+                      icon: Trash2,
+                      destructive: true,
+                      onSelect: () =>
+                        void act(() =>
+                          unwrap(api.DELETE('/goals/{id}', { params: { path: { id: g.id } } })),
+                        ),
+                    },
+                  ]}
+                />
               </div>
             </li>
           ))}

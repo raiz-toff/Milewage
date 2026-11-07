@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Circle, CircleCheck } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { useSession, useSettings } from '../session';
@@ -17,9 +19,12 @@ export function GoalRing() {
       .catch(() => setGoal(null));
   }, [api]);
   return goal ? (
-    <div role="group" aria-label="Goal" className="max-w-md">
-      <GoalBar goal={goal} />
-    </div>
+    <Card role="group" aria-label="Goal">
+      <CardContent className="space-y-3">
+        <h2 className="text-base font-medium">Goal</h2>
+        <GoalBar goal={goal} />
+      </CardContent>
+    </Card>
   ) : null;
 }
 
@@ -92,22 +97,30 @@ export function SetupChecklist() {
   }, [api, modules.platforms, modules.goals, modules.devices]);
 
   if (!state || state.every((i) => i.done)) return null;
+  const done = state.filter((i) => i.done).length;
   return (
-    <div
-      role="group"
-      aria-label="Finish setting up"
-      className="max-w-md space-y-1 rounded border border-line bg-card p-4"
-    >
-      <p className="font-heading">Finish setting up</p>
-      <ul className="text-sm">
-        {state.map((i) => (
-          <li key={i.text} className={i.done ? 'text-muted line-through' : ''}>
-            <span aria-hidden="true">{i.done ? '✓ ' : '○ '}</span>
-            {i.text}
-            <span className="sr-only">{i.done ? ' (done)' : ' (not done)'}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <Card role="group" aria-label="Finish setting up">
+      <CardContent className="space-y-3">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-base font-medium">Finish setting up</h2>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {done} of {state.length}
+          </span>
+        </div>
+        <ul className="space-y-2 text-sm">
+          {state.map((i) => (
+            <li key={i.text} className="flex items-center gap-3">
+              {i.done ? (
+                <CircleCheck aria-hidden="true" className="size-4 shrink-0 text-earned" />
+              ) : (
+                <Circle aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+              )}
+              <span className={i.done ? 'text-muted-foreground line-through' : ''}>{i.text}</span>
+              <span className="sr-only">{i.done ? ' (done)' : ' (not done)'}</span>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
   );
 }

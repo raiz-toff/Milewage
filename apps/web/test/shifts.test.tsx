@@ -30,61 +30,150 @@ const shift = (id: number, over: object = {}) => ({
   ...over,
 });
 
-const dates = () =>
-  within(screen.getByRole('table'))
+const summary = (over: object = {}) => ({
+  from: '2023-11-13',
+  to: '2023-11-19',
+  shift_count: 2,
+  hours: 8.4,
+  earnings_cents: 21_550,
+  tips_cents: 3_000,
+  active_m: 21_000,
+  deadhead_m: 9_000,
+  personal_m: 0,
+  total_m: 30_000,
+  deduction_cents: 7_262,
+  hourly_earnings_cents: 2_565,
+  ...over,
+});
+
+const bucket = (start: string, cents: number | null) => ({
+  start,
+  shifts: 1,
+  hours: 4.2,
+  distance_m: 10_000,
+  earnings_cents: cents,
+  hourly_cents: null,
+});
+
+/** The dates on the shift cards, top to bottom. */
+const cards = () =>
+  within(screen.getByRole('list', { name: 'Shifts' }))
     .getAllByRole('link')
-    .map((a) => a.textContent);
+    .map((a) => a.querySelector('span')?.textContent);
 
 function server(
   items: object[],
   extra: Record<string, Handler> = {},
   settings = settingsFixture(),
+  url = '/shifts?week=2023-11-13',
 ) {
   return renderApp(
     {
       ...signedIn(settings),
-      'GET /shifts': ({ url }) => {
-        const status = url.searchParams.get('status');
-        return {
-          body: {
-            items: status
-              ? items.filter((s) => (s as { status: string }).status === status)
-              : items,
-            next_cursor: null,
+      'GET /shifts': () => ({ body: { items, next_cursor: null } }),
+      'GET /summary': () => ({ body: summary() }),
+      'GET /analytics': () => ({
+        body: {
+          from: '2023-11-13',
+          to: '2023-11-19',
+          group: 'trends',
+          data: {
+            bucket: 'day',
+            buckets: [bucket('2023-11-15', 9_000), bucket('2023-11-16', 12_550)],
           },
-        };
-      },
+        },
+      }),
       ...extra,
     },
-    '/shifts',
+    url,
   );
 }
 
-describe('shifts list', () => {
-  it('lists shifts newest first with distances in the driver unit and a marked split', async () => {
-    server([shift(1), shift(2)]);
-    await screen.findByRole('table');
-    expect(dates()).toEqual(['2023-11-16', '2023-11-15']);
+describe('shifts week view', () => {
+  it('asks for the whole week and lists its shifts newest first, in the driver unit, with the split marked', async () => {
+    const asked: string[] = [];
+    server([shift(2), shift(1)], {
+      'GET /shifts': ({ url }) => {
+        asked.push(`${url.searchParams.get('from')}..${url.searchParams.get('to')}`);
+        return { body: { items: [shift(1), shift(2)], next_cursor: null } };
+      },
+    });
+    await screen.findByText('$215.50');
+    expect(asked).toEqual(['2023-11-13..2023-11-19']);
+    expect(cards()).toEqual(['Thursday, Nov 16', 'Wednesday, Nov 15']);
     expect(screen.getByText('20.0 km')).toBeTruthy();
-    expect(screen.getByText('14.0 km')).toBeTruthy(); // active, estimated
-    expect(screen.getByRole('columnheader', { name: 'Active*' })).toBeTruthy();
+    expect(screen.getByText(/^14\.0 km active/).textContent).toContain('*');
     expect(screen.getByText('* estimated from detected stops')).toBeTruthy();
-    expect(screen.getAllByText('4h 12m').length).toBe(2);
+    expect(screen.getByText('Nov 13 – 19, 2023')).toBeTruthy();
   });
 
-  it('sorts by a column and flips direction on a second click', async () => {
-    server([shift(1), shift(3), shift(2)]);
-    await screen.findByRole('table');
-    fireEvent.click(screen.getByRole('button', { name: 'Total' }));
-    expect(dates()).toEqual(['2023-11-15', '2023-11-16', '2023-11-17']);
-    expect(screen.getByRole('columnheader', { name: 'Total' }).getAttribute('aria-sort')).toBe(
-      'ascending',
+  it('filters the list and the headline to one day when its bar is clicked, and back', async () => {
+    server([shift(1), shift(2)]);
+    await screen.findByText('$215.50');
+    fireEvent.click(screen.getByRole('button', { name: 'Wednesday: $90.00' }));
+    expect(cards()).toEqual(['Wednesday, Nov 15']);
+    expect(screen.getByText('$90.00')).toBeTruthy();
+    expect(screen.getByText('Shifts on Wednesday')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Wednesday: $90.00' }));
+    expect(cards()).toEqual(['Thursday, Nov 16', 'Wednesday, Nov 15']);
+  });
+
+  it('moves between weeks, and cannot go past the current week', async () => {
+    const { calls } = server([], {}, settingsFixture());
+    await screen.findByText(/No shifts this week/);
+    fireEvent.click(screen.getByRole('button', { name: 'Previous week' }));
+    await screen.findByText('Nov 6 – 12, 2023');
+    expect(calls.some((c) => c.path === '/summary')).toBe(true);
+    cleanup();
+    server([], {}, settingsFixture(), '/shifts');
+    await screen.findByText(/No shifts this week/);
+    expect((screen.getByRole('button', { name: 'Next week' }) as HTMLButtonElement).disabled).toBe(
+      true,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Total' }));
-    expect(dates()).toEqual(['2023-11-17', '2023-11-16', '2023-11-15']);
+    expect(screen.queryByRole('button', { name: 'This week' })).toBeNull();
   });
 
-  it('keeps empty values last in both directions and shows a dash, not zero', () => {
+  it('with no earnings the headline and bars are distance, and hourly earnings read "not entered"', async () => {
+    server([shift(1), shift(2)], {
+      'GET /summary': () => ({
+        body: summary({ earnings_cents: null, tips_cents: null, hourly_earnings_cents: null }),
+      }),
+    });
+    expect((await screen.findAllByText('30.0 km')).length).toBe(2); // headline and Distance
+    expect(screen.getByText('not entered')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Thursday: 20.0 km' })).toBeTruthy();
+  });
+
+  it('shows miles when the unit is miles', async () => {
+    server([shift(1)], {}, settingsFixture({ distance_unit: 'mi' }));
+    expect(await screen.findByText('6.2 mi')).toBeTruthy(); // 10,000 m
+  });
+
+  it('with stops off there is one business total and no split', async () => {
+    server([shift(1)], {}, settingsFixture({ modules: { stops: false } }));
+    await screen.findByText('10.0 km');
+    expect(screen.queryByText(/km active/)).toBeNull();
+    expect(screen.queryByText(/estimated from detected stops/)).toBeNull();
+  });
+
+  it('a whole-shift shift shows no estimated split', async () => {
+    server([shift(1, { segmenter: 'whole_shift' })]);
+    await screen.findByText('10.0 km');
+    expect(screen.queryByText(/km active/)).toBeNull();
+  });
+
+  it('marks a shift in progress and one with flags to review', async () => {
+    server([
+      shift(1, { status: 'active', ended_at: null }),
+      shift(2, { flags: [{ code: 'long_gap', severity: 'review' }] }),
+    ]);
+    expect(await screen.findByText('In progress')).toBeTruthy();
+    expect(screen.getByText('1 to review')).toBeTruthy();
+  });
+});
+
+describe('sort helper', () => {
+  it('keeps empty values last in both directions', () => {
     const col: Column<{ v: number | null }> = {
       key: 'v',
       label: 'V',
@@ -94,35 +183,6 @@ describe('shifts list', () => {
     const rows = [{ v: null }, { v: 2 }, { v: 1 }];
     expect(sortRows(rows, col, 'asc').map((r) => r.v)).toEqual([1, 2, null]);
     expect(sortRows(rows, col, 'desc').map((r) => r.v)).toEqual([2, 1, null]);
-  });
-
-  it('shows miles when the unit is miles', async () => {
-    server([shift(1)], {}, settingsFixture({ distance_unit: 'mi' }));
-    await screen.findByRole('table');
-    expect(screen.getByText('6.2 mi')).toBeTruthy(); // 10,000 m
-  });
-
-  it('with stops off there is one business total and no split columns', async () => {
-    server([shift(1)], {}, settingsFixture({ modules: { stops: false } }));
-    await screen.findByRole('table');
-    expect(screen.queryByRole('columnheader', { name: 'Active*' })).toBeNull();
-    expect(screen.queryByText(/estimated from detected stops/)).toBeNull();
-    expect(screen.getByRole('columnheader', { name: 'Total' })).toBeTruthy();
-  });
-
-  it('a whole-shift shift shows a dash in the split columns, not a number', async () => {
-    server([shift(1, { segmenter: 'whole_shift', active_m: 10_000, deadhead_m: 0 })]);
-    await screen.findByRole('table');
-    const row = screen.getAllByRole('row')[1]!;
-    expect(within(row).getAllByText('—').length).toBe(2);
-  });
-
-  it('filters by status through the server and says when there is nothing', async () => {
-    const { calls } = server([shift(1)]);
-    await screen.findByRole('table');
-    fireEvent.change(screen.getByLabelText(/Status/), { target: { value: 'active' } });
-    expect(await screen.findByText(/No shifts yet/)).toBeTruthy();
-    expect(calls.filter((c) => c.path === '/shifts').length).toBe(2);
   });
 });
 

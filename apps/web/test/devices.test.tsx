@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { renderApp, settingsFixture, signedIn } from './support/kit';
+import { renderApp, settingsFixture, signedIn, menu } from './support/kit';
 
 afterEach(cleanup);
 
@@ -65,7 +65,7 @@ describe('devices page', () => {
   it('renames and reads the new name back from the server', async () => {
     const { calls } = server();
     await screen.findByText('Pixel');
-    fireEvent.click(screen.getByRole('button', { name: 'Rename' }));
+    menu('Pixel', 'Rename');
     fireEvent.change(screen.getByLabelText('New name for Pixel'), {
       target: { value: 'Bike mount' },
     });
@@ -77,11 +77,11 @@ describe('devices page', () => {
   it('revokes only after a second click, then shows it revoked', async () => {
     const { calls } = server();
     await screen.findByText('Pixel');
-    fireEvent.click(screen.getByRole('button', { name: 'Revoke' }));
+    menu('Pixel', 'Revoke');
     expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Confirm revoke' }));
     await waitFor(() => expect(screen.getByText('revoked')).toBeTruthy());
-    expect(screen.queryByRole('button', { name: 'Rename' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Actions for Pixel' })).toBeNull();
   });
 
   it('is absent from navigation and by URL when the devices module is off', async () => {

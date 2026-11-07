@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Section } from '../ui/layout';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { useSession, useSettings } from '../session';
@@ -82,8 +83,7 @@ export function ShiftOdometer({ shift }: { shift: Schemas['Shift'] }) {
 
   if (values === null) return error ? <FormError message={error} /> : null;
   return (
-    <section aria-label="Odometer" className="max-w-md space-y-2">
-      <h2 className="font-heading text-lg">Odometer</h2>
+    <Section label="Odometer" title="Odometer">
       <div className="grid grid-cols-2 gap-4">
         {KINDS.map(({ kind, label }) => (
           <div key={kind} className="space-y-2">
@@ -106,15 +106,17 @@ export function ShiftOdometer({ shift }: { shift: Schemas['Shift'] }) {
               Save
             </Button>
             {saved === kind ? (
-              <span role="status" className="ml-2 text-sm text-accent">
+              <span role="status" className="ml-2 text-sm font-medium">
                 Saved.
               </span>
             ) : null}
           </div>
         ))}
       </div>
-      {locked ? <p className="text-sm text-muted">A finalized shift cannot be changed.</p> : null}
+      {locked ? (
+        <p className="text-sm text-muted-foreground">A finalized shift cannot be changed.</p>
+      ) : null}
       <FormError message={error} />
-    </section>
+    </Section>
   );
 }

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { renderApp, settingsFixture, signedIn } from './support/kit';
 
@@ -46,7 +46,7 @@ function server(modules: { platforms: boolean } = { platforms: true }) {
         return { status: 204 };
       },
     },
-    '/settings',
+    '/settings/platforms',
   );
 }
 
@@ -71,7 +71,9 @@ describe('platforms card (module platforms)', () => {
 
   it('is absent when the module is off, and asks the server for nothing', async () => {
     const s = server({ platforms: false });
-    await screen.findByLabelText('Currency');
+    await screen.findByLabelText('Name');
+    const sections = screen.getByRole('navigation', { name: 'Settings sections' });
+    expect(within(sections).queryByRole('link', { name: 'Platforms' })).toBeNull();
     expect(screen.queryByRole('region', { name: 'Platforms' })).toBeNull();
     expect(s.calls.some((c) => c.path.startsWith('/platforms'))).toBe(false);
   });

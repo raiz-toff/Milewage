@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Button as UiButton } from '@/components/ui/button';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
@@ -54,7 +55,7 @@ export function Restore({ onBack }: { onBack: () => void }) {
           <li>Stop labels: {done.stop_label_count}</li>
           <li>Recorded points: {done.point_count}</li>
         </ul>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Sign in with the account from the backup. Paired phones keep their pairing and will catch
           up on their own.
         </p>
@@ -69,7 +70,7 @@ export function Restore({ onBack }: { onBack: () => void }) {
     <Card title="Restore from a backup">
       <form onSubmit={(e) => void submit(e)} className="space-y-4">
         <label className="block space-y-1">
-          <span className="text-sm text-muted">Backup file (.db.gz.age)</span>
+          <span className="text-sm text-muted-foreground">Backup file (.db.gz.age)</span>
           <input
             type="file"
             className="block w-full text-sm"
@@ -89,9 +90,9 @@ export function Restore({ onBack }: { onBack: () => void }) {
           Restore
         </Button>
       </form>
-      <button type="button" className="text-sm text-muted hover:text-ink" onClick={onBack}>
+      <UiButton type="button" variant="ghost" size="sm" onClick={onBack}>
         Back to setup
-      </button>
+      </UiButton>
     </Card>
   );
 }

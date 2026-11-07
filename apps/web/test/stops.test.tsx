@@ -3,7 +3,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { afterEach, describe, expect, it } from 'vitest';
 import { hasStackedOrders, toCents } from '../src/pages/Stops';
 import { shift, stop, trip } from './support/fixtures';
-import { renderApp, settingsFixture, signedIn } from './support/kit';
+import { renderApp, settingsFixture, signedIn, pick } from './support/kit';
 import type { Handler } from './support/kit';
 
 afterEach(cleanup);
@@ -77,7 +77,7 @@ describe('stops table', () => {
       }),
     });
     await panel();
-    fireEvent.change(field(/^Label at/), { target: { value: 'dropoff' } });
+    pick(field(/^Label at/), 'dropoff');
     fireEvent.change(field(/^Platform at/), { target: { value: 'uber_eats' } });
     fireEvent.change(field(/^Payout/), { target: { value: '12.50' } });
     fireEvent.change(field(/^Tip/), { target: { value: '3' } });
@@ -118,7 +118,7 @@ describe('stops table', () => {
     const a = stop(1);
     const { calls } = open([a]);
     await panel();
-    fireEvent.change(field(/^Label at/), { target: { value: 'pickup' } });
+    pick(field(/^Label at/), 'pickup');
     fireEvent.change(field(/^Payout/), { target: { value: 'twelve' } });
     fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0]!);
     expect(await screen.findByText('Enter an amount such as 12.50.')).toBeTruthy();
@@ -137,7 +137,7 @@ describe('stops table', () => {
       }),
     });
     await panel();
-    fireEvent.change(field(/^Label at/), { target: { value: 'pickup' } });
+    pick(field(/^Label at/), 'pickup');
     fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0]!);
     expect(await screen.findByText('platform: bad platform')).toBeTruthy();
   });

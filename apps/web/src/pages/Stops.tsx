@@ -5,7 +5,7 @@ import { formatTime } from '../format';
 import { useSession, useSettings } from '../session';
 import { SortTable } from '../ui/SortTable';
 import type { Column } from '../ui/SortTable';
-import { Button, FormError } from '../ui/form';
+import { Button, FormError, Picker } from '../ui/form';
 
 type Stop = Schemas['Stop'];
 type Shift = Schemas['Shift'];
@@ -55,7 +55,15 @@ export function hasStackedOrders(stops: Stop[]): boolean {
 const roleText = (r: Stop['est_role']) => (r === 'none' ? '—' : r);
 const dwell = (s: number) => `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`;
 
-const FIELD = 'w-full rounded border border-line bg-bg px-2 py-1 text-ink';
+const ROLES = [
+  { value: '', label: 'Not labelled' },
+  { value: 'pickup', label: 'Pickup' },
+  { value: 'dropoff', label: 'Dropoff' },
+  { value: 'other', label: 'Other' },
+];
+
+const FIELD =
+  'w-full min-w-24 h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30';
 
 /**
  * Detected stops of a shift with optional labels (module `stops`, web only). A save or a clear
@@ -195,17 +203,14 @@ export function StopsPanel({ shift, onShift }: { shift: Shift; onShift: (shift: 
         sortValue: (s) => s.label?.role ?? null,
         text: (s) => s.label?.role ?? '',
         render: (s) => (
-          <select
-            aria-label={`Label at ${formatTime(s.started_at, timezone)}`}
-            className={FIELD}
+          <Picker
+            label={`Label at ${formatTime(s.started_at, timezone)}`}
+            size="sm"
+            className="min-w-32"
             value={(drafts[s.stop_key] ?? draftOf(s)).role}
-            onChange={(e) => set(s, { role: e.target.value as Draft['role'] })}
-          >
-            <option value="">Not labelled</option>
-            <option value="pickup">Pickup</option>
-            <option value="dropoff">Dropoff</option>
-            <option value="other">Other</option>
-          </select>
+            onChange={(v) => set(s, { role: v as Draft['role'] })}
+            options={ROLES}
+          />
         ),
       },
       {
@@ -266,32 +271,32 @@ export function StopsPanel({ shift, onShift }: { shift: Shift; onShift: (shift: 
     ];
   })();
 
-  if (error) return <p className="text-muted">Stops could not be loaded. {error}</p>;
-  if (stops === null) return <p className="text-muted">Loading stops</p>;
+  if (error) return <p className="text-muted-foreground">Stops could not be loaded. {error}</p>;
+  if (stops === null) return <p className="text-muted-foreground">Loading stops</p>;
 
   const orphans = (shift.flags ?? []).filter((f) => f.code === 'label_orphaned');
   const edited = (shift.flags ?? []).some((f) => f.code === 'manual_trip_present');
   return (
     <div className="space-y-3">
       {hasStackedOrders(stops) ? (
-        <p role="status" className="rounded border border-line bg-card p-3 text-sm">
+        <p role="status" className="rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm">
           Stacked orders? The estimate under-states active distance when orders overlap. Label the
           stops to correct it.
         </p>
       ) : null}
       {edited ? (
-        <p role="status" className="rounded border border-line bg-card p-3 text-sm">
+        <p role="status" className="rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm">
           This shift has edited trips. Labelling a stop may unlink those edits.
         </p>
       ) : null}
       {orphans.length ? (
-        <p role="status" className="rounded border border-line bg-card p-3 text-sm">
+        <p role="status" className="rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm">
           Label not applied: {orphans.length === 1 ? 'a label' : `${orphans.length} labels`} no
           longer match a detected stop and{orphans.length === 1 ? ' is' : ' are'} kept but unused.
         </p>
       ) : null}
       {stops.length === 0 ? (
-        <p className="text-muted">No stops were detected.</p>
+        <p className="text-muted-foreground">No stops were detected.</p>
       ) : (
         <>
           <SortTable
@@ -301,7 +306,7 @@ export function StopsPanel({ shift, onShift }: { shift: Shift; onShift: (shift: 
             rowKey={(s) => s.stop_key}
             initialSort={{ key: 'time', dir: 'asc' }}
           />
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             * The engine&apos;s estimate. A label replaces it for that stop, and labelling is
             optional. Earnings count labels only.
           </p>

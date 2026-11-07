@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, within } from '@testing-library/react';
+import { cleanup, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PERIODS, localDate } from '../src/pages/Dashboard';
-import { renderApp, settingsFixture, signedIn } from './support/kit';
+import { renderApp, settingsFixture, signedIn, pick } from './support/kit';
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
@@ -53,7 +53,7 @@ describe('dashboard', () => {
     const first = calls.find((c) => c.path === '/summary')!;
     expect(first).toBeTruthy();
     expect(screen.getByText('2026-02-14 to 2026-03-15')).toBeTruthy();
-    fireEvent.change(screen.getByLabelText(/Period/), { target: { value: 'year' } });
+    pick(screen.getByLabelText(/Period/), 'year');
     expect(await screen.findByText('2026-01-01 to 2026-03-15')).toBeTruthy();
     expect(calls.filter((c) => c.path === '/summary').length).toBe(2);
   });

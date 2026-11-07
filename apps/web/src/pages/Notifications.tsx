@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
+import { EmptyState, PageHeader } from '../ui/layout';
+import { Mail, MailOpen, X } from 'lucide-react';
+import { RowMenu } from '../ui/RowMenu';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
+import { Switch } from '@/components/ui/switch';
 import { formatDateTime } from '../format';
 import { useSession, useSettings } from '../session';
 import { FormError } from '../ui/form';
@@ -93,40 +97,52 @@ export function NotificationsPage() {
     );
 
   return (
-    <section className="space-y-4">
-      <h1 className="font-heading text-2xl">Notifications</h1>
+    <section className="mx-auto max-w-3xl space-y-6">
+      <PageHeader title="Notifications" />
       <FormError message={error} />
       {items === null ? (
-        <p className="text-muted">Loading</p>
+        <p className="text-sm text-muted-foreground">Loading</p>
       ) : items.length === 0 ? (
-        <p className="text-muted">Nothing new.</p>
+        <EmptyState>Nothing new.</EmptyState>
       ) : (
-        <ul className="max-w-2xl space-y-2">
+        <ul className="space-y-2">
           {items.map((n) => (
-            <li key={n.id} className="flex items-start gap-3 rounded border border-line p-3">
-              <div className="flex-1">
-                <p className={n.read_at === null ? '' : 'text-muted'}>{messageOf(n)}</p>
-                <p className="text-xs text-muted">{formatDateTime(n.created_at, timezone)}</p>
+            <li key={n.id} className="flex items-start gap-3 rounded-xl border bg-card p-4">
+              <span
+                aria-hidden="true"
+                className={`mt-2 size-2 shrink-0 rounded-full ${n.read_at === null ? 'bg-primary' : 'bg-transparent'}`}
+              />
+              <div className="min-w-0 flex-1 space-y-1">
+                <p
+                  className={`text-sm ${n.read_at === null ? 'font-medium' : 'text-muted-foreground'}`}
+                >
+                  {messageOf(n)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatDateTime(n.created_at, timezone)}
+                </p>
               </div>
-              <button
-                type="button"
-                className="text-sm text-muted hover:text-ink"
-                onClick={() => void read(n)}
-              >
-                {n.read_at === null ? 'Mark read' : 'Mark unread'}
-              </button>
-              <button
-                type="button"
-                className="text-sm text-muted hover:text-ink"
-                aria-label={`Dismiss: ${messageOf(n)}`}
-                onClick={() =>
-                  void act(() =>
-                    unwrap(api.DELETE('/notifications/{id}', { params: { path: { id: n.id } } })),
-                  )
-                }
-              >
-                Dismiss
-              </button>
+              <RowMenu
+                name={messageOf(n)}
+                actions={[
+                  {
+                    label: n.read_at === null ? 'Mark read' : 'Mark unread',
+                    icon: n.read_at === null ? MailOpen : Mail,
+                    onSelect: () => void read(n),
+                  },
+                  {
+                    label: 'Dismiss',
+                    icon: X,
+                    destructive: true,
+                    onSelect: () =>
+                      void act(() =>
+                        unwrap(
+                          api.DELETE('/notifications/{id}', { params: { path: { id: n.id } } }),
+                        ),
+                      ),
+                  },
+                ]}
+              />
             </li>
           ))}
         </ul>
@@ -163,22 +179,25 @@ export function AlertsCard() {
     }
   }
   return (
-    <section aria-label="Alerts" className="space-y-2">
-      <h2 className="font-heading text-lg">Alerts</h2>
+    <section aria-label="Alerts" className="space-y-3">
+      <h2 className="text-base leading-snug font-medium">Alerts</h2>
       <FormError message={error} />
-      {prefs
-        ? LABELS.map(([k, text]) => (
-            <label key={k} className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                className="h-4 w-4 accent-[var(--mw-accent)]"
+      {prefs ? (
+        <ul className="divide-y rounded-lg border">
+          {LABELS.map(([k, text]) => (
+            <li key={k} className="flex items-center justify-between gap-3 px-3 py-2">
+              <label htmlFor={`alert-${k}`} className="text-sm">
+                {text}
+              </label>
+              <Switch
+                id={`alert-${k}`}
                 checked={prefs[k]}
-                onChange={(e) => void toggle(k, e.target.checked)}
+                onCheckedChange={(on) => void toggle(k, on)}
               />
-              {text}
-            </label>
-          ))
-        : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </section>
   );
 }

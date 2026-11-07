@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button as UiButton } from '@/components/ui/button';
+import { EmptyState, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
 import { describe, unwrap } from '../api/client';
 import { formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
@@ -101,151 +104,173 @@ export function AnalyticsPage() {
 
   return (
     <section className="space-y-6">
-      <h1 className="font-heading text-2xl">Analytics</h1>
+      <PageHeader title="Analytics" description="Your figures for a week, a month or a year." />
       <FormError message={error} />
-      <div className="flex items-center gap-3">
-        {(['week', 'month', 'year'] as const).map((m) => (
-          <button
-            key={m}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="inline-flex rounded-lg bg-muted p-1">
+          {(['week', 'month', 'year'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              aria-pressed={mode === m}
+              className={`rounded-md px-3 py-1 text-sm transition-colors ${mode === m ? 'bg-background font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              onClick={() => {
+                setMode(m);
+                setOffset(0);
+              }}
+            >
+              {m[0]!.toUpperCase() + m.slice(1)}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1">
+          <UiButton
             type="button"
-            aria-pressed={mode === m}
-            className={`rounded border px-3 py-1 ${mode === m ? 'border-accent text-accent' : 'border-line text-muted'}`}
-            onClick={() => {
-              setMode(m);
-              setOffset(0);
-            }}
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Previous period"
+            onClick={() => setOffset(offset - 1)}
           >
-            {m[0]!.toUpperCase() + m.slice(1)}
-          </button>
-        ))}
-        <button
-          type="button"
-          aria-label="Previous period"
-          className="px-2"
-          onClick={() => setOffset(offset - 1)}
-        >
-          ‹
-        </button>
-        <span className="font-mono text-sm">
-          {range.from} to {range.to}
-        </span>
-        <button
-          type="button"
-          aria-label="Next period"
-          className="px-2"
-          disabled={offset >= 0}
-          onClick={() => setOffset(offset + 1)}
-        >
-          ›
-        </button>
+            <ChevronLeft />
+          </UiButton>
+          <span className="tabular-nums text-sm">
+            {range.from} to {range.to}
+          </span>
+          <UiButton
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Next period"
+            disabled={offset >= 0}
+            onClick={() => setOffset(offset + 1)}
+          >
+            <ChevronRight />
+          </UiButton>
+        </div>
       </div>
       {data === null ? (
-        <p className="text-muted">Loading</p>
+        <p className="text-sm text-muted-foreground">Loading</p>
       ) : (
         <>
-          <dl className="grid max-w-3xl grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Figures">
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" aria-label="Figures">
             {tiles.map(([k, v]) => (
-              <div key={k} className="rounded border border-line bg-card p-3">
-                <dt className="text-sm text-muted">{k}</dt>
-                <dd className="text-lg">{v}</dd>
+              <div key={k} className="space-y-1 rounded-xl border bg-card p-4">
+                <dt className="text-xs text-muted-foreground">{k}</dt>
+                <dd className="text-xl font-semibold tracking-tight tabular-nums">{v}</dd>
               </div>
             ))}
           </dl>
-          <section aria-label="Trends" className="space-y-1">
-            <h2 className="font-heading text-lg">Trends</h2>
+          <Section label="Trends" title="Trends">
             {data.trends.buckets.length === 0 ? (
-              <p className="text-muted">No shifts in this period.</p>
+              <EmptyState>No shifts in this period.</EmptyState>
             ) : (
-              <table className="w-full max-w-2xl text-left text-sm">
-                <thead className="text-muted">
-                  <tr>
-                    <th className="font-normal">Period</th>
-                    <th className="font-normal">Shifts</th>
-                    <th className="font-normal">Hours</th>
-                    <th className="font-normal">Earnings</th>
-                    <th className="font-normal">Per hour</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.trends.buckets.map((b: Data) => (
-                    <tr key={b.start} className="border-t border-line">
-                      <td className="font-mono">{b.start}</td>
-                      <td>{b.shifts}</td>
-                      <td>{b.hours}</td>
-                      <td>{money(b.earnings_cents)}</td>
-                      <td>{money(b.hourly_cents)}</td>
+              <TableBox>
+                <table className={tableClass}>
+                  <thead>
+                    <tr>
+                      <th>Period</th>
+                      <th>Shifts</th>
+                      <th>Hours</th>
+                      <th>Earnings</th>
+                      <th>Per hour</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {data.trends.buckets.map((b: Data) => (
+                      <tr key={b.start} className="border-t border-border">
+                        <td className="tabular-nums">{b.start}</td>
+                        <td>{b.shifts}</td>
+                        <td>{b.hours}</td>
+                        <td>{money(b.earnings_cents)}</td>
+                        <td>{money(b.hourly_cents)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableBox>
             )}
-            <p className="text-sm text-muted">
+            <p className="text-sm text-muted-foreground">
               Previous period: {money(data.trends.previous.earnings_cents)},{' '}
               {data.trends.previous.hours} h
             </p>
-          </section>
+          </Section>
           {data.sources.length > 0 ? (
-            <section aria-label="Income sources" className="space-y-1">
-              <h2 className="font-heading text-lg">Income sources</h2>
-              <ul className="text-sm">
+            <Section label="Income sources" title="Income sources">
+              <ul className="space-y-3 text-sm">
                 {data.sources.map((s: Data) => (
-                  <li key={s.platform}>
-                    {s.platform}: {money(s.earnings_cents)} ({Math.round((s.share ?? 0) * 100)}%)
+                  <li key={s.platform} className="space-y-1.5">
+                    <p className="tabular-nums">
+                      {s.platform}: {money(s.earnings_cents)} ({Math.round((s.share ?? 0) * 100)}%)
+                    </p>
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-2 rounded-full bg-primary"
+                        style={{ width: `${Math.round((s.share ?? 0) * 100)}%` }}
+                      />
+                    </div>
                   </li>
                 ))}
               </ul>
-            </section>
+            </Section>
           ) : null}
-          <section aria-label="Outlook" className="space-y-1 text-sm">
-            <h2 className="font-heading text-lg">Outlook</h2>
-            {data.outlook.projected_earnings_cents === null ? (
-              <p className="text-muted">Not enough shifts to project ({data.outlook.note}).</p>
-            ) : (
+          <div className="grid items-start gap-4 lg:grid-cols-3">
+            <Section label="Outlook" title="Outlook" className="text-sm">
+              {data.outlook.projected_earnings_cents === null ? (
+                <p className="text-muted-foreground">
+                  Not enough shifts to project ({data.outlook.note}).
+                </p>
+              ) : (
+                <p>
+                  At this pace the period ends near {money(data.outlook.projected_earnings_cents)},{' '}
+                  {data.outlook.days_left} days left. A projection, not a promise.
+                </p>
+              )}
+            </Section>
+            <Section label="Efficiency" title="Efficiency" className="text-sm">
+              {data.efficiency.active_share === null ? (
+                <p className="text-muted-foreground">No stop-based split for these shifts.</p>
+              ) : (
+                <p>
+                  Active {Math.round(data.efficiency.active_share * 100)}% and deadhead{' '}
+                  {Math.round(data.efficiency.deadhead_share * 100)}% (estimated from detected
+                  stops).
+                </p>
+              )}
+              {data.order_economics ? (
+                <p>
+                  {data.order_economics.orders} orders,{' '}
+                  {money(data.order_economics.pay_per_order_cents)} each,{' '}
+                  {data.order_economics.orders_per_hour} per hour.
+                </p>
+              ) : null}
+            </Section>
+            <Section label="Work rhythm" title="Work rhythm" className="text-sm">
               <p>
-                At this pace the period ends near {money(data.outlook.projected_earnings_cents)},{' '}
-                {data.outlook.days_left} days left. A projection, not a promise.
+                Average shift:{' '}
+                {data.rhythm.average_shift_minutes === null
+                  ? 'not available'
+                  : `${data.rhythm.average_shift_minutes} min`}
+                . Busiest weekday:{' '}
+                {(() => {
+                  const best = [...data.rhythm.by_weekday].sort(
+                    (a: Data, b: Data) => b.shifts - a.shifts,
+                  )[0];
+                  return best && best.shifts > 0
+                    ? [
+                        'Sunday',
+                        'Monday',
+                        'Tuesday',
+                        'Wednesday',
+                        'Thursday',
+                        'Friday',
+                        'Saturday',
+                      ][best.weekday]
+                    : 'not available';
+                })()}
+                .
               </p>
-            )}
-          </section>
-          <section aria-label="Efficiency" className="space-y-1 text-sm">
-            <h2 className="font-heading text-lg">Efficiency</h2>
-            {data.efficiency.active_share === null ? (
-              <p className="text-muted">No stop-based split for these shifts.</p>
-            ) : (
-              <p>
-                Active {Math.round(data.efficiency.active_share * 100)}% and deadhead{' '}
-                {Math.round(data.efficiency.deadhead_share * 100)}% (estimated from detected stops).
-              </p>
-            )}
-            {data.order_economics ? (
-              <p>
-                {data.order_economics.orders} orders,{' '}
-                {money(data.order_economics.pay_per_order_cents)} each,{' '}
-                {data.order_economics.orders_per_hour} per hour.
-              </p>
-            ) : null}
-          </section>
-          <section aria-label="Work rhythm" className="space-y-1 text-sm">
-            <h2 className="font-heading text-lg">Work rhythm</h2>
-            <p>
-              Average shift:{' '}
-              {data.rhythm.average_shift_minutes === null
-                ? 'not available'
-                : `${data.rhythm.average_shift_minutes} min`}
-              . Busiest weekday:{' '}
-              {(() => {
-                const best = [...data.rhythm.by_weekday].sort(
-                  (a: Data, b: Data) => b.shifts - a.shifts,
-                )[0];
-                return best && best.shifts > 0
-                  ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][
-                      best.weekday
-                    ]
-                  : 'not available';
-              })()}
-              .
-            </p>
-          </section>
+            </Section>
+          </div>
         </>
       )}
     </section>

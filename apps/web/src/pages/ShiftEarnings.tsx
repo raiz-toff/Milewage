@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Section } from '../ui/layout';
+import { Button as UiButton } from '@/components/ui/button';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
@@ -97,11 +99,10 @@ export function ShiftEarnings({ shift }: { shift: Schemas['Shift'] }) {
   const label = (slug: string) => options.find((o) => o.value === slug)?.label ?? slug;
 
   return (
-    <section aria-label="Earnings" className="space-y-3">
-      <h2 className="font-heading text-lg">Earnings</h2>
+    <Section label="Earnings" title="Earnings">
       <FormError message={error} />
       {data === null ? null : data.effective.length === 0 ? (
-        <p className="text-muted">No earnings entered or labelled for this shift.</p>
+        <p className="text-muted-foreground">No earnings entered or labelled for this shift.</p>
       ) : (
         <ul className="space-y-1">
           {data.effective.map((r) => (
@@ -110,18 +111,19 @@ export function ShiftEarnings({ shift }: { shift: Schemas['Shift'] }) {
                 {label(r.platform)}: {formatMoney(r.total_cents, currency)}
                 {r.orders !== null ? `, ${r.orders} orders` : ''}
               </span>
-              <span className="text-sm text-muted">
+              <span className="text-sm text-muted-foreground">
                 {r.source === 'labels' ? 'from stop labels' : 'entered by you'}
               </span>
               {data.entries.some((x) => x.platform === r.platform) ? (
-                <button
+                <UiButton
                   type="button"
-                  className="text-sm text-muted hover:text-ink"
+                  variant="ghost"
+                  size="sm"
                   aria-label={`Remove entered total for ${label(r.platform)}`}
                   onClick={() => void remove(r.platform)}
                 >
                   Remove
-                </button>
+                </UiButton>
               ) : null}
             </li>
           ))}
@@ -154,10 +156,10 @@ export function ShiftEarnings({ shift }: { shift: Schemas['Shift'] }) {
           Save total
         </Button>
       </form>
-      <p className="text-xs text-muted">
+      <p className="text-xs text-muted-foreground">
         Type the figure the platform shows for this shift. It replaces that platform&apos;s stop
         labels in your totals.
       </p>
-    </section>
+    </Section>
   );
 }

@@ -1,4 +1,22 @@
 import type { ReactNode } from 'react';
+import {
+  CalendarClock,
+  CalendarDays,
+  Car,
+  ChartLine,
+  DatabaseBackup,
+  FileDown,
+  Gauge,
+  Landmark,
+  LayoutDashboard,
+  Map as MapIcon,
+  Receipt,
+  Settings,
+  Smartphone,
+  Target,
+  Trophy,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { Modules } from './api/client';
 import { AnalyticsPage } from './pages/Analytics';
 import { Backups } from './pages/Backups';
@@ -28,45 +46,126 @@ export interface Screen {
   label: string;
   visible?: (modules: Modules) => boolean;
   element: ReactNode;
+  /** Sidebar entry. Absent means not in the sidebar (the header bell opens Notifications). */
+  nav?: { icon: LucideIcon; group: NavGroup };
 }
 
+export type NavGroup = 'overview' | 'money' | 'vehicle' | 'system';
+
+/** Sidebar groups in order, with their headings. */
+export const navGroups: { id: NavGroup; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'money', label: 'Money' },
+  { id: 'vehicle', label: 'Vehicle' },
+  { id: 'system', label: 'System' },
+];
+
 export const screens: Screen[] = [
-  { path: '/dashboard', label: 'Dashboard', element: <Dashboard /> },
-  { path: '/live', label: 'Live map', visible: (m) => m.live, element: <LivePage /> },
-  { path: '/shifts/*', label: 'Shifts', element: <ShiftsRoutes /> },
   {
-    path: '/expenses',
-    label: 'Expenses',
-    visible: (m) => m.expenses,
-    element: <ExpensesPage />,
+    path: '/dashboard',
+    label: 'Dashboard',
+    element: <Dashboard />,
+    nav: { icon: LayoutDashboard, group: 'overview' },
+  },
+  {
+    path: '/live',
+    label: 'Live map',
+    visible: (m) => m.live,
+    element: <LivePage />,
+    nav: { icon: MapIcon, group: 'overview' },
+  },
+  {
+    path: '/shifts/*',
+    label: 'Shifts',
+    element: <ShiftsRoutes />,
+    nav: { icon: CalendarDays, group: 'overview' },
+  },
+  {
+    path: '/schedule',
+    label: 'Schedule',
+    visible: (m) => m.schedule,
+    element: <SchedulePage />,
+    nav: { icon: CalendarClock, group: 'overview' },
   },
   {
     path: '/analytics',
     label: 'Analytics',
     visible: (m) => m.analytics,
     element: <AnalyticsPage />,
+    nav: { icon: ChartLine, group: 'money' },
   },
-  { path: '/goals', label: 'Goals', visible: (m) => m.goals, element: <GoalsPage /> },
-  { path: '/tax', label: 'Tax', visible: (m) => m.tax, element: <TaxPage /> },
+  {
+    path: '/expenses',
+    label: 'Expenses',
+    visible: (m) => m.expenses,
+    element: <ExpensesPage />,
+    nav: { icon: Receipt, group: 'money' },
+  },
+  {
+    path: '/goals',
+    label: 'Goals',
+    visible: (m) => m.goals,
+    element: <GoalsPage />,
+    nav: { icon: Target, group: 'money' },
+  },
+  {
+    path: '/progress',
+    label: 'Progress',
+    visible: (m) => m.progress,
+    element: <ProgressPage />,
+    nav: { icon: Trophy, group: 'money' },
+  },
+  {
+    path: '/tax',
+    label: 'Tax',
+    visible: (m) => m.tax,
+    element: <TaxPage />,
+    nav: { icon: Landmark, group: 'money' },
+  },
+  {
+    path: '/exports',
+    label: 'Exports',
+    visible: (m) => m.exporters.length > 0,
+    element: <ExportsPage />,
+    nav: { icon: FileDown, group: 'money' },
+  },
+  {
+    path: '/vehicles',
+    label: 'Vehicles',
+    element: <VehiclesPage />,
+    nav: { icon: Car, group: 'vehicle' },
+  },
+  {
+    path: '/odometer',
+    label: 'Odometer',
+    element: <OdometerPage />,
+    nav: { icon: Gauge, group: 'vehicle' },
+  },
   {
     path: '/notifications',
     label: 'Notifications',
     visible: (m) => m.notifications,
     element: <NotificationsPage />,
   },
-  { path: '/progress', label: 'Progress', visible: (m) => m.progress, element: <ProgressPage /> },
-  { path: '/schedule', label: 'Schedule', visible: (m) => m.schedule, element: <SchedulePage /> },
-  { path: '/vehicles', label: 'Vehicles', element: <VehiclesPage /> },
-  { path: '/odometer', label: 'Odometer', element: <OdometerPage /> },
   {
-    path: '/exports',
-    label: 'Exports',
-    visible: (m) => m.exporters.length > 0,
-    element: <ExportsPage />,
+    path: '/devices',
+    label: 'Devices',
+    visible: (m) => m.devices,
+    element: <Devices />,
+    nav: { icon: Smartphone, group: 'system' },
   },
-  { path: '/devices', label: 'Devices', visible: (m) => m.devices, element: <Devices /> },
-  { path: '/backups', label: 'Backups', element: <Backups /> },
-  { path: '/settings', label: 'Settings', element: <SettingsPage /> },
+  {
+    path: '/backups',
+    label: 'Backups',
+    element: <Backups />,
+    nav: { icon: DatabaseBackup, group: 'system' },
+  },
+  {
+    path: '/settings/*',
+    label: 'Settings',
+    element: <SettingsPage />,
+    nav: { icon: Settings, group: 'system' },
+  },
 ];
 
 /**

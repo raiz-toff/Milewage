@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
+import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
@@ -28,7 +29,8 @@ function mapWorker(): Plugin {
 // In development the API is the server on :3000. No changeOrigin: the server compares the
 // Origin header with Host, so Host must stay the dev server's own.
 export default defineConfig({
-  plugins: [react(), mapWorker()],
+  plugins: [react(), tailwindcss(), mapWorker()],
+  resolve: { alias: { '@': join(import.meta.dirname, 'src') } },
   server: {
     proxy: {
       '/api': {

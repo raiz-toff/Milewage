@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
+import { Download } from 'lucide-react';
+import { Button as UiButton } from '@/components/ui/button';
+import { PageHeader, Section } from '../ui/layout';
 import { ApiError, describe, unwrap } from '../api/client';
 import type { Modules, Schemas } from '../api/client';
 import { useSession, useSettings } from '../session';
-import { Button, Field, FormError, SelectField } from '../ui/form';
+import { Field, FormError, SelectField } from '../ui/form';
 import { localDate } from './Dashboard';
 
 type Format = Modules['exporters'][number];
@@ -102,9 +105,16 @@ export function ExportButtons({
     <div className="space-y-2">
       <div className="flex flex-wrap gap-3">
         {modules.exporters.map((f) => (
-          <Button key={f} type="button" busy={busy !== null} onClick={() => void run(f)}>
+          <UiButton
+            key={f}
+            type="button"
+            variant="outline"
+            disabled={busy !== null}
+            onClick={() => void run(f)}
+          >
+            <Download />
             {`Download ${LABEL[f]}`}
-          </Button>
+          </UiButton>
         ))}
       </div>
       <FormError message={error} />
@@ -139,55 +149,62 @@ export function ExportsPage() {
 
   return (
     <section className="space-y-6">
-      <h1 className="font-heading text-2xl">Exports</h1>
-      <div className="grid max-w-3xl gap-3 sm:grid-cols-4">
-        <Field label="From" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-        <Field label="To" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-        {vehicles.length > 1 ? (
-          <SelectField
-            label="Vehicle"
-            value={vehicle}
-            onChange={setVehicle}
-            options={[
-              { value: '', label: 'All vehicles' },
-              ...vehicles.map((v) => ({ value: String(v.id), label: v.name })),
-            ]}
+      <PageHeader
+        title="Exports"
+        description="Files are produced from the stored shifts and trips. MileWage makes no claim that a file meets a tax office's record-keeping rules."
+      />
+      <Section title="Choose a period">
+        <div className="grid gap-3 sm:grid-cols-4">
+          <Field label="From" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          <Field label="To" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          {vehicles.length > 1 ? (
+            <SelectField
+              label="Vehicle"
+              value={vehicle}
+              onChange={setVehicle}
+              options={[
+                { value: '', label: 'All vehicles' },
+                ...vehicles.map((v) => ({ value: String(v.id), label: v.name })),
+              ]}
+            />
+          ) : null}
+          {modules.exporters.includes('csv') ? (
+            <SelectField
+              label="CSV rows"
+              value={level}
+              onChange={(v) => setLevel(v as 'trip' | 'shift')}
+              options={[
+                { value: 'trip', label: 'One row per trip' },
+                { value: 'shift', label: 'One row per shift' },
+              ]}
+            />
+          ) : null}
+        </div>
+        {problem ? (
+          <p role="alert" className="text-sm text-destructive">
+            {problem}
+          </p>
+        ) : (
+          <ExportButtons
+            selection={{ from, to }}
+            level={level}
+            {...(vehicle ? { vehicleId: Number(vehicle) } : {})}
           />
-        ) : null}
-        {modules.exporters.includes('csv') ? (
-          <SelectField
-            label="CSV rows"
-            value={level}
-            onChange={(v) => setLevel(v as 'trip' | 'shift')}
-            options={[
-              { value: 'trip', label: 'One row per trip' },
-              { value: 'shift', label: 'One row per shift' },
-            ]}
-          />
-        ) : null}
-      </div>
-      {problem ? (
-        <p role="alert" className="text-muted">
-          {problem}
-        </p>
-      ) : (
-        <ExportButtons
-          selection={{ from, to }}
-          level={level}
-          {...(vehicle ? { vehicleId: Number(vehicle) } : {})}
-        />
-      )}
-      <ul className="space-y-1 text-sm text-muted">
-        {modules.exporters.map((f) => (
-          <li key={f}>
-            <span className="text-ink">{LABEL[f]}</span>: {HINT[f]}
-          </li>
-        ))}
-      </ul>
-      <p className="text-sm text-muted">
-        Files are produced from the stored shifts and trips. MileWage makes no claim that a file
-        meets a tax office&apos;s record-keeping rules.
-      </p>
+        )}
+      </Section>
+      <Section title="Formats">
+        <ul className="divide-y text-sm">
+          {modules.exporters.map((f) => (
+            <li
+              key={f}
+              className="flex flex-col gap-0.5 py-2.5 first:pt-0 last:pb-0 sm:flex-row sm:gap-4"
+            >
+              <span className="w-32 shrink-0 font-medium">{LABEL[f]}</span>
+              <span className="text-muted-foreground">{HINT[f]}</span>
+            </li>
+          ))}
+        </ul>
+      </Section>
     </section>
   );
 }

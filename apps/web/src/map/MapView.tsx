@@ -3,12 +3,9 @@ import type { Map as MapLibreMap, Marker } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { boundsOf, lineOf } from './route';
 import type { RoutePoint } from './route';
-import { blankStyle, chooseStyle, routeColor } from './style';
+import { blankStyle, chooseStyle, isDarkTheme, routeColor } from './style';
 
-const dark = () =>
-  typeof window === 'undefined' || !window.matchMedia
-    ? true
-    : !window.matchMedia('(prefers-color-scheme: light)').matches;
+const dark = isDarkTheme;
 
 /**
  * The route over a plain background, or over the configured style. If the style cannot load
@@ -104,16 +101,18 @@ export default function MapView({
 
   if (failed) {
     return (
-      <p role="status" className="rounded border border-line bg-card p-4 text-muted">
+      <p role="status" className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
         The map could not start in this browser. The route figures below still work.
       </p>
     );
   }
   return (
     <div>
-      <div ref={box} data-testid="map" className="h-96 w-full rounded border border-line" />
+      <div ref={box} data-testid="map" className="h-96 w-full overflow-hidden rounded-xl border" />
       {fallback ? (
-        <p className="mt-1 text-xs text-muted">Basemap unavailable; showing the route only.</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Basemap unavailable; showing the route only.
+        </p>
       ) : null}
     </div>
   );

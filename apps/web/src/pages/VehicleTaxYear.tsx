@@ -3,6 +3,7 @@ import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { useSession, useSettings } from '../session';
 import { localDate } from './Dashboard';
+import { Picker } from '../ui/form';
 
 type Row = Schemas['VehicleTaxYear'];
 
@@ -34,17 +35,20 @@ export function VehicleTaxYear({ vehicleId, name }: { vehicleId: number; name: s
     }
   }
   return (
-    <label className="block text-sm text-muted">
-      {`Deduct ${name} in ${year} by`}{' '}
-      <select
-        className="rounded border border-line bg-bg px-2 py-1 text-ink"
+    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+      <span>{`Deduct ${name} in ${year} by`}</span>
+      <Picker
+        label={`Deduct ${name} in ${year} by`}
+        size="sm"
+        className="w-auto min-w-36"
         value={row?.method ?? 'standard_mileage'}
-        onChange={(e) => void choose(e.target.value as Row['method'])}
-      >
-        <option value="standard_mileage">Mileage rate</option>
-        <option value="actual_expenses">Actual expenses</option>
-      </select>
+        onChange={(v) => void choose(v as Row['method'])}
+        options={[
+          { value: 'standard_mileage', label: 'Mileage rate' },
+          { value: 'actual_expenses', label: 'Actual expenses' },
+        ]}
+      />
       {error ? <span role="alert"> {error}</span> : null}
-    </label>
+    </div>
   );
 }

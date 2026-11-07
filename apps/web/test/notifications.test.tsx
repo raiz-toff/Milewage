@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { messageOf } from '../src/pages/Notifications';
-import { renderApp, settingsFixture, signedIn } from './support/kit';
+import { renderApp, settingsFixture, signedIn, menu, openMenu } from './support/kit';
 
 afterEach(cleanup);
 
@@ -59,17 +59,19 @@ describe('notifications (module notifications)', () => {
       await screen.findByText(/A tax date is coming up: 2027-03-15 \(instalment\)/),
     ).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Notifications (1)' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Mark read' }));
+    menu(/tax date/, 'Mark read');
     await waitFor(() =>
       expect(s.calls.find((c) => c.method === 'PATCH')?.body).toEqual({ read: true }),
     );
-    expect(await screen.findByRole('button', { name: 'Mark unread' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: /^Dismiss/ }));
+    await waitFor(() => expect(screen.queryByText(/tax date/)?.className).toMatch(/muted/));
+    openMenu(/tax date/);
+    expect(screen.getByRole('menuitem', { name: 'Mark unread' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Dismiss' }));
     expect(await screen.findByText('Nothing new.')).toBeTruthy();
   });
 
   it('the Alerts card on Settings flips a toggle', async () => {
-    const s = open('/settings');
+    const s = open('/settings/alerts');
     fireEvent.click(await screen.findByLabelText('Tax dates'));
     await waitFor(() =>
       expect(
@@ -79,8 +81,10 @@ describe('notifications (module notifications)', () => {
   });
 
   it('is absent when the module is off: no screen, no count, no card, no call', async () => {
-    const s = open('/settings', [item()], false);
-    await screen.findByLabelText('Currency');
+    const s = open('/settings/alerts', [item()], false);
+    await screen.findByLabelText('Name');
+    const sections = screen.getByRole('navigation', { name: 'Settings sections' });
+    expect(within(sections).queryByRole('link', { name: 'Alerts' })).toBeNull();
     expect(screen.queryByRole('link', { name: /Notifications/ })).toBeNull();
     expect(screen.queryByRole('region', { name: 'Alerts' })).toBeNull();
     expect(s.calls.some((c) => c.path.startsWith('/notifications'))).toBe(false);

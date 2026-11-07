@@ -1,54 +1,295 @@
-import { useState } from 'react';
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
-import { visibleScreens } from './screens';
+import { useEffect, useState } from 'react';
+import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import {
+  Bell,
+  ChevronsUpDown,
+  LogOut,
+  Monitor,
+  Moon,
+  Route as RouteIcon,
+  Settings as SettingsIcon,
+  Sun,
+  User,
+} from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+} from '@/components/ui/breadcrumb';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Separator } from '@/components/ui/separator';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
+  useSidebar,
+} from '@/components/ui/sidebar';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { navGroups, visibleScreens } from './screens';
+import type { Screen } from './screens';
 import { Login } from './pages/Login';
 import { RecoveryKey } from './pages/RecoveryKey';
 import { Restore } from './pages/Restore';
 import { Setup } from './pages/Setup';
 import { useUnread } from './pages/Notifications';
 import { useSession } from './session';
+import { useTheme } from './theme';
+import type { ThemeChoice } from './theme';
 import type { Settings } from './api/client';
 
 function Notice({ children }: { children: string }) {
-  return <p className="p-8 text-center text-muted">{children}</p>;
+  return <p className="p-8 text-center text-muted-foreground">{children}</p>;
+}
+
+const routeOf = (s: Screen) => s.path.replace(/\/\*$/, '');
+const isUnder = (pathname: string, route: string) =>
+  pathname === route || pathname.startsWith(`${route}/`);
+
+function NavItem({ screen, pathname }: { screen: Screen; pathname: string }) {
+  const Icon = screen.nav!.icon;
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        asChild
+        isActive={isUnder(pathname, routeOf(screen))}
+        tooltip={screen.label}
+      >
+        <NavLink to={routeOf(screen)}>
+          <Icon />
+          <span>{screen.label}</span>
+        </NavLink>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
+
+/** The account menu at the foot of the sidebar: who is signed in, account pages, sign out. */
+function AccountMenu({ name }: { name: string | null }) {
+  const { signOut } = useSession();
+  const navigate = useNavigate();
+  const shown = name?.trim() || 'Your account';
+  return (
+    <SidebarMenuItem>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <SidebarMenuButton
+            size="lg"
+            tooltip="Account"
+            aria-label="Account"
+            className="data-[state=open]:bg-sidebar-accent"
+          >
+            <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-accent text-sm font-semibold uppercase">
+              {name?.trim()[0] ?? <User className="size-4" />}
+            </div>
+            <div className="grid flex-1 text-left text-sm leading-tight">
+              <span className="truncate font-medium">{shown}</span>
+              <span className="truncate text-xs text-muted-foreground">Signed in</span>
+            </div>
+            <ChevronsUpDown className="ml-auto size-4" />
+          </SidebarMenuButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          side="top"
+          align="start"
+          className="w-(--radix-dropdown-menu-trigger-width) min-w-52"
+        >
+          <DropdownMenuGroup>
+            <DropdownMenuLabel className="truncate">{shown}</DropdownMenuLabel>
+            <DropdownMenuItem onSelect={() => navigate('/settings/account')}>
+              <User />
+              Account
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate('/settings/general')}>
+              <SettingsIcon />
+              Settings
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => void signOut()}>
+            <LogOut />
+            Sign out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </SidebarMenuItem>
+  );
+}
+
+function AppSidebar({ list, name }: { list: Screen[]; name: string | null }) {
+  const { pathname } = useLocation();
+  const { setOpenMobile } = useSidebar();
+  useEffect(() => setOpenMobile(false), [pathname, setOpenMobile]);
+  const inGroup = (id: string) => list.filter((s) => s.nav?.group === id);
+  const system = inGroup('system');
+
+  return (
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild>
+              <Link to="/dashboard">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                  <RouteIcon className="size-4" />
+                </div>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">MileWage</span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    Mileage and earnings
+                  </span>
+                </div>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+      <nav aria-label="Main" className="flex min-h-0 flex-1 flex-col">
+        <SidebarContent>
+          {navGroups
+            .filter((g) => g.id !== 'system')
+            .map((g) => ({ ...g, items: inGroup(g.id) }))
+            .filter((g) => g.items.length > 0)
+            .map((g) => (
+              <SidebarGroup key={g.id}>
+                <SidebarGroupLabel>{g.label}</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {g.items.map((s) => (
+                      <NavItem key={s.path} screen={s} pathname={pathname} />
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            ))}
+        </SidebarContent>
+        <SidebarFooter>
+          <SidebarMenu>
+            {system.map((s) => (
+              <NavItem key={s.path} screen={s} pathname={pathname} />
+            ))}
+            <AccountMenu name={name} />
+          </SidebarMenu>
+        </SidebarFooter>
+      </nav>
+      <SidebarRail />
+    </Sidebar>
+  );
+}
+
+const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
+  { value: 'light', label: 'Light', icon: Sun },
+  { value: 'dark', label: 'Dark', icon: Moon },
+  { value: 'system', label: 'System', icon: Monitor },
+];
+
+function ThemeMenu() {
+  const [choice, setChoice] = useTheme();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Theme">
+          <Sun className="dark:hidden" />
+          <Moon className="hidden dark:block" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuRadioGroup value={choice} onValueChange={(v) => setChoice(v as ThemeChoice)}>
+          {THEMES.map((t) => (
+            <DropdownMenuRadioItem key={t.value} value={t.value}>
+              <t.icon />
+              {t.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 function Shell({ settings }: { settings: Settings }) {
-  const { signOut } = useSession();
   const list = visibleScreens(settings.modules);
   const unread = useUnread(settings.modules.notifications);
+  const { pathname } = useLocation();
+  const current = list.find((s) => isUnder(pathname, routeOf(s)));
+  const notifications = list.some((s) => s.path === '/notifications');
+
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center gap-6 border-b border-line bg-card px-6 py-3">
-        <span className="font-heading text-xl">MileWage</span>
-        <nav aria-label="Main" className="flex flex-1 gap-4">
-          {list.map((s) => (
-            <NavLink
-              key={s.path}
-              to={s.path.replace(/\/\*$/, '')}
-              className={({ isActive }) => (isActive ? 'text-accent' : 'text-muted hover:text-ink')}
-            >
-              {s.label}
-              {s.path === '/notifications' && unread > 0 ? ` (${unread})` : ''}
-            </NavLink>
-          ))}
-        </nav>
-        <button type="button" className="text-muted hover:text-ink" onClick={() => void signOut()}>
-          Sign out
-        </button>
-      </header>
-      <main className="mx-auto max-w-6xl p-6">
-        <Routes>
-          {list.map((s) => (
-            <Route key={s.path} path={s.path} element={s.element} />
-          ))}
-          <Route
-            path="*"
-            element={<Navigate to={list[0]?.path.replace(/\/\*$/, '') ?? '/'} replace />}
-          />
-        </Routes>
-      </main>
-    </div>
+    <TooltipProvider>
+      <SidebarProvider>
+        <AppSidebar list={list} name={settings.display_name ?? null} />
+        <SidebarInset>
+          <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur">
+            <SidebarTrigger className="-ml-1" />
+            <Separator
+              orientation="vertical"
+              className="mr-2 data-vertical:h-4 data-vertical:self-center"
+            />
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{current?.label ?? 'MileWage'}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+            <div className="ml-auto flex items-center gap-1">
+              <ThemeMenu />
+              {notifications ? (
+                <Button variant="ghost" size="icon" className="relative" asChild>
+                  <NavLink
+                    to="/notifications"
+                    aria-label={unread > 0 ? `Notifications (${unread})` : 'Notifications'}
+                  >
+                    <Bell />
+                    {unread > 0 ? (
+                      <Badge className="absolute -top-1 -right-1 h-4 min-w-4 rounded-full px-1 text-[10px] tabular-nums">
+                        {unread > 99 ? '99+' : unread}
+                      </Badge>
+                    ) : null}
+                  </NavLink>
+                </Button>
+              ) : null}
+            </div>
+          </header>
+          <main className="flex-1 p-4 md:p-6">
+            <div className="mx-auto w-full max-w-6xl">
+              <Routes>
+                {list.map((s) => (
+                  <Route key={s.path} path={s.path} element={s.element} />
+                ))}
+                <Route
+                  path="*"
+                  element={<Navigate to={list[0] ? routeOf(list[0]) : '/'} replace />}
+                />
+              </Routes>
+            </div>
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    </TooltipProvider>
   );
 }
 

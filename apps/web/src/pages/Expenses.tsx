@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
+import { FileX, Pencil, Plus, Trash2 } from 'lucide-react';
+import { RowMenu } from '../ui/RowMenu';
+import { EmptyState, PageHeader, Section, StatCard, TableBox, tableClass } from '../ui/layout';
+import { Button as UiButton } from '@/components/ui/button';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
@@ -187,31 +191,41 @@ export function ExpensesPage() {
 
   return (
     <section className="space-y-6">
-      <h1 className="font-heading text-2xl">Expenses</h1>
+      <PageHeader
+        title="Expenses"
+        description={
+          <>
+            {modules.receipts ? 'Photos lose their location data when they are stored. ' : ''}
+            Deductible amounts are estimates to bring to an accountant, not tax advice.
+          </>
+        }
+      >
+        {draft === null ? (
+          <Button type="button" onClick={() => setDraft(blank(today))}>
+            <Plus />
+            Add expense
+          </Button>
+        ) : null}
+      </PageHeader>
       <FormError message={error} />
       {totals ? (
-        <div className="grid max-w-xl grid-cols-2 gap-4" aria-label="Year to date">
-          <div className="rounded border border-line bg-card p-4">
-            <div className="text-sm text-muted">Deductible {totals.year}</div>
-            <div className="text-xl">{money(totals.deductible_cents)}</div>
-          </div>
-          <div className="rounded border border-line bg-card p-4">
-            <div className="text-sm text-muted">Total spend {totals.year}</div>
-            <div className="text-xl">{money(totals.total_cents)}</div>
-          </div>
+        <div className="grid grid-cols-2 gap-3 sm:max-w-xl" aria-label="Year to date">
+          <StatCard label={`Deductible ${totals.year}`} value={money(totals.deductible_cents)} />
+          <StatCard label={`Total spend ${totals.year}`} value={money(totals.total_cents)} />
         </div>
       ) : null}
       {due.length > 0 ? (
-        <section aria-label="Due" className="space-y-2 rounded border border-line bg-card p-4">
-          <h2 className="font-heading text-lg">Due now</h2>
+        <Section label="Due" title="Due now">
           {due.map((d) => (
             <div key={d.id} className="flex items-center gap-3">
               <span>
                 {d.merchant || cat(d.category)?.label} {money(d.amount_cents)} (due {d.next_due})
               </span>
-              <button
+              <UiButton
                 type="button"
-                className="text-accent"
+                variant="link"
+                size="sm"
+                className="h-auto px-0"
                 onClick={() =>
                   void act(() =>
                     unwrap(
@@ -224,10 +238,11 @@ export function ExpensesPage() {
                 }
               >
                 Add it
-              </button>
-              <button
+              </UiButton>
+              <UiButton
                 type="button"
-                className="text-muted hover:text-ink"
+                variant="ghost"
+                size="sm"
                 onClick={() =>
                   void act(() =>
                     unwrap(
@@ -240,275 +255,274 @@ export function ExpensesPage() {
                 }
               >
                 Remind me in a week
-              </button>
+              </UiButton>
             </div>
           ))}
-        </section>
+        </Section>
       ) : null}
 
-      {draft === null ? (
-        <Button type="button" onClick={() => setDraft(blank(today))}>
-          Add expense
-        </Button>
-      ) : (
-        <form className="max-w-2xl space-y-3" onSubmit={(e) => void save(e)}>
-          <div role="group" aria-label="Category" className="flex flex-wrap gap-2">
-            {cats.map((c) => (
-              <button
-                key={c.slug}
-                type="button"
-                aria-pressed={draft.category === c.slug}
-                className={`rounded border px-2 py-1 text-sm ${draft.category === c.slug ? 'border-accent text-accent' : 'border-line text-muted'}`}
-                onClick={() => pick(c.slug)}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Field
-              label="Date"
-              type="date"
-              value={draft.spent_on}
-              onChange={(e) => setDraft({ ...draft, spent_on: e.target.value })}
-            />
-            <Field
-              label="Amount"
-              inputMode="decimal"
-              value={draft.amount}
-              onChange={(e) => setDraft({ ...draft, amount: e.target.value })}
-            />
-            <Field
-              label="Merchant"
-              list="merchants"
-              maxLength={120}
-              value={draft.merchant}
-              onChange={(e) => setDraft({ ...draft, merchant: e.target.value })}
-            />
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                className="h-4 w-4 accent-[var(--mw-accent)]"
-                checked={draft.deductible}
-                onChange={(e) => setDraft({ ...draft, deductible: e.target.checked })}
-              />
-              Deductible
-            </label>
-            <span className="text-sm text-muted">Business use</span>
-            {PICKS.map((p) => (
-              <button
-                key={p}
-                type="button"
-                aria-pressed={draft.business_pct === p}
-                className={`rounded border px-2 py-1 text-sm ${draft.business_pct === p ? 'border-accent text-accent' : 'border-line text-muted'}`}
-                onClick={() => setDraft({ ...draft, business_pct: p })}
-              >
-                {p}%
-              </button>
-            ))}
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <SelectField
-              label="Vehicle"
-              value={draft.vehicle_id}
-              onChange={(v) => setDraft({ ...draft, vehicle_id: v })}
-              options={[
-                { value: '', label: 'None' },
-                ...vehicles.map((v) => ({ value: String(v.id), label: v.name })),
-              ]}
-            />
-            <SelectField
-              label="Shift"
-              value={draft.shift_id}
-              onChange={(v) => setDraft({ ...draft, shift_id: v })}
-              options={[
-                { value: '', label: 'None' },
-                ...shifts.map((s) => ({ value: String(s.id), label: s.local_date })),
-              ]}
-            />
-            <SelectField
-              label="Repeats"
-              value={draft.recurrence}
-              onChange={(v) =>
-                setDraft({ ...draft, recurrence: v, next_due: draft.next_due || draft.spent_on })
-              }
-              options={[
-                { value: '', label: 'No' },
-                { value: 'weekly', label: 'Weekly' },
-                { value: 'monthly', label: 'Monthly' },
-                { value: 'yearly', label: 'Yearly' },
-              ]}
-            />
-            {draft.recurrence ? (
+      {draft === null ? null : (
+        <Section title={editing === null ? 'New expense' : 'Edit expense'}>
+          <form className="space-y-4" onSubmit={(e) => void save(e)}>
+            <div role="group" aria-label="Category" className="flex flex-wrap gap-2">
+              {cats.map((c) => (
+                <button
+                  key={c.slug}
+                  type="button"
+                  aria-pressed={draft.category === c.slug}
+                  className={`rounded-full border px-3 py-1 text-sm ${draft.category === c.slug ? 'border-primary bg-primary/15 font-medium' : 'border-border text-muted-foreground'}`}
+                  onClick={() => pick(c.slug)}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
               <Field
-                label="Next due"
+                label="Date"
                 type="date"
-                value={draft.next_due}
-                onChange={(e) => setDraft({ ...draft, next_due: e.target.value })}
+                value={draft.spent_on}
+                onChange={(e) => setDraft({ ...draft, spent_on: e.target.value })}
               />
+              <Field
+                label="Amount"
+                inputMode="decimal"
+                value={draft.amount}
+                onChange={(e) => setDraft({ ...draft, amount: e.target.value })}
+              />
+              <Field
+                label="Merchant"
+                list="merchants"
+                maxLength={120}
+                value={draft.merchant}
+                onChange={(e) => setDraft({ ...draft, merchant: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="size-4 accent-primary"
+                  checked={draft.deductible}
+                  onChange={(e) => setDraft({ ...draft, deductible: e.target.checked })}
+                />
+                Deductible
+              </label>
+              <span className="text-sm text-muted-foreground">Business use</span>
+              {PICKS.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  aria-pressed={draft.business_pct === p}
+                  className={`rounded-full border px-3 py-1 text-sm ${draft.business_pct === p ? 'border-primary bg-primary/15 font-medium' : 'border-border text-muted-foreground'}`}
+                  onClick={() => setDraft({ ...draft, business_pct: p })}
+                >
+                  {p}%
+                </button>
+              ))}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SelectField
+                label="Vehicle"
+                value={draft.vehicle_id}
+                onChange={(v) => setDraft({ ...draft, vehicle_id: v })}
+                options={[
+                  { value: '', label: 'None' },
+                  ...vehicles.map((v) => ({ value: String(v.id), label: v.name })),
+                ]}
+              />
+              <SelectField
+                label="Shift"
+                value={draft.shift_id}
+                onChange={(v) => setDraft({ ...draft, shift_id: v })}
+                options={[
+                  { value: '', label: 'None' },
+                  ...shifts.map((s) => ({ value: String(s.id), label: s.local_date })),
+                ]}
+              />
+              <SelectField
+                label="Repeats"
+                value={draft.recurrence}
+                onChange={(v) =>
+                  setDraft({ ...draft, recurrence: v, next_due: draft.next_due || draft.spent_on })
+                }
+                options={[
+                  { value: '', label: 'No' },
+                  { value: 'weekly', label: 'Weekly' },
+                  { value: 'monthly', label: 'Monthly' },
+                  { value: 'yearly', label: 'Yearly' },
+                ]}
+              />
+              {draft.recurrence ? (
+                <Field
+                  label="Next due"
+                  type="date"
+                  value={draft.next_due}
+                  onChange={(e) => setDraft({ ...draft, next_due: e.target.value })}
+                />
+              ) : null}
+            </div>
+            <datalist id="merchants">
+              {merchants.map((m) => (
+                <option key={m} value={m} />
+              ))}
+            </datalist>
+            <Field
+              label="Notes"
+              maxLength={2000}
+              value={draft.notes}
+              onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
+            />
+            {cat(draft.category)?.covered_by_standard_rate && draft.vehicle_id ? (
+              <p role="note" className="text-sm text-muted-foreground">
+                If this vehicle uses the standard mileage rate, the rate already covers this cost:
+                it is saved but not deducted.
+              </p>
             ) : null}
-          </div>
-          <datalist id="merchants">
-            {merchants.map((m) => (
-              <option key={m} value={m} />
-            ))}
-          </datalist>
-          <Field
-            label="Notes"
-            maxLength={2000}
-            value={draft.notes}
-            onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
-          />
-          {cat(draft.category)?.covered_by_standard_rate && draft.vehicle_id ? (
-            <p role="note" className="text-sm text-muted">
-              If this vehicle uses the standard mileage rate, the rate already covers this cost: it
-              is saved but not deducted.
-            </p>
-          ) : null}
-          <div className="flex gap-3">
-            <Button type="submit">{editing === null ? 'Save expense' : 'Save changes'}</Button>
-            <button
-              type="button"
-              className="text-muted"
-              onClick={() => {
-                setDraft(null);
-                setEditing(null);
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
+            <div className="flex gap-3">
+              <Button type="submit">{editing === null ? 'Save expense' : 'Save changes'}</Button>
+              <UiButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setDraft(null);
+                  setEditing(null);
+                }}
+              >
+                Cancel
+              </UiButton>
+            </div>
+          </form>
+        </Section>
       )}
 
-      <div className="flex gap-3">
-        <SelectField
-          label="Show category"
-          value={filter.category}
-          onChange={(v) => setFilter({ ...filter, category: v })}
-          options={[
-            { value: '', label: 'All' },
-            ...cats.map((c) => ({ value: c.slug, label: c.label })),
-          ]}
-        />
-        <SelectField
-          label="Deductible"
-          value={filter.deductible}
-          onChange={(v) => setFilter({ ...filter, deductible: v })}
-          options={[
-            { value: '', label: 'Any' },
-            { value: 'yes', label: 'Yes' },
-            { value: 'no', label: 'No' },
-          ]}
-        />
-      </div>
-      {items === null ? (
-        <p className="text-muted">Loading</p>
-      ) : items.length === 0 ? (
-        <p className="text-muted">No expenses yet.</p>
-      ) : (
-        <table className="w-full text-left">
-          <caption className="sr-only">Expenses</caption>
-          <thead className="text-sm text-muted">
-            <tr>
-              <th className="pb-2 font-normal">Date</th>
-              <th className="font-normal">Category</th>
-              <th className="font-normal">Merchant</th>
-              <th className="font-normal">Amount</th>
-              <th className="font-normal">Deductible</th>
-              {modules.receipts ? <th className="font-normal">Receipt</th> : null}
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((x) => (
-              <tr key={x.id} className="border-t border-line">
-                <td className="py-2 pr-3 font-mono text-sm">{x.spent_on}</td>
-                <td className="pr-3">{cat(x.category)?.label ?? x.category}</td>
-                <td className="pr-3">{x.merchant}</td>
-                <td className="pr-3">{money(x.amount_cents)}</td>
-                <td className="pr-3">
-                  {x.double_counts ? 'covered by the mileage rate' : money(x.deductible_cents)}
-                </td>
-                {modules.receipts ? (
-                  <td className="pr-3">
-                    {x.has_receipt ? (
-                      <span className="space-x-2">
-                        <a
-                          className="text-accent"
-                          href={`/api/v1/expenses/${x.id}/receipt`}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          View receipt
-                        </a>
-                        <button
-                          type="button"
-                          className="text-muted hover:text-ink"
-                          aria-label={`Remove receipt of ${x.merchant || x.category} ${x.spent_on}`}
-                          onClick={() =>
-                            void act(() =>
-                              unwrap(
-                                api.DELETE('/expenses/{id}/receipt', {
-                                  params: { path: { id: x.id } },
-                                }),
+      <Section title="All expenses">
+        <div className="grid gap-3 sm:max-w-md sm:grid-cols-2">
+          <SelectField
+            label="Show category"
+            value={filter.category}
+            onChange={(v) => setFilter({ ...filter, category: v })}
+            options={[
+              { value: '', label: 'All' },
+              ...cats.map((c) => ({ value: c.slug, label: c.label })),
+            ]}
+          />
+          <SelectField
+            label="Deductible"
+            value={filter.deductible}
+            onChange={(v) => setFilter({ ...filter, deductible: v })}
+            options={[
+              { value: '', label: 'Any' },
+              { value: 'yes', label: 'Yes' },
+              { value: 'no', label: 'No' },
+            ]}
+          />
+        </div>
+        {items === null ? (
+          <p className="text-sm text-muted-foreground">Loading</p>
+        ) : items.length === 0 ? (
+          <EmptyState>No expenses yet.</EmptyState>
+        ) : (
+          <TableBox>
+            <table className={tableClass}>
+              <caption className="sr-only">Expenses</caption>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Category</th>
+                  <th>Merchant</th>
+                  <th>Amount</th>
+                  <th>Deductible</th>
+                  {modules.receipts ? <th>Receipt</th> : null}
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((x) => (
+                  <tr key={x.id} className="border-t border-border">
+                    <td className="py-2 pr-3 tabular-nums text-sm">{x.spent_on}</td>
+                    <td className="pr-3">{cat(x.category)?.label ?? x.category}</td>
+                    <td className="pr-3">{x.merchant}</td>
+                    <td className="pr-3">{money(x.amount_cents)}</td>
+                    <td className="pr-3">
+                      {x.double_counts ? 'covered by the mileage rate' : money(x.deductible_cents)}
+                    </td>
+                    {modules.receipts ? (
+                      <td className="pr-3">
+                        {x.has_receipt ? (
+                          <a
+                            className="font-medium underline decoration-primary decoration-2 underline-offset-4"
+                            href={`/api/v1/expenses/${x.id}/receipt`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            View receipt
+                          </a>
+                        ) : (
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,application/pdf"
+                            aria-label={`Attach receipt to ${x.merchant || x.category} ${x.spent_on}`}
+                            className="max-w-52 text-xs file:mr-2 file:rounded-md file:border file:border-input file:bg-transparent file:px-2 file:py-1 file:text-xs file:font-medium"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) void attach(x.id, f);
+                            }}
+                          />
+                        )}
+                      </td>
+                    ) : null}
+                    <td className="text-right whitespace-nowrap">
+                      <RowMenu
+                        name={`${x.merchant || cat(x.category)?.label || x.category} ${x.spent_on}`}
+                        actions={[
+                          {
+                            label: 'Edit',
+                            icon: Pencil,
+                            onSelect: () => {
+                              setDraft(draftOf(x));
+                              setEditing(x.id);
+                            },
+                          },
+                          ...(modules.receipts && x.has_receipt
+                            ? [
+                                {
+                                  label: 'Remove receipt',
+                                  icon: FileX,
+                                  destructive: true,
+                                  onSelect: () =>
+                                    void act(() =>
+                                      unwrap(
+                                        api.DELETE('/expenses/{id}/receipt', {
+                                          params: { path: { id: x.id } },
+                                        }),
+                                      ),
+                                    ),
+                                },
+                              ]
+                            : []),
+                          {
+                            label: 'Delete',
+                            icon: Trash2,
+                            destructive: true,
+                            onSelect: () =>
+                              void act(() =>
+                                unwrap(
+                                  api.DELETE('/expenses/{id}', { params: { path: { id: x.id } } }),
+                                ),
                               ),
-                            )
-                          }
-                        >
-                          Remove
-                        </button>
-                      </span>
-                    ) : (
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp,application/pdf"
-                        aria-label={`Attach receipt to ${x.merchant || x.category} ${x.spent_on}`}
-                        className="max-w-48 text-sm"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (f) void attach(x.id, f);
-                        }}
+                          },
+                        ]}
                       />
-                    )}
-                  </td>
-                ) : null}
-                <td className="space-x-3 text-right">
-                  <button
-                    type="button"
-                    className="text-muted hover:text-ink"
-                    aria-label={`Edit ${x.merchant || x.category} ${x.spent_on}`}
-                    onClick={() => {
-                      setDraft(draftOf(x));
-                      setEditing(x.id);
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="text-muted hover:text-ink"
-                    aria-label={`Delete ${x.merchant || x.category} ${x.spent_on}`}
-                    onClick={() =>
-                      void act(() =>
-                        unwrap(api.DELETE('/expenses/{id}', { params: { path: { id: x.id } } })),
-                      )
-                    }
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      <p className="max-w-xl text-sm text-muted">
-        {modules.receipts ? 'Photos lose their location data when they are stored. ' : ''}
-        Deductible amounts are estimates to bring to an accountant, not tax advice.
-      </p>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableBox>
+        )}
+      </Section>
     </section>
   );
 }

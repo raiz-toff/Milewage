@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startOfLocalDay, toMetres } from '../src/pages/Odometer';
-import { renderApp, settingsFixture, signedIn } from './support/kit';
+import { renderApp, settingsFixture, signedIn, pick } from './support/kit';
 import type { Handler } from './support/kit';
 
 beforeEach(() => {
@@ -96,7 +96,7 @@ describe('odometer logbook', () => {
       settingsFixture({ distance_unit: 'mi' }),
     );
     await screen.findByLabelText('Odometer (mi)');
-    fireEvent.change(screen.getByLabelText('Reading'), { target: { value: 'year_end' } });
+    pick(screen.getByLabelText('Reading'), 'year_end');
     fireEvent.change(screen.getByLabelText('Odometer (mi)'), { target: { value: '100' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add reading' }));
     await waitFor(() => expect(calls.some((c) => c.method === 'POST')).toBe(true));
