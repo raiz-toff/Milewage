@@ -178,7 +178,7 @@ describe('exports screen', () => {
 describe('exporters module off', () => {
   it('no Exports screen in the navigation, none on the shift, no request', async () => {
     const { calls } = open({ exporters: [] }, {}, '/shifts/1');
-    await screen.findByRole('heading', { name: /2023-11-14/ });
+    await screen.findByRole('heading', { name: /Nov 14, 2023/ });
     const nav = screen.getByRole('navigation', { name: 'Main' });
     expect(within(nav).queryByRole('link', { name: 'Exports' })).toBeNull();
     expect(screen.queryByRole('region', { name: 'Export' })).toBeNull();

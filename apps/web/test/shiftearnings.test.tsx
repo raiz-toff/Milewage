@@ -152,12 +152,12 @@ describe('shift earnings block (module earnings)', () => {
 
   it('is absent when the module is off or the shift is still active', async () => {
     const off = open({ earnings: false });
-    await screen.findByRole('heading', { name: /2023-11-14/ });
+    await screen.findByRole('heading', { name: /Nov 14, 2023/ });
     expect(screen.queryByRole('region', { name: 'Earnings' })).toBeNull();
     expect(off.calls.some((c) => c.path.endsWith('/earnings'))).toBe(false);
     cleanup();
     open({ status: 'active' });
-    await screen.findByRole('heading', { name: /2023-11-14/ });
+    await screen.findByRole('heading', { name: /Nov 14, 2023/ });
     await waitFor(() => expect(screen.queryByRole('region', { name: 'Earnings' })).toBeNull());
   });
 

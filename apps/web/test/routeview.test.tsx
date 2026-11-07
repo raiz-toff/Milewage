@@ -141,7 +141,7 @@ describe('route view', () => {
 
   it('is absent when the replay module is off', async () => {
     const { calls } = open(settingsFixture({ modules: { replay: false } }));
-    await screen.findByRole('heading', { name: /2023-11-14/ });
+    await screen.findByRole('heading', { name: /Nov 14, 2023/ });
     expect(screen.queryByRole('region', { name: 'Route' })).toBeNull();
     expect(calls.some((c) => c.path.endsWith('/route'))).toBe(false);
   });

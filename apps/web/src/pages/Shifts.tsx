@@ -9,20 +9,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { describe, unwrap } from '../api/client';
 import type { Schemas, Settings } from '../api/client';
-import {
-  deductionWord,
-  formatDateTime,
-  formatDistance,
-  formatDuration,
-  formatMoney,
-  formatTime,
-} from '../format';
+import { deductionWord, formatDistance, formatDuration, formatMoney, formatTime } from '../format';
 import { RouteView } from '../map/RouteView';
 import { useSession, useSettings } from '../session';
 import { Button, FormError } from '../ui/form';
 import { localDate } from './Dashboard';
 import { ExportButtons } from './Exports';
 import { ShiftEarnings } from './ShiftEarnings';
+import { ShiftChecks, ShiftFigures, useVehicleName } from './ShiftFacts';
 import { ShiftOdometer } from './ShiftOdometer';
 import { StopsPanel } from './Stops';
 import { TripsTable } from './Trips';
@@ -403,15 +397,6 @@ export function ShiftList() {
   );
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex justify-between gap-6 border-t py-2 first:border-t-0 first:pt-0">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="text-right tabular-nums">{children}</dd>
-    </div>
-  );
-}
-
 export function ShiftDetail() {
   const { ref } = useParams();
   const { api } = useSession();
@@ -420,6 +405,7 @@ export function ShiftDetail() {
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [saved, setSaved] = useState(false);
+  const vehicle = useVehicleName(shift?.vehicle_id ?? 0);
 
   useEffect(() => {
     let live = true;
@@ -461,10 +447,15 @@ export function ShiftDetail() {
   if (!shift) return <p className="text-muted-foreground">Loading</p>;
   const split = showsSplit(shift, settings);
   const tz = settings.timezone;
+  const review = shift.flags?.filter((f) => f.severity === 'review').length ?? 0;
+  const context = [
+    `${formatTime(shift.started_at, tz)} – ${shift.ended_at ? formatTime(shift.ended_at, tz) : 'now'}`,
+    formatDuration(shift.started_at, shift.ended_at),
+    vehicle,
+  ].filter(Boolean);
 
-  const unit = settings.distance_unit;
   return (
-    <section className="space-y-6">
+    <section className="@container space-y-6">
       <UiButton asChild variant="ghost" size="sm" className="-ml-2">
         <Link to={`/shifts?week=${weekOf(shift.local_date, settings.week_start)}`}>
           <ChevronLeft />
@@ -472,107 +463,45 @@ export function ShiftDetail() {
         </Link>
       </UiButton>
       <PageHeader
-        title={`Shift on ${shift.local_date}`}
-        description={
-          <span className="tabular-nums">
-            {dateWords(shift.local_date, { weekday: 'long' })} · {formatTime(shift.started_at, tz)}{' '}
-            – {shift.ended_at ? formatTime(shift.ended_at, tz) : 'now'}
-          </span>
-        }
+        title={dateWords(shift.local_date, {
+          weekday: 'long',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })}
+        description={<span className="tabular-nums">{context.join(' · ')}</span>}
       >
         <StatusBadge shift={shift} />
+        {review > 0 ? (
+          <Badge asChild variant="outline" className="border-primary/60">
+            <a href="#checks">{review} to review</a>
+          </Badge>
+        ) : null}
       </PageHeader>
 
       <div className="space-y-2">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <StatCard label="Total" value={formatDistance(shift.total_m, unit)} />
-          {split ? (
-            <>
-              <StatCard
-                label="Active"
-                value={
-                  <>
-                    {formatDistance(shift.active_m, unit)}
-                    <Est />
-                  </>
-                }
-              />
-              <StatCard
-                label="Deadhead"
-                value={
-                  <>
-                    {formatDistance(shift.deadhead_m, unit)}
-                    <Est />
-                  </>
-                }
-              />
-            </>
-          ) : null}
-          <StatCard label="Duration" value={formatDuration(shift.started_at, shift.ended_at)} />
-          <StatCard
-            label={deductionWord(settings, true)}
-            value={formatMoney(shift.deduction_cents, settings.currency)}
-          />
-        </div>
+        <ShiftFigures shift={shift} settings={settings} split={split} est={<Est />} />
         {split ? (
           <p className="text-xs text-muted-foreground">* estimated from detected stops</p>
         ) : null}
       </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      {settings.modules.replay ? <RouteView shiftId={shift.id} /> : null}
+      <Section label="Trips" title="Trips">
+        <TripsTable shift={shift} split={split} reloadKey={shift.calculated_at ?? 0} />
+      </Section>
+
+      <div className="grid items-start gap-6 @3xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 space-y-6">
-          {settings.modules.replay ? <RouteView shiftId={shift.id} /> : null}
-          <Section label="Trips" title="Trips">
-            <TripsTable shift={shift} split={split} reloadKey={shift.calculated_at ?? 0} />
-          </Section>
-          {settings.modules.stops ? (
-            <Section label="Stops" title="Stops">
-              <StopsPanel shift={shift} onShift={setShift} />
-            </Section>
-          ) : null}
           {settings.modules.earnings && shift.status !== 'active' ? (
             <ShiftEarnings shift={shift} />
           ) : null}
-        </div>
-
-        <div className="space-y-6">
-          <Section title="Details">
-            <dl className="text-sm">
-              <Row label="Started">{formatDateTime(shift.started_at, tz)}</Row>
-              <Row label="Ended">
-                {shift.ended_at ? formatDateTime(shift.ended_at, tz) : 'in progress'}
-              </Row>
-              <Row label="Personal">{formatDistance(shift.personal_m, unit)}</Row>
-              <Row label="Status">{shift.status}</Row>
-              {shift.recon_status ? <Row label="Phone check">{shift.recon_status}</Row> : null}
-            </dl>
-          </Section>
-
-          <Section label="Flags" title="Flags">
-            {shift.flags?.length ? (
-              <ul className="space-y-2">
-                {shift.flags.map((f, i) => (
-                  <li key={`${f.code}-${i}`} className="flex items-center justify-between gap-3">
-                    <span
-                      className={
-                        f.severity === 'review' ? 'text-sm' : 'text-sm text-muted-foreground'
-                      }
-                    >
-                      {f.code}
-                    </span>
-                    <Badge variant={f.severity === 'review' ? 'outline' : 'secondary'}>
-                      {f.severity}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">None.</p>
-            )}
-          </Section>
-
           <ShiftOdometer shift={shift} />
-
+        </div>
+        <div className="min-w-0 space-y-6">
+          <div id="checks" className="scroll-mt-20">
+            <ShiftChecks shift={shift} />
+          </div>
           <Section title="Notes">
             <label className="sr-only" htmlFor="notes">
               Notes
@@ -604,7 +533,6 @@ export function ShiftDetail() {
               ) : null}
             </div>
           </Section>
-
           {settings.modules.exporters.length > 0 ? (
             <Section label="Export" title="Export this shift">
               <ExportButtons selection={{ shift_id: shift.id }} />
@@ -612,6 +540,16 @@ export function ShiftDetail() {
           ) : null}
         </div>
       </div>
+
+      {settings.modules.stops ? (
+        <Section
+          label="Stops"
+          title="Label stops"
+          description="Optional. A label corrects the estimate for that stop and adds its payout."
+        >
+          <StopsPanel shift={shift} onShift={setShift} />
+        </Section>
+      ) : null}
     </section>
   );
 }

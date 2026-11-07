@@ -93,7 +93,8 @@ describe('stops table', () => {
     });
     expect(typeof (put.body as { edited_at: number }).edited_at).toBe('number');
     // The detail above the table shows the recomputed estimate, and trips were read again.
-    expect(screen.getByText('4.0 km').parentElement!.textContent).toContain('*');
+    expect(screen.getByText(/^4\.0 km active/).textContent).toBe('4.0 km active*');
+    expect(screen.getByText(/^1\.0 km deadhead/).textContent).toBe('1.0 km deadhead*');
     await waitFor(() => expect(calls.filter((c) => c.path === '/shifts/1/trips').length).toBe(2));
   });
 
@@ -196,7 +197,7 @@ describe('stops warnings (05 section 3.1a)', () => {
 describe('stops module off', () => {
   it('has no stops section and asks the server for no stops', async () => {
     const { calls } = open([stop(1)], {}, settingsFixture({ modules: { stops: false } }));
-    await screen.findByRole('heading', { name: /2023-11-14/ });
+    await screen.findByRole('heading', { name: /Nov 14, 2023/ });
     await screen.findByRole('region', { name: 'Trips' });
     expect(screen.queryByRole('region', { name: 'Stops' })).toBeNull();
     expect(screen.queryByText(/Stacked orders/)).toBeNull();

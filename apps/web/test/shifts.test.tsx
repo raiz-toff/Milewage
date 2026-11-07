@@ -187,34 +187,57 @@ describe('sort helper', () => {
 });
 
 describe('shift detail', () => {
-  it('shows totals with the estimate marked and the total not', async () => {
+  it('heads the page with the date, times and vehicle, then the key figures', async () => {
     renderApp(
-      { ...signedIn(), 'GET /shifts/1': () => ({ body: shift(1, { total_m: 54_200 }) }) },
+      {
+        ...signedIn(),
+        'GET /shifts/1': () => ({ body: shift(1, { total_m: 54_200, personal_m: 2_000 }) }),
+        'GET /vehicles': () => ({ body: [{ id: 1, name: 'Corolla' }] }),
+      },
       '/shifts/1',
     );
-    await screen.findByRole('heading', { name: /2023-11-15/ });
-    expect(screen.getByText('54.2 km').textContent).not.toContain('*');
-    const active = screen.getByText('Active').parentElement!;
-    expect(active.textContent).toContain('*');
-    expect(screen.getByText('$36.31')).toBeTruthy();
+    await screen.findByRole('heading', { name: 'Wednesday, Nov 15, 2023' });
+    expect(await screen.findByText(/^\d\d:\d\d – \d\d:\d\d · 4h 12m · Corolla$/)).toBeTruthy();
+    const figure = (label: string) => screen.getByText(label).parentElement!.textContent;
+    expect(figure('Distance')).toBe('Distance54.2 km2.0 km personal');
+    expect(figure('Business')).toBe('Business10.0 km7.0 km active*3.0 km deadhead*');
+    expect(figure('Time')).toBe('Time4h 12m');
+    expect(figure('Deduction')).toBe('Deduction$36.31');
   });
 
-  it('shows review flags and an empty flag list', async () => {
+  it('lists checks in plain words, review ones first, and counts them in the header', async () => {
     renderApp(
       {
         ...signedIn(),
         'GET /shifts/1': () => ({
-          body: shift(1, { flags: [{ code: 'long_gap', severity: 'review' }] }),
+          body: shift(1, {
+            recon_status: 'differs',
+            flags: [
+              { code: 'long_stop', severity: 'info' },
+              { code: 'gap_large', severity: 'review' },
+              { code: 'new_flag', severity: 'info' },
+            ],
+          }),
         }),
         'GET /shifts/2': () => ({ body: shift(2) }),
       },
       '/shifts/1',
     );
-    const flags = await screen.findByRole('region', { name: 'Flags' });
-    expect(within(flags).getByText('long_gap')).toBeTruthy();
+    const checks = await screen.findByRole('region', { name: 'Checks' });
+    expect(
+      within(checks)
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual([
+      'A long signal gap: some distance may be missing.Review',
+      'A stop of 30 minutes or more.',
+      'new_flag',
+      'The phone and the server worked out different totals.',
+    ]);
+    expect(screen.getByRole('link', { name: '1 to review' }).getAttribute('href')).toBe('#checks');
     cleanup();
     renderApp({ ...signedIn(), 'GET /shifts/2': () => ({ body: shift(2) }) }, '/shifts/2');
-    expect(await screen.findByText('None.')).toBeTruthy();
+    expect(await screen.findByText('Nothing to check.')).toBeTruthy();
   });
 
   it('a missing deduction reads "not available", never zero', async () => {
