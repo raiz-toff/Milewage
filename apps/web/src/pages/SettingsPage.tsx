@@ -1,8 +1,15 @@
 import { useState } from 'react';
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { ChevronDown } from 'lucide-react';
 import type { FormEvent, ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
@@ -140,6 +147,66 @@ const SECTIONS: {
   { id: 'alerts', label: 'Alerts', module: 'notifications' },
   { id: 'modules', label: 'Modules' },
 ];
+
+type Section = (typeof SECTIONS)[number];
+
+/**
+ * The section list. Where there is room it is a list beside the form that stays in view; where
+ * there is not, one menu button that names the open section. Neither ever scrolls sideways.
+ */
+function SettingsNav({ sections }: { sections: Section[] }) {
+  const { pathname } = useLocation();
+  const current = sections.find((s) => pathname.startsWith(`/settings/${s.id}`)) ?? sections[0];
+  return (
+    <nav
+      aria-label="Settings sections"
+      className="@2xl:sticky @2xl:top-20 @2xl:max-h-[calc(100svh-6rem)] @2xl:self-start @2xl:overflow-y-auto @2xl:[scrollbar-width:thin]"
+    >
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <UiButton variant="outline" className="w-full justify-between @md:w-72 @2xl:hidden">
+            <span className="truncate">
+              <span className="text-muted-foreground">Section:</span> {current?.label}
+            </span>
+            <ChevronDown />
+          </UiButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-(--radix-dropdown-menu-trigger-width)">
+          {sections.map((s) => (
+            <DropdownMenuItem key={s.id} asChild>
+              <Link
+                to={`/settings/${s.id}`}
+                aria-current={s === current ? 'page' : undefined}
+                className="aria-[current=page]:font-medium"
+              >
+                {s.label}
+              </Link>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <ul className="hidden flex-col gap-1 text-sm @2xl:flex">
+        {sections.map((s) => (
+          <li key={s.id}>
+            <NavLink
+              to={`/settings/${s.id}`}
+              className={({ isActive }) =>
+                cn(
+                  'block rounded-md px-3 py-1.5 transition-colors',
+                  isActive
+                    ? 'bg-muted font-medium text-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                )
+              }
+            >
+              {s.label}
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
 
 function SettingsCard({
   title,
@@ -475,38 +542,18 @@ export function SettingsPage() {
           Your profile, units, tracking and account on this server.
         </p>
       </div>
-      <div className="grid gap-6 lg:grid-cols-[180px_minmax(0,1fr)] lg:gap-8">
-        <nav
-          aria-label="Settings sections"
-          className="-mx-1 overflow-x-auto lg:sticky lg:top-20 lg:mx-0 lg:self-start lg:overflow-visible"
-        >
-          <ul className="flex gap-1 px-1 text-sm lg:flex-col lg:px-0">
-            {sections.map((s) => (
-              <li key={s.id} className="shrink-0">
-                <NavLink
-                  to={`/settings/${s.id}`}
-                  className={({ isActive }) =>
-                    cn(
-                      'block rounded-md px-3 py-1.5 whitespace-nowrap transition-colors',
-                      isActive
-                        ? 'bg-muted font-medium text-foreground'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                    )
-                  }
-                >
-                  {s.label}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <div className="max-w-3xl min-w-0">
-          <Routes>
-            {sections.map((s) => (
-              <Route key={s.id} path={s.id} element={pages[s.id]} />
-            ))}
-            <Route path="*" element={<Navigate to="/settings/general" replace />} />
-          </Routes>
+      {/* Sized by its own width, not the window's: the side list needs room beside the form. */}
+      <div className="@container">
+        <div className="grid gap-6 @2xl:grid-cols-[200px_minmax(0,1fr)] @2xl:gap-8">
+          <SettingsNav sections={sections} />
+          <div className="max-w-3xl min-w-0">
+            <Routes>
+              {sections.map((s) => (
+                <Route key={s.id} path={s.id} element={pages[s.id]} />
+              ))}
+              <Route path="*" element={<Navigate to="/settings/general" replace />} />
+            </Routes>
+          </div>
         </div>
       </div>
     </div>
