@@ -23,6 +23,12 @@ const okServer = () =>
     'GET /settings': () => json(200, { ...SETTINGS, distance_unit: 'km' }),
   });
 
+/** After connecting from the first run: Connected, Ready, then Home. */
+const finishSetup = async () => {
+  fireEvent.press(await screen.findByRole('button', { name: 'Next' }));
+  fireEvent.press(await screen.findByRole('button', { name: 'Go to home' }));
+};
+
 describe('settings screen', () => {
   it('pairs from a pasted link, then shows flag-driven lines and unpairs', async () => {
     const { services } = makeServices(okServer().fetch);
@@ -32,7 +38,7 @@ describe('settings screen', () => {
     fireEvent.changeText(screen.getByLabelText('Pairing code'), QR);
     fireEvent.press(screen.getByRole('button', { name: 'Connect' }));
     expect(await screen.findByText('Phone connected.')).toBeTruthy();
-    // Paired: the app start gate shows Home; Settings now shows the server.
+    await finishSetup();
     fireEvent.press(await screen.findByRole('button', { name: 'Settings' }));
     expect(await screen.findByText('Paired to https://mw.example.net')).toBeTruthy();
     expect(await screen.findByText('Distances in kilometres.')).toBeTruthy();
@@ -65,6 +71,7 @@ describe('settings screen', () => {
     fireEvent.press(await screen.findByRole('button', { name: 'I have a server' }));
     fireEvent.changeText(await screen.findByLabelText('Pairing code'), QR);
     fireEvent.press(screen.getByRole('button', { name: 'Connect' }));
+    await finishSetup();
     fireEvent.press(await screen.findByRole('button', { name: 'Settings' }));
     expect(await screen.findByText('Tracking is turned off on the server.')).toBeTruthy();
     expect(screen.queryByText('Stops and the estimated split are on.')).toBeNull();
@@ -98,7 +105,7 @@ describe('pairing link that opens the app (the phone camera scanned the QR)', ()
     expect(screen.getByText(/https:\/\/mw\.example\.net/)).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: 'Yes, connect' }));
     expect(await screen.findByText('Phone connected.')).toBeTruthy();
-    expect(await screen.findByText('No shift running.')).toBeTruthy(); // the gate opened Home
+    expect(await screen.findByText(/^Connected to https:\/\/mw\.example\.net/)).toBeTruthy();
   });
 
   it('Cancel leaves the phone unpaired and sends nothing', async () => {

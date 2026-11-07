@@ -106,6 +106,8 @@ export interface PairedState {
 const K_CRED = 'pairing.credential';
 const K_SETTINGS = 'pairing.settings';
 const K_REVOKED = 'pairing.revoked';
+/** Set when a phone connects from the first-run screens: the setup steps (24 section 4.2) follow. */
+const K_SETUP = 'pairing.setup';
 
 /**
  * What the app start gate reads (24 section 4.1). `revoked`: the server refused this phone
@@ -149,6 +151,16 @@ export class Pairing {
     return (await this.d.plain.get(K_REVOKED)) ? 'revoked' : 'paired';
   }
 
+  /** True from a first connection until the driver finishes the setup steps. */
+  async setupPending(): Promise<boolean> {
+    return (await this.d.plain.get(K_SETUP)) === '1';
+  }
+
+  async finishSetup(): Promise<void> {
+    await this.d.plain.remove(K_SETUP);
+    this.changed();
+  }
+
   /** The server said this phone was revoked. Nothing is deleted; the gate asks to connect again. */
   private async revoked(): Promise<void> {
     if (!(await this.d.plain.get(K_REVOKED))) await this.d.plain.set(K_REVOKED, '1');
@@ -157,6 +169,7 @@ export class Pairing {
 
   /** Redeems the token; stores the credential securely and the settings in the cache. */
   async redeem(payload: PairingPayload): Promise<PairedState> {
+    const first = (await this.status()) !== 'paired';
     let milewage = false; // every MileWage answer carries X-MileWage-Api (15 section 9.4)
     const client = new ApiClient({
       baseUrl: payload.baseUrl,
@@ -194,6 +207,7 @@ export class Pairing {
     await this.d.secure.set(K_CRED, JSON.stringify(credential));
     await this.d.plain.set(K_SETTINGS, JSON.stringify(settings));
     await this.d.plain.remove(K_REVOKED);
+    if (first) await this.d.plain.set(K_SETUP, '1');
     this.d.onSettings?.(settings);
     this.changed();
     return { credential, settings };
@@ -259,6 +273,7 @@ export class Pairing {
     await this.d.secure.remove(K_CRED);
     await this.d.plain.remove(K_SETTINGS);
     await this.d.plain.remove(K_REVOKED);
+    await this.d.plain.remove(K_SETUP);
     this.changed();
   }
 }

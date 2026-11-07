@@ -81,7 +81,7 @@ function Guarded() {
   const gate = useGate();
   // Until the pairing is read, the bare canvas, so the wrong first screen never flashes.
   if (gate === 'loading') return <View style={{ flex: 1, backgroundColor: PALETTE.background }} />;
-  const first = gate === 'paired' ? 'Home' : 'Welcome';
+  const first = gate === 'paired' ? 'Home' : gate === 'setup' ? 'Connected' : 'Welcome';
   return (
     <ErrorBoundary
       onError={(e) => {

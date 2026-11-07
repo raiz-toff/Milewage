@@ -2,11 +2,13 @@ import {
   createNativeStackNavigator,
   type NativeStackScreenProps,
 } from '@react-navigation/native-stack';
+import { ConnectedScreen } from './firstrun/ConnectedScreen';
 import { ConnectScreen } from './firstrun/ConnectScreen';
+import type { Gate } from './firstrun/gate';
+import { ReadyScreen } from './firstrun/ReadyScreen';
 import { ServerSetupScreen } from './firstrun/ServerSetupScreen';
 import { TailscaleScreen } from './firstrun/TailscaleScreen';
 import { WelcomeScreen } from './firstrun/WelcomeScreen';
-import type { PairingStatus } from './pairing/pairing';
 import { HomeScreen } from './screens/HomeScreen';
 import { ConformanceScreen } from './screens/ConformanceScreen';
 import { PermissionsScreen } from './screens/PermissionsScreen';
@@ -19,6 +21,8 @@ export type RootStackParamList = {
   Welcome: { revoked?: boolean } | undefined;
   ServerSetup: undefined;
   Tailscale: undefined;
+  Connected: undefined;
+  Ready: undefined;
   /** `pairLink`: a `milewage://pair` link that opened the app, to pair from after asking. */
   Connect: { pairLink?: string } | undefined;
   Home: undefined;
@@ -41,9 +45,9 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
  * auth flow): a phone that is not connected has only the first-run screens, a connected one the
  * app. When the state changes, the navigator shows the first screen of the new set by itself.
  */
-export function RootNavigator({ gate }: { gate: PairingStatus }) {
+export function RootNavigator({ gate }: { gate: Gate }) {
   const paired = gate === 'paired';
-  const key = paired ? 'app' : 'first-run';
+  const key = gate === 'setup' ? 'setup' : paired ? 'app' : 'first-run';
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {paired ? (
@@ -51,6 +55,11 @@ export function RootNavigator({ gate }: { gate: PairingStatus }) {
           <Stack.Screen name="Home" component={HomeScreen} />
           <Stack.Screen name="Shifts" component={ShiftsScreen} />
           <Stack.Screen name="ShiftDetail" component={ShiftDetailScreen} />
+        </Stack.Group>
+      ) : gate === 'setup' ? (
+        <Stack.Group key="setup">
+          <Stack.Screen name="Connected" component={ConnectedScreen} />
+          <Stack.Screen name="Ready" component={ReadyScreen} />
         </Stack.Group>
       ) : (
         <Stack.Group key="first-run">
