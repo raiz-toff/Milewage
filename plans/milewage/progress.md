@@ -966,3 +966,10 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Kept: the phone's on-device running total (`createLiveAccumulator` in the track engine); `upload_hint_s` stays a fixed 60.
 - Not done: the `ws` and `@types/ws` dependencies are still in `apps/server/package.json` (unused now); removing them changes the shared `package-lock.json`, which the phone track is editing.
 - Tests: full vitest run 846 passed, 1 skipped; typecheck, typecheck:web, eslint, build:web pass.
+
+## Decision 1.11 — Maps: OpenFreeMap basemap; road snapping planned (2026-11-07, not committed)
+
+- Done: the web map uses OpenFreeMap by default (`positron` light, `dark` dark) with compact OpenStreetMap attribution, an Asphalt casing under the yellow route, and `VITE_MAP_STYLE_URL=none` for the plain background. Plans `05` §3.2, `08` (CSP row), `11`, `15` and `06` (decision row) amended.
+- Fixed: in the dev server the MapLibre worker was missing (only emitted at build time), so no map drew anything in development; the Vite plugin now serves it in dev as well. Checked in headless Chromium in light and dark.
+- Planned, not built: road snapping with Valhalla, display only, in [`20`](./20-map-matching-plan.md).
+- Tests: web 206 passed; typecheck, eslint and build pass.

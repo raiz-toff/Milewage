@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { boundsOf, lineOf, positionAt, speedIn, stepOf, timeAt, toPoints } from '../src/map/route';
-import { blankStyle, chooseStyle, routeColor } from '../src/map/style';
+import { OPENFREEMAP, blankStyle, chooseStyle, routeColor } from '../src/map/style';
 
 const route = {
   source: 'raw' as const,
@@ -64,12 +64,15 @@ describe('route maths', () => {
 });
 
 describe('map style', () => {
-  it('has no sources when no style URL is configured (nothing to download)', () => {
-    const s = chooseStyle(undefined, true);
-    expect(typeof s).toBe('object');
+  it('uses OpenFreeMap for the theme when no style URL is configured', () => {
+    expect(chooseStyle(undefined, true)).toBe(OPENFREEMAP.dark);
+    expect(chooseStyle('   ', false)).toBe(OPENFREEMAP.light);
+  });
+
+  it('draws on a blank background with nothing to download when set to none', () => {
+    const s = chooseStyle('none', true);
     expect(s).toEqual(blankStyle(true));
     expect(blankStyle(true).sources).toEqual({});
-    expect(chooseStyle('   ', false)).toEqual(blankStyle(false));
   });
 
   it('uses the configured URL as given', () => {

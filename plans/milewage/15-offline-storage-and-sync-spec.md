@@ -248,7 +248,7 @@ Everything below works with no connection.
 | Active shift | **Start and end only** (no pause in v1, `14` §6.8); odometer entry. No order or stop buttons (1.5b). Live distance (the engine's live accumulator, `14` §3) and time from the local DB |
 | Shift list and detail | All local shifts, newest first, with totals and trips. With stops on, the detail shows the estimated active/deadhead split marked "estimated" and the detected stops as read-only markers on the route; labelling happens only on the web |
 | Trip editing | Reclassify (`active`/`deadhead`/`personal`) and edit purpose. Distance is not editable (`07` §3 rule 8). Manual trips can be added |
-| Route | A polyline on a plain background with start/end markers and a scale bar. The basemap is a server PMTiles file (`05` §3.2), so there is **no basemap offline in v1**. An optional tile cache is not planned |
+| Route | A polyline on a plain background with start/end markers and a scale bar. The basemap is OpenFreeMap (decision 1.11, `05` §3.2), so there is **no basemap offline in v1**: without internet the route is drawn on the plain background. An optional tile cache is not planned |
 | Period totals (week, month) | Include unsynced shifts, with a caption "includes 3 shifts not yet on the server" |
 | Settings, vehicles | The cached copy, read only. Changing them needs the web |
 

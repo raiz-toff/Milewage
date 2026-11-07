@@ -3,14 +3,14 @@ import type { Map as MapLibreMap, Marker } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { boundsOf, lineOf } from './route';
 import type { RoutePoint } from './route';
-import { blankStyle, chooseStyle, isDarkTheme, routeColor } from './style';
+import { blankStyle, casingColor, chooseStyle, isDarkTheme, routeColor } from './style';
 
 const dark = isDarkTheme;
 
 /**
- * The route over a plain background, or over the configured style. If the style cannot load
- * (no tile server, wrong URL) the map switches once to the blank style and keeps the route.
- * Loaded lazily, so the 700 kB map library is not part of the main bundle.
+ * The route over the basemap (OpenFreeMap unless the build configures another style). If the
+ * style cannot load (offline, tile server down, wrong URL) the map switches once to the blank
+ * style and keeps the route. Loaded lazily, so the 700 kB map library is not in the main bundle.
  */
 export default function MapView({
   points,
@@ -34,6 +34,8 @@ export default function MapView({
     let fell = false;
     const isDark = dark();
     const color = routeColor(isDark);
+    const style = chooseStyle(styleUrl, isDark);
+    const remote = typeof style === 'string';
     const place = () => {
       const c = cursorRef.current;
       if (c && map.current && marker.current) {
@@ -46,17 +48,26 @@ export default function MapView({
         if (cancelled || !box.current) return;
         const m = new ml.Map({
           container: box.current,
-          style: chooseStyle(styleUrl, isDark),
-          attributionControl: false,
+          style,
+          // OpenStreetMap data must be credited; compact keeps it to an (i) button.
+          attributionControl: remote ? { compact: true } : false,
         });
         map.current = m;
         const draw = () => {
           if (m.getSource('route')) return;
           m.addSource('route', { type: 'geojson', data: lineOf(points) });
           m.addLayer({
+            id: 'route-casing',
+            type: 'line',
+            source: 'route',
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+            paint: { 'line-color': casingColor(isDark), 'line-width': 7 },
+          });
+          m.addLayer({
             id: 'route',
             type: 'line',
             source: 'route',
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
             paint: { 'line-color': color, 'line-width': 4 },
           });
           const b = boundsOf(points);
@@ -72,7 +83,7 @@ export default function MapView({
         m.on('load', draw);
         m.on('error', () => {
           // A style or tile that cannot be fetched: fall back once to the plain background.
-          if (styleUrl && !fell && !m.isStyleLoaded() && !cancelled) {
+          if (remote && !fell && !m.isStyleLoaded() && !cancelled) {
             fell = true;
             setFallback(true);
             m.setStyle(blankStyle(isDark));

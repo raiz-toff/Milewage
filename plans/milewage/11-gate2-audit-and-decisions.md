@@ -80,7 +80,7 @@ Gate 2 asked for the specs to be complete enough to build from. Four documents n
 | Secrets | No signing secret; scrypt; hashed tokens | Nothing for a driver to invent |
 | Low disk | 507 on every write below 200 MB; reads and exports keep working | Phone keeps data; driver can still export |
 | Budget | ≤ 100 MB idle, ≤ 150 MB peak | Matches `03` §1 |
-| Basemap (new, `05` §3.2) | Self-hosted PMTiles file, optional | No tile traffic leaves the server |
+| Basemap (new, `05` §3.2) | ~~Self-hosted PMTiles file, optional~~ OpenFreeMap by default (decision 1.11, 2026-11-07); self-hosted style still possible | ~~No tile traffic leaves the server~~ Nothing for the driver to set up; viewed areas are seen by OpenFreeMap |
 
 ## 3. What the Audit Changed
 

@@ -13,14 +13,28 @@ import type { Plugin } from 'vite';
  * to the address, so an upgrade fetches a new copy.
  */
 function mapWorker(): Plugin {
+  const workerFile = () =>
+    join(
+      dirname(createRequire(import.meta.url).resolve('maplibre-gl/package.json')),
+      'dist',
+      'maplibre-gl-worker.mjs',
+    );
   return {
     name: 'maplibre-worker',
+    // The dev server pre-bundles the library into node_modules/.vite/deps, where the worker is
+    // missing, so the map would draw nothing in development. Serve it there too.
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (!req.url?.split('?')[0]?.endsWith('/maplibre-gl-worker.mjs')) return next();
+        res.setHeader('Content-Type', 'text/javascript');
+        res.end(readFileSync(workerFile()));
+      });
+    },
     generateBundle() {
-      const pkg = createRequire(import.meta.url).resolve('maplibre-gl/package.json');
       this.emitFile({
         type: 'asset',
         fileName: 'assets/maplibre-gl-worker.mjs',
-        source: readFileSync(join(dirname(pkg), 'dist', 'maplibre-gl-worker.mjs')),
+        source: readFileSync(workerFile()),
       });
     },
   };

@@ -105,10 +105,10 @@ function open(settings = settingsFixture(), routeAnswer: object = { body: route 
 }
 
 describe('route view', () => {
-  it('draws on the blank style when no style URL is configured, and scrubs', async () => {
+  it('draws on the OpenFreeMap basemap when no style URL is configured, and scrubs', async () => {
     open();
     await waitFor(() => expect(ml.state.maps).toHaveLength(1));
-    expect(ml.state.maps[0]!.options.style).toMatchObject({ version: 8, sources: {} });
+    expect(ml.state.maps[0]!.options.style).toMatch(/tiles\.openfreemap\.org/);
     const slider = screen.getByLabelText('Replay position') as HTMLInputElement;
     expect(screen.getByText(/0 km\/h/)).toBeTruthy();
     fireEvent.change(slider, { target: { value: '500' } });
@@ -155,6 +155,16 @@ describe('route view', () => {
 });
 
 describe('map fallback', () => {
+  it('uses OpenFreeMap by default and credits OpenStreetMap', async () => {
+    const { default: MapView } = await import('../src/map/MapView');
+    const { render } = await import('@testing-library/react');
+    render(<MapView points={[]} cursor={null} styleUrl={undefined} />);
+    await waitFor(() => expect(ml.state.maps).toHaveLength(1));
+    const options = ml.state.maps[0]!.options as { style: unknown; attributionControl: unknown };
+    expect(options.style).toMatch(/^https:\/\/tiles\.openfreemap\.org\/styles\//);
+    expect(options.attributionControl).toEqual({ compact: true });
+  });
+
   it('switches once to the blank style when the configured style cannot load', async () => {
     const { default: MapView } = await import('../src/map/MapView');
     const { render } = await import('@testing-library/react');

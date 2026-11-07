@@ -108,6 +108,8 @@ Shown only when the stops setting is on and the shift has detected stops.
 
 ### 3.2 Basemap (decision)
 
+> **Amended by decision 1.11 (owner, 2026-11-07).** The default basemap is **OpenFreeMap** (`https://tiles.openfreemap.org/styles/positron` light, `/styles/dark` dark): free public vector tiles, no key, commercial use allowed, attribution "OpenFreeMap © OpenMapTiles Data from OpenStreetMap" shown as a compact control. The owner chose it over CARTO (Comma's choice, licensed for non-commercial use only) and over a self-hosted file only (an extra setup step for every driver). Trade-off accepted: the tile server learns which areas are viewed (not the route, which is drawn in the browser). A build can still set `VITE_MAP_STYLE_URL` to a self-hosted PMTiles style, or to `none` for the plain background. If the style cannot load (offline, server down) the map falls back to the plain background and keeps the route. The text below is the original Gate 2 decision, kept for the record.
+
 - **Self-hosted PMTiles.** The map uses MapLibre GL with one optional `region.pmtiles` vector-tile file, served by Caddy from the `tiles` volume (`10` §2) with HTTP range requests. The driver downloads an extract of their own region once. No tile request ever leaves the home server, so the areas a driver views are not disclosed to a third party, and the CSP stays `connect-src 'self'` (`08` §10).
 - **Without the file** the map draws routes and markers on a plain background. Nothing breaks.
 - **Rejected:** a public tile server (leaks viewed regions, and public servers restrict heavy use), and a ServiceWorker tile cache (a second cache to keep correct for no gain with one local file).
