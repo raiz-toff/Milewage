@@ -47,6 +47,8 @@ services:
       # The address phones are given, e.g. https://<host>.<tailnet>.ts.net (plan 19 section 3.2).
       # Empty: the address the browser is on.
       - MILEWAGE_PUBLIC_URL=${MILEWAGE_PUBLIC_URL:-}
+      # The app's store page once it is published (https); the download page then offers it first.
+      - MILEWAGE_APP_STORE_URL=${MILEWAGE_APP_STORE_URL:-}
     volumes:
       - data:/app/data
       - backups:/app/backups

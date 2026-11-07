@@ -27,6 +27,15 @@ body="$(curl -fsS "$base/healthz")" || fail "/healthz unreachable through Caddy"
 curl -fsS "$base/shifts" | grep -q '<div id="root">' || fail "the web client is not served at /shifts"
 curl -fsS "$base/api/v1/setup/status" >/dev/null || fail "/api/v1/setup/status unreachable"
 
+# Plan 19 P1 regression: the https address `tailscale serve` sends survives Caddy, so the download
+# page (and the pairing code) offer https://<host>.ts.net, not http://127.0.0.1.
+page="$(curl -fsS -H 'X-Forwarded-Proto: https' -H 'X-Forwarded-Host: box.tail1234.ts.net' "$base/api/v1/app")" \
+  || fail "/api/v1/app unreachable"
+case "$page" in
+  *'"page_url":"https://box.tail1234.ts.net/app"'*) ;;
+  *) fail "Caddy dropped the forwarded https address: $page" ;;
+esac
+
 published="$(docker port "${project}-caddy-1" 8080/tcp)"
 case "$published" in
   127.0.0.1:*) ;;

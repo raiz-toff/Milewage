@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test } from 'vitest';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { harness, TRACKING_OFF, type Harness } from './support';
 
@@ -198,4 +198,55 @@ test('the phone app download: none until the file is there, then the file, witho
   expect(ok.headers['content-disposition']).toBe('attachment; filename="milewage.apk"');
   expect(ok.body).toBe('PK-app');
   expect((await get('HEAD')).statusCode).toBe(200);
+});
+
+test('the download page info: no sign-in, the file read at request time, its version', async () => {
+  const info = async (headers: Record<string, string> = {}) =>
+    (await h.app.inject({ method: 'GET', url: '/api/v1/app', headers })).json();
+  const first = await h.app.inject({ method: 'GET', url: '/api/v1/app' });
+  expect(first.headers['cache-control']).toBe('no-store');
+  expect(first.json()).toEqual({
+    apk: null,
+    store_url: null,
+    page_url: 'http://localhost:80/app',
+    base_url: 'http://localhost:80',
+    base_url_source: 'request',
+  });
+  // Through Caddy and `tailscale serve`: the page is offered at the Tailscale address.
+  const ts = { 'x-forwarded-proto': 'https', 'x-forwarded-host': 'mw.example.ts.net' };
+  expect((await info(ts)).page_url).toBe('https://mw.example.ts.net/app');
+  // A build is put in place while the server runs: offered at once, no restart.
+  const apk = join(h.dir, 'config', 'milewage.apk');
+  mkdirSync(join(h.dir, 'config'), { recursive: true });
+  writeFileSync(apk, 'PK-app-1');
+  utimesSync(apk, 1_800_000_000, 1_800_000_000);
+  expect((await info()).apk).toEqual({
+    size_bytes: 8,
+    updated_at: 1_800_000_000_000,
+    version: null,
+  });
+  writeFileSync(
+    `${apk}.json`,
+    JSON.stringify({ version: '0.1.0', built_at: '2026-11-07T18:04:00Z' }),
+  );
+  expect((await info()).apk.version).toBe('0.1.0');
+  writeFileSync(`${apk}.json`, JSON.stringify({ version: '<script>' }));
+  expect((await info()).apk.version).toBeNull();
+});
+
+test('the store link and the configured address are offered when set', async () => {
+  const s = harness(
+    {},
+    {
+      appStoreUrl: 'https://play.google.com/store/apps/details?id=app.milewage',
+      publicUrl: 'https://box.tail1234.ts.net',
+    },
+  );
+  const res = (await s.app.inject({ method: 'GET', url: '/api/v1/app' })).json();
+  expect(res).toMatchObject({
+    store_url: 'https://play.google.com/store/apps/details?id=app.milewage',
+    page_url: 'https://box.tail1234.ts.net/app',
+    base_url_source: 'configured',
+  });
+  await s.close();
 });

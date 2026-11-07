@@ -51,7 +51,7 @@ x-modules:
     toggle: modules.devices
     default: true
     dependsOn: [core]
-    operations: [createPairingToken, redeemPairingToken, listDevices, renameDevice, revokeDevice, downloadAndroidApp, checkAndroidApp]
+    operations: [createPairingToken, redeemPairingToken, listDevices, renameDevice, revokeDevice, getAppInfo, downloadAndroidApp, checkAndroidApp]
   tracking:
     toggle: modules.tracking
     default: true
@@ -355,6 +355,34 @@ paths:
                   base_url_source: { enum: [configured, request, driver], description: "Where base_url came from: MILEWAGE_PUBLIC_URL, the address of this request (as the browser sees it), or the driver's base_url." }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '422': { $ref: '#/components/responses/Unprocessable' }
+  /app:
+    get:
+      tags: [devices]
+      operationId: getAppInfo
+      summary: What the public download page shows (no sign-in, the phone has no account yet). The app file is looked at on every request, so a new one is offered without a restart.
+      security: []
+      responses:
+        '200':
+          description: The app file on this server (or null), the store page (or null) and the download page's address.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [apk, store_url, page_url, base_url, base_url_source]
+                properties:
+                  apk:
+                    oneOf:
+                      - type: 'null'
+                      - type: object
+                        required: [size_bytes, updated_at, version]
+                        properties:
+                          size_bytes: { type: integer, minimum: 0 }
+                          updated_at: { $ref: '#/components/schemas/EpochMs' }
+                          version: { type: [string, 'null'], description: "From <file>.json, written by scripts/phone-release-build.sh --publish; null without it." }
+                  store_url: { type: [string, 'null'], description: MILEWAGE_APP_STORE_URL (an https link to the store page); null until the app is published. }
+                  page_url: { type: string, description: "<base_url>/app: the download page, for a QR code." }
+                  base_url: { type: string }
+                  base_url_source: { enum: [configured, request] }
   /app/android.apk:
     get:
       tags: [devices]

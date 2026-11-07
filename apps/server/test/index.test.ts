@@ -156,4 +156,19 @@ describe('config', () => {
       expect(() => at(bad), bad).toThrow(/MILEWAGE_PUBLIC_URL/);
     }
   });
+
+  test('MILEWAGE_APP_STORE_URL: unset, or an https link', () => {
+    const at = (url?: string) =>
+      loadConfig({ MILEWAGE_CONFIG_DIR: '/nonexistent', MILEWAGE_APP_STORE_URL: url }).appStoreUrl;
+    expect(at()).toBeNull();
+    const play = 'https://play.google.com/store/apps/details?id=app.milewage';
+    expect(at(play)).toBe(play);
+    for (const bad of [
+      'play.google.com/store',
+      'http://play.google.com/x',
+      'market://details?id=a',
+    ]) {
+      expect(() => at(bad), bad).toThrow(/MILEWAGE_APP_STORE_URL/);
+    }
+  });
 });

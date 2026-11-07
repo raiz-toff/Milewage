@@ -36,12 +36,19 @@ The web client is now at `http://127.0.0.1:8080` on the host. The port is publis
 
 ### 3a. The phone app from your own server
 
-The web's **Get the app** link downloads the Android app from your server (`GET /api/v1/app/android.apk`, no sign-in). The server hands out whatever file is at `MILEWAGE_APK_PATH`, by default `milewage.apk` in the `config` volume; with no file there, the link is hidden. To put the app built from the same checkout there:
+The setup wizard's **Get the app** step and the Devices page show a QR code for the download page, `https://<your address>/app`. It needs no sign-in (the phone has no account yet) and offers:
 
-1. `scripts/phone-release-build.sh` (needs Node 22, JDK 17 and the Android SDK) makes `apps/phone/android/app/build/outputs/apk/release/app-release.apk`.
-2. `docker compose -f infra/docker/docker-compose.yml cp apps/phone/android/app/build/outputs/apk/release/app-release.apk api:/app/config/milewage.apk`
+- **Get it on Google Play**, once the app is published and `MILEWAGE_APP_STORE_URL` is set (in `infra/docker/.env`, for example `MILEWAGE_APP_STORE_URL=https://play.google.com/store/apps/details?id=app.milewage.phone`; it must be an https link);
+- **Download the app** (or "or download it directly" under the store link): the Android app file from your own server (`GET /api/v1/app/android.apk`), with its size, version and date.
 
-Replace the file the same way after an upgrade, so the phone and the server stay on the same version. Android asks the driver to allow installing apps from the browser the first time.
+The server hands out whatever file is at `MILEWAGE_APK_PATH`, by default `milewage.apk` in the `config` volume, and reads `milewage.apk.json` beside it for the version. It looks at the file on every request, so a new one is offered at once, without a restart. With no file there, the download is not offered. To put the app built from the same checkout there:
+
+1. `scripts/phone-release-build.sh --publish <path>` (needs Node 22, JDK 17 and the Android SDK) builds the app and copies it to `<path>` with its `.json` (`MILEWAGE_APK_PUBLISH=<path>` does the same). To publish an app you already built: `scripts/publish-apk.sh apps/phone/android/app/build/outputs/apk/release/app-release.apk <path>`.
+   - For `npm run dev`: `<path>` is `.dev/config/milewage.apk`, and that is all.
+   - For the Docker stack: publish to a folder of your choice, for example `/tmp/mw/milewage.apk`, then copy both files in:
+     `docker compose -f infra/docker/docker-compose.yml cp /tmp/mw/milewage.apk api:/app/config/milewage.apk` and the same for `milewage.apk.json`.
+
+Replace the file the same way after an upgrade, so the phone and the server stay on the same version. The first time, Android asks the driver to allow the browser to install apps ("Install unknown apps", then "Allow from this source"); the download page says so.
 
 ## 4. Backups
 

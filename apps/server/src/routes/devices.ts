@@ -1,4 +1,4 @@
-import { createReadStream, statSync } from 'node:fs';
+import { createReadStream, readFileSync, statSync } from 'node:fs';
 import type { FastifyRequest } from 'fastify';
 import type { RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
@@ -21,10 +21,21 @@ const redeemSchema = strictObject(
 const renameSchema = strictObject({ name: str(1, 64) }, ['name']);
 const first = (v: string | string[] | undefined) =>
   Array.isArray(v) ? v[0] : v?.split(',')[0]?.trim();
-const fileSize = (path: string) => {
+const fileStat = (path: string) => {
   try {
     const s = statSync(path);
-    return s.isFile() ? s.size : null;
+    return s.isFile() ? s : null;
+  } catch {
+    return null;
+  }
+};
+const fileSize = (path: string) => fileStat(path)?.size ?? null;
+/** The version the build script writes next to the app file (`<file>.json`); null when absent or odd. */
+const apkVersion = (path: string): string | null => {
+  try {
+    const v: unknown = (JSON.parse(readFileSync(`${path}.json`, 'utf8')) as { version?: unknown })
+      .version;
+    return typeof v === 'string' && /^[0-9A-Za-z.+-]{1,32}$/.test(v) ? v : null;
   } catch {
     return null;
   }
@@ -51,6 +62,8 @@ export interface DevicesContext {
   publicUrl?: string | null;
   /** Accept a plain http address from the driver (development only). */
   httpAddressAllowed?: boolean;
+  /** `MILEWAGE_APP_STORE_URL`: the app's store page; null until the app is published. */
+  appStoreUrl?: string | null;
 }
 
 /** Pairing, device credentials and the device list (08 section 2.4). */
@@ -62,6 +75,7 @@ export function devicesRoutes({
   apkPath,
   publicUrl,
   httpAddressAllowed = process.env.NODE_ENV !== 'production',
+  appStoreUrl = null,
 }: DevicesContext) {
   return (routeHost: RouteHost) => {
     const host = routeHost as ServerRouteHost;
@@ -127,6 +141,26 @@ export function devicesRoutes({
         qr_payload: qr,
         pair_url: pairUrl,
         base_url: base,
+        base_url_source: source,
+      });
+    });
+
+    // What the download page shows (no sign-in: the phone has no account yet). The file is looked
+    // at on every request, so a new build put in place is offered without a restart.
+    app.get('/app', async (req, reply) => {
+      const stat = apkPath ? fileStat(apkPath) : null;
+      const { url, source } = address(req);
+      return reply.header('Cache-Control', 'no-store').send({
+        apk: stat
+          ? {
+              size_bytes: stat.size,
+              updated_at: Math.round(stat.mtimeMs),
+              version: apkVersion(apkPath!),
+            }
+          : null,
+        store_url: appStoreUrl,
+        page_url: `${url}/app`,
+        base_url: url,
         base_url_source: source,
       });
     });

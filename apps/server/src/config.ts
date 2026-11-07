@@ -31,6 +31,8 @@ export interface ServerConfig {
   publicUrl: string | null;
   /** Plain http addresses are accepted only outside production (debug builds of the app). */
   httpAddressAllowed: boolean;
+  /** `MILEWAGE_APP_STORE_URL`: the app's store page (an https link), shown on the download page; null until published. */
+  appStoreUrl: string | null;
 }
 
 /** Export formats switched on: `modules.export_<format>` in the settings file, then `MILEWAGE_MODULE_EXPORT_<FORMAT>=0|1` (08 section 16.1). */
@@ -83,6 +85,7 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): S
     apkPath: env.MILEWAGE_APK_PATH || join(configDir, 'milewage.apk'),
     publicUrl: publicUrl(env.MILEWAGE_PUBLIC_URL, httpAddressAllowed),
     httpAddressAllowed,
+    appStoreUrl: storeUrl(env.MILEWAGE_APP_STORE_URL),
     diagnostics: {
       bundle: flag(
         env.MILEWAGE_DIAGNOSTICS_BUNDLE,
@@ -98,6 +101,22 @@ function publicUrl(value: string | undefined, allowHttp: boolean): string | null
   const checked = checkPublicUrl(value, allowHttp);
   if ('error' in checked) throw new ConfigError(`MILEWAGE_PUBLIC_URL "${value}": ${checked.error}`);
   return checked.url;
+}
+
+function storeUrl(value: string | undefined): string | null {
+  if (!value?.trim()) return null;
+  let u: URL | null = null;
+  try {
+    u = new URL(value.trim());
+  } catch {
+    // reported below
+  }
+  if (!u || u.protocol !== 'https:' || u.username || u.password) {
+    throw new ConfigError(
+      `MILEWAGE_APP_STORE_URL must be an https link, for example https://play.google.com/store/apps/details?id=<package>; got "${value}".`,
+    );
+  }
+  return u.href;
 }
 
 /** A switch: default on, then `config/settings.json`, then the environment (`0` or `1`). */

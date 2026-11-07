@@ -172,6 +172,8 @@ export interface ServerContext extends CoreContext {
   publicUrl?: string | null;
   /** Accept a plain http address from the driver (outside production only); default from `NODE_ENV`. */
   httpAddressAllowed?: boolean;
+  /** `MILEWAGE_APP_STORE_URL`: the app's store page, for the download page; null until published. */
+  appStoreUrl?: string | null;
   /** Start the nightly 03:30 job (off in tests). */
   backupSchedule?: boolean;
   /** Exporters; defaults to csv, gpx and geojson. A new format registers here without other edits. */
