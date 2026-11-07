@@ -1,18 +1,13 @@
 import { useEffect, useState } from 'react';
-import { describe, unwrap } from '../api/client';
+import { unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
-import { formatDistance, formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
 import { GoalRing, RegionPrompt, SetupChecklist } from './DashboardExtras';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState, PageHeader, Section } from '../ui/layout';
 import { DashboardHero } from './DashboardHero';
-import { Est, ShiftCard } from './Shifts';
-
-type Summary = Schemas['Summary'];
+import { ShiftCard } from './Shifts';
 
 const DAY = 86_400_000;
 
@@ -65,26 +60,6 @@ export const PERIODS: Period[] = [
     },
   },
 ];
-
-function Metric({
-  title,
-  children,
-  note,
-}: {
-  title: string;
-  children: React.ReactNode;
-  note?: string;
-}) {
-  return (
-    <Card role="region" aria-label={title}>
-      <CardContent className="space-y-2">
-        <h2 className="text-sm text-muted-foreground">{title}</h2>
-        <p className="text-3xl font-semibold tracking-tight tabular-nums">{children}</p>
-        {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}
-      </CardContent>
-    </Card>
-  );
-}
 
 /** The latest few shifts, as on the Shifts page. Hidden when they cannot be read. */
 function RecentShifts() {
@@ -147,108 +122,18 @@ function Greeting({ now }: { now: number }) {
 }
 
 /**
- * The three dashboard metrics of 05 section 4 and nothing else: hourly earnings, deduction
- * value, and the active/deadhead split. Earnings come from the driver's own stop labels, so
- * "not entered" is shown when there are none, never zero.
+ * The dashboard, laid out like the Comma phone app's Home: greeting, the earnings hero with its
+ * tiles and deduction tip, then setup, goal and the latest shifts. Only data MileWage has.
  */
 export function Dashboard({ now }: { now?: number }) {
-  const { api } = useSession();
   const settings = useSettings();
   const at = now ?? Date.now();
   const [period, setPeriod] = useState('week');
-  const [summary, setSummary] = useState<Summary | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const { from, to } = PERIODS.find((p) => p.id === period)!.range(
-    at,
-    settings.timezone,
-    settings.week_start,
-  );
-
-  useEffect(() => {
-    let live = true;
-    setSummary(null);
-    setError(null);
-    void unwrap(api.GET('/summary', { params: { query: { from, to } } }))
-      .then((s) => live && setSummary(s))
-      .catch((e) => live && setError(describe(e)));
-    return () => {
-      live = false;
-    };
-  }, [api, from, to]);
-
-  const stops = settings.modules.stops;
-  const unit = settings.distance_unit;
   return (
     <section className="space-y-6">
       <Greeting now={at} />
       <RegionPrompt />
       <DashboardHero now={at} period={period} onPeriod={setPeriod} />
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      ) : summary === null ? (
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Skeleton className="h-32 rounded-xl" />
-          <Skeleton className="h-32 rounded-xl" />
-          <Skeleton className="h-32 rounded-xl" />
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Metric
-              title="Hourly earnings"
-              note={
-                stops
-                  ? 'Pay plus tips from your stop labels, divided by shift hours.'
-                  : 'Needs stop labels. Detecting stops is switched off.'
-              }
-            >
-              {summary.hourly_earnings_cents === null
-                ? stops
-                  ? 'not entered'
-                  : 'unavailable'
-                : `${formatMoney(summary.hourly_earnings_cents, settings.currency)} / h`}
-            </Metric>
-            <Metric
-              title={
-                settings.mileage_rate === 'yours'
-                  ? 'Deduction value (your rate)'
-                  : 'Deduction value'
-              }
-              note={
-                summary.deduction_cents === null
-                  ? 'No tax rules are registered for this country.'
-                  : settings.mileage_rate === 'yours'
-                    ? 'Distance times your rate. It is not an official rate.'
-                    : 'Distance times the rate for your country and year.'
-              }
-            >
-              {summary.deduction_cents === null
-                ? 'not available'
-                : formatMoney(summary.deduction_cents, settings.currency)}
-            </Metric>
-            {stops ? (
-              <Metric title="Active vs deadhead">
-                {formatDistance(summary.active_m, unit)} /{' '}
-                {formatDistance(summary.deadhead_m, unit)}
-                <Est />
-              </Metric>
-            ) : (
-              <Metric title="Business distance">
-                {formatDistance(summary.active_m + summary.deadhead_m, unit)}
-              </Metric>
-            )}
-          </div>
-          <div className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
-            <p className="tabular-nums">
-              {summary.shift_count} {summary.shift_count === 1 ? 'shift' : 'shifts'},{' '}
-              {summary.hours.toFixed(1)} hours, {formatDistance(summary.total_m, unit)} in total.
-            </p>
-            {stops ? <p>* estimated from detected stops</p> : null}
-          </div>
-        </div>
-      )}
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <SetupChecklist />
         {settings.modules.goals ? <GoalRing /> : null}

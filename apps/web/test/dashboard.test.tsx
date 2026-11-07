@@ -33,21 +33,25 @@ function open(body: object, settings = settingsFixture()) {
   return renderApp({ ...signedIn(settings), 'GET /summary': () => ({ body }) }, '/dashboard');
 }
 const metric = async (name: string) => within(await screen.findByRole('region', { name }));
+const tile = async (name: string) => within(await screen.findByRole('group', { name }));
 const tab = (name: string) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
 const asked = (calls: { path: string; query: string }[]) =>
   calls.filter((c) => c.path === '/summary').map((c) => c.query);
 
 describe('dashboard', () => {
-  it('shows exactly the three metrics, the split marked as an estimate', async () => {
+  it('shows Comma tiles and the deduction tip, the split marked as an estimate', async () => {
     open(summary());
-    expect((await metric('Hourly earnings')).getByText('$20.00 / h')).toBeTruthy();
-    expect((await metric('Deduction value')).getByText('$140.00')).toBeTruthy();
-    const split = await metric('Active vs deadhead');
-    expect(split.getByText(/120\.0 km/).textContent).toContain('80.0 km');
-    expect(split.getByText(/120\.0 km/).textContent).toContain('*');
-    expect(screen.getByText('* estimated from detected stops')).toBeTruthy();
-    expect(screen.getAllByRole('region').length).toBe(4); // with the Earned hero
-    expect(screen.getByText(/4 shifts, 20\.5 hours, 200\.0 km in total/)).toBeTruthy();
+    expect((await tile('Shift time')).getByText('20.5 h')).toBeTruthy();
+    expect((await tile('Business distance')).getByText('200.0 km')).toBeTruthy();
+    expect((await tile('Per hour')).getByText('$20.00')).toBeTruthy();
+    const split = screen.getByText(/Of that, 120\.0 km active/);
+    expect(split.textContent).toMatch(/120\.0 km active\* and 80\.0 km deadhead\*/);
+    expect(split.textContent).toContain('* Estimated from detected stops.');
+    const note = screen.getByRole('note', { name: 'Deduction value' });
+    expect(note.textContent).toMatch(/Estimated deduction value: \$140\.00 on 200\.0 km/);
+    expect(note.textContent).toMatch(/it is not money paid to you/);
+    expect(within(note).getByRole('link', { name: 'Open Tax' }).getAttribute('href')).toBe('/tax');
+    expect(screen.queryByText(/Hourly earnings|Active vs deadhead/)).toBeNull(); // the old cards
   });
 
   it('greets the driver in their time zone, by name when there is one', async () => {
@@ -90,9 +94,9 @@ describe('dashboard', () => {
     ).toBeTruthy();
   });
 
-  it('keeps the longer periods as tabs, for the hero and the metrics', async () => {
+  it('keeps the longer periods as tabs', async () => {
     const { calls } = open(summary());
-    await metric('Hourly earnings');
+    await tile('Per hour');
     tab('Year');
     expect(await screen.findByText('Jan 1 – Mar 15, 2026')).toBeTruthy();
     tab('30 days');
@@ -101,32 +105,40 @@ describe('dashboard', () => {
     expect(asked(calls)).toContain('?from=2026-02-14&to=2026-03-15');
   });
 
-  it('reads "not entered", never zero, when nothing was labelled', async () => {
+  it('reads "Not entered", never zero, when nothing was entered; zero with no shift', async () => {
     open(summary({ earnings_cents: null, tips_cents: null, hourly_earnings_cents: null }));
-    const m = await metric('Hourly earnings');
-    expect(m.getByText('not entered')).toBeTruthy();
     expect((await metric('Earned')).getByText('Not entered')).toBeTruthy();
     expect(screen.getByText('Enter what the apps paid on a shift to see it here.')).toBeTruthy();
+    expect((await tile('Per hour')).getByText('—')).toBeTruthy();
+    expect((await tile('Per hour')).getByText('No earnings entered')).toBeTruthy();
     expect(screen.queryByText(/\$0\.00/)).toBeNull();
     cleanup();
     open(summary({ shift_count: 0, hours: 0, earnings_cents: null, hourly_earnings_cents: null }));
     expect((await metric('Earned')).getByText('$0.00')).toBeTruthy(); // no shift: nothing to enter
+    expect((await tile('Per hour')).getByText('No shift time yet')).toBeTruthy();
   });
 
-  it('reads "not available" when the country has no rate pack', async () => {
+  it("hides the deduction tip without a rate; the driver's own rate is named so", async () => {
     open(summary({ deduction_cents: null }));
-    expect((await metric('Deduction value')).getByText('not available')).toBeTruthy();
+    await tile('Per hour');
+    expect(screen.queryByRole('note', { name: /Deduction value/ })).toBeNull();
+    cleanup();
+    open(summary(), settingsFixture({ mileage_rate: 'yours', modules: { tax: false } }));
+    const note = await screen.findByRole('note', { name: 'Deduction value (your rate)' });
+    expect(note.textContent).toMatch(/Estimated deduction value \(your rate\): \$140\.00/);
+    expect(within(note).queryByRole('link')).toBeNull();
   });
 
-  it('with stops off there is a business total, no split and no estimate marker', async () => {
+  it('with stops and earnings off: no split, no estimate marker, earnings unavailable', async () => {
     open(
       summary({ earnings_cents: null, hourly_earnings_cents: null }),
-      settingsFixture({ modules: { stops: false } }),
+      settingsFixture({ modules: { stops: false, earnings: false } }),
     );
-    expect((await metric('Business distance')).getByText('200.0 km')).toBeTruthy();
-    expect((await metric('Hourly earnings')).getByText('unavailable')).toBeTruthy();
-    expect(screen.queryByRole('region', { name: 'Active vs deadhead' })).toBeNull();
-    expect(screen.queryByText(/estimated/)).toBeNull();
+    expect((await tile('Business distance')).getByText('200.0 km')).toBeTruthy();
+    expect((await tile('Per hour')).getByText('Earnings are off')).toBeTruthy();
+    expect((await metric('Earned')).getByText('Unavailable')).toBeTruthy();
+    expect(screen.queryByText(/from detected stops/)).toBeNull();
+    expect(document.querySelector('abbr')).toBeNull();
   });
 
   it('shows a server refusal, and the hero can try again', async () => {
