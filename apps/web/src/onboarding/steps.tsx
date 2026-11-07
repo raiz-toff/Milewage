@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import type { Schemas, Settings } from '../api/client';
 import type { Country } from '../countries';
 import { RegionStep, WorkStep } from './AboutSteps';
+import { GoalStep, PairStep } from './GoalPhoneSteps';
 import { AppsStep, appsAnswered, VehicleStep } from './SetupSteps';
 
 /** What the steps decide from: the server's own data, read when the wizard opens (plan 23 rule 3). */
@@ -13,6 +14,10 @@ export interface OnboardingCtx {
   platforms: Schemas['Platform'][];
   /** Active vehicles. */
   vehicles: Schemas['Vehicle'][];
+  /** Active weekly goals (module `goals`). */
+  goals: Schemas['Goal'][];
+  /** Phones not revoked (module `devices`). */
+  devices: Schemas['Device'][];
   /** Read the data again; a step calls it after saving. */
   reload: () => Promise<void>;
 }
@@ -64,5 +69,19 @@ export const STEPS: Step[] = [
     visible: () => true,
     done: (c) => c.vehicles.length > 0,
     Component: VehicleStep,
+  },
+  {
+    id: 'goal',
+    title: 'Weekly goal',
+    visible: (c) => c.settings.modules.goals,
+    done: (c) => c.goals.length > 0,
+    Component: GoalStep,
+  },
+  {
+    id: 'phone',
+    title: 'Pair your phone',
+    visible: (c) => c.settings.modules.devices,
+    done: (c) => c.devices.length > 0,
+    Component: PairStep,
   },
 ];

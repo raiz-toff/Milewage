@@ -11,7 +11,27 @@ import { Qr } from '../ui/Qr';
 import { Button, FormError } from '../ui/form';
 
 type Device = Schemas['Device'];
-type Pairing = { qr_payload: string; token: string; expires_at: number };
+export type Pairing = { qr_payload: string; token: string; expires_at: number };
+
+/** The one-time pairing QR and its link; also the onboarding wizard's phone step (plan 23). */
+export function PairingCode({ pairing }: { pairing: Pairing }) {
+  const { timezone } = useSettings();
+  return (
+    <div className="flex flex-wrap items-start gap-6">
+      <div className="rounded-lg border bg-white p-2">
+        <Qr text={pairing.qr_payload} label="Pairing code" />
+      </div>
+      <div className="min-w-0 flex-1 space-y-2">
+        <p className="text-sm text-muted-foreground">
+          Scan in the MileWage app. Valid once, until {formatTime(pairing.expires_at, timezone)}.
+        </p>
+        <code className="block break-all font-mono text-xs text-muted-foreground">
+          {pairing.qr_payload}
+        </code>
+      </div>
+    </div>
+  );
+}
 
 function DeviceRow({ device, onChanged }: { device: Device; onChanged: () => void }) {
   const { api } = useSession();
@@ -127,7 +147,6 @@ function DeviceRow({ device, onChanged }: { device: Device; onChanged: () => voi
 /** Module `devices`: pair a phone with a one-time QR code, rename, revoke. */
 export function Devices() {
   const { api } = useSession();
-  const { timezone } = useSettings();
   const [devices, setDevices] = useState<Device[] | null>(null);
   const [pairing, setPairing] = useState<Pairing | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -165,22 +184,7 @@ export function Devices() {
       </PageHeader>
       {pairing || error ? (
         <Section title="Pair a phone">
-          {pairing ? (
-            <div className="flex flex-wrap items-start gap-6">
-              <div className="rounded-lg border bg-white p-2">
-                <Qr text={pairing.qr_payload} label="Pairing code" />
-              </div>
-              <div className="min-w-0 flex-1 space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  Scan in the MileWage app. Valid once, until{' '}
-                  {formatTime(pairing.expires_at, timezone)}.
-                </p>
-                <code className="block break-all font-mono text-xs text-muted-foreground">
-                  {pairing.qr_payload}
-                </code>
-              </div>
-            </div>
-          ) : null}
+          {pairing ? <PairingCode pairing={pairing} /> : null}
           <FormError message={error} />
         </Section>
       ) : null}

@@ -38,6 +38,7 @@ function wizard(
   url = '/',
   countries = countriesFixture(),
   vehicles: { name: string; archived_at: null }[] = [],
+  extra: Record<string, Handler> = {},
 ) {
   let current = settingsFixture({ onboarded_at: null, ...over });
   let platforms = [app('uber_eats', 'Uber Eats'), app('doordash', 'DoorDash')];
@@ -64,6 +65,7 @@ function wizard(
         vehicles = [...vehicles, { ...(body as { name: string }), archived_at: null }];
         return { status: 201, body: {} };
       },
+      ...extra,
       'PATCH /settings': ({ body }) => {
         const b = body as Record<string, unknown> & { onboarded?: boolean };
         const { onboarded, ...rest } = b;
@@ -83,9 +85,9 @@ const patches = (calls: { method: string; path: string; body: unknown }[]) =>
 describe('onboarding wizard (plan 23)', () => {
   it('opens for a driver not yet onboarded; Canada asks only the province', async () => {
     const { calls } = wizard();
-    // One kind of work in Canada: that step is not shown (region, apps, vehicle).
-    expect(await heading('Where you drive — Step 1 of 3')).toBeTruthy();
-    expect(document.title).toBe('Where you drive — Step 1 of 3 — MileWage');
+    // One kind of work in Canada: that step is not shown (region, apps, vehicle, goal, phone).
+    expect(await heading('Where you drive — Step 1 of 5')).toBeTruthy();
+    expect(document.title).toBe('Where you drive — Step 1 of 5 — MileWage');
     expect(
       screen.getByText(/Until you choose your province, only the national rules/),
     ).toBeTruthy();
@@ -93,7 +95,7 @@ describe('onboarding wizard (plan 23)', () => {
     pick('Province', 'ON');
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     // The answer is saved on Continue, then the next step opens.
-    expect(await heading('Your apps — Step 2 of 3')).toBeTruthy();
+    expect(await heading('Your apps — Step 2 of 5')).toBeTruthy();
     expect(patches(calls)).toEqual([{ region: 'ON' }]);
   });
 
@@ -195,5 +197,47 @@ describe('onboarding wizard (plan 23)', () => {
       expect(patches(calls)[0]).toEqual({ own_mileage_rate: { cents_per_unit: 30.5, unit: 'km' } }),
     );
     expect(calls.some((c) => c.method === 'POST')).toBe(false);
+  });
+
+  it('weekly goal: an amount becomes a weekly earnings goal; empty is a skip', async () => {
+    const { calls } = wizard({ region: 'ON' }, '/onboarding/goal', undefined, [], {
+      'POST /goals': () => ({ status: 201, body: {} }),
+    });
+    expect(await heading('Weekly goal — Step 4 of 5')).toBeTruthy();
+    const field = screen.getByLabelText('How much do you want to earn each week? (CAD)');
+    fireEvent.change(field, { target: { value: 'lots' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect((await screen.findByRole('alert')).textContent).toMatch(/^Enter an amount above 0/);
+    fireEvent.change(field, { target: { value: '800' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await heading(/Pair your phone/)).toBeTruthy();
+    expect(calls.find((c) => c.path === '/goals' && c.method === 'POST')?.body).toEqual({
+      label: 'Weekly earnings',
+      metric: 'earnings',
+      period: 'weekly',
+      target: 80_000,
+    });
+  });
+
+  it('pair your phone: shows the pairing code and waits for the phone to appear', async () => {
+    let asked = 0;
+    const phone = { id: 1, name: 'Pixel 8', platform: 'android', created_at: 1 };
+    const { calls } = wizard({ region: 'ON' }, '/onboarding/phone', undefined, [], {
+      'POST /pairing-tokens': () => ({
+        status: 201,
+        body: { token: 'mwp_x', qr_payload: 'milewage://pair?t=mwp_x', expires_at: 2e12 },
+      }),
+      // The wizard reads the list once; the step's first check finds the phone.
+      'GET /devices': () => ({
+        body: ++asked > 1 ? [{ ...phone, last_seen_at: 2, revoked_at: null }] : [],
+      }),
+    });
+    expect(await heading('Pair your phone — Step 5 of 5')).toBeTruthy();
+    expect(await screen.findByRole('img', { name: 'Pairing code' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Pair later' })).toBeTruthy();
+    expect(await screen.findByText('Paired: Pixel 8.', {}, { timeout: 4000 })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Pair later' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => expect(patches(calls)).toEqual([{ onboarded: true }]));
   });
 });

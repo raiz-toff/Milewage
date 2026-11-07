@@ -15,6 +15,8 @@ interface WizardData {
   countries: Country[];
   platforms: Schemas['Platform'][];
   vehicles: Schemas['Vehicle'][];
+  goals: Schemas['Goal'][];
+  devices: Schemas['Device'][];
 }
 
 /**
@@ -28,20 +30,28 @@ export function Onboarding() {
   const { pathname } = useLocation();
   const heading = useRef<HTMLHeadingElement>(null);
   const [data, setData] = useState<WizardData | null>(null);
-  const withPlatforms = settings.modules.platforms;
+  const { platforms: withPlatforms, goals: withGoals, devices: withDevices } = settings.modules;
 
   // What the steps decide from; read again after each saved answer (a region can change the apps).
   const reload = useCallback(async () => {
     const or = <T,>(p: Promise<T>, fallback: T) => p.catch(() => fallback);
-    const [countries, platforms, vehicles] = await Promise.all([
+    const [countries, platforms, vehicles, goals, devices] = await Promise.all([
       or(unwrap(api.GET('/countries')), []), // without the list, the steps that need it hide
       withPlatforms
         ? or(unwrap(api.GET('/platforms', { params: { query: { include_inactive: true } } })), [])
         : [],
       or(unwrap(api.GET('/vehicles')), []),
+      withGoals ? or(unwrap(api.GET('/goals')), []) : [],
+      withDevices ? or(unwrap(api.GET('/devices')), []) : [],
     ]);
-    setData({ countries, platforms, vehicles: vehicles.filter((v) => v.archived_at === null) });
-  }, [api, withPlatforms]);
+    setData({
+      countries,
+      platforms,
+      vehicles: vehicles.filter((v) => v.archived_at === null),
+      goals: goals.filter((g) => g.active && g.period === 'weekly'),
+      devices: devices.filter((d) => d.revoked_at === null),
+    });
+  }, [api, withPlatforms, withGoals, withDevices]);
   useEffect(() => {
     void reload();
   }, [reload]);
@@ -52,6 +62,8 @@ export function Onboarding() {
     country: countries?.find((c) => c.code === settings.country),
     platforms: data?.platforms ?? [],
     vehicles: data?.vehicles ?? [],
+    goals: data?.goals ?? [],
+    devices: data?.devices ?? [],
     reload,
   };
   const visible = countries ? STEPS.filter((s) => s.visible(ctx)) : [];
