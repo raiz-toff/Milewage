@@ -31,7 +31,7 @@ The web client is now at `http://127.0.0.1:8080` on the host. The port is publis
 4. On the host: `tailscale serve --bg 8080` (use your port if it is not 8080). The phone reaches MileWage at `https://<host>.<tailnet>.ts.net`. The first request can be slow while the certificate is issued.
 5. In the web client, Devices, create a pairing QR code and scan it from the MileWage app on the phone.
 
-Unverified (spec 10 section 8, Spike D): the source address Caddy sees from `tailscale serve`. If login or pairing is rate limited for everyone at once, that is the place to look.
+`tailscale serve` reaches Caddy through the Docker gateway of the stack's network (`MILEWAGE_PROXY_GATEWAY`, by default `172.29.88.1`, the first address of `MILEWAGE_PROXY_SUBNET`). Caddy trusts the forwarded headers from that address only, so the pairing code says `https://<host>.<tailnet>.ts.net` and the rate limits see the phone's own tailnet address. If you change the subnet by hand, change the gateway with it (`install.sh --subnet` writes both).
 
 ### 3a. The phone app from your own server
 

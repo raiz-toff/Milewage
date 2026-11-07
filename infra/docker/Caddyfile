@@ -1,6 +1,13 @@
 {
 	admin off
 	auto_https off
+	# The host's `tailscale serve` reaches Caddy through the Docker gateway of the stack's network
+	# (plan 19 section 3.1). Trusting that one address keeps its X-Forwarded-Proto (https),
+	# X-Forwarded-Host and X-Forwarded-For; any other sender's are replaced as before. Caddy is
+	# published on loopback only, so nothing outside the host can reach it to forge them.
+	servers {
+		trusted_proxies static {$MILEWAGE_PROXY_GATEWAY:172.29.88.1}/32
+	}
 }
 
 :8080 {

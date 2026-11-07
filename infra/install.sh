@@ -46,6 +46,7 @@ else
     echo "Port $port is in use on this host; trying $((port + 1))." >&2
     port=$((port + 1))
   done
+  gateway="${subnet%.*/*}.1" # the network's first address: where Caddy sees the host's proxy come from
   mkdir -p "$(dirname "$env_file")"
   umask 077
   cat >"$env_file" <<EOF
@@ -53,6 +54,7 @@ else
 # are created in the browser on first run (08 section 2.3).
 MILEWAGE_HOST_PORT=$port
 MILEWAGE_PROXY_SUBNET=$subnet
+MILEWAGE_PROXY_GATEWAY=$gateway
 EOF
   echo "Wrote $env_file (port $port, proxy subnet $subnet)."
 fi

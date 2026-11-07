@@ -22,10 +22,16 @@ test('writes the .env with the defaults, owner-only, and holds no secret', () =>
   expect(r.status).toBe(0);
   expect(envText()).toContain('MILEWAGE_HOST_PORT=18555');
   expect(envText()).toContain('MILEWAGE_PROXY_SUBNET=172.29.88.0/24');
+  expect(envText()).toContain('MILEWAGE_PROXY_GATEWAY=172.29.88.1\n');
   expect(envText()).not.toMatch(/KEY|SECRET|PASSWORD|TOKEN/i);
   expect(
     spawnSync('stat', ['-c', '%a', join(dir, 'sub', '.env')], { encoding: 'utf8' }).stdout.trim(),
   ).toBe('600');
+});
+
+test('the gateway Caddy trusts is the first address of the chosen subnet', () => {
+  expect(run('--subnet', '10.77.5.0/24').status).toBe(0);
+  expect(envText()).toContain('MILEWAGE_PROXY_GATEWAY=10.77.5.1\n');
 });
 
 test('never overwrites an existing .env', () => {
