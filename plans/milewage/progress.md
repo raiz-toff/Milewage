@@ -1019,3 +1019,10 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - **Open privacy question**: `expo-camera`'s Android barcode scanner is Google ML Kit, which brings Google's `datatransport` usage logging (and `ACCESS_NETWORK_STATE`, now on the manifest test's harmless list). That conflicts with "no third-party telemetry"; needs an owner decision (keep, or replace the scanner).
 - Limit: the QR holds `milewage://…`, which some camera apps (those using Google Lens) show as text instead of opening. An `https://<server>/pair#…` QR that hands over to the app would work with every camera; it needs a server route and a web change, not done.
 - Tests: `pairing.screen.test.tsx` (a link asks first, then pairs; Cancel sends nothing; an already paired phone says so). `npm run verify` green (phone 235 passed, 2 skipped).
+## PR J0 — Plan: country structure (plan 21, owner decisions 2026-11-07)
+
+- Branch `pr-J0-country-plan` (pushed, not merged).
+- Done: [`21-jurisdictions-plan.md`](./21-jurisdictions-plan.md) — countries, regions and cities as one folder per country with a place tree and data slots; standards checked (ISO 3166-1/2, UN/LOCODE, CLDR / `Intl.DisplayNames`, libaddressinput labels, OpenFisca/PolicyEngine parameter shape, Medusa `combinable`, WooCommerce `compound`, OECD platform reporting rules) and how gig work differs worldwide (money flow, tax collection, worker status, vehicles). Owner decisions Q1–Q8 recorded in section 7; PR list in section 5 (tracks J, L, V). `08` §16.3 points to it.
+- Merges the other planning session's `21-country-modularity-findings.md` (left in the main checkout, uncommitted).
+- Stacked on the P1 phone stack (`pr-P1g-phone-qr-pairing`), not on `main`: on a clean `npm ci`, `main`'s lockfile installs two `@types/react` versions for `apps/web` (19.2.18 nested, 19.3.0 via `@types/react-dom`) and `typecheck:web` fails with 8 errors in the shadcn components; the P1 lockfile has one React and is green. P1 must merge first.
+- No code.

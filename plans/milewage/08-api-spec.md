@@ -2511,7 +2511,7 @@ Inconsistencies found while writing this document. "Wins" says which document is
 | Registry | Registered by | Used by | Plausible swap or addition |
 |---|---|---|---|
 | Exporter | one file per format | `exportData` | A new format later (XLSX, a verified QuickBooks preset), as `04` anticipates. |
-| CountryPack | one file per country | settings validation, summary, PDF, deduction | Australia (deferred in `07` §7.2) and every other tax region. |
+| CountryPack | one folder per country, regions and cities inside it (**amended by [`21`](./21-jurisdictions-plan.md), 2026-11-07**: country module + place tree with data slots) | settings validation, summary, PDF, deduction, tax estimate, platforms | Australia (deferred in `07` §7.2) and every other tax region. |
 | BackupTarget | one file per target | backup engine | S3-compatible upload in v1.1. |
 | Segmenter (single slot) | `stops` when the shift's `segmenter` is `stops`, otherwise the built-in whole-shift segmenter | `tracking` | Rideshare or general-business mode already exists as the off state. |
 | Platform registry | a list of slugs in the shared package | stop label validation | **Data, not an interface**: platforms differ in name only in v1, so nothing is gained from a plugin type. Adding one is a line in a list. |
