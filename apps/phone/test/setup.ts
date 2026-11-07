@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- jest.mock factories must require */
-// Native animation modules have no native side under Jest.
+// Native animation and gesture modules have no native side under Jest.
+import 'react-native-gesture-handler/jestSetup';
 
 jest.mock('react-native-worklets', () => require('react-native-worklets/src/mock'));
 
@@ -22,3 +23,11 @@ jest.mock('react-native-reanimated', () => {
     withSequence: (...v: unknown[]) => v[v.length - 1],
   };
 });
+
+// Gesture Handler 3's detector looks up a native view, which a test renderer has not got.
+// The swipe itself is checked on a device; tests use the screen-reader "End shift" action.
+jest.mock('react-native-gesture-handler', () => ({
+  ...jest.requireActual('react-native-gesture-handler'),
+  GestureDetector: ({ children }: { children: unknown }) => children,
+  usePanGesture: () => ({}),
+}));
