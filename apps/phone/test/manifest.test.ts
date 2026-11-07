@@ -82,9 +82,23 @@ describe('manifest lint (09 section 5.3)', () => {
     },
   );
 
+  // No Google ML Kit and no Google usage logging (datatransport): the QR scanner is ZXing
+  // (plan 24 section 6, Q1). expo-camera and the other Android scanners all use ML Kit.
+  const GOOGLE_SCANNING = /mlkit|datatransport|barcode-scanning|play-services-code-scanner/i;
+  it('no dependency brings Google ML Kit or its usage logging', () => {
+    const deps = Object.keys(JSON.parse(read(join(root, 'package.json'))).dependencies);
+    expect(deps.filter((d) => /expo-camera|vision-camera|ml-kit|mlkit/.test(d))).toEqual([]);
+    const gradle = read(join(root, 'native', 'qr-scanner', 'android', 'build.gradle'));
+    expect(gradle).toMatch(/com\.journeyapps:zxing-android-embedded/);
+    for (const m of ['qr-scanner', 'comma-tracker']) {
+      expect(read(join(root, 'native', m, 'android', 'build.gradle'))).not.toMatch(GOOGLE_SCANNING);
+    }
+  });
+  (existsSync(merged) ? it : it.skip)('the merged release manifest has no ML Kit', () => {
+    expect(read(merged)).not.toMatch(GOOGLE_SCANNING);
+  });
+
   // Every permission in the merged manifest is one we declared or a known harmless library one.
-  // ACCESS_NETWORK_STATE (no prompt) comes with the camera: androidx media3 and Google's
-  // datatransport, which ML Kit's barcode scanner uses (expo-camera, QR pairing).
   const BENIGN = ['INTERNET', 'VIBRATE', 'ACCESS_NETWORK_STATE'].map((n) => PREFIX + n);
   (existsSync(merged) ? it : it.skip)(
     'the merged release manifest requests only known permissions',
