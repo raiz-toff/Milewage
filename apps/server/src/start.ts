@@ -51,6 +51,7 @@ export async function startServer(
         disk,
         backupDir: config.backupDir,
         configDir: config.configDir,
+        apkPath: config.apkPath,
         state,
         backupSchedule: state.mode === 'normal',
         enabledExportFormats: () =>

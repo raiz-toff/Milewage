@@ -1,3 +1,4 @@
+import { createReadStream, statSync } from 'node:fs';
 import type { RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import { hashToken, newToken, type Authenticator } from '../auth/authenticator';
@@ -18,6 +19,14 @@ const redeemSchema = strictObject(
 const renameSchema = strictObject({ name: str(1, 64) }, ['name']);
 const first = (v: string | string[] | undefined) =>
   Array.isArray(v) ? v[0] : v?.split(',')[0]?.trim();
+const fileSize = (path: string) => {
+  try {
+    const s = statSync(path);
+    return s.isFile() ? s.size : null;
+  } catch {
+    return null;
+  }
+};
 const view = (d: DeviceRow, skew?: number) => ({
   id: d.id,
   name: d.name,
@@ -34,10 +43,12 @@ export interface DevicesContext {
   authn: Authenticator;
   /** Core service: the `Settings` response, returned to a phone when it pairs. */
   readSettings: (host: ServerRouteHost) => (userId: number) => object;
+  /** The phone app file, served by `GET /app/android.apk` when it exists (plan 24 Q2). */
+  apkPath?: string;
 }
 
 /** Pairing, device credentials and the device list (08 section 2.4). */
-export function devicesRoutes({ db, now, authn, readSettings }: DevicesContext) {
+export function devicesRoutes({ db, now, authn, readSettings, apkPath }: DevicesContext) {
   return (routeHost: RouteHost) => {
     const host = routeHost as ServerRouteHost;
     const { app } = host;
@@ -67,7 +78,24 @@ export function devicesRoutes({ db, now, authn, readSettings }: DevicesContext) 
       const proto = first(req.headers['x-forwarded-proto']) ?? 'http';
       const base = `${proto}://${first(req.headers['x-forwarded-host']) ?? req.headers.host}`;
       const qr = `milewage://pair?v=1&u=${encodeURIComponent(base)}&t=${token}`;
-      return reply.status(201).send({ token, expires_at: expiresAt, qr_payload: qr });
+      // The QR carries the https form: the phone app reads it, and so does any camera app, which
+      // opens the server's /pair page. The token is in the fragment, so no server log sees it.
+      const pairUrl = `${base}/pair#v=1&t=${token}`;
+      return reply
+        .status(201)
+        .send({ token, expires_at: expiresAt, qr_payload: qr, pair_url: pairUrl });
+    });
+
+    // The app this server was built with (plan 24 Q2): no sign-in, a phone downloads it before
+    // it is paired. Nothing is served until the owner puts the file there (install.md).
+    app.get('/app/android.apk', async (_req, reply) => {
+      const size = apkPath ? fileSize(apkPath) : null;
+      if (size === null) throw new ProblemError('not_found', 'This server has no app file.');
+      return reply
+        .header('Content-Type', 'application/vnd.android.package-archive')
+        .header('Content-Length', size)
+        .header('Content-Disposition', 'attachment; filename="milewage.apk"')
+        .send(createReadStream(apkPath!));
     });
 
     app.post(

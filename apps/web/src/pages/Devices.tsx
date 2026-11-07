@@ -7,24 +7,33 @@ import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { formatDateTime, formatTime } from '../format';
 import { useSession, useSettings } from '../session';
+import { AppButtons, useAppAvailable } from '../pairing/GetTheApp';
 import { Qr } from '../ui/Qr';
 import { Button, FormError } from '../ui/form';
 
 type Device = Schemas['Device'];
-export type Pairing = { qr_payload: string; token: string; expires_at: number };
+export type Pairing = { qr_payload: string; pair_url: string; token: string; expires_at: number };
 
-/** The one-time pairing QR and its link; also the onboarding wizard's phone step (plan 23). */
+/**
+ * The one-time pairing QR and its link; also the onboarding wizard's phone step (plan 23). The QR
+ * carries the `https://<server>/pair#…` link any camera opens; "Open in the MileWage app" and
+ * "Get the app" sit beside it (plan 24 section 4.3).
+ */
 export function PairingCode({ pairing }: { pairing: Pairing }) {
+  const { api } = useSession();
   const { timezone } = useSettings();
+  const available = useAppAvailable(api);
   return (
     <div className="flex flex-wrap items-start gap-6">
       <div className="rounded-lg border bg-white p-2">
-        <Qr text={pairing.qr_payload} label="Pairing code" />
+        <Qr text={pairing.pair_url} label="Pairing code" />
       </div>
-      <div className="min-w-48 flex-1 space-y-2">
+      <div className="min-w-0 flex-1 space-y-2">
         <p className="text-sm text-muted-foreground">
-          Scan in the MileWage app. Valid once, until {formatTime(pairing.expires_at, timezone)}.
+          Open MileWage on your phone and tap Scan the code. Valid once, until{' '}
+          {formatTime(pairing.expires_at, timezone)}.
         </p>
+        <AppButtons link={pairing.qr_payload} available={available} />
         <code className="block break-all font-mono text-xs text-muted-foreground">
           {pairing.qr_payload}
         </code>

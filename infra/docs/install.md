@@ -33,18 +33,27 @@ The web client is now at `http://127.0.0.1:8080` on the host. The port is publis
 
 Unverified (spec 10 section 8, Spike D): the source address Caddy sees from `tailscale serve`. If login or pairing is rate limited for everyone at once, that is the place to look.
 
+### 3a. The phone app from your own server
+
+The web's **Get the app** link downloads the Android app from your server (`GET /api/v1/app/android.apk`, no sign-in). The server hands out whatever file is at `MILEWAGE_APK_PATH`, by default `milewage.apk` in the `config` volume; with no file there, the link is hidden. To put the app built from the same checkout there:
+
+1. `scripts/phone-release-build.sh` (needs Node 22, JDK 17 and the Android SDK) makes `apps/phone/android/app/build/outputs/apk/release/app-release.apk`.
+2. `docker compose -f infra/docker/docker-compose.yml cp apps/phone/android/app/build/outputs/apk/release/app-release.apk api:/app/config/milewage.apk`
+
+Replace the file the same way after an upgrade, so the phone and the server stay on the same version. Android asks the driver to allow installing apps from the browser the first time.
+
 ## 4. Backups
 
 Backups run nightly and after a shift ends; the Backups page lists them and shows the off-site reminder. Download an encrypted copy now and then to another machine: a backup on the same disk is not a backup (10 section 6). Restoring on a fresh instance: on the setup screen choose "Restore from a backup instead", upload the file and enter the recovery key.
 
 ## 5. Where things live
 
-| Volume                       | Holds                                                          |
-| ---------------------------- | -------------------------------------------------------------- |
-| `data`                       | `milewage.db` (your records), `diagnostics.db` (disposable)    |
-| `backups`                    | encrypted `.db.gz.age` files, `pre-migration/`, `pre-restore/` |
-| `config`                     | `secrets.json` (the public key only), optional `settings.json` |
-| `caddy_data`, `caddy_config` | Caddy state                                                    |
+| Volume                       | Holds                                                                                   |
+| ---------------------------- | --------------------------------------------------------------------------------------- |
+| `data`                       | `milewage.db` (your records), `diagnostics.db` (disposable)                             |
+| `backups`                    | encrypted `.db.gz.age` files, `pre-migration/`, `pre-restore/`                          |
+| `config`                     | `secrets.json` (the public key only), optional `settings.json`, optional `milewage.apk` |
+| `caddy_data`, `caddy_config` | Caddy state                                                                             |
 
 Never copy `milewage.db` by hand while the API runs. Logs rotate (3 files of 10 MB per container): `docker compose -f infra/docker/docker-compose.yml logs api`.
 

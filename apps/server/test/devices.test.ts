@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, expect, test } from 'vitest';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { harness, TRACKING_OFF, type Harness } from './support';
 
 let h: Harness;
@@ -30,12 +32,14 @@ test('pairing: QR payload, one-time token, device credential and settings', asyn
     'x-forwarded-proto': 'https',
     'x-forwarded-host': 'mw.example.ts.net',
   });
-  const { token, expires_at, qr_payload } = made.json();
+  const { token, expires_at, qr_payload, pair_url } = made.json();
   expect(token).toMatch(/^mwp_[A-Za-z0-9_-]{43}$/);
   expect(expires_at).toBe(h.clock.t + 600_000);
   expect(qr_payload).toBe(
     `milewage://pair?v=1&u=${encodeURIComponent('https://mw.example.ts.net')}&t=${token}`,
   );
+  // What the QR shows: any camera opens the pair page; the token stays in the fragment.
+  expect(pair_url).toBe(`https://mw.example.ts.net/pair#v=1&t=${token}`);
 
   const ok = await redeem(token);
   expect(ok.statusCode).toBe(201);
@@ -121,4 +125,21 @@ test('with the devices module off there are no pairing routes', async () => {
     404,
   );
   await off.close();
+});
+
+test('the phone app download: none until the file is there, then the file, without sign-in', async () => {
+  const get = (method: 'GET' | 'HEAD') => h.app.inject({ method, url: '/api/v1/app/android.apk' });
+  expect([(await get('GET')).statusCode, (await get('GET')).json().code]).toEqual([
+    404,
+    'not_found',
+  ]);
+  expect((await get('HEAD')).statusCode).toBe(404); // the web hides "Get the app"
+  mkdirSync(join(h.dir, 'config'), { recursive: true });
+  writeFileSync(join(h.dir, 'config', 'milewage.apk'), 'PK-app');
+  const ok = await get('GET');
+  expect(ok.statusCode).toBe(200);
+  expect(ok.headers['content-type']).toBe('application/vnd.android.package-archive');
+  expect(ok.headers['content-disposition']).toBe('attachment; filename="milewage.apk"');
+  expect(ok.body).toBe('PK-app');
+  expect((await get('HEAD')).statusCode).toBe(200);
 });

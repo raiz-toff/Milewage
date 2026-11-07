@@ -9,6 +9,7 @@ import {
   refresh,
   trackingMode,
   UNKNOWN_SNAPSHOT,
+  skip,
 } from '../src/permissions/ladder';
 import { FakeTracker } from '../src/tracker/fake';
 import { makeServices } from './support/mock';
@@ -111,7 +112,11 @@ describe('permissions screen', () => {
     const permissions = new FakePermissions();
     const tracker = new FakeTracker();
     render(
-      <App services={makeServices(mockServer({}).fetch, { permissions, tracker }).services} />,
+      <App
+        services={
+          makeServices(mockServer({}).fetch, { permissions, tracker, paired: true }).services
+        }
+      />,
     );
     fireEvent.press(await screen.findByRole('button', { name: 'Settings' }));
     fireEvent.press(await screen.findByRole('button', { name: 'Permissions' }));
@@ -126,5 +131,19 @@ describe('permissions screen', () => {
     fireEvent.press(await screen.findByRole('button', { name: 'Open battery settings' }));
     await waitFor(() => expect(tracker.batterySettingsOpened).toBe(1));
     expect(permissions.requests).toEqual(['foreground', 'background', 'activity', 'notifications']);
+  });
+});
+
+describe('"Not now" during setup (24 section 4.2)', () => {
+  it('leaves the step undone and moves on; a later step is still reachable', () => {
+    let s = { ...initialLadder(), disclosureAccepted: true };
+    expect(describeLadder(s).next).toBe('foreground');
+    s = skip(s);
+    // Background needs foreground first, so the ladder goes on to activity.
+    expect(describeLadder(s).next).toBe('activity');
+    expect(describeLadder(s).steps.find((x) => x.id === 'foreground')!.state).toBe('pending');
+    s = skip(skip(skip(s)));
+    expect(describeLadder(s).next).toBeNull();
+    expect(initialLadder(undefined, true).batteryVisited).toBe(true);
   });
 });

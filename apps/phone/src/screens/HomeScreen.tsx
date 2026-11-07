@@ -20,7 +20,7 @@ import type { ScreenProps } from '../navigation';
 import { M_PER_UNIT, formatClock } from '../format';
 import { cn } from '../lib/utils';
 import { deriveFlags } from '../pairing/pairing';
-import { canStartShift, initialLadder } from '../permissions/ladder';
+import { BATTERY_VISITED, canStartShift, initialLadder } from '../permissions/ladder';
 import { useServices } from '../services';
 import type { ActiveShift, ServerShift, Vehicle } from '../shift/controller';
 import { useColors } from '../theme/theme';
@@ -53,6 +53,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
     autoUpload = true,
     pairing,
     permissions,
+    plain,
     refreshMs = 5000,
   } = useServices();
   const toast = useToast();
@@ -72,6 +73,8 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   const [ready, setReady] = useState(false);
   const [paired, setPaired] = useState(false);
   const [located, setLocated] = useState(true);
+  /** What the first-run steps may have left for later (24 section 4.2 rule 2). */
+  const [later, setLater] = useState({ always: true, notify: true, battery: true });
   const [uploadState, setUploadState] = useState(uploader.lastState);
   const [progress, setProgress] = useState(sync.progress);
 
@@ -114,6 +117,11 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
         setLocalConflict(controller.conflict);
         setPaired(!!state);
         setLocated(canStartShift(initialLadder(snap)));
+        setLater({
+          always: snap.backgroundLocation === 'granted',
+          notify: snap.notifications === 'granted',
+          battery: (await plain.get(BATTERY_VISITED)) === '1',
+        });
         if (state) {
           await loadVehicles();
           void controller.sync().then(() => live && setLocalConflict(controller.conflict));
@@ -123,7 +131,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
       return () => {
         live = false;
       };
-    }, [controller, pairing, permissions, loadVehicles]),
+    }, [controller, pairing, permissions, plain, loadVehicles]),
   );
 
   useEffect(() => {
@@ -564,17 +572,31 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
           <SetupChecklist
             items={[
               {
-                key: 'pair',
-                title: 'Pair this phone',
-                detail: 'Scan the code from Devices on your MileWage web app.',
-                done: paired,
-                onPress: goSettings,
-              },
-              {
                 key: 'location',
                 title: 'Allow location',
                 detail: 'Needed to count your miles while a shift runs.',
                 done: located,
+                onPress: goPermissions,
+              },
+              {
+                key: 'always',
+                title: 'Allow location all the time',
+                detail: 'So recording goes on with the screen off.',
+                done: later.always,
+                onPress: goPermissions,
+              },
+              {
+                key: 'notify',
+                title: 'Allow notifications',
+                detail: "See your shift's time and distance.",
+                done: later.notify,
+                onPress: goPermissions,
+              },
+              {
+                key: 'battery',
+                title: 'Keep MileWage running',
+                detail: 'Stop the phone closing MileWage to save battery.',
+                done: later.battery,
                 onPress: goPermissions,
               },
             ]}

@@ -35,6 +35,8 @@ export interface ApiClientOptions {
   blocked?: () => boolean;
   /** Sees the headers of every answer, ok or not. */
   onResponse?: (headers: Headers) => void;
+  /** Sees every refusal before it is thrown (the pairing notices a revoked phone here). */
+  onProblem?: (e: ApiError) => void;
 }
 
 export class ApiClient {
@@ -94,13 +96,15 @@ export class ApiClient {
     if (!res.ok) {
       const p = (json ?? {}) as { code?: unknown; retryable?: unknown };
       const retryAfter = Number(res.headers.get('Retry-After'));
-      throw new ApiError(
+      const e = new ApiError(
         res.status,
         typeof p.code === 'string' ? p.code : 'unknown',
         typeof p.retryable === 'boolean' ? p.retryable : res.status >= 500 || res.status === 429,
         Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null,
         json,
       );
+      this.opts.onProblem?.(e);
+      throw e;
     }
     return { status: res.status, data: json as T, headers: res.headers };
   }

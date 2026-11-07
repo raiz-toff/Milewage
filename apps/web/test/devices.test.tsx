@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderApp, settingsFixture, signedIn, menu } from './support/kit';
 
 afterEach(cleanup);
@@ -15,7 +15,7 @@ const phone = (over: object = {}) => ({
   ...over,
 });
 
-function server(initial = [phone()]) {
+function server(initial = [phone()], apk = false) {
   let devices = initial;
   const table = {
     ...signedIn(),
@@ -26,8 +26,10 @@ function server(initial = [phone()]) {
         token: 'mwp_x',
         expires_at: 1_700_000_600_000,
         qr_payload: 'milewage://pair?v=1&u=https%3A%2F%2Fhost&t=mwp_x',
+        pair_url: 'https://host/pair#v=1&t=mwp_x',
       },
     }),
+    ...(apk ? { 'HEAD /app/android.apk': () => ({}) } : {}),
     'PATCH /devices/1': ({ body }: { body: unknown }) => {
       devices = [phone({ name: (body as { name: string }).name })];
       return { body: devices[0] };
@@ -60,6 +62,23 @@ describe('devices page', () => {
     expect(screen.getByText(/milewage:\/\/pair\?v=1/)).toBeTruthy();
     // 1_700_000_600_000 ms is 2023-11-14 22:23:20 UTC, 17:23 in Toronto.
     expect(screen.getByText(/until 17:23/)).toBeTruthy();
+    expect(screen.getByText(/Open MileWage on your phone and tap Scan the code/)).toBeTruthy();
+    // No app file on this server and not on a phone: neither button.
+    expect(screen.queryByRole('link', { name: /Get the app|Open in the MileWage app/ })).toBeNull();
+  });
+
+  it('offers Get the app when the server has it, and Open in the app on a phone', async () => {
+    const agent = vi
+      .spyOn(navigator, 'userAgent', 'get')
+      .mockReturnValue('Mozilla/5.0 (Linux; Android 15)');
+    server([phone()], true);
+    await screen.findByText('Pixel');
+    fireEvent.click(screen.getByRole('button', { name: 'Pair a phone' }));
+    const open = await screen.findByRole('link', { name: 'Open in the MileWage app' });
+    expect(open.getAttribute('href')).toBe('milewage://pair?v=1&u=https%3A%2F%2Fhost&t=mwp_x');
+    const get = await screen.findByRole('link', { name: 'Get the app' });
+    expect(get.getAttribute('href')).toBe('/api/v1/app/android.apk');
+    agent.mockRestore();
   });
 
   it('renames and reads the new name back from the server', async () => {

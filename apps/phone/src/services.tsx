@@ -2,6 +2,7 @@ import { algorithmVersion } from '@milewage/track-engine';
 import { createContext, useContext, type ComponentType, type ReactNode } from 'react';
 import { Platform } from 'react-native';
 import type { FetchFn } from './api/client';
+import { nativeNet, type NetPort } from './connect/reach';
 import { installCrashHandler, PhoneDiagnostics } from './diagnostics/phoneDiagnostics';
 import { createLazyAppDb } from './db/lazyDb';
 import { openExpoAppDb, type AppSqlDb } from './db/appDb';
@@ -42,6 +43,8 @@ export interface DeviceInfo {
 export interface Services {
   tracker: Tracker;
   permissions: PermissionsPort;
+  /** VPN state and the Tailscale app, for the connection messages (19 section 3.5). */
+  net: NetPort;
   pairing: Pairing;
   feed: PointFeed;
   shift: ShiftController;
@@ -75,6 +78,7 @@ export interface Services {
 export interface Parts {
   tracker: Tracker;
   permissions: PermissionsPort;
+  net: NetPort;
   secure: KeyValueStore;
   plain: KeyValueStore;
   /** Opens `app.db` (migrated on first use). */
@@ -239,6 +243,7 @@ export function createServices(p: Parts): Services {
   return {
     tracker: p.tracker,
     permissions: p.permissions,
+    net: p.net,
     pairing,
     feed,
     shift,
@@ -280,6 +285,7 @@ export function defaultServices(): Services {
   const s = createServices({
     tracker: createLazyNativeTracker(),
     permissions: new AndroidPermissions({ api: createReactNativePermissionApi(), store: plain }),
+    net: nativeNet(),
     secure: new SecureKeyValueStore(createExpoSecureBackend()),
     plain,
     openAppDb: () => openExpoAppDb(),

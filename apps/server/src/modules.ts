@@ -166,6 +166,8 @@ export interface ServerContext extends CoreContext {
   configDir?: string;
   /** Use this secrets store instead of `<configDir>/secrets.json`. */
   secrets?: SecretsStore;
+  /** The Android app file `GET /app/android.apk` serves when it exists (plan 24 Q2). */
+  apkPath?: string;
   /** Start the nightly 03:30 job (off in tests). */
   backupSchedule?: boolean;
   /** Exporters; defaults to csv, gpx and geojson. A new format registers here without other edits. */

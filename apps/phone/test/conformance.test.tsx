@@ -121,7 +121,7 @@ describe('A12 timing harness', () => {
 
 describe('engine check screen', () => {
   it('runs the check from Settings and shows the report', async () => {
-    render(<App services={makeServices(mockServer({}).fetch).services} />);
+    render(<App services={makeServices(mockServer({}).fetch, { paired: true }).services} />);
     fireEvent.press(await screen.findByRole('button', { name: 'Settings' }));
     fireEvent.press(await screen.findByRole('button', { name: 'Engine check' }));
     fireEvent.press(await screen.findByRole('button', { name: 'Run engine check' }));

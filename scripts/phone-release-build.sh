@@ -30,5 +30,5 @@ cd apps/phone
 npx expo prebuild --platform android --no-install --clean
 printf 'sdk.dir=%s\n' "$ANDROID_HOME" >android/local.properties
 cd android
-./gradlew --no-daemon assembleRelease :comma-tracker:testDebugUnitTest "$@"
+./gradlew --no-daemon assembleRelease :comma-tracker:testDebugUnitTest :qr-scanner:testDebugUnitTest :net-check:testDebugUnitTest "$@"
 ls -l app/build/outputs/apk/release/*.apk

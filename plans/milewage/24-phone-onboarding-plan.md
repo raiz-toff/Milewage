@@ -100,22 +100,24 @@ The owner tests on the phone; no emulators.
 
 | PR | Branch | Content |
 |---|---|---|
-| PO1 | `pr-PO1-phone-first-run-gate` | Gate (paired / not / revoked), Welcome, Set up your server (share sheet, guide link). |
+| PO1 | `pr-PO1-phone-first-run-gate` | Gate (paired / not / revoked), Welcome, Set up your server (share sheet, guide link). Until PO2, "I have a server" opens the existing pairing form in Settings. |
 | PO2 | `pr-PO2-phone-connect` | Connect screen (scan, link, paste) moved out of Settings; plan 19 §3.5 checks and messages; Tailscale screen (`expo-network`, `<queries>` for `com.tailscale.ipn`). Takes over plan 19 T4. |
 | PO3 | `pr-PO3-phone-connected-permissions` | Connected screen (server summary, "add your vehicle on the web"), notifications, location, all the time, battery steps through the ladder; Ready. |
 | PO4 | `pr-PO4-web-get-the-app` | Web pairing step: Get the app, "Open in the MileWage app" on a phone. |
 
-## 6. Open decisions for the owner
+## 6. Owner decisions (2026-11-07: "finish them all", the recommended options)
 
-- **Q1 QR scanner and Google.** `expo-camera` scans with Google ML Kit, which brings Google's usage
-  logging (open since P1). Options: (a) keep it; (b) replace it with a ZXing-based scanner without
-  Google (zxing-cpp is Apache-2.0; needs a small native module or a maintained wrapper, to be
-  checked on the phone); (c) no in-app scanner: the phone's own camera reads the QR, and the QR
-  opens an `https://<server>/pair?...` page with **Open in the MileWage app**. Recommendation: (b),
-  with (c) as the fallback that also helps phones where the in-app scanner fails.
-- **Q2 Where drivers get the app.** An APK served by the driver's own server (the web's "Get the
-  app" downloads it), a public download page, F-Droid or Play Store. Recommendation for now: the
-  server serves the APK it was built with, so phone and server versions match.
+- **Q1 QR scanner and Google → (b), with (c) as the fallback.** `expo-camera` (Google ML Kit, which
+  brings Google's `datatransport` usage logging) is replaced by a ZXing-based scanner with no Google
+  or Play-services code (PO2; the library and its licence are recorded in PO2's progress entry).
+  The `com.google.zxing` Java package is the open-source ZXing project (Apache-2.0), not ML Kit.
+  Fallback: the QR can open an `https://<server>/pair?...` page that shows **Open in the MileWage
+  app** (the `milewage://` link), so the phone's own camera works too (PO4). The phone keeps
+  accepting `milewage://pair` codes.
+- **Q2 Where drivers get the app → the driver's own server serves the APK it was built with.**
+  "Get the app" on the web pairing step downloads it. Minimal: the server serves an APK file from a
+  configured location when the file is there; the link is hidden when it is not. How the file gets
+  there is documented; no build pipeline (PO4).
 
 ## 7. Not in this plan (phone backlog from the review)
 

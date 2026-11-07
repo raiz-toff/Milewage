@@ -35,8 +35,20 @@ describe('QR payload', () => {
     expect(p).toEqual({ baseUrl: 'https://a.b:8443/mw', token: TOKEN });
   });
 
+  it('parses the https page link the QR shows; the base is the page, not a smuggled u', () => {
+    const base = { baseUrl: 'https://box.tail1.ts.net', token: TOKEN };
+    expect(parsePairingPayload(`https://box.tail1.ts.net/pair#v=1&t=${TOKEN}`)).toEqual(base);
+    const evil = `https://box.tail1.ts.net/pair#v=1&t=${TOKEN}&u=https%3A%2F%2Fevil.example`;
+    expect(parsePairingPayload(evil)).toEqual(base);
+    expect(parsePairingPayload(`https://a.b/mw/pair#v=1&t=${TOKEN}`)?.baseUrl).toBe(
+      'https://a.b/mw',
+    );
+  });
+
   it.each([
     'https://example.com',
+    `https://a.b/pair?v=1&t=${TOKEN}`,
+    `https://a.b/pair#v=2&t=${TOKEN}`,
     `milewage://pair?v=2&u=https%3A%2F%2Fa.b&t=${TOKEN}`,
     `milewage://pair?v=1&u=ftp%3A%2F%2Fa.b&t=${TOKEN}`,
     'milewage://pair?v=1&u=https%3A%2F%2Fa.b&t=mwd_short',
@@ -101,6 +113,30 @@ describe('redeem against the mock server', () => {
     const bad = await down.services.pairing.refreshSettings(paired);
     expect(bad.error?.code).toBe('device_revoked');
     expect(bad.state.settings?.distance_unit).toBe('mi');
+  });
+
+  it('status: paired, revoked when the server refuses the phone, cleared by a new pairing', async () => {
+    let revoked = false;
+    const server = mockServer({
+      ...okServer().routes,
+      'GET /settings': () => (revoked ? problem(401, 'device_revoked') : json(200, SETTINGS)),
+    });
+    const { services } = makeServices(server.fetch);
+    const changes = jest.fn();
+    services.pairing.subscribe(changes);
+    expect(await services.pairing.status()).toBe('unpaired');
+    const paired = await services.pairing.redeem(parsePairingPayload(QR)!);
+    expect(await services.pairing.status()).toBe('paired');
+    await services.pairing.refreshSettings(paired);
+    expect(await services.pairing.status()).toBe('paired'); // a good answer changes nothing
+    revoked = true;
+    await services.pairing.refreshSettings(paired);
+    expect(await services.pairing.status()).toBe('revoked');
+    expect(await services.pairing.load()).not.toBeNull(); // nothing deleted
+    revoked = false;
+    await services.pairing.redeem(parsePairingPayload(QR)!);
+    expect(await services.pairing.status()).toBe('paired');
+    expect(changes).toHaveBeenCalledTimes(3);
   });
 
   it('unpair forgets the credential', async () => {

@@ -88,8 +88,7 @@ export function PairStep({ ctx, next }: StepProps) {
       ) : (
         <>
           <p className="text-sm text-muted-foreground">
-            Open MileWage on your phone and scan this code. The phone records your shifts and sends
-            them here.
+            Pair your phone with this server. The phone records your shifts and sends them here.
           </p>
           {pairing ? <PairingCode pairing={pairing} /> : null}
           <FormError message={error} />
