@@ -45,29 +45,7 @@ describe('tax packs as strategies with lines (plan 21 section 3.5)', () => {
     expect(got).toEqual(frozen);
   });
 
-  test('the lines add up to the total, for every country with a tax pack', () => {
-    for (const c of countryModules.list())
-      for (const p of [null, ...c.places.map((x) => x.code)]) {
-        const e = c.tax?.estimate(
-          {
-            year: 2026,
-            region: p,
-            incomeCents: 9_000_000,
-            expensesCents: 100_000,
-            mileageCents: 50_000,
-            setAsideBp: 2500,
-            salesTaxRegistered: true,
-            collectedCents: 0,
-            creditCents: 0,
-          },
-          resolvePlace(c, p),
-        );
-        if (!e) continue;
-        expect(
-          e.lines.reduce((a, l) => a + (l.cents ?? 0), 0),
-          `${c.code} ${p}`,
-        ).toBe(e.total_set_aside_cents);
-      }
+  test('only CA has a tax pack today (the lines add up: country-conformance.test.ts)', () => {
     expect(
       countryModules
         .list()

@@ -2653,7 +2653,7 @@ components:
               note: { type: [string, 'null'] }
     TaxYear:
       type: object
-      required: [year, country, region, supported, unverified, set_aside_bp, sales_tax_registered, notices, income, deductions, estimate, deadlines, slip_alerts, jar]
+      required: [year, country, region, supported, unverified, set_aside_bp, sales_tax_registered, sales_tax_name, notices, income, deductions, estimate, deadlines, slip_alerts, jar]
       properties:
         year: { type: integer }
         country: { type: string }
@@ -2662,6 +2662,7 @@ components:
         unverified: { type: boolean, description: True while the pack's figures have not been compared with the primary publications; the screen shows an "unverified rates" notice. }
         set_aside_bp: { type: integer }
         sales_tax_registered: { type: boolean }
+        sales_tax_name: { type: [string, 'null'], description: 'The sales tax of the driver''s place from the country data (GST, HST), for the "Registered for ..." choice; null when none is known.' }
         notices: { type: array, items: { type: string } }
         income:
           type: [object, 'null']

@@ -1896,6 +1896,8 @@ export interface components {
             unverified: boolean;
             set_aside_bp: number;
             sales_tax_registered: boolean;
+            /** @description The sales tax of the driver's place from the country data (GST, HST), for the "Registered for ..." choice; null when none is known. */
+            sales_tax_name: string | null;
             notices: string[];
             /** @description Effective earnings of the year; null when none were entered or labelled. */
             income: {

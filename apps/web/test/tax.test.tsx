@@ -14,6 +14,7 @@ const report = (over: object = {}) => ({
   unverified: true,
   set_aside_bp: 2500,
   sales_tax_registered: false,
+  sales_tax_name: 'HST',
   notices: ['Estimates to bring to an accountant, not tax advice. Nothing here is filed.'],
   income: {
     gross_cents: 700_000,
@@ -146,7 +147,8 @@ describe('tax screen (module tax)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save rate' }));
     await waitFor(() => expect(s.calls.some((c) => c.method === 'PUT')).toBe(true));
     expect(s.calls.find((c) => c.method === 'PUT')?.body).toEqual({ set_aside_bp: 3000 });
-    fireEvent.click(screen.getByLabelText('Registered for GST/HST'));
+    // The sales tax is named from the country data of the driver's place, not by the screen.
+    fireEvent.click(screen.getByLabelText('Registered for HST'));
     await waitFor(() => expect(s.calls.filter((c) => c.method === 'PUT')).toHaveLength(2));
     expect(s.calls.filter((c) => c.method === 'PUT')[1]?.body).toEqual({
       sales_tax_registered: true,

@@ -1571,6 +1571,7 @@
         "unverified",
         "set_aside_bp",
         "sales_tax_registered",
+        "sales_tax_name",
         "notices",
         "income",
         "deductions",
@@ -1606,6 +1607,13 @@
         },
         "sales_tax_registered": {
           "type": "boolean"
+        },
+        "sales_tax_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The sales tax of the driver's place from the country data (GST, HST), for the \"Registered for ...\" choice; null when none is known."
         },
         "notices": {
           "type": "array",

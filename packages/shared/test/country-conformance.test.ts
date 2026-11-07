@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import iso from './fixtures/iso-3166-2.json';
 import {
   countryModules,
   countryName,
@@ -12,7 +13,9 @@ import {
 } from '../src/countries/index';
 
 // The contract every registered country meets (plan 21 section 3.8). A new country fails here
-// until it does. J6 adds the ISO 3166-2 code list and the no-country-literal lint rule.
+// until it does. The no-country-literal lint rule has its own test (country-lint-rule.test.ts).
+// Region codes are checked against CLDR's ISO 3166-2 list (scripts/iso-subdivisions.mjs).
+const subdivisions = new Set(Object.values(iso.codes as Record<string, string[]>).flat());
 const KINDS: VehicleKind[] = ['car', 'motorcycle', 'van', 'bicycle', 'ebike', 'scooter', 'walking'];
 const currencies = new Set(Intl.supportedValuesOf('currency'));
 
@@ -41,8 +44,42 @@ describe.each(countryModules.list())('country $code meets the contract', (c) => 
       expect(p.name.trim(), p.code).not.toBe('');
       expect(resolvePlace(c, p.code).codes.at(-1), p.code).toBe(p.code);
       expect(dataProblems(p.data ?? {}), p.code).toEqual([]);
+      // A region is an ISO 3166-2 code; a city is its region plus a UN/LOCODE location part.
+      if (p.parent === c.code)
+        expect(subdivisions.has(p.code), `${p.code} in ISO 3166-2`).toBe(true);
+      else expect(p.code, p.code).toMatch(new RegExp(`^${p.parent}-[A-Z2-9]{3}$`));
     }
   });
+
+  test.skipIf(!c.tax)(
+    'tax: provenance, slip, deadlines in order, lines that add up everywhere',
+    () => {
+      const t = c.tax!;
+      expect(t.sources.length).toBeGreaterThan(0);
+      expect(typeof t.verified).toBe('boolean');
+      expect(t.checkedAgainst.trim()).not.toBe('');
+      if (t.slip) expect(t.slip.name.trim() && t.slip.thresholdCents >= 0).toBeTruthy();
+      for (const code of [null, ...c.places.map((p) => p.code)]) {
+        const place = resolvePlace(c, code);
+        const dates = t.deadlines(2026, place).map((d) => d.date);
+        expect(dates, `${code}`).toEqual([...dates].sort());
+        expect(
+          dates.every((d) => d >= '2026-01-01' && d < '2028-01-01'),
+          `${code}`,
+        ).toBe(true);
+        const e = t.estimate(
+          {
+            ...{ year: 2026, region: code, incomeCents: 9_000_000, expensesCents: 100_000 },
+            ...{ mileageCents: 50_000, setAsideBp: 2500, salesTaxRegistered: true },
+            ...{ collectedCents: 0, creditCents: 0 },
+          },
+          place,
+        );
+        const sum = e.lines.reduce((a, l) => a + (l.cents ?? 0), 0);
+        expect(sum, `${code}`).toBe(e.total_set_aside_cents);
+      }
+    },
+  );
 
   test('mileage: dated rates ended by a null, none for non-automobiles, period start', () => {
     for (const [kind, rate] of Object.entries(c.mileage.rates)) {

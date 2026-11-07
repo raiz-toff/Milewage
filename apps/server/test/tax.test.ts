@@ -55,6 +55,7 @@ describe('the estimate', () => {
       unverified: true,
       country: 'CA',
       set_aside_bp: 2500,
+      sales_tax_name: 'HST', // Ontario, from the country data
       income: {
         gross_cents: 7_000_000,
         tips_cents: 500_000,
@@ -119,6 +120,7 @@ describe('the estimate', () => {
     await send('PATCH', '/settings', { country: 'US' });
     const us = await year();
     expect(us).toMatchObject({ supported: false, estimate: null, income: null, deadlines: [] });
+    expect(us.sales_tax_name).toBeNull();
     expect(us.notices[0]).toMatch(/No tax estimate/);
     const off = harness({}, { comma: { taxCountries: [] } });
     try {

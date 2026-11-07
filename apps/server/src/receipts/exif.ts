@@ -12,6 +12,8 @@ function wipeGps(app1: Buffer): boolean {
   const tiff = EXIF_HEAD.length;
   if (app1.length < tiff + 8) return false;
   const little = app1.toString('latin1', tiff, tiff + 2) === 'II';
+  // 'MM' is the TIFF big-endian byte-order mark, not Myanmar.
+  // eslint-disable-next-line no-restricted-syntax
   if (!little && app1.toString('latin1', tiff, tiff + 2) !== 'MM') return false;
   const u16 = (o: number) => (little ? app1.readUInt16LE(o) : app1.readUInt16BE(o));
   const u32 = (o: number) => (little ? app1.readUInt32LE(o) : app1.readUInt32BE(o));

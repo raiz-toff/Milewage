@@ -55,6 +55,8 @@ export function taxReport(o: TaxReportOptions, userId: number, year: number, col
     unverified: pack ? !pack.verified : true,
     set_aside_bp: inputs.setAsideBp,
     sales_tax_registered: inputs.salesTaxRegistered === 1,
+    // The names of the sales tax components at the driver's place (plan 21 `salesTax` slot).
+    sales_tax_name: place?.data.salesTax?.map((t) => t.label).join(' + ') || null,
   };
   if (!pack || !place) {
     return {

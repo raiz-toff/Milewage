@@ -19,6 +19,7 @@ export function datedProblems(p: Dated<unknown>): string[] {
   if (!p.label || !p.unit) out.push('label and unit are required');
   if (p.reference.length === 0) out.push('a reference is required');
   for (const s of starts) if (!DATE.test(s)) out.push(`bad date ${s}`);
+  if (Object.keys(p.values).join() !== starts.join()) out.push('dates are not in order');
   if (!starts.some((s) => p.values[s] !== null)) out.push('no value is set');
   const last = starts.at(-1);
   if (last === undefined || p.values[last] !== null) out.push('not ended by a final null');

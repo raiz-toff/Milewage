@@ -16,7 +16,7 @@ const rate: Dated<number> = {
   label: 'Test rate',
   unit: 'cents/km',
   reference: ['https://example.org'],
-  values: { '2025-01-01': 72, '2024-01-01': 70, '2026-01-01': null },
+  values: { '2024-01-01': 70, '2025-01-01': 72, '2026-01-01': null },
 };
 const tax = (key: string, rateBp: number, more = {}) => ({ key, label: key, rateBp, ...more });
 const at = (code: string, parent: string, data?: PlaceData, more = {}) => ({
@@ -60,6 +60,10 @@ describe('dated parameters (OpenFisca shape)', () => {
   });
 
   test('a parameter without a final null, a reference or valid dates is reported', () => {
+    // Values are found in any order, but a file lists them by date so a reader can follow them.
+    const unsorted = { '2025-01-01': 72, '2024-01-01': 70, '2026-01-01': null };
+    expect(valueAt({ ...rate, values: unsorted }, '2024-06-01')).toBe(70);
+    expect(datedProblems({ ...rate, values: unsorted })).toEqual(['dates are not in order']);
     expect(datedProblems({ ...rate, values: { '2024-01-01': 70 } })).toEqual([
       'not ended by a final null',
     ]);

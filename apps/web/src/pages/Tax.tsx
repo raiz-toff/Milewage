@@ -169,7 +169,7 @@ export function TaxPage() {
                   checked={report.sales_tax_registered}
                   onChange={(e) => void putYear({ sales_tax_registered: e.target.checked })}
                 />
-                Registered for GST/HST
+                Registered for {report.sales_tax_name ?? 'sales tax'}
               </label>
               {report.sales_tax_registered ? (
                 <Field
