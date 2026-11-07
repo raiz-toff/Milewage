@@ -1282,3 +1282,12 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Visual check: headless Chromium, 1280 and 390 px light; screenshots in the session scratchpad.
 - Not done: stops in the timeline (W2d); the map side of the pick (W2e). Sorting trips by distance (the old table's column sort) is gone; the timeline is always in time order.
 - Assumption (owner to confirm): the time order is the useful one on this page; sorting stays in the exports.
+
+## PR W2d — Web: stops in the shift timeline (shift detail rework)
+
+- Branch `pr-W2d-shift-timeline-stops` (pushed, not merged), stacked on `pr-W2c-shift-timeline`.
+- Done: the timeline lists the detected stops between the trips, numbered 1, 2, … in time order (the map uses the same numbers in W2e). Each stop shows its time, number, what it was (the driver's label, else the engine's estimate with its marker; "Stop" when the estimate is none), the place or platform of a label, how long it lasted, and "low confidence" (its dot is also drawn paler, 05 §3.1a). A stop is a toggle like a trip. The card says "n trips · n stops". The stops are read once by the page (`useShiftStops` in `Stops.tsx`) and shared by the timeline and the "Label stops" table, so a saved or cleared label shows in the timeline at once. With the stops module off, nothing is asked for and no stops are listed, as before.
+- Standards checked: Google Maps Timeline lists each stop with when and how long ([Google Maps blog](https://maps.googleblog.com/2015/07/your-timeline-revisiting-world-that.html)); WCAG 1.1.1 (the stops on the map are in the list too: [Understanding 1.1.1](https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.html)).
+- Tests: `apps/web/test/trips.test.tsx` 1 new (trips and two stops in order, the estimate marked on the unlabelled stop and not on the labelled one, the label's place, "2 trips · 2 stops") and the pick test now moves from a trip to a stop; `stops.test.tsx`: after a label is saved the timeline shows it. These fail without the change. `npm run verify` exit 0: vitest 117 files, 929 passed, 3 skipped; phone jest 240 passed, 2 skipped.
+- Visual check: headless Chromium, 1280 and 390 px light (the stops are in the W2c screenshots, taken with this code); screenshots in the session scratchpad.
+- Not done: the map side (W2e). A label's platform is shown by its slug (as in the table).

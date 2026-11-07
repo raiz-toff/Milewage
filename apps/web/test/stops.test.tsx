@@ -92,6 +92,9 @@ describe('stops table', () => {
       place: null,
     });
     expect(typeof (put.body as { edited_at: number }).edited_at).toBe('number');
+    // The timeline reads the same stops, so the label shows there at once.
+    const timeline = screen.getByRole('list', { name: 'Timeline' });
+    expect(within(timeline).getByText(/Stop 1 · Dropoff · uber_eats/)).toBeTruthy();
     // The detail above the table shows the recomputed estimate, and trips were read again.
     expect(screen.getByText(/^4\.0 km active/).textContent).toBe('4.0 km active*');
     expect(screen.getByText(/^1\.0 km deadhead/).textContent).toBe('1.0 km deadhead*');

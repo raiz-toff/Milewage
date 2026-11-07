@@ -21,7 +21,7 @@ import type { EarnedSummary } from './ShiftFacts';
 import { ShiftOdometer } from './ShiftOdometer';
 import { ShiftTimeline } from './ShiftTimeline';
 import type { Picked } from './ShiftTimeline';
-import { StopsPanel } from './Stops';
+import { StopsPanel, useShiftStops } from './Stops';
 import { useShiftTrips } from './Trips';
 
 type Shift = Schemas['Shift'];
@@ -414,6 +414,7 @@ export function ShiftDetail() {
   const vehicle = useVehicleName(shift?.vehicle_id ?? 0);
   const [picked, setPicked] = useState<Picked>(null);
   const { trips, error: tripsError } = useShiftTrips(shift?.id ?? 0, shift?.calculated_at ?? 0);
+  const stopsData = useShiftStops(shift?.id ?? 0, !!shift && settings.modules.stops);
 
   useEffect(() => {
     let live = true;
@@ -515,7 +516,16 @@ export function ShiftDetail() {
         <Section
           label="Timeline"
           title="Timeline"
-          description={trips ? count(trips.length, 'trip') : undefined}
+          description={
+            trips
+              ? [
+                  count(trips.length, 'trip'),
+                  stopsData.stops && count(stopsData.stops.length, 'stop'),
+                ]
+                  .filter(Boolean)
+                  .join(' · ')
+              : undefined
+          }
         >
           {tripsError ? (
             <p className="text-muted-foreground">Trips could not be loaded. {tripsError}</p>
@@ -529,6 +539,7 @@ export function ShiftDetail() {
               <ShiftTimeline
                 shift={shift}
                 trips={trips}
+                stops={stopsData.stops ?? []}
                 split={split}
                 est={<Est />}
                 picked={picked}
@@ -593,7 +604,7 @@ export function ShiftDetail() {
           title="Label stops"
           description="Optional. A label corrects the estimate for that stop and adds its payout."
         >
-          <StopsPanel shift={shift} onShift={setShift} />
+          <StopsPanel shift={shift} onShift={setShift} data={stopsData} />
         </Section>
       ) : null}
     </section>

@@ -7,12 +7,44 @@ import { useSettings } from '../session';
 import { kindOf } from './Trips';
 
 type Trip = Schemas['Trip'];
+type Stop = Schemas['Stop'];
 type Shift = Schemas['Shift'];
 
-/** The trip chosen in the timeline. */
-export type Picked = { kind: 'trip'; id: number } | null;
+/** The trip or stop chosen in the timeline (W2e: also on the map). */
+export type Picked = { kind: 'trip'; id: number } | { kind: 'stop'; key: string } | null;
+
+export type Entry =
+  { kind: 'trip'; at: number; trip: Trip } | { kind: 'stop'; at: number; stop: Stop; n: number };
+
+/** Trips and stops in time order. Stops are numbered 1, 2, … in time order, as on the map. */
+export function timelineOf(trips: Trip[], stops: Stop[]): Entry[] {
+  const numbered = [...stops]
+    .sort((a, b) => a.started_at - b.started_at)
+    .map((stop, i): Entry => ({ kind: 'stop', at: stop.started_at, stop, n: i + 1 }));
+  return [
+    ...trips.map((trip): Entry => ({ kind: 'trip', at: trip.started_at, trip })),
+    ...numbered,
+  ].sort((a, b) => a.at - b.at);
+}
 
 const minutes = (ms: number) => `${Math.max(1, Math.round(ms / 60_000))} min`;
+const ROLE: Record<string, string> = { pickup: 'Pickup', dropoff: 'Dropoff', other: 'Other' };
+
+/** The numbered dot of a stop; the map draws the same one. */
+export function StopDot({ n, muted }: { n: number; muted?: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        'grid size-5 shrink-0 place-items-center rounded-full bg-foreground text-[11px] font-semibold text-background tabular-nums',
+        muted && 'opacity-55',
+      )}
+    >
+      {n}
+    </span>
+  );
+}
+
 function Row({
   time,
   mark,
@@ -64,20 +96,22 @@ function Row({
 }
 
 /**
- * The shift as a list in time order: start, each trip (time, distance, kind, purpose), end. It is
- * the text equivalent of the map (WCAG 1.1.1). Choosing an entry picks it; again lets go.
+ * The shift as a list in time order: start, each trip (time, distance, kind, purpose), each stop
+ * (time, how long, what it was), end. It carries everything the map shows, so it is also the
+ * map's text equivalent (WCAG 1.1.1). Choosing an entry picks it; choosing it again lets go.
  */
 export function ShiftTimeline({
   shift,
   trips,
+  stops,
   split,
   est,
   picked,
   onPick,
 }: {
   shift: Shift;
-  /** In time order, as the server sends them. */
   trips: Trip[];
+  stops: Stop[];
   split: boolean;
   est: ReactNode;
   picked: Picked;
@@ -88,38 +122,69 @@ export function ShiftTimeline({
   return (
     <ol aria-label="Timeline" className="-mx-2 space-y-0.5">
       <Row time={formatTime(shift.started_at, tz)} mark={flag} title="Shift started" />
-      {trips.map((t) => {
-        const kind = kindOf(t, split);
-        const on = picked?.id === t.id;
+      {timelineOf(trips, stops).map((e) => {
+        if (e.kind === 'trip') {
+          const t = e.trip;
+          const kind = kindOf(t, split);
+          const on = picked?.kind === 'trip' && picked.id === t.id;
+          return (
+            <Row
+              key={`t${t.id}`}
+              time={formatTime(t.started_at, tz)}
+              mark={
+                <span
+                  className={cn(
+                    'w-1 rounded-full',
+                    t.kind === 'personal' ? 'bg-muted-foreground/40' : 'bg-primary',
+                    t.kind === 'deadhead' && split && 'bg-primary/45',
+                  )}
+                />
+              }
+              title={
+                <>
+                  Trip · {formatDistance(t.distance_m, unit)} · {kind.text}
+                  {kind.estimated ? est : null}
+                </>
+              }
+              detail={[
+                `${formatTime(t.started_at, tz)} – ${formatTime(t.ended_at, tz)}`,
+                minutes(t.ended_at - t.started_at),
+                t.purpose,
+                t.source === 'manual' ? 'edited' : '',
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+              on={on}
+              onClick={() => onPick(on ? null : { kind: 'trip', id: t.id })}
+            />
+          );
+        }
+        const s = e.stop;
+        const on = picked?.kind === 'stop' && picked.key === s.stop_key;
+        const what = s.label
+          ? ROLE[s.label.role]
+          : s.est_role === 'none'
+            ? 'Stop'
+            : ROLE[s.est_role];
         return (
           <Row
-            key={`t${t.id}`}
-            time={formatTime(t.started_at, tz)}
-            mark={
-              <span
-                className={cn(
-                  'w-1 rounded-full',
-                  t.kind === 'personal' ? 'bg-muted-foreground/40' : 'bg-primary',
-                  t.kind === 'deadhead' && split && 'bg-primary/45',
-                )}
-              />
-            }
+            key={s.stop_key}
+            time={formatTime(s.started_at, tz)}
+            mark={<StopDot n={e.n} muted={s.confidence === 'low'} />}
             title={
               <>
-                Trip · {formatDistance(t.distance_m, unit)} · {kind.text}
-                {kind.estimated ? est : null}
+                Stop {e.n} · {what}
+                {!s.label && s.est_role !== 'none' ? est : null}
+                {s.label?.place || s.label?.platform
+                  ? ` · ${s.label.place || s.label.platform}`
+                  : ''}
               </>
             }
-            detail={[
-              `${formatTime(t.started_at, tz)} – ${formatTime(t.ended_at, tz)}`,
-              minutes(t.ended_at - t.started_at),
-              t.purpose,
-              t.source === 'manual' ? 'edited' : '',
-            ]
+            detail={[minutes(s.dwell_s * 1000), s.confidence === 'low' ? 'low confidence' : '']
               .filter(Boolean)
               .join(' · ')}
             on={on}
-            onClick={() => onPick(on ? null : { kind: 'trip', id: t.id })}
+            onClick={() => onPick(on ? null : { kind: 'stop', key: s.stop_key })}
           />
         );
       })}
