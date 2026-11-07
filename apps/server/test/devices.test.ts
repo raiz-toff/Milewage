@@ -40,6 +40,10 @@ test('pairing: QR payload, one-time token, device credential and settings', asyn
   );
   // What the QR shows: any camera opens the pair page; the token stays in the fragment.
   expect(pair_url).toBe(`https://mw.example.ts.net/pair#v=1&t=${token}`);
+  expect(made.json()).toMatchObject({
+    base_url: 'https://mw.example.ts.net',
+    base_url_source: 'request',
+  });
 
   const ok = await redeem(token);
   expect(ok.statusCode).toBe(201);
@@ -116,6 +120,58 @@ test('redeem: 10 failures per 15 minutes per IP, then 429 with Retry-After', asy
   expect([blocked.statusCode, blocked.json().code]).toEqual([429, 'rate_limited']);
   expect(Number(blocked.headers['retry-after'])).toBeGreaterThan(800);
   expect((await redeem(await mint(), '10.1.1.2')).statusCode).toBe(201);
+});
+
+test('MILEWAGE_PUBLIC_URL is the address in the code, whatever address the browser is on', async () => {
+  const c = harness({}, { publicUrl: 'https://box.tail1234.ts.net' });
+  const { cookie: owner } = await c.signUp();
+  const made = await c.call('POST', '/pairing-tokens', undefined, {
+    cookie: owner,
+    'x-forwarded-proto': 'http',
+    'x-forwarded-host': '192.168.1.20:8080',
+  });
+  const { token, qr_payload, pair_url, base_url, base_url_source } = made.json();
+  expect([base_url, base_url_source]).toEqual(['https://box.tail1234.ts.net', 'configured']);
+  expect(pair_url).toBe(`https://box.tail1234.ts.net/pair#v=1&t=${token}`);
+  expect(qr_payload).toContain(`u=${encodeURIComponent('https://box.tail1234.ts.net')}&`);
+  await c.close();
+});
+
+test("the driver's corrected address is used once it is a bare https address", async () => {
+  const ask = (base_url: unknown) => web('POST', '/pairing-tokens', { base_url });
+  const ok = (await ask(' https://Box.tail1234.ts.net/ ')).json();
+  expect([ok.base_url, ok.base_url_source]).toEqual(['https://box.tail1234.ts.net', 'driver']);
+  expect(ok.pair_url).toBe(`https://box.tail1234.ts.net/pair#v=1&t=${ok.token}`);
+  // Outside production a debug build may use plain http on the home network.
+  expect((await ask('http://192.168.1.20:8080')).json().base_url).toBe('http://192.168.1.20:8080');
+  for (const bad of [
+    'box.ts.net',
+    'ftp://box.ts.net',
+    'https://u:p@box.ts.net',
+    'https://box.ts.net/mw',
+    'https://box.ts.net/?a=1',
+    42,
+  ]) {
+    const res = await ask(bad);
+    expect([res.statusCode, res.json().code], String(bad)).toEqual([422, 'validation_failed']);
+  }
+  expect(h.db.prepare('SELECT COUNT(*) FROM pairing_tokens').pluck().get()).toBe(2);
+});
+
+test('a production server refuses a plain http address from the driver', async () => {
+  const p = harness({}, { httpAddressAllowed: false });
+  const { cookie: owner } = await p.signUp();
+  const res = await p.call(
+    'POST',
+    '/pairing-tokens',
+    { base_url: 'http://192.168.1.20' },
+    { cookie: owner },
+  );
+  expect([res.statusCode, res.json().detail]).toEqual([
+    422,
+    'The address must start with https://',
+  ]);
+  await p.close();
 });
 
 test('with the devices module off there are no pairing routes', async () => {

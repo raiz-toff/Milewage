@@ -52,6 +52,8 @@ export async function startServer(
         backupDir: config.backupDir,
         configDir: config.configDir,
         apkPath: config.apkPath,
+        publicUrl: config.publicUrl,
+        httpAddressAllowed: config.httpAddressAllowed,
         state,
         backupSchedule: state.mode === 'normal',
         enabledExportFormats: () =>

@@ -40,6 +40,8 @@ export function harness(
     comma?: Partial<CommaOptions>;
     diagnosticsHousekeepingMs?: number;
     enabledExportFormats?: () => readonly string[];
+    publicUrl?: string | null;
+    httpAddressAllowed?: boolean;
   } = {},
 ) {
   const dir = mkdtempSync(join(tmpdir(), 'mw-test-'));
@@ -82,6 +84,8 @@ export function harness(
     backupDir: join(dir, 'backups'),
     configDir: join(dir, 'config'),
     apkPath: join(dir, 'config', 'milewage.apk'),
+    publicUrl: extra.publicUrl,
+    httpAddressAllowed: extra.httpAddressAllowed,
   });
   let app: ReturnType<typeof buildApp>['fastify'];
   let bus: ReturnType<typeof buildApp>['bus'];

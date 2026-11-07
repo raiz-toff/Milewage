@@ -29,7 +29,8 @@ The web client is now at `http://127.0.0.1:8080` on the host. The port is publis
 2. **Privacy note, read before the next step.** Turning on HTTPS certificates publishes your machine name and tailnet name on a public certificate log (Tailscale's HTTPS documentation). Give the host a name you are happy to have public (not your name, address or employer) and use a tailnet name you accept being public.
 3. In the Tailscale admin page, DNS settings: make sure MagicDNS is on, then enable HTTPS certificates.
 4. On the host: `tailscale serve --bg 8080` (use your port if it is not 8080). The phone reaches MileWage at `https://<host>.<tailnet>.ts.net`. The first request can be slow while the certificate is issued.
-5. In the web client, Devices, create a pairing QR code and scan it from the MileWage app on the phone.
+5. Tell MileWage its address: add `MILEWAGE_PUBLIC_URL=https://<host>.<tailnet>.ts.net` to `infra/docker/.env`, then `docker compose --env-file infra/docker/.env -f infra/docker/docker-compose.yml up -d`. Pairing codes then carry this address whichever address your browser is on. Without it, the code carries the address in your browser's address bar, so open MileWage at the `https://…ts.net` address to pair.
+6. In the web client, Devices, create a pairing QR code and scan it from the MileWage app on the phone. Under the code, "Your phone will connect to" shows the address; **Change address** fixes a wrong one for that code.
 
 `tailscale serve` reaches Caddy through the Docker gateway of the stack's network (`MILEWAGE_PROXY_GATEWAY`, by default `172.29.88.1`, the first address of `MILEWAGE_PROXY_SUBNET`). Caddy trusts the forwarded headers from that address only, so the pairing code says `https://<host>.<tailnet>.ts.net` and the rate limits see the phone's own tailnet address. If you change the subnet by hand, change the gateway with it (`install.sh --subnet` writes both).
 

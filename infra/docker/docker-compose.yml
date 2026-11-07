@@ -44,6 +44,9 @@ services:
       # The API believes X-Forwarded-For only from this network, which holds just Caddy and the API
       # (the fixed /24 below). Without it every login and redeem limit would see Caddy's address.
       - MILEWAGE_TRUST_PROXY=${MILEWAGE_PROXY_SUBNET:-172.29.88.0/24}
+      # The address phones are given, e.g. https://<host>.<tailnet>.ts.net (plan 19 section 3.2).
+      # Empty: the address the browser is on.
+      - MILEWAGE_PUBLIC_URL=${MILEWAGE_PUBLIC_URL:-}
     volumes:
       - data:/app/data
       - backups:/app/backups

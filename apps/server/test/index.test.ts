@@ -143,4 +143,17 @@ describe('config', () => {
     expect(loadConfig({ MILEWAGE_CONFIG_DIR: '/nonexistent' })).toMatchObject({ port: 8080 });
     expect(() => loadConfig({ MILEWAGE_PORT: 'abc' })).toThrow(ConfigError);
   });
+
+  test('MILEWAGE_PUBLIC_URL: a bare https address; http only outside production', () => {
+    const at = (url: string, NODE_ENV = 'production') =>
+      loadConfig({ MILEWAGE_CONFIG_DIR: '/nonexistent', NODE_ENV, MILEWAGE_PUBLIC_URL: url });
+    expect(at('').publicUrl).toBeNull();
+    expect(at('https://box.tail1234.ts.net/').publicUrl).toBe('https://box.tail1234.ts.net');
+    expect(at('http://192.168.1.20:5173', 'development').publicUrl).toBe(
+      'http://192.168.1.20:5173',
+    );
+    for (const bad of ['http://192.168.1.20', 'box.ts.net', 'https://box.ts.net/milewage']) {
+      expect(() => at(bad), bad).toThrow(/MILEWAGE_PUBLIC_URL/);
+    }
+  });
 });

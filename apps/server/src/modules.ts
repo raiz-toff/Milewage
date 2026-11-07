@@ -168,6 +168,10 @@ export interface ServerContext extends CoreContext {
   secrets?: SecretsStore;
   /** The Android app file `GET /app/android.apk` serves when it exists (plan 24 Q2). */
   apkPath?: string;
+  /** `MILEWAGE_PUBLIC_URL` (plan 19 section 3.2): the address in pairing codes; null to use the request's. */
+  publicUrl?: string | null;
+  /** Accept a plain http address from the driver (outside production only); default from `NODE_ENV`. */
+  httpAddressAllowed?: boolean;
   /** Start the nightly 03:30 job (off in tests). */
   backupSchedule?: boolean;
   /** Exporters; defaults to csv, gpx and geojson. A new format registers here without other edits. */

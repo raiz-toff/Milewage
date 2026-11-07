@@ -3184,7 +3184,14 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @description The driver's correction of the address (plan 19 section 3.2): an absolute https URL with no path, query or credentials; plain http only on a development server. */
+                    base_url?: string;
+                };
+            };
+        };
         responses: {
             /** @description One-time token, valid 10 minutes. */
             201: {
@@ -3199,10 +3206,18 @@ export interface operations {
                         qr_payload: string;
                         /** @description <server url>/pair#v=1&t=<token>: what the QR shows (plan 24 Q1). The phone app reads it; any other camera opens the server's pair page, which links to the app. The token is in the fragment, so it never reaches a server log. */
                         pair_url: string;
+                        /** @description The server address inside the code */
+                        base_url: string;
+                        /**
+                         * @description Where base_url came from: MILEWAGE_PUBLIC_URL, the address of this request (as the browser sees it), or the driver's base_url.
+                         * @enum {unknown}
+                         */
+                        base_url_source: "configured" | "request" | "driver";
                     };
                 };
             };
             401: components["responses"]["Unauthorized"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     downloadAndroidApp: {

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ModuleSettings } from '@milewage/shared';
 import { loadCommaOptions, type CommaOptions } from './comma-options';
+import { checkPublicUrl } from './public-url';
 
 export class ConfigError extends Error {
   override name = 'ConfigError';
@@ -26,6 +27,10 @@ export interface ServerConfig {
   comma: CommaOptions;
   /** `MILEWAGE_APK_PATH`: the phone app this server hands out (plan 24 Q2); served only if present. */
   apkPath: string;
+  /** `MILEWAGE_PUBLIC_URL`: the address phones are given (plan 19 section 3.2); null to use the request's. */
+  publicUrl: string | null;
+  /** Plain http addresses are accepted only outside production (debug builds of the app). */
+  httpAddressAllowed: boolean;
 }
 
 /** Export formats switched on: `modules.export_<format>` in the settings file, then `MILEWAGE_MODULE_EXPORT_<FORMAT>=0|1` (08 section 16.1). */
@@ -59,6 +64,7 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): S
   }
   const configDir = env.MILEWAGE_CONFIG_DIR ?? 'config';
   const settings = readSettingsFile(join(configDir, 'settings.json'));
+  const httpAddressAllowed = env.NODE_ENV !== 'production';
   const file = (settings as { backup?: { on_shift_end?: unknown; download?: unknown } }).backup;
   return {
     host: env.MILEWAGE_HOST ?? '0.0.0.0',
@@ -75,6 +81,8 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): S
     },
     comma: loadCommaOptions(settings, env),
     apkPath: env.MILEWAGE_APK_PATH || join(configDir, 'milewage.apk'),
+    publicUrl: publicUrl(env.MILEWAGE_PUBLIC_URL, httpAddressAllowed),
+    httpAddressAllowed,
     diagnostics: {
       bundle: flag(
         env.MILEWAGE_DIAGNOSTICS_BUNDLE,
@@ -83,6 +91,13 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): S
       ),
     },
   };
+}
+
+function publicUrl(value: string | undefined, allowHttp: boolean): string | null {
+  if (!value?.trim()) return null;
+  const checked = checkPublicUrl(value, allowHttp);
+  if ('error' in checked) throw new ConfigError(`MILEWAGE_PUBLIC_URL "${value}": ${checked.error}`);
+  return checked.url;
 }
 
 /** A switch: default on, then `config/settings.json`, then the environment (`0` or `1`). */

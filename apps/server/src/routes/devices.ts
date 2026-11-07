@@ -1,10 +1,12 @@
 import { createReadStream, statSync } from 'node:fs';
+import type { FastifyRequest } from 'fastify';
 import type { RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import { hashToken, newToken, type Authenticator } from '../auth/authenticator';
 import { FailureLimiter } from '../auth/limiter';
 import { createDeviceRepository, type Db, type DeviceRow } from '../db';
 import { ProblemError } from '../errors';
+import { checkPublicUrl, type BaseUrlSource } from '../public-url';
 import { idParams, str, strictObject } from './util';
 
 const redeemSchema = strictObject(
@@ -45,10 +47,22 @@ export interface DevicesContext {
   readSettings: (host: ServerRouteHost) => (userId: number) => object;
   /** The phone app file, served by `GET /app/android.apk` when it exists (plan 24 Q2). */
   apkPath?: string;
+  /** `MILEWAGE_PUBLIC_URL`: the address phones are given; null or absent to use the request's. */
+  publicUrl?: string | null;
+  /** Accept a plain http address from the driver (development only). */
+  httpAddressAllowed?: boolean;
 }
 
 /** Pairing, device credentials and the device list (08 section 2.4). */
-export function devicesRoutes({ db, now, authn, readSettings, apkPath }: DevicesContext) {
+export function devicesRoutes({
+  db,
+  now,
+  authn,
+  readSettings,
+  apkPath,
+  publicUrl,
+  httpAddressAllowed = process.env.NODE_ENV !== 'production',
+}: DevicesContext) {
   return (routeHost: RouteHost) => {
     const host = routeHost as ServerRouteHost;
     const { app } = host;
@@ -69,21 +83,52 @@ export function devicesRoutes({ db, now, authn, readSettings, apkPath }: Devices
       return { kind: 'device', userId: d.userId, deviceId: d.id };
     });
 
-    app.post('/pairing-tokens', async (req, reply) => {
+    /**
+     * The address phones are given (plan 19 section 3.2): the driver's correction, then
+     * `MILEWAGE_PUBLIC_URL`, then the address this request came in on (as the browser sees it).
+     */
+    const address = (
+      req: FastifyRequest,
+      driver?: string,
+    ): { url: string; source: BaseUrlSource } => {
+      if (driver !== undefined) {
+        const checked = checkPublicUrl(driver, httpAddressAllowed);
+        if ('error' in checked) {
+          throw new ProblemError('validation_failed', checked.error, [
+            { path: '/base_url', message: checked.error },
+          ]);
+        }
+        return { url: checked.url, source: 'driver' };
+      }
+      if (publicUrl) return { url: publicUrl, source: 'configured' };
+      const proto = first(req.headers['x-forwarded-proto']) ?? 'http';
+      const url = `${proto}://${first(req.headers['x-forwarded-host']) ?? req.headers.host}`;
+      return { url, source: 'request' };
+    };
+
+    app.post('/pairing-tokens', { bodyLimit: 4096 }, async (req, reply) => {
       const { userId } = auth(req, 'S');
+      const asked = (req.body ?? {}) as { base_url?: unknown };
+      if (asked.base_url !== undefined && typeof asked.base_url !== 'string') {
+        throw new ProblemError('validation_failed', 'base_url must be text.');
+      }
+      const { url: base, source } = address(req, asked.base_url);
       const token = newToken('mwp_');
       const createdAt = now();
       const expiresAt = createdAt + 10 * 60 * 1000;
       repo.addPairingToken({ userId, tokenHash: hashToken(token), createdAt, expiresAt });
-      const proto = first(req.headers['x-forwarded-proto']) ?? 'http';
-      const base = `${proto}://${first(req.headers['x-forwarded-host']) ?? req.headers.host}`;
       const qr = `milewage://pair?v=1&u=${encodeURIComponent(base)}&t=${token}`;
       // The QR carries the https form: the phone app reads it, and so does any camera app, which
       // opens the server's /pair page. The token is in the fragment, so no server log sees it.
       const pairUrl = `${base}/pair#v=1&t=${token}`;
-      return reply
-        .status(201)
-        .send({ token, expires_at: expiresAt, qr_payload: qr, pair_url: pairUrl });
+      return reply.status(201).send({
+        token,
+        expires_at: expiresAt,
+        qr_payload: qr,
+        pair_url: pairUrl,
+        base_url: base,
+        base_url_source: source,
+      });
     });
 
     // The app this server was built with (plan 24 Q2): no sign-in, a phone downloads it before
