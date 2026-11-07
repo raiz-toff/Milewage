@@ -33,6 +33,8 @@ export const settings = sqliteTable('settings', {
   defaultVehicleId: integer('default_vehicle_id'),
   ownRateHundredths: integer('own_rate_hundredths'),
   ownRateUnit: text('own_rate_unit', { enum: ['km', 'mi'] }),
+  onboardedAt: integer('onboarded_at'),
+  workKinds: text('work_kinds', { mode: 'json' }).$type<string[]>(),
   updatedAt: integer('updated_at').notNull(),
 });
 

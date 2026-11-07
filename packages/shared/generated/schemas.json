@@ -68,6 +68,7 @@
         "labels",
         "supports",
         "verified",
+        "work",
         "regional_rules",
         "regions"
       ],
@@ -133,6 +134,13 @@
           "type": "boolean",
           "description": "False until a person has checked the figures against the primary sources."
         },
+        "work": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorkKind"
+          },
+          "description": "Kinds of platform work the country's data covers (plan 21 section 3.6a). With one kind, onboarding does not ask (plan 23)."
+        },
         "regional_rules": {
           "type": "boolean",
           "description": "Some region or city has its own rules, so setting the region can change results."
@@ -144,6 +152,15 @@
           }
         }
       }
+    },
+    "WorkKind": {
+      "description": "Location-based platform work (plan 21 section 3.6a): food or parcel delivery, ride-hailing, motorcycle taxi, courier.",
+      "enum": [
+        "delivery",
+        "ride_hailing",
+        "moto_taxi",
+        "courier"
+      ]
     },
     "CountryPlace": {
       "type": "object",
@@ -368,6 +385,8 @@
         "week_start",
         "time_format",
         "default_vehicle_id",
+        "work_kinds",
+        "onboarded_at",
         "engine_version",
         "diagnostics",
         "modules"
@@ -480,6 +499,24 @@
           ],
           "description": "Preselected when a shift starts; always an active vehicle."
         },
+        "work_kinds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorkKind"
+          },
+          "description": "The work the driver does, among what the country offers. When none is chosen and the country offers one kind, that kind (plan 23 rule 1)."
+        },
+        "onboarded_at": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/EpochMs"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "When the driver finished the web onboarding (plan 23); null while it is not finished, so the web opens it."
+        },
         "diagnostics": {
           "$ref": "#/$defs/DiagnosticsSettings"
         }
@@ -569,6 +606,18 @@
             }
           ],
           "description": "Stored even where the country has official rates, but used only where it has none."
+        },
+        "work_kinds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/WorkKind"
+          },
+          "description": "Only kinds the country offers (422 otherwise); a new country drops the kinds it does not offer."
+        },
+        "onboarded": {
+          "type": "boolean",
+          "description": "true: onboarding finished (sets onboarded_at, keeping an earlier time); false: run it again (clears onboarded_at)."
         }
       }
     },

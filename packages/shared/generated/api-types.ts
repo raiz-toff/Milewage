@@ -1559,10 +1559,17 @@ export interface components {
             };
             /** @description False until a person has checked the figures against the primary sources. */
             verified: boolean;
+            /** @description Kinds of platform work the country's data covers (plan 21 section 3.6a). With one kind, onboarding does not ask (plan 23). */
+            work: components["schemas"]["WorkKind"][];
             /** @description Some region or city has its own rules, so setting the region can change results. */
             regional_rules: boolean;
             regions: components["schemas"]["CountryPlace"][];
         };
+        /**
+         * @description Location-based platform work (plan 21 section 3.6a): food or parcel delivery, ride-hailing, motorcycle taxi, courier.
+         * @enum {unknown}
+         */
+        WorkKind: "delivery" | "ride_hailing" | "moto_taxi" | "courier";
         CountryPlace: {
             /** @description A region: the ISO 3166-2 part after the country, as settings.region stores it (ON). A city: its full code (US-NY-NYC). */
             code: string;
@@ -1662,6 +1669,10 @@ export interface components {
             time_format: "12h" | "24h";
             /** @description Preselected when a shift starts; always an active vehicle. */
             default_vehicle_id: number | null;
+            /** @description The work the driver does, among what the country offers. When none is chosen and the country offers one kind, that kind (plan 23 rule 1). */
+            work_kinds: components["schemas"]["WorkKind"][];
+            /** @description When the driver finished the web onboarding (plan 23); null while it is not finished, so the web opens it. */
+            onboarded_at: components["schemas"]["EpochMs"] | null;
             diagnostics: components["schemas"]["DiagnosticsSettings"];
         };
         SettingsPatch: {
@@ -1687,6 +1698,10 @@ export interface components {
             default_vehicle_id?: number | null;
             /** @description Stored even where the country has official rates, but used only where it has none. */
             own_mileage_rate?: components["schemas"]["OwnMileageRate"] | null;
+            /** @description Only kinds the country offers (422 otherwise); a new country drops the kinds it does not offer. */
+            work_kinds?: components["schemas"]["WorkKind"][];
+            /** @description true: onboarding finished (sets onboarded_at, keeping an earlier time); false: run it again (clears onboarded_at). */
+            onboarded?: boolean;
         };
         OwnMileageRate: {
             /** @description Minor units of the currency per km or mile; hundredths are kept (30.5). */

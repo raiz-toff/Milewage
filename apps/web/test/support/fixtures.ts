@@ -67,6 +67,7 @@ const country = (code: string, name: string, over: Partial<Schemas['Country']> =
   labels: { region: 'state', city: null },
   supports: { mileage: true, tax: false },
   verified: false,
+  work: ['delivery' as const],
   regional_rules: false,
   regions: [],
   ...over,

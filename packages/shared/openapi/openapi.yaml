@@ -2318,7 +2318,7 @@ components:
 
     Country:
       type: object
-      required: [code, name, currency, unit, labels, supports, verified, regional_rules, regions]
+      required: [code, name, currency, unit, labels, supports, verified, work, regional_rules, regions]
       properties:
         code: { type: string, description: ISO 3166-1 alpha-2. }
         name: { type: string, description: 'From Unicode CLDR (Intl.DisplayNames), in English.' }
@@ -2338,8 +2338,12 @@ components:
             mileage: { type: boolean, description: The country has published mileage rates. }
             tax: { type: boolean, description: 'The country has a tax estimate and comma.tax_countries does not hide it.' }
         verified: { type: boolean, description: False until a person has checked the figures against the primary sources. }
+        work: { type: array, items: { $ref: '#/components/schemas/WorkKind' }, description: 'Kinds of platform work the country''s data covers (plan 21 section 3.6a). With one kind, onboarding does not ask (plan 23).' }
         regional_rules: { type: boolean, description: 'Some region or city has its own rules, so setting the region can change results.' }
         regions: { type: array, items: { $ref: '#/components/schemas/CountryPlace' } }
+    WorkKind:
+      description: 'Location-based platform work (plan 21 section 3.6a): food or parcel delivery, ride-hailing, motorcycle taxi, courier.'
+      enum: [delivery, ride_hailing, moto_taxi, courier]
     CountryPlace:
       type: object
       required: [code, name, own_rules, verified, cities]
@@ -2390,7 +2394,7 @@ components:
         countries: { type: array, items: { type: string, minLength: 2, maxLength: 2 } }
     Settings:
       type: object
-      required: [country, distance_unit, currency, timezone, raw_retention_days, stops_enabled, display_name, region, logbook, own_mileage_rate, mileage_rate, week_start, time_format, default_vehicle_id, engine_version, diagnostics, modules]
+      required: [country, distance_unit, currency, timezone, raw_retention_days, stops_enabled, display_name, region, logbook, own_mileage_rate, mileage_rate, week_start, time_format, default_vehicle_id, work_kinds, onboarded_at, engine_version, diagnostics, modules]
       properties:
         modules: { $ref: '#/components/schemas/Modules' }
         engine_version: { type: integer, description: The server's track-engine algorithmVersion (14 section 11). A phone with a lower number still shows its own result until sync. }
@@ -2416,6 +2420,8 @@ components:
         week_start: { enum: [0, 1], description: 0 Sunday, 1 Monday. Changes week boundaries, so the phone reads it. }
         time_format: { enum: [12h, 24h] }
         default_vehicle_id: { type: [integer, 'null'], description: Preselected when a shift starts; always an active vehicle. }
+        work_kinds: { type: array, items: { $ref: '#/components/schemas/WorkKind' }, description: 'The work the driver does, among what the country offers. When none is chosen and the country offers one kind, that kind (plan 23 rule 1).' }
+        onboarded_at: { oneOf: [{ $ref: '#/components/schemas/EpochMs' }, { type: 'null' }], description: 'When the driver finished the web onboarding (plan 23); null while it is not finished, so the web opens it.' }
         diagnostics: { $ref: '#/components/schemas/DiagnosticsSettings' }
     SettingsPatch:
       type: object
@@ -2437,6 +2443,8 @@ components:
         own_mileage_rate:
           oneOf: [{ $ref: '#/components/schemas/OwnMileageRate' }, { type: 'null' }]
           description: Stored even where the country has official rates, but used only where it has none.
+        work_kinds: { type: array, uniqueItems: true, items: { $ref: '#/components/schemas/WorkKind' }, description: 'Only kinds the country offers (422 otherwise); a new country drops the kinds it does not offer.' }
+        onboarded: { type: boolean, description: 'true: onboarding finished (sets onboarded_at, keeping an earlier time); false: run it again (clears onboarded_at).' }
     OwnMileageRate:
       type: object
       additionalProperties: false

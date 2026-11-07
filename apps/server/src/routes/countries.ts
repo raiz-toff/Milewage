@@ -35,6 +35,7 @@ export function countryTree(countries: readonly string[], taxShown: readonly str
           tax: c.tax !== undefined && taxShown.includes(c.code),
         },
         verified: c.verified,
+        work: [...c.work],
         regional_rules: c.places.some((p) => p.data !== undefined),
         regions: regions.map((p) => placeOf(c, p.code, c.code)),
       },

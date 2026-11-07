@@ -1,6 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import type { ModuleRegistry } from '@milewage/shared';
-import { countryModules, mileageRateSource, resolvePlace, type OwnRate } from '@milewage/shared';
+import {
+  countryModules,
+  mileageRateSource,
+  resolvePlace,
+  WORK_KINDS,
+  type OwnRate,
+} from '@milewage/shared';
 import { algorithmVersion } from '@milewage/track-engine';
 import {
   createSettingsRepository,
@@ -102,6 +108,8 @@ const patchSchema = strictObject(
         unit: { enum: ['km', 'mi'] },
       },
     },
+    work_kinds: { type: 'array', items: { enum: [...WORK_KINDS] }, uniqueItems: true },
+    onboarded: { type: 'boolean' },
   },
   [],
   { minProperties: 1 },
@@ -133,6 +141,19 @@ export function ownRateOf(row: SettingsRow | undefined): OwnRate | null {
   return row?.ownRateHundredths && row.ownRateUnit
     ? { centsPerUnit: row.ownRateHundredths / 100, unit: row.ownRateUnit }
     : null;
+}
+
+/** Work kinds the country offers (plan 21 section 3.6a); none for an unknown country. */
+const offered = (country: string): readonly string[] => countryModules.get(country)?.work ?? [];
+
+/**
+ * The driver's work kinds: the chosen ones the country offers, or, when none is chosen and the
+ * country offers only one, that one (plan 23 rule 1: a question with one answer is not asked).
+ */
+export function workKindsOf(country: string, chosen: readonly string[] | null): string[] {
+  const kinds = offered(country);
+  const mine = (chosen ?? []).filter((k) => kinds.includes(k));
+  return mine.length || kinds.length !== 1 ? mine : [...kinds];
 }
 
 /** The `Settings` response for a user. Also returned to a phone when it pairs. */
@@ -167,6 +188,8 @@ export function settingsReader(ctx: ReaderContext) {
       week_start: row.weekStart,
       time_format: row.timeFormat,
       default_vehicle_id: row.defaultVehicleId,
+      work_kinds: workKindsOf(row.country, row.workKinds),
+      onboarded_at: row.onboardedAt,
       diagnostics: {
         level: expired ? 'basic' : row.diagnosticsLevel,
         verbose_until: verbose && !expired ? row.diagnosticsVerboseUntil : null,
@@ -240,6 +263,25 @@ export function settingsRoutes(
       // Hundredths of a cent: 0.305 €/km is entered as 30.5 cents and kept exactly.
       patch.ownRateHundredths = r && Math.max(1, Math.round(r.cents_per_unit * 100));
       patch.ownRateUnit = r && r.unit;
+    }
+    if (b.work_kinds !== undefined || b.country) {
+      // Kinds the (new) country does not offer: refused when sent, dropped on a country change.
+      const sent = b.work_kinds as string[] | undefined;
+      const wrong = sent?.filter((k) => !offered(country).includes(k)) ?? [];
+      if (wrong.length) {
+        throw new ProblemError('validation_failed', 'Settings are not valid.', [
+          {
+            path: '/work_kinds',
+            message: `must be among ${offered(country).join(', ') || 'none'}`,
+          },
+        ]);
+      }
+      const kept = (sent ?? prefs?.workKinds ?? []).filter((k) => offered(country).includes(k));
+      patch.workKinds = kept.length ? kept : null;
+    }
+    if (b.onboarded !== undefined) {
+      // Finishing keeps the first time; "Run setup again" clears it so the wizard opens.
+      patch.onboardedAt = b.onboarded ? (prefs?.onboardedAt ?? now) : null;
     }
     if (b.country) patch.country = b.country.toUpperCase();
     if (b.currency) patch.currency = b.currency.toUpperCase();
