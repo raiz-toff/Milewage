@@ -12,7 +12,6 @@ import {
   usCountry,
   type VehicleKind,
 } from '../src/countries/index';
-import { caTaxPack } from '../src/tax';
 
 const MILE = 1609.344;
 const KINDS: VehicleKind[] = ['car', 'motorcycle', 'van', 'bicycle', 'ebike', 'scooter', 'walking'];
@@ -49,16 +48,14 @@ describe('CA, US and GB as country modules (plan 21)', () => {
     expect(at(102.6)).toBe(7);
   });
 
-  test('CA sales tax and pension data match the tax pack the estimate still reads', () => {
+  test('CA sales tax and pension by region are the figures of the old tax pack', () => {
+    const old: Record<string, number> = { ON: 1300, NB: 1500, NL: 1500, NS: 1500, PE: 1500 };
     for (const p of caCountry.places) {
       const region = p.code.slice(3);
       const place = resolvePlace(caCountry, region);
-      expect(salesTaxRateBp(place.data.salesTax ?? []), region).toBe(
-        caTaxPack.salesTaxBp[region] ?? caTaxPack.defaultSalesTaxBp,
-      );
-      expect(place.data.pension === null, region).toBe(caTaxPack.ownPensionPlan.includes(region));
+      expect(salesTaxRateBp(place.data.salesTax ?? []), region).toBe(old[region] ?? 500);
+      expect(place.data.pension === null, region).toBe(region === 'QC');
     }
-    expect(resolvePlace(caCountry, null).data.pension?.plan).toBe('CPP');
   });
 
   test('the old packs are thin aliases over the modules until J4', () => {

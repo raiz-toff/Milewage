@@ -1863,15 +1863,20 @@ export interface components {
                 }[];
             } | null;
             estimate: {
-                net_income_cents?: number;
-                taxable_income_cents?: number;
-                cpp_cents?: number | null;
-                cpp2_cents?: number | null;
-                pension_note?: string | null;
-                income_tax_cents?: number;
-                total_set_aside_cents?: number;
-                instalment_cents?: number;
-                sales_tax?: {
+                net_income_cents: number;
+                taxable_income_cents: number;
+                /** @description The amounts to set aside, as the country's tax pack computes them (CA, pension contribution, second band, income tax at the set-aside rate). They add up to total_set_aside_cents. */
+                lines: {
+                    /** @description Stable name */
+                    key: string;
+                    label: string;
+                    /** @description null when not estimated here; note says why. */
+                    cents: number | null;
+                    note: string | null;
+                }[];
+                total_set_aside_cents: number;
+                instalment_cents: number;
+                sales_tax: {
                     collected_cents?: number;
                     credits_cents?: number;
                     owing_cents?: number;

@@ -111,12 +111,10 @@ export function TaxPage() {
                       `− ${money(report.deductions?.mileage_cents)}`,
                     ],
                     ['Taxable income', money(est.taxable_income_cents)],
-                    [
-                      'Pension contribution (self-employed)',
-                      est.cpp_cents === null ? (est.pension_note ?? '—') : money(est.cpp_cents),
-                    ],
-                    ['Pension, second band', money(est.cpp2_cents)],
-                    [`Income tax at ${report.set_aside_bp / 100}%`, money(est.income_tax_cents)],
+                    ...est.lines.map((l) => [
+                      l.label,
+                      l.cents === null && l.note ? l.note : money(l.cents),
+                    ]),
                     ['Set aside in total', money(est.total_set_aside_cents)],
                     ['Quarterly instalment (a quarter)', money(est.instalment_cents)],
                   ].map(([k, v]) => (

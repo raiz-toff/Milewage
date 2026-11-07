@@ -1556,6 +1556,14 @@
             "object",
             "null"
           ],
+          "required": [
+            "net_income_cents",
+            "taxable_income_cents",
+            "lines",
+            "total_set_aside_cents",
+            "instalment_cents",
+            "sales_tax"
+          ],
           "properties": {
             "net_income_cents": {
               "type": "integer"
@@ -1563,26 +1571,41 @@
             "taxable_income_cents": {
               "type": "integer"
             },
-            "cpp_cents": {
-              "type": [
-                "integer",
-                "null"
-              ]
-            },
-            "cpp2_cents": {
-              "type": [
-                "integer",
-                "null"
-              ]
-            },
-            "pension_note": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "income_tax_cents": {
-              "type": "integer"
+            "lines": {
+              "type": "array",
+              "description": "The amounts to set aside, as the country's tax pack computes them (CA, pension contribution, second band, income tax at the set-aside rate). They add up to total_set_aside_cents.",
+              "items": {
+                "type": "object",
+                "required": [
+                  "key",
+                  "label",
+                  "cents",
+                  "note"
+                ],
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "description": "Stable name",
+                    "also the export row name.": null
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "cents": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "description": "null when not estimated here; note says why."
+                  },
+                  "note": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
             },
             "total_set_aside_cents": {
               "type": "integer"

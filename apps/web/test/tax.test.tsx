@@ -31,10 +31,21 @@ const report = (over: object = {}) => ({
   estimate: {
     net_income_cents: 630_000,
     taxable_income_cents: 630_000,
-    cpp_cents: 0,
-    cpp2_cents: 0,
-    pension_note: null,
-    income_tax_cents: 157_500,
+    lines: [
+      {
+        key: 'pension_contribution',
+        label: 'Pension contribution (self-employed)',
+        cents: 0,
+        note: null,
+      },
+      {
+        key: 'pension_contribution_second_band',
+        label: 'Pension, second band',
+        cents: 0,
+        note: null,
+      },
+      { key: 'income_tax_set_aside', label: 'Income tax at 25%', cents: 157_500, note: null },
+    ],
     total_set_aside_cents: 157_500,
     instalment_cents: 39_375,
     sales_tax: null,
@@ -84,6 +95,31 @@ describe('tax screen (module tax)', () => {
     expect(screen.getByRole('row', { name: /Taxable income.*\$6,300\.00/ })).toBeTruthy();
     expect(screen.getByText('Instalment 1')).toBeTruthy();
     expect(screen.getByText(/expect a T4A/)).toBeTruthy();
+  });
+
+  it("shows the country's lines as they come, with the note of a line not estimated", async () => {
+    const lines: { key: string; label: string; cents: number | null; note: string | null }[] = [
+      {
+        key: 'pension_contribution',
+        label: 'Pension contribution (self-employed)',
+        cents: null,
+        note: 'Region QC has its own pension plan; it is not estimated here.',
+      },
+      {
+        key: 'pension_contribution_second_band',
+        label: 'Pension, second band',
+        cents: null,
+        note: null,
+      },
+      { key: 'some_other_levy', label: 'Some other levy', cents: 1234, note: null },
+    ];
+    const r = report();
+    open({ ...r, estimate: { ...r.estimate, lines } } as unknown as typeof r);
+    expect(
+      await screen.findByRole('row', { name: /Pension contribution.*own pension plan/ }),
+    ).toBeTruthy();
+    expect(screen.getByRole('row', { name: /Pension, second band.*—/ })).toBeTruthy();
+    expect(screen.getByRole('row', { name: /Some other levy.*\$12\.34/ })).toBeTruthy();
   });
 
   it('says so, and shows no estimate, for a country without a pack', async () => {

@@ -151,17 +151,14 @@ export const taxSummaryExporter: Exporter = {
     if (est) {
       yield row(['Estimate', 'Net_Income', money(est.net_income_cents)]);
       yield row(['Estimate', 'Taxable_Income', money(est.taxable_income_cents)]);
-      yield row([
-        'Estimate',
-        'Pension_Contribution',
-        est.cpp_cents === null ? (est.pension_note ?? '') : money(est.cpp_cents),
-      ]);
-      yield row([
-        'Estimate',
-        'Pension_Contribution_Second_Band',
-        est.cpp2_cents === null ? '' : money(est.cpp2_cents),
-      ]);
-      yield row(['Estimate', 'Income_Tax_Set_Aside', money(est.income_tax_cents)]);
+      // Each line of the country's estimate; the row name is its key (`income_tax_set_aside` → `Income_Tax_Set_Aside`).
+      for (const l of est.lines) {
+        const name = l.key.replace(
+          /(^|_)([a-z])/g,
+          (_, sep: string, c: string) => sep + c.toUpperCase(),
+        );
+        yield row(['Estimate', name, l.cents === null ? (l.note ?? '') : money(l.cents)]);
+      }
       yield row(['Estimate', 'Total_Set_Aside', money(est.total_set_aside_cents)]);
       yield row(['Estimate', 'Instalment', money(est.instalment_cents)]);
       if (est.sales_tax) {

@@ -1,4 +1,4 @@
-import { taxPacks, type ModuleRegistry } from '@milewage/shared';
+import { countryModules, resolvePlace, type ModuleRegistry } from '@milewage/shared';
 import type { EventEmit } from './events';
 import {
   createBackupRepository,
@@ -106,9 +106,11 @@ export function evaluate(
     (Date.parse(`${date}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / DAY;
 
   if (c.registry.isEnabled('tax') && c.taxCountries.includes(prefs.country)) {
-    const pack = taxPacks.get(prefs.country);
+    const country = countryModules.get(prefs.country);
+    const place = country && resolvePlace(country, prefs.region);
     const year = Number(today.slice(0, 4));
-    for (const d of [...(pack?.deadlines(year - 1) ?? []), ...(pack?.deadlines(year) ?? [])]) {
+    const dates = (y: number) => (place && country?.tax?.deadlines(y, place)) || [];
+    for (const d of [...dates(year - 1), ...dates(year)]) {
       if (inDays(d.date) >= 0 && inDays(d.date) <= 10)
         notify(c, userId, 'tax_deadline', `tax_deadline:${d.date}`, `tax_deadline.${d.kind}`);
     }

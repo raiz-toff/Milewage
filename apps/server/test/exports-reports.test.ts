@@ -90,6 +90,8 @@ describe('tax summary', () => {
       'Mileage_Deduction,Civic,73.00',
       'Estimate,Taxable_Income,79877.00',
       'Estimate,Pension_Contribution,8460.90',
+      'Estimate,Pension_Contribution_Second_Band,422.16', // row names unchanged by plan 21 lines
+      'Estimate,Income_Tax_Set_Aside,19969.25',
       'Estimate,Total_Set_Aside,28852.31',
       'Jar,Balance,0.00',
       'Deadline,Self-employed filing,2027-06-15',
