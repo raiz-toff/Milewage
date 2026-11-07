@@ -4,10 +4,13 @@ import type { Authenticator } from '../auth/authenticator';
 import {
   createEarningsRepository,
   createSettingsRepository,
+  ENTRY_TYPES,
   totalOf,
   type Db,
+  type EarningEntry,
   type EarningsRow,
   type EffectiveOptions,
+  type EntryType,
 } from '../db';
 import { ProblemError } from '../errors';
 import { platformKnown } from './platforms';
@@ -48,6 +51,28 @@ const params = strictObject(
 );
 const shiftParams = strictObject({ ref: refParam }, ['ref']);
 const cents = { type: 'integer', minimum: 0, maximum: 1_000_000_000 };
+const entryParams = strictObject({ ...params.properties, id: { type: 'integer', minimum: 1 } }, [
+  'ref',
+  'platform',
+  'id',
+]);
+const entryBody = strictObject(
+  {
+    type: { enum: ENTRY_TYPES },
+    amount_cents: { type: 'integer', minimum: -1_000_000_000, maximum: 1_000_000_000 },
+    note: { type: ['string', 'null'], maxLength: 2000 },
+  },
+  ['type', 'amount_cents'],
+);
+/** Money the platform takes off is below zero; pay and top-ups are above (22 section 3.2). */
+const PLUS: readonly EntryType[] = ['fare', 'tip', 'bonus', 'top_up'];
+const signProblem = (type: EntryType, amount: number): string | null =>
+  amount === 0
+    ? 'must not be 0'
+    : type === 'adjustment' || PLUS.includes(type) === amount > 0
+      ? null
+      : `a ${type.replace('_', ' ')} ${PLUS.includes(type) ? 'adds money, so it must be above 0' : 'takes money off, so it must be below 0'}`;
+
 const putBody = strictObject(
   {
     gross_cents: cents,
@@ -60,16 +85,29 @@ const putBody = strictObject(
   [],
 );
 
-export const earningsView = (e: EarningsRow) => ({
+export const earningsView = (e: EarningsRow, ledger: EarningEntry[]) => ({
   platform: e.platform,
   gross_cents: e.grossCents,
   tips_cents: e.tipsCents,
   bonus_cents: e.bonusCents,
+  fees_cents: e.feesCents,
+  adjustments_cents: e.adjustmentsCents,
+  total_cents: e.grossCents + e.tipsCents + e.bonusCents + e.feesCents + e.adjustmentsCents,
+  tax_withheld_cents: e.taxWithheldCents,
+  cash_collected_cents: e.cashCollectedCents,
+  balance_cents: e.balanceCents,
   orders: e.orders,
   online_min: e.onlineMin,
   notes: e.notes,
   source: e.source,
   edited_at: e.editedAt,
+  ledger: ledger.map((x) => ({
+    id: x.id,
+    type: x.type,
+    amount_cents: x.amountCents,
+    note: x.note,
+    created_at: x.createdAt,
+  })),
 });
 
 /** Module `earnings` (18 section 4.3): the driver's typed total per shift and platform. Web session only. */
@@ -88,13 +126,26 @@ export function earningsRoutes({
     const { app, registry, bus } = host as ServerRouteHost;
     const repo = createEarningsRepository(db);
     const read = shiftReader(db, now);
+    /** The shift, when earnings may be written to it for this platform. */
+    const writable = (me: Parameters<typeof read>[0], ref: string, platform: string) => {
+      const shift = read(me, ref);
+      if (shift.status === 'active') {
+        throw new ProblemError('shift_not_ended', 'Enter earnings after the shift has ended.');
+      }
+      if (registry.isEnabled('platforms') && !platformKnown(db, me.userId, platform)) {
+        throw new ProblemError('validation_failed', 'The request is not valid.', [
+          { path: '/platform', message: 'is not one of your platforms' },
+        ]);
+      }
+      return shift;
+    };
 
     const listing = (userId: number, shiftId: number, date: string) => {
       const eff = repo
         .effective(userId, date, date, policy(registry).options(userId))
         .filter((r) => r.shiftId === shiftId);
       return {
-        entries: repo.ofShift(shiftId).map(earningsView),
+        entries: repo.ofShift(shiftId).map((e) => earningsView(e, repo.entriesOf(e.id))),
         labels: repo.labelBreakdown(shiftId).map((l) => ({
           platform: l.platform,
           payout_cents: l.payoutCents,
@@ -106,6 +157,9 @@ export function earningsRoutes({
           gross_cents: r.grossCents,
           tips_cents: r.tipsCents,
           bonus_cents: r.bonusCents,
+          fees_cents: r.feesCents,
+          adjustments_cents: r.adjustmentsCents,
+          tax_withheld_cents: r.taxWithheldCents,
           total_cents: totalOf(r),
           orders: r.orders,
           source: r.source,
@@ -127,15 +181,7 @@ export function earningsRoutes({
         const me = authn.authenticate(req, 'S');
         const { userId } = me;
         const { ref, platform } = req.params as { ref: string; platform: string };
-        const shift = read(me, ref);
-        if (shift.status === 'active') {
-          throw new ProblemError('shift_not_ended', 'Enter earnings after the shift has ended.');
-        }
-        if (registry.isEnabled('platforms') && !platformKnown(db, userId, platform)) {
-          throw new ProblemError('validation_failed', 'The request is not valid.', [
-            { path: '/platform', message: 'is not one of your platforms' },
-          ]);
-        }
+        const shift = writable(me, ref, platform);
         const b = req.body as Partial<{
           gross_cents: number;
           tips_cents: number;
@@ -159,6 +205,43 @@ export function earningsRoutes({
         });
         bus.emit('earnings.changed', { shiftId: String(shift.id) });
         return listing(userId, shift.id, shift.localDate);
+      },
+    );
+
+    // 22 section 5.2: one entry at a time; no edit, delete and add again.
+    app.post(
+      '/shifts/:ref/earnings/:platform/entries',
+      { schema: { params, body: entryBody } },
+      async (req) => {
+        const me = authn.authenticate(req, 'S');
+        const { ref, platform } = req.params as { ref: string; platform: string };
+        const shift = writable(me, ref, platform);
+        const b = req.body as { type: EntryType; amount_cents: number; note?: string | null };
+        const problem = signProblem(b.type, b.amount_cents);
+        if (problem) {
+          throw new ProblemError('validation_failed', 'The request is not valid.', [
+            { path: '/amount_cents', message: problem },
+          ]);
+        }
+        const row = { userId: me.userId, shiftId: shift.id, platform, editedAt: now() };
+        repo.addEntry(row, { type: b.type, amountCents: b.amount_cents, note: b.note ?? null });
+        bus.emit('earnings.changed', { shiftId: String(shift.id) });
+        return listing(me.userId, shift.id, shift.localDate);
+      },
+    );
+
+    app.delete(
+      '/shifts/:ref/earnings/:platform/entries/:id',
+      { schema: { params: entryParams } },
+      async (req) => {
+        const me = authn.authenticate(req, 'S');
+        const { ref, platform, id } = req.params as { ref: string; platform: string; id: number };
+        const shift = read(me, ref);
+        const row = repo.find(shift.id, platform);
+        if (row && repo.deleteEntry(row.id, id)) {
+          bus.emit('earnings.changed', { shiftId: String(shift.id) });
+        }
+        return listing(me.userId, shift.id, shift.localDate);
       },
     );
 

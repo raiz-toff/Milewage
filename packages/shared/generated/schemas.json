@@ -778,29 +778,70 @@
           "type": "array",
           "items": {
             "type": "object",
+            "description": "One row per platform. Every amount is the sum of its entries with their signs (plan 22 section 3.3).",
             "required": [
               "platform",
               "gross_cents",
               "tips_cents",
               "bonus_cents",
+              "fees_cents",
+              "adjustments_cents",
+              "total_cents",
+              "tax_withheld_cents",
+              "cash_collected_cents",
+              "balance_cents",
               "orders",
               "online_min",
               "notes",
               "source",
-              "edited_at"
+              "edited_at",
+              "ledger"
             ],
             "properties": {
               "platform": {
                 "type": "string"
               },
               "gross_cents": {
-                "type": "integer"
+                "type": "integer",
+                "description": "Sum of fare entries."
               },
               "tips_cents": {
-                "type": "integer"
+                "type": "integer",
+                "description": "Sum of tip entries."
               },
               "bonus_cents": {
+                "type": "integer",
+                "description": "Sum of bonus entries."
+              },
+              "fees_cents": {
+                "type": "integer",
+                "description": "Commission and platform fees; 0 or below."
+              },
+              "adjustments_cents": {
                 "type": "integer"
+              },
+              "total_cents": {
+                "type": "integer",
+                "description": "Earnings: gross + tips + bonus + fees + adjustments."
+              },
+              "tax_withheld_cents": {
+                "type": "integer",
+                "description": "0 or below; not part of earnings."
+              },
+              "cash_collected_cents": {
+                "type": "integer",
+                "description": "0 or below; cash in the driver's hand",
+                "not part of earnings.": null
+              },
+              "balance_cents": {
+                "type": "integer",
+                "description": "Sum of all entries; below 0 means the driver owes the platform."
+              },
+              "ledger": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EarningEntry"
+                }
               },
               "orders": {
                 "type": [
@@ -867,6 +908,9 @@
               "gross_cents",
               "tips_cents",
               "bonus_cents",
+              "fees_cents",
+              "adjustments_cents",
+              "tax_withheld_cents",
               "total_cents",
               "orders",
               "source"
@@ -882,6 +926,16 @@
                 "type": "integer"
               },
               "bonus_cents": {
+                "type": "integer"
+              },
+              "fees_cents": {
+                "type": "integer",
+                "description": "0 for stop labels."
+              },
+              "adjustments_cents": {
+                "type": "integer"
+              },
+              "tax_withheld_cents": {
                 "type": "integer"
               },
               "total_cents": {
@@ -902,6 +956,77 @@
               }
             }
           }
+        }
+      }
+    },
+    "EarningEntryType": {
+      "description": "Plan 22 section 3.2. Above 0: fare, tip, bonus, top_up. Below 0: cash_collected, commission, platform_fee, tax_withheld, payout. Either sign: adjustment.",
+      "enum": [
+        "fare",
+        "tip",
+        "bonus",
+        "cash_collected",
+        "commission",
+        "platform_fee",
+        "tax_withheld",
+        "top_up",
+        "payout",
+        "adjustment"
+      ]
+    },
+    "EarningEntryCreate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "amount_cents"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/EarningEntryType"
+        },
+        "amount_cents": {
+          "type": "integer",
+          "minimum": -1000000000,
+          "maximum": 1000000000,
+          "description": "Minor units, signed: the effect on what the platform owes the driver. Never 0."
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        }
+      }
+    },
+    "EarningEntry": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "amount_cents",
+        "note",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "type": {
+          "$ref": "#/$defs/EarningEntryType"
+        },
+        "amount_cents": {
+          "type": "integer"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "created_at": {
+          "$ref": "#/$defs/EpochMs"
         }
       }
     },

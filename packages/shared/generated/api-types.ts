@@ -660,6 +660,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/shifts/{ref}/earnings/{platform}/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Integer id or UUID client_id. */
+                ref: components["parameters"]["Ref"];
+                platform: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add one entry (plan 22) to the platform's row, creating the row if missing. The shift must be ended or finalized. The amount's sign must match the type (422 otherwise). */
+        post: operations["addEarningEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shifts/{ref}/earnings/{platform}/entries/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Integer id or UUID client_id. */
+                ref: components["parameters"]["Ref"];
+                platform: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove one entry (idempotent). The row stays; with no entries its total is 0. There is no edit; delete and add again. */
+        delete: operations["deleteEarningEntry"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/expenses": {
         parameters: {
             query?: never;
@@ -1661,9 +1704,24 @@ export interface components {
         ShiftEarnings: {
             entries: {
                 platform: string;
+                /** @description Sum of fare entries. */
                 gross_cents: number;
+                /** @description Sum of tip entries. */
                 tips_cents: number;
+                /** @description Sum of bonus entries. */
                 bonus_cents: number;
+                /** @description Commission and platform fees; 0 or below. */
+                fees_cents: number;
+                adjustments_cents: number;
+                /** @description Earnings: gross + tips + bonus + fees + adjustments. */
+                total_cents: number;
+                /** @description 0 or below; not part of earnings. */
+                tax_withheld_cents: number;
+                /** @description 0 or below; cash in the driver's hand */
+                cash_collected_cents: number;
+                /** @description Sum of all entries; below 0 means the driver owes the platform. */
+                balance_cents: number;
+                ledger: components["schemas"]["EarningEntry"][];
                 orders: number | null;
                 online_min: number | null;
                 notes: string | null;
@@ -1682,11 +1740,33 @@ export interface components {
                 gross_cents: number;
                 tips_cents: number;
                 bonus_cents: number;
+                /** @description 0 for stop labels. */
+                fees_cents: number;
+                adjustments_cents: number;
+                tax_withheld_cents: number;
                 total_cents: number;
                 orders: number | null;
                 /** @enum {unknown} */
                 source: "labels" | "entered" | "mixed";
             }[];
+        };
+        /**
+         * @description Plan 22 section 3.2. Above 0: fare, tip, bonus, top_up. Below 0: cash_collected, commission, platform_fee, tax_withheld, payout. Either sign: adjustment.
+         * @enum {unknown}
+         */
+        EarningEntryType: "fare" | "tip" | "bonus" | "cash_collected" | "commission" | "platform_fee" | "tax_withheld" | "top_up" | "payout" | "adjustment";
+        EarningEntryCreate: {
+            type: components["schemas"]["EarningEntryType"];
+            /** @description Minor units, signed: the effect on what the platform owes the driver. Never 0. */
+            amount_cents: number;
+            note?: string | null;
+        };
+        EarningEntry: {
+            id: number;
+            type: components["schemas"]["EarningEntryType"];
+            amount_cents: number;
+            note: string | null;
+            created_at: components["schemas"]["EpochMs"];
         };
         ExpenseCreate: {
             /**
@@ -4025,6 +4105,63 @@ export interface operations {
                 /** @description Integer id or UUID client_id. */
                 ref: components["parameters"]["Ref"];
                 platform: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Earnings of the shift after the change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftEarnings"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    addEarningEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Integer id or UUID client_id. */
+                ref: components["parameters"]["Ref"];
+                platform: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EarningEntryCreate"];
+            };
+        };
+        responses: {
+            /** @description Earnings of the shift after the change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftEarnings"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    deleteEarningEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Integer id or UUID client_id. */
+                ref: components["parameters"]["Ref"];
+                platform: string;
+                id: number;
             };
             cookie?: never;
         };
