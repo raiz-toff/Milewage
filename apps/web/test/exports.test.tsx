@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fileNameOf, spanDays } from '../src/pages/Exports';
 import type { Modules } from '../src/api/client';
 import { shift } from './support/fixtures';
-import { renderApp, settingsFixture, signedIn, pick, DASHBOARD } from './support/kit';
+import { renderApp, settingsFixture, signedIn, pick, pickDay, DASHBOARD } from './support/kit';
 import type { Handler } from './support/kit';
 
 const saved: { name: string; blob: Blob }[] = [];
@@ -103,6 +103,23 @@ describe('exports screen', () => {
       vehicle_id: '2',
       level: 'shift',
     });
+  });
+
+  it('the period is picked on calendars and sent as YYYY-MM-DD', async () => {
+    const seen: string[] = [];
+    open(
+      {},
+      { 'GET /exports/csv': ({ url }) => (seen.push(url.search), file({ body: undefined, url })) },
+    );
+    await screen.findByRole('button', { name: 'Download CSV' });
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+    pickDay('From', /February 20th, 2026/);
+    pickDay('To', /March 9th, 2026/);
+    expect(screen.getByLabelText<HTMLInputElement>('From').value).toBe('Feb 20, 2026');
+    fireEvent.click(screen.getByRole('button', { name: 'Download CSV' }));
+    await waitFor(() => expect(seen.length).toBe(1));
+    const q = new URLSearchParams(seen[0]);
+    expect([q.get('from'), q.get('to')]).toEqual(['2026-02-20', '2026-03-09']);
   });
 
   it('GPX gets no level parameter', async () => {

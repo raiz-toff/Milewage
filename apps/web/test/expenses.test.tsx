@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
 import { File as NodeFile } from 'node:buffer';
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bodyOf } from '../src/pages/Expenses';
-import { renderApp, settingsFixture, signedIn, menu, DASHBOARD } from './support/kit';
+import { renderApp, settingsFixture, signedIn, menu, pick, pickDay, DASHBOARD } from './support/kit';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 const cat = (slug: string, label: string, over: object = {}) => ({
   slug,
@@ -102,6 +105,27 @@ describe('expenses screen (module expenses)', () => {
       merchant: 'Tim',
       recurrence: null,
       next_due: null,
+    });
+  });
+
+  it('the date and the next due date are picked on calendars, sent as YYYY-MM-DD', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-03-15T15:00:00Z'));
+    const s = open();
+    await screen.findByText('Shell');
+    fireEvent.click(screen.getByRole('button', { name: 'Add expense' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Meals' }));
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+    pickDay('Date', /March 2nd, 2026/);
+    pick(screen.getByLabelText('Repeats'), 'monthly');
+    pickDay('Next due', /March 30th, 2026/);
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save expense' }));
+    await waitFor(() => expect(s.calls.some((c) => c.method === 'POST')).toBe(true));
+    expect(s.calls.find((c) => c.method === 'POST')?.body).toMatchObject({
+      spent_on: '2026-03-02',
+      recurrence: 'monthly',
+      next_due: '2026-03-30',
     });
   });
 

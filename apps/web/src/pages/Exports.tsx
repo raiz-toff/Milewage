@@ -5,7 +5,7 @@ import { PageHeader, Section } from '../ui/layout';
 import { ApiError, describe, unwrap } from '../api/client';
 import type { Modules, Schemas } from '../api/client';
 import { useSession, useSettings } from '../session';
-import { Field, FormError, SelectField } from '../ui/form';
+import { DateField, FormError, SelectField } from '../ui/form';
 import { localDate } from './Dashboard';
 
 type Format = Modules['exporters'][number];
@@ -155,8 +155,8 @@ export function ExportsPage() {
       />
       <Section title="Choose a period">
         <div className="grid gap-3 sm:grid-cols-4">
-          <Field label="From" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-          <Field label="To" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          <DateField label="From" value={from} onChange={setFrom} />
+          <DateField label="To" value={to} onChange={setTo} />
           {vehicles.length > 1 ? (
             <SelectField
               label="Vehicle"

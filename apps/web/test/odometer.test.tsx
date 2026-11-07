@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startOfLocalDay, toMetres } from '../src/pages/Odometer';
-import { renderApp, settingsFixture, signedIn, pick } from './support/kit';
+import { renderApp, settingsFixture, signedIn, pick, pickDay } from './support/kit';
 import type { Handler } from './support/kit';
 
 beforeEach(() => {
@@ -94,6 +94,21 @@ describe('odometer logbook', () => {
       kind: 'year_start',
       reading_m: 12_480_500,
       recorded_at: JAN_1,
+    });
+  });
+
+  it('the date is picked on a calendar and recorded at local midnight', async () => {
+    const { calls } = open([], {
+      'POST /odometer': () => ({ status: 201, body: reading(9, 'year_start', 1, 1) }),
+    });
+    await screen.findByLabelText('Odometer (km)');
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+    pickDay('Date', /March 2nd, 2026/);
+    fireEvent.change(screen.getByLabelText('Odometer (km)'), { target: { value: '100' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add reading' }));
+    await waitFor(() => expect(calls.some((c) => c.method === 'POST')).toBe(true));
+    expect(calls.find((c) => c.method === 'POST')!.body).toMatchObject({
+      recorded_at: startOfLocalDay('2026-03-02', 'America/Toronto'),
     });
   });
 
