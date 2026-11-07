@@ -16,7 +16,7 @@ import { VehicleTaxYear } from './VehicleTaxYear';
 type Vehicle = Schemas['Vehicle'];
 type Kind = Vehicle['kind'];
 
-const KINDS: { value: Kind; label: string }[] = [
+export const KINDS: { value: Kind; label: string }[] = [
   { value: 'car', label: 'Car' },
   { value: 'van', label: 'Van' },
   { value: 'motorcycle', label: 'Motorcycle' },
@@ -29,7 +29,7 @@ const kindLabel = (k: Kind) => KINDS.find((x) => x.value === k)?.label ?? k;
 
 type Ownership = Vehicle['ownership'];
 /** 21 section 3.6c: a record for the driver; no rate or tax rule reads it. */
-const OWNERSHIP: { value: Ownership; label: string }[] = [
+export const OWNERSHIP: { value: Ownership; label: string }[] = [
   { value: 'owned', label: 'Owned' },
   { value: 'financed', label: 'Financed (loan or hire purchase)' },
   { value: 'leased', label: 'Leased' },

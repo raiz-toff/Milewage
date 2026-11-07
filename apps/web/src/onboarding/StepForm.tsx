@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button';
 import { describe } from '../api/client';
 import { FormError } from '../ui/form';
 
+/** A problem with the driver's answer, shown as it is. */
+export class StepError extends Error {}
+
 /**
  * The body of a step: its question, then Continue (saves, then goes on) and, for an optional
  * step, "Skip this step" (goes on without saving). An error keeps the driver on the step.
@@ -32,7 +35,7 @@ export function StepForm({
       await save();
       next();
     } catch (err) {
-      setError(describe(err));
+      setError(err instanceof StepError ? err.message : describe(err));
     } finally {
       setBusy(false);
     }

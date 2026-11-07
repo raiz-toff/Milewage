@@ -10,6 +10,14 @@ import { Button, Field, FormError } from '../ui/form';
 
 type Platform = Schemas['Platform'];
 
+/** The slug of a platform the driver names; empty when the name has no letters or digits. */
+export const slugOf = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 32);
+
 /** Settings card of the `platforms` module (18 section 4.2): switch platforms on or off, add your own. */
 export function PlatformsCard() {
   const { api } = useSession();
@@ -44,11 +52,7 @@ export function PlatformsCard() {
 
   async function add(e: FormEvent) {
     e.preventDefault();
-    const slug = name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '_')
-      .replace(/^_+|_+$/g, '')
-      .slice(0, 32);
+    const slug = slugOf(name);
     if (!slug) return setError('Use letters or digits in the name.');
     await put(slug, { label: name.trim() });
     setName('');

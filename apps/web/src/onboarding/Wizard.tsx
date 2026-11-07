@@ -3,12 +3,19 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { unwrap } from '../api/client';
+import type { Schemas } from '../api/client';
 import type { Country } from '../countries';
 import { useSession, useSettings } from '../session';
 import { STEPS } from './steps';
 import type { OnboardingCtx } from './steps';
 
 const path = (id: string) => `/onboarding/${id}`;
+
+interface WizardData {
+  countries: Country[];
+  platforms: Schemas['Platform'][];
+  vehicles: Schemas['Vehicle'][];
+}
 
 /**
  * The first-run wizard (plan 23), after the recovery key and before the dashboard. One question
@@ -20,21 +27,32 @@ export function Onboarding() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const heading = useRef<HTMLHeadingElement>(null);
-  const [countries, setCountries] = useState<Country[] | null>(null);
+  const [data, setData] = useState<WizardData | null>(null);
+  const withPlatforms = settings.modules.platforms;
 
+  // What the steps decide from; read again after each saved answer (a region can change the apps).
+  const reload = useCallback(async () => {
+    const or = <T,>(p: Promise<T>, fallback: T) => p.catch(() => fallback);
+    const [countries, platforms, vehicles] = await Promise.all([
+      or(unwrap(api.GET('/countries')), []), // without the list, the steps that need it hide
+      withPlatforms
+        ? or(unwrap(api.GET('/platforms', { params: { query: { include_inactive: true } } })), [])
+        : [],
+      or(unwrap(api.GET('/vehicles')), []),
+    ]);
+    setData({ countries, platforms, vehicles: vehicles.filter((v) => v.archived_at === null) });
+  }, [api, withPlatforms]);
   useEffect(() => {
-    let live = true;
-    unwrap(api.GET('/countries'))
-      .then((l) => live && setCountries(l))
-      .catch(() => live && setCountries([])); // without the list, the steps that need it hide
-    return () => {
-      live = false;
-    };
-  }, [api]);
+    void reload();
+  }, [reload]);
 
+  const countries = data?.countries;
   const ctx: OnboardingCtx = {
     settings,
     country: countries?.find((c) => c.code === settings.country),
+    platforms: data?.platforms ?? [],
+    vehicles: data?.vehicles ?? [],
+    reload,
   };
   const visible = countries ? STEPS.filter((s) => s.visible(ctx)) : [];
   const id = /^\/onboarding\/([^/]+)/.exec(pathname)?.[1];

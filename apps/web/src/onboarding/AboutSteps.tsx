@@ -23,7 +23,9 @@ export function RegionStep({ ctx, next }: StepProps) {
   const word = levelWord(country);
   const [region, setRegion] = useState(ctx.settings.region ?? '');
   const save = async () => {
-    if (region !== (ctx.settings.region ?? '')) await saveSettings({ region: region || null });
+    if (region === (ctx.settings.region ?? '')) return;
+    await saveSettings({ region: region || null });
+    await ctx.reload(); // a region can add or remove apps
   };
   return (
     <StepForm save={save} next={next}>
