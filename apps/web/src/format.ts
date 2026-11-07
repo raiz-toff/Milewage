@@ -36,3 +36,7 @@ export function formatMoney(cents: number | null, currency: string): string {
   if (cents === null) return 'not available';
   return new Intl.NumberFormat('en-CA', { style: 'currency', currency }).format(cents / 100);
 }
+
+/** Money typed by the driver to whole minor units; blank is 0, anything else invalid is NaN. */
+export const toCents = (text: string): number =>
+  text.trim() === '' ? 0 : Math.round(Number(text.replace(',', '.')) * 100);

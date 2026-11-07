@@ -1052,3 +1052,11 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Tests: 2 in `earnings.test.ts` (a cash trip through the API: sums, ledger order and note, effective total and `GET /summary` 8 000, removing the commission, removing twice and through another platform's row changes nothing; rules: active shift 409, wrong signs and zero 422 with the message, unknown type, fraction, missing amount, unknown platform 422, a negative adjustment accepted, unknown shift 404, no session 401). The module matrix now covers the 404 side of both new operations with `earnings` off.
 - Assumptions (owner to confirm): A1–A4 of plan 22 §8.
 - Not done: the web (L3), the tax report lines (L4).
+
+## PR L3 — Web: earnings lines on the shift screen (Track L)
+
+- Branch `pr-L3-earnings-entries-web` (pushed, not merged), stacked on `pr-L2-earnings-entries-api`.
+- Done (plan 22 §6): `pages/EarningLedger.tsx` under the shift's Earnings block. For each platform whose row has entries other than fare, tip and bonus: one sentence with fees, tax withheld, cash collected and either "You owe the app $85.00" (balance below zero) or "Balance with the app: …", then the row's entries with a Remove button each. An "Add a line" form: platform, kind (Fare, Tip, Bonus, Cash collected, Commission, Platform fee, Tax withheld, Top-up, Payout, Correction to pay), amount typed without a sign (the kind gives it; a correction asks "Adds to pay" or "Takes off pay"), note. A row with only fare, tip and bonus looks exactly as before. `toCents` moved to `format.ts` (still exported from `ShiftEarnings`).
+- Tests: 2 new in `shiftearnings.test.tsx` (a commission is sent as −2 000 and the owed sentence and the cash line appear, a "takes off" correction is sent as −150 with its note, removing the commission calls the entry's delete and the sentence goes; a line without an amount above zero is refused with no call) and the plain row shows nothing new; the fixtures carry the L2 fields. The 4 existing tests pass.
+- Assumptions (owner to confirm): A1–A4 of plan 22 §8. Amounts are typed in major units with two decimals, as the existing form does (currencies with other digits are plan 21 §3.6b item 4).
+- Not done: the tax report lines (L4); showing a platform's balance over a week (needs entries without a shift, A2).
