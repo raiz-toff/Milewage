@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { Linking } from 'react-native';
 import { App } from '../src/App';
 import {
   DEVICE_TOKEN,
@@ -33,8 +34,16 @@ describe('settings screen', () => {
     expect(await screen.findByText('Paired to https://mw.example.net')).toBeTruthy();
     expect(await screen.findByText('Distances in miles.')).toBeTruthy();
     expect(screen.getByText('Stops and the estimated split are on.')).toBeTruthy();
+    // Unpairing asks first: Cancel keeps the pairing, Unpair removes it and says so.
     fireEvent.press(screen.getByRole('button', { name: 'Unpair this phone' }));
+    expect(await screen.findByText('Unpair this phone?')).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByText('Unpair this phone?')).toBeNull());
+    expect(screen.getByText(/Paired to/)).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: 'Unpair this phone' }));
+    fireEvent.press(await screen.findByRole('button', { name: 'Unpair' }));
     expect(await screen.findByText('Not paired.')).toBeTruthy();
+    expect(screen.getByText('Phone unpaired.')).toBeTruthy();
   });
 
   it('tracking off on the server hides the stops line and says so', async () => {
@@ -69,5 +78,41 @@ describe('settings screen', () => {
     fireEvent.changeText(screen.getByLabelText('Pairing link'), QR);
     fireEvent.press(screen.getByRole('button', { name: 'Pair' }));
     expect(await screen.findByText(/not valid, has expired or was already used/)).toBeTruthy();
+  });
+});
+
+describe('pairing link that opens the app (the phone camera scanned the QR)', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('asks which server first, then pairs', async () => {
+    jest.spyOn(Linking, 'getInitialURL').mockResolvedValueOnce(QR);
+    const server = okServer();
+    const { services } = makeServices(server.fetch);
+    render(<App services={services} />);
+    expect(await screen.findByText('Pair with this server?')).toBeTruthy();
+    expect(screen.getByText(/https:\/\/mw\.example\.net/)).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: 'Pair phone' }));
+    expect(await screen.findByText('Paired to https://mw.example.net')).toBeTruthy();
+    expect(screen.getByText('Phone paired.')).toBeTruthy();
+  });
+
+  it('Cancel leaves the phone unpaired and sends nothing', async () => {
+    jest.spyOn(Linking, 'getInitialURL').mockResolvedValueOnce(QR);
+    const server = okServer();
+    const { services } = makeServices(server.fetch);
+    render(<App services={services} />);
+    fireEvent.press(await screen.findByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByText('Pair with this server?')).toBeNull());
+    expect(screen.getByText('Not paired.')).toBeTruthy();
+    expect(server.calls.some((c) => c.path === '/pairing/redeem')).toBe(false);
+  });
+
+  it('an already paired phone says so instead of switching servers', async () => {
+    const server = okServer();
+    const { services } = makeServices(server.fetch, { paired: true });
+    jest.spyOn(Linking, 'getInitialURL').mockResolvedValueOnce(QR);
+    render(<App services={services} />);
+    expect(await screen.findByText('This phone is already paired.')).toBeTruthy();
+    expect(screen.queryByText('Pair with this server?')).toBeNull();
   });
 });

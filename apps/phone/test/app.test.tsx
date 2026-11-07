@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { colors } from '@milewage/shared';
 import { App } from '../src/App';
 import { makeServices, mockServer } from './support/mock';
 
@@ -25,10 +24,17 @@ describe('app shell', () => {
     expect(await screen.findByText('Not paired.')).toBeTruthy();
   });
 
-  it.each(['dark', 'light'] as const)('uses the %s design tokens', async (name) => {
+  it.each(['dark', 'light'] as const)('renders in the %s scheme', async (name) => {
     mockScheme = name;
     render(<App services={fakes()} />);
-    const text = await screen.findByText('No shift running.');
-    expect(text.props.style).toMatchObject({ color: colors[name].textMuted });
+    expect(await screen.findByText('No shift running.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Start shift' })).toBeTruthy();
+  });
+
+  it('asks to finish setting up until the phone is paired', async () => {
+    render(<App services={fakes()} />);
+    expect(await screen.findByLabelText('Finish setting up')).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: 'Pair this phone' }));
+    expect(await screen.findByText('Not paired.')).toBeTruthy();
   });
 });

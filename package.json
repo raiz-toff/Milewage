@@ -29,8 +29,8 @@
     "openapi:check": "node scripts/openapi-generate.mjs check && node scripts/openapi-generate.mjs lint"
   },
   "overrides": {
-    "hermes-parser": "0.35.0",
-    "babel-plugin-syntax-hermes-parser": "0.35.0"
+    "hermes-parser": "0.36.1",
+    "babel-plugin-syntax-hermes-parser": "0.36.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

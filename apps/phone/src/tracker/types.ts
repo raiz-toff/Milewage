@@ -23,6 +23,20 @@ export interface TrackerPoint {
   altitudeM: number | null;
 }
 
+/**
+ * The parts of the running-shift notification that do not change during a shift. The tracker
+ * counts the distance itself, so the notification stays current while the app is in the background.
+ */
+export interface ShiftNotice {
+  startedAt: number;
+  unit: 'km' | 'mi';
+  /** Metres of the shifts already ended today (the instance's local date). */
+  earlierM: number;
+  earlierShifts: number;
+  /** Last line of the expanded notification, for example "Started 09:02 · Toyota Prius". */
+  footer: string;
+}
+
 export interface Tracker {
   /** False when the service could not start (blank shift id, bad cadence, no permission). */
   start(shiftClientId: string, cadence?: CadenceConfig): boolean;
@@ -46,4 +60,6 @@ export interface Tracker {
   gnssOffsetMs(): number | null;
   /** Opens the system battery settings; false if it cannot. */
   requestBatteryOptimizationSettings(): boolean;
+  /** Sets what the running-shift notification says around the distance; cleared by `stop`. */
+  setNotice(notice: ShiftNotice): void;
 }

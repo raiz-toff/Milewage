@@ -20,12 +20,13 @@ import { ChangePuller } from './sync/pull';
 import { buildStatus, storageState, type SyncStatus } from './sync/status';
 import { Outbox, shiftOf } from './sync/outbox';
 import { OutboxRunner } from './sync/runner';
+import { QrScanner as CameraQrScanner } from './pairing/QrScanner';
 import { createLazyNativeTracker } from './tracker/native';
 import type { Tracker } from './tracker/types';
 import { UploadWorker } from './upload/worker';
 
 /** A camera view that reports each decoded QR text. Absent until the camera adapter is wired. */
-export type QrScanner = ComponentType<{ onScanned: (text: string) => void }>;
+export type QrScanner = ComponentType<{ onScanned: (text: string) => void; busy?: boolean }>;
 
 export interface DeviceInfo {
   make: string;
@@ -269,7 +270,7 @@ const clean = (v: unknown, fallback: string, re: RegExp) =>
 
 /**
  * Production wiring. The native tracker loads on first use, so tests never touch it.
- * NOT YET WIRED: the camera scanner. The pairing credential is in the Keystore-backed store;
+ * The pairing credential is in the Keystore-backed store;
  * the active shift, cached settings, permission flags and the diagnostics ring are in SQLite.
  */
 export function defaultServices(): Services {
@@ -283,6 +284,7 @@ export function defaultServices(): Services {
     plain,
     openAppDb: () => openExpoAppDb(),
     fetch: (url, init) => fetch(url, init),
+    scanner: CameraQrScanner,
     deviceInfo: {
       make: clean(c.Brand, 'unknown', /[^A-Za-z0-9 ._+-]/g),
       model: clean(c.Model, 'unknown', /[^A-Za-z0-9 ._+-]/g),

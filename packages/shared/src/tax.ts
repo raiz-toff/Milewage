@@ -32,6 +32,11 @@ export interface TaxPack {
   /** Reporting threshold per platform for the information slip, cents. */
   slipThresholdCents: number;
   slipName: string;
+  /**
+   * When platforms send the information slips for a tax year: from the start of the season to the
+   * date they must be sent by. Drives the "collect your slips" notification.
+   */
+  slipSeason(year: number): { from: string; by: string };
   /** Deadlines of a tax year as `MM-DD` in the year (`next`: in the following year). */
   deadlines(
     year: number,
@@ -72,6 +77,11 @@ export const caTaxPack: TaxPack = {
   defaultSalesTaxBp: 500,
   slipThresholdCents: 50_000,
   slipName: 'T4A',
+  // T4A slips must be sent by the last day of February after the tax year.
+  slipSeason: (y) => {
+    const leap = (y + 1) % 4 === 0 && ((y + 1) % 100 !== 0 || (y + 1) % 400 === 0);
+    return { from: `${y + 1}-02-01`, by: `${y + 1}-02-${leap ? 29 : 28}` };
+  },
   deadlines: (y) => [
     { date: `${y}-03-15`, kind: 'instalment', label: 'Instalment 1' },
     { date: `${y}-06-15`, kind: 'instalment', label: 'Instalment 2' },

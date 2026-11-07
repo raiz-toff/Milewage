@@ -85,9 +85,20 @@ class CommaTrackerModule : Module() {
         prefs(context).edit()
           .putBoolean("tracking_active", false)
           .remove(LocationTrackingService.KEY_SHIFT_CLIENT_ID)
+          .remove(LocationTrackingService.KEY_NOTICE)
           .apply()
         context.stopService(Intent(context, LocationTrackingService::class.java))
       }
+    }
+
+    // The parts of the running-shift notification that do not change during a shift (start time,
+    // unit, today's earlier shifts, the footer line). The distance itself is counted natively.
+    Function("setNotice") { notice: Map<String, Any?> ->
+      val context = context ?: return@Function
+      prefs(context).edit()
+        .putString(LocationTrackingService.KEY_NOTICE, org.json.JSONObject(notice).toString())
+        .apply()
+      LocationTrackingService.noticeChanged()
     }
 
     Function("isTracking") {

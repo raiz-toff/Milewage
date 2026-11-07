@@ -24,7 +24,11 @@ describe('home screen', () => {
     await waitFor(() =>
       expect(screen.getByLabelText('Distance').props.children.join('')).toBe('0.3 mi'),
     );
-    fireEvent.press(screen.getByRole('button', { name: 'End shift' }));
+    // Ending is a swipe; a tap does nothing, and a screen reader's activate action ends it.
+    const slider = screen.getByRole('button', { name: 'End shift' });
+    fireEvent.press(slider);
+    expect(screen.getByText('Shift running')).toBeTruthy();
+    fireEvent(slider, 'accessibilityAction', { nativeEvent: { actionName: 'activate' } });
     expect(await screen.findByText('Shift ended.')).toBeTruthy();
     expect(screen.getByText('No shift running.')).toBeTruthy();
   });

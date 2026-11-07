@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * MileWage brand palette (owner, 2026-11-06). The phone is the in-car app, so it is always the
+ * dark theme ("dark · default in the car"); light is for docs, readme and web.
+ *   Lane yellow #FFC21F  brand, primary action      Asphalt #101214  canvas, ink, outlines
+ *   Signal blue #4C8DFF  live position only         Earned  #34D399  money in
+ *   Spent       #FF6B5E  money out (and destructive)
+ *   Neutrals: canvas #101214, surface #181B1E, line #262A2F, secondary #8B939C, text #ECEEF0
+ * Names follow shadcn/ui so components read the same as on the web. src/theme/colors.ts mirrors
+ * these for icons; test/tokens.test.ts fails when the two drift apart.
+ */
+@layer base {
+  :root {
+    --background: 210 11.1% 7.1%;
+    --foreground: 210 11.8% 93.3%;
+    --card: 210 11.1% 10.6%;
+    --card-foreground: 210 11.8% 93.3%;
+    --popover: 210 11.1% 10.6%;
+    --popover-foreground: 210 11.8% 93.3%;
+    --primary: 44 100% 56.1%;
+    --primary-foreground: 210 11.1% 7.1%;
+    --secondary: 213 10.6% 16.7%;
+    --secondary-foreground: 210 11.8% 93.3%;
+    --muted: 213 10.6% 16.7%;
+    --muted-foreground: 212 7.9% 57.8%;
+    --accent: 213 10.6% 16.7%;
+    --accent-foreground: 210 11.8% 93.3%;
+    --destructive: 5 100% 68.4%;
+    --destructive-foreground: 210 11.1% 7.1%;
+    --border: 213 10.6% 16.7%;
+    --input: 213 10.6% 16.7%;
+    --ring: 44 100% 56.1%;
+    --signal: 218 100% 64.9%;
+    --earned: 158 64.4% 51.6%;
+    --spent: 5 100% 68.4%;
+  }
+}
