@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { changes } from '../src/pages/SettingsPage';
 import { renderApp, settingsFixture, signedIn, pick, optionsOf } from './support/kit';
 import type { Handler } from './support/kit';
+import { countriesFixture } from './support/fixtures';
 
 afterEach(cleanup);
 
@@ -146,6 +147,29 @@ describe('settings page', () => {
     expect(screen.getByLabelText('Nation')).toBeTruthy();
   });
 
+  it('offers your own mileage rate only where the country has no official rate', async () => {
+    const np = { ...countriesFixture()[0]!, code: 'NP', name: 'Nepal', regions: [] };
+    const { calls } = renderApp(
+      {
+        ...signedIn(settingsFixture({ country: 'NP', currency: 'NPR' })),
+        'GET /countries': () => ({
+          body: [...countriesFixture(), { ...np, supports: { mileage: false, tax: false } }],
+        }),
+        'PATCH /settings': ({ body }) => ({ body: settingsFixture(body as object) }),
+      },
+      '/settings',
+    );
+    const rate = await screen.findByLabelText('Your mileage rate (NPR per km)');
+    fireEvent.change(rate, { target: { value: '12.305' } });
+    fireEvent.click(save());
+    await screen.findByRole('status');
+    expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({
+      own_mileage_rate: { cents_per_unit: 1230.5, unit: 'km' },
+    });
+    pick('Country', 'CA');
+    expect(screen.queryByLabelText(/Your mileage rate/)).toBeNull();
+  });
+
   it('hides the diagnostics level when the diagnostics module is off', async () => {
     server(settingsFixture({ modules: { diagnostics: false } }), undefined, '/settings/tracking');
     await screen.findByLabelText('Keep raw GPS points (days)');
@@ -166,6 +190,7 @@ describe('settings page', () => {
       region: '',
       week_start: '1' as const,
       time_format: '24h' as const,
+      own_rate: '',
     };
     expect(changes(s, same)).toEqual({});
     expect(changes(s, { ...same, raw_retention_days: '30' })).toEqual({ raw_retention_days: 30 });

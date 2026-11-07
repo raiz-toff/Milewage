@@ -225,6 +225,13 @@ describe('shift detail', () => {
     expect(await screen.findByText('not available')).toBeTruthy();
   });
 
+  it('a deduction at the driver\'s own rate is labelled "your rate", never plain', async () => {
+    const yours = settingsFixture({ mileage_rate: 'yours' });
+    renderApp({ ...signedIn(yours), 'GET /shifts/1': () => ({ body: shift(1) }) }, '/shifts/1');
+    expect(await screen.findByText('Deduction (your rate)')).toBeTruthy();
+    expect(screen.queryByText('Deduction')).toBeNull();
+  });
+
   it('saves notes and reads them back', async () => {
     const { calls } = renderApp(
       {

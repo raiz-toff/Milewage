@@ -9,7 +9,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { describe, unwrap } from '../api/client';
 import type { Schemas, Settings } from '../api/client';
-import { formatDateTime, formatDistance, formatDuration, formatMoney, formatTime } from '../format';
+import {
+  deductionWord,
+  formatDateTime,
+  formatDistance,
+  formatDuration,
+  formatMoney,
+  formatTime,
+} from '../format';
 import { RouteView } from '../map/RouteView';
 import { useSession, useSettings } from '../session';
 import { Button, FormError } from '../ui/form';
@@ -179,7 +186,7 @@ export function ShiftCard({ shift, settings }: { shift: Shift; settings: Setting
           ) : null}
           {shift.deduction_cents !== null ? (
             <div className="text-xs text-muted-foreground tabular-nums">
-              {formatMoney(shift.deduction_cents, settings.currency)} deduction
+              {formatMoney(shift.deduction_cents, settings.currency)} {deductionWord(settings)}
             </div>
           ) : null}
         </div>
@@ -354,7 +361,10 @@ export function ShiftList() {
               ) : undefined
             }
           />
-          <StatCard label="Deduction" value={formatMoney(data.summary.deduction_cents, currency)} />
+          <StatCard
+            label={deductionWord(settings, true)}
+            value={formatMoney(data.summary.deduction_cents, currency)}
+          />
           <StatCard
             label="Hourly earnings"
             value={earnedWords(data.summary.hourly_earnings_cents, currency)}
@@ -500,7 +510,7 @@ export function ShiftDetail() {
           ) : null}
           <StatCard label="Duration" value={formatDuration(shift.started_at, shift.ended_at)} />
           <StatCard
-            label="Deduction"
+            label={deductionWord(settings, true)}
             value={formatMoney(shift.deduction_cents, settings.currency)}
           />
         </div>

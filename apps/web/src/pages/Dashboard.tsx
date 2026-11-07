@@ -206,11 +206,17 @@ export function Dashboard({ now }: { now?: number }) {
                 : `${formatMoney(summary.hourly_earnings_cents, settings.currency)} / h`}
             </Metric>
             <Metric
-              title="Deduction value"
+              title={
+                settings.mileage_rate === 'yours'
+                  ? 'Deduction value (your rate)'
+                  : 'Deduction value'
+              }
               note={
                 summary.deduction_cents === null
                   ? 'No tax rules are registered for this country.'
-                  : 'Distance times the rate for your country and year.'
+                  : settings.mileage_rate === 'yours'
+                    ? 'Distance times your rate. It is not an official rate.'
+                    : 'Distance times the rate for your country and year.'
               }
             >
               {summary.deduction_cents === null

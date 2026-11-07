@@ -31,6 +31,8 @@ export const settings = sqliteTable('settings', {
     .notNull()
     .default('24h'),
   defaultVehicleId: integer('default_vehicle_id'),
+  ownRateHundredths: integer('own_rate_hundredths'),
+  ownRateUnit: text('own_rate_unit', { enum: ['km', 'mi'] }),
   updatedAt: integer('updated_at').notNull(),
 });
 

@@ -1603,6 +1603,13 @@ export interface components {
                 readings: string;
                 notes: string[];
             } | null;
+            /** @description The driver's own rate (plan 21 Q5). Used only where the country has no official rates; it never replaces one. */
+            own_mileage_rate: components["schemas"]["OwnMileageRate"] | null;
+            /**
+             * @description Which rate values mileage: the country's published rates, the driver's own (screens and exports label it "your rate", never official), or none.
+             * @enum {unknown}
+             */
+            mileage_rate: "official" | "yours" | "none";
             /**
              * @description 0 Sunday
              * @enum {unknown}
@@ -1635,6 +1642,14 @@ export interface components {
             /** @enum {unknown} */
             time_format?: "12h" | "24h";
             default_vehicle_id?: number | null;
+            /** @description Stored even where the country has official rates, but used only where it has none. */
+            own_mileage_rate?: components["schemas"]["OwnMileageRate"] | null;
+        };
+        OwnMileageRate: {
+            /** @description Minor units of the currency per km or mile; hundredths are kept (30.5). */
+            cents_per_unit: number;
+            /** @enum {unknown} */
+            unit: "km" | "mi";
         };
         Device: {
             id: number;

@@ -2348,7 +2348,7 @@ components:
         countries: { type: array, items: { type: string, minLength: 2, maxLength: 2 } }
     Settings:
       type: object
-      required: [country, distance_unit, currency, timezone, raw_retention_days, stops_enabled, display_name, region, logbook, week_start, time_format, default_vehicle_id, engine_version, diagnostics, modules]
+      required: [country, distance_unit, currency, timezone, raw_retention_days, stops_enabled, display_name, region, logbook, own_mileage_rate, mileage_rate, week_start, time_format, default_vehicle_id, engine_version, diagnostics, modules]
       properties:
         modules: { $ref: '#/components/schemas/Modules' }
         engine_version: { type: integer, description: The server's track-engine algorithmVersion (14 section 11). A phone with a lower number still shows its own result until sync. }
@@ -2367,6 +2367,10 @@ components:
           properties:
             readings: { type: string }
             notes: { type: array, items: { type: string } }
+        own_mileage_rate:
+          oneOf: [{ $ref: '#/components/schemas/OwnMileageRate' }, { type: 'null' }]
+          description: The driver's own rate (plan 21 Q5). Used only where the country has no official rates; it never replaces one.
+        mileage_rate: { enum: [official, yours, none], description: 'Which rate values mileage: the country''s published rates, the driver''s own (screens and exports label it "your rate", never official), or none.' }
         week_start: { enum: [0, 1], description: 0 Sunday, 1 Monday. Changes week boundaries, so the phone reads it. }
         time_format: { enum: [12h, 24h] }
         default_vehicle_id: { type: [integer, 'null'], description: Preselected when a shift starts; always an active vehicle. }
@@ -2388,6 +2392,16 @@ components:
         week_start: { enum: [0, 1] }
         time_format: { enum: [12h, 24h] }
         default_vehicle_id: { type: [integer, 'null'], minimum: 1 }
+        own_mileage_rate:
+          oneOf: [{ $ref: '#/components/schemas/OwnMileageRate' }, { type: 'null' }]
+          description: Stored even where the country has official rates, but used only where it has none.
+    OwnMileageRate:
+      type: object
+      additionalProperties: false
+      required: [cents_per_unit, unit]
+      properties:
+        cents_per_unit: { type: number, exclusiveMinimum: 0, maximum: 100000, description: 'Minor units of the currency per km or mile; hundredths are kept (30.5).' }
+        unit: { enum: [km, mi] }
     Device:
       type: object
       required: [id, name, platform, created_at, last_seen_at, revoked_at]

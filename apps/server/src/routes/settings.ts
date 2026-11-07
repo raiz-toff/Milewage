@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ModuleRegistry } from '@milewage/shared';
-import { countryModules, resolvePlace } from '@milewage/shared';
+import { countryModules, mileageRateSource, resolvePlace, type OwnRate } from '@milewage/shared';
 import { algorithmVersion } from '@milewage/track-engine';
 import {
   createSettingsRepository,
@@ -93,11 +93,20 @@ const patchSchema = strictObject(
     week_start: { enum: [0, 1] },
     time_format: { enum: ['12h', '24h'] },
     default_vehicle_id: { type: ['integer', 'null'], minimum: 1 },
+    own_mileage_rate: {
+      type: ['object', 'null'],
+      additionalProperties: false,
+      required: ['cents_per_unit', 'unit'],
+      properties: {
+        cents_per_unit: { type: 'number', exclusiveMinimum: 0, maximum: 100_000 },
+        unit: { enum: ['km', 'mi'] },
+      },
+    },
   },
   [],
   { minProperties: 1 },
 );
-type Patch = Partial<Record<string, string | number | boolean | null>>;
+type Patch = Partial<Record<string, string | number | boolean | object | null>>;
 
 type ReaderContext = {
   db: Db;
@@ -119,6 +128,13 @@ function logbookOf(country: string, region: string | null) {
   return l ? { readings: l.readings, notes: [...l.notes] } : null;
 }
 
+/** The driver's own mileage rate from the settings row, or null. */
+export function ownRateOf(row: SettingsRow | undefined): OwnRate | null {
+  return row?.ownRateHundredths && row.ownRateUnit
+    ? { centsPerUnit: row.ownRateHundredths / 100, unit: row.ownRateUnit }
+    : null;
+}
+
 /** The `Settings` response for a user. Also returned to a phone when it pairs. */
 export function settingsReader(ctx: ReaderContext) {
   const repo = createSettingsRepository(ctx.db);
@@ -127,6 +143,7 @@ export function settingsReader(ctx: ReaderContext) {
     if (!row) throw new ProblemError('not_found', 'No settings for this user.');
     const verbose = row.diagnosticsLevel === 'verbose';
     const expired = verbose && (row.diagnosticsVerboseUntil ?? 0) <= ctx.now();
+    const own = ownRateOf(row);
     return {
       modules: moduleFlags(
         ctx.registry,
@@ -145,6 +162,8 @@ export function settingsReader(ctx: ReaderContext) {
       display_name: row.displayName,
       region: row.region,
       logbook: logbookOf(row.country, row.region),
+      own_mileage_rate: own && { cents_per_unit: own.centsPerUnit, unit: own.unit },
+      mileage_rate: mileageRateSource(countryModules.get(row.country), own),
       week_start: row.weekStart,
       time_format: row.timeFormat,
       default_vehicle_id: row.defaultVehicleId,
@@ -215,6 +234,12 @@ export function settingsRoutes(
         ]);
       }
       patch.defaultVehicleId = b.default_vehicle_id === null ? null : Number(b.default_vehicle_id);
+    }
+    if (b.own_mileage_rate !== undefined) {
+      const r = b.own_mileage_rate as { cents_per_unit: number; unit: 'km' | 'mi' } | null;
+      // Hundredths of a cent: 0.305 €/km is entered as 30.5 cents and kept exactly.
+      patch.ownRateHundredths = r && Math.max(1, Math.round(r.cents_per_unit * 100));
+      patch.ownRateUnit = r && r.unit;
     }
     if (b.country) patch.country = b.country.toUpperCase();
     if (b.currency) patch.currency = b.currency.toUpperCase();

@@ -3,7 +3,14 @@
 
 import { valueAt } from './dated';
 import type { MileageMethod } from './dimensions';
-import type { CountryModule, Dated, DeductionInput, Place, VehicleKind } from './types';
+import {
+  notAutomobile,
+  type CountryModule,
+  type Dated,
+  type DeductionInput,
+  type Place,
+  type VehicleKind,
+} from './types';
 
 /** One mileage rate for a vehicle class. Tiers restart at the start of each rate period. */
 export type MileageRate =
@@ -43,6 +50,28 @@ export function mileageDeduction(c: CountryModule, i: DeductionInput): number | 
   // Rounded twice, as before plan 21 (section 8): to 1/100 cent, then to a whole cent.
   const hundredths = Math.round(((firstM * first + (i.totalM - firstM) * after) / unitM) * 100);
   return Math.round(hundredths / 100);
+}
+
+/** The driver's own rate (owner decision Q5): cents, with hundredths, per km or mile. */
+export interface OwnRate {
+  centsPerUnit: number;
+  unit: 'km' | 'mi';
+}
+
+/**
+ * Which rate values the driver's mileage: the country's published rates, the driver's own rate
+ * (only where the country has none; it never replaces an official rate), or none.
+ */
+export function mileageRateSource(c: CountryModule | undefined, own: OwnRate | null) {
+  if (c && Object.keys(c.mileage.rates).length > 0) return 'official' as const;
+  return own ? ('yours' as const) : ('none' as const);
+}
+
+/** Cents at the driver's own rate; like an official rate, none for a non-automobile. */
+export function ownRateDeduction(r: OwnRate, i: Pick<DeductionInput, 'totalM' | 'vehicleKind'>) {
+  return notAutomobile(i.vehicleKind)
+    ? null
+    : Math.round((i.totalM / UNIT_METRES[r.unit]) * r.centsPerUnit);
 }
 
 /** Regions from `{ ON: 'Ontario' }`, with any data, sources or notes by region code. */

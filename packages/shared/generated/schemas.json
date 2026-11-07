@@ -363,6 +363,8 @@
         "display_name",
         "region",
         "logbook",
+        "own_mileage_rate",
+        "mileage_rate",
         "week_start",
         "time_format",
         "default_vehicle_id",
@@ -436,6 +438,25 @@
               }
             }
           }
+        },
+        "own_mileage_rate": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/OwnMileageRate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The driver's own rate (plan 21 Q5). Used only where the country has no official rates; it never replaces one."
+        },
+        "mileage_rate": {
+          "enum": [
+            "official",
+            "yours",
+            "none"
+          ],
+          "description": "Which rate values mileage: the country's published rates, the driver's own (screens and exports label it \"your rate\", never official), or none."
         },
         "week_start": {
           "enum": [
@@ -537,6 +558,39 @@
             "null"
           ],
           "minimum": 1
+        },
+        "own_mileage_rate": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/OwnMileageRate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Stored even where the country has official rates, but used only where it has none."
+        }
+      }
+    },
+    "OwnMileageRate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cents_per_unit",
+        "unit"
+      ],
+      "properties": {
+        "cents_per_unit": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100000,
+          "description": "Minor units of the currency per km or mile; hundredths are kept (30.5)."
+        },
+        "unit": {
+          "enum": [
+            "km",
+            "mi"
+          ]
         }
       }
     },

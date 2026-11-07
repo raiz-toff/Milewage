@@ -137,6 +137,8 @@ export function settingsFixture(
     display_name: null,
     region: null,
     logbook: null,
+    own_mileage_rate: null,
+    mileage_rate: 'official',
     week_start: 1,
     time_format: '24h',
     default_vehicle_id: null,
