@@ -502,6 +502,7 @@ the owner's call.
 | J6 | `pr-J6-country-contract-rules` | No-country-literal lint rule, full conformance suite, `countries/README.md` for contributors. |
 | J7 | `pr-J7-country-dimensions` | Work kinds, worker statuses, income model, expense overrides in the contract (Q8), filled only for today's use. |
 | J8 | `pr-J8-custom-mileage-rate` | Driver's own rate for a country without a pack (Q5). |
+| J9 | `pr-J9-phone-country-consistency` | Phone gets `region` and the custom rate; shows the server's deduction for synced shifts and computes only unsynced ones (also fixes actual-expenses vehicles); currency fallback uses the currency's digits (plan 24 §4.5). |
 
 **Track L, earnings as entries (Q7a), stacked on J0:** split into PRs by the builder (database and
 migration of today's rows; API; web; import), each within the size rule. Spec: [`22`](./22-earnings-entries-plan.md).
