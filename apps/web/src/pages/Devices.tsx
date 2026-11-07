@@ -7,11 +7,12 @@ import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { formatDateTime, formatTime } from '../format';
 import { useSession, useSettings } from '../session';
+import { AppButtons, useAppAvailable } from '../pairing/GetTheApp';
 import { Qr } from '../ui/Qr';
 import { Button, FormError } from '../ui/form';
 
 type Device = Schemas['Device'];
-type Pairing = { qr_payload: string; token: string; expires_at: number };
+type Pairing = { qr_payload: string; pair_url: string; token: string; expires_at: number };
 
 function DeviceRow({ device, onChanged }: { device: Device; onChanged: () => void }) {
   const { api } = useSession();
@@ -131,6 +132,7 @@ export function Devices() {
   const [devices, setDevices] = useState<Device[] | null>(null);
   const [pairing, setPairing] = useState<Pairing | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const available = useAppAvailable(api);
 
   const load = useCallback(async () => {
     try {
@@ -168,13 +170,14 @@ export function Devices() {
           {pairing ? (
             <div className="flex flex-wrap items-start gap-6">
               <div className="rounded-lg border bg-white p-2">
-                <Qr text={pairing.qr_payload} label="Pairing code" />
+                <Qr text={pairing.pair_url} label="Pairing code" />
               </div>
               <div className="min-w-0 flex-1 space-y-2">
                 <p className="text-sm text-muted-foreground">
-                  Scan in the MileWage app. Valid once, until{' '}
+                  Open MileWage on your phone and tap Scan the code. Valid once, until{' '}
                   {formatTime(pairing.expires_at, timezone)}.
                 </p>
+                <AppButtons link={pairing.qr_payload} available={available} />
                 <code className="block break-all font-mono text-xs text-muted-foreground">
                   {pairing.qr_payload}
                 </code>

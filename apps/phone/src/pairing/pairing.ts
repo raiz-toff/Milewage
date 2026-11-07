@@ -26,14 +26,19 @@ export interface PairingPayload {
 }
 
 /**
- * `milewage://pair?v=1&u=<url-encoded base URL>&t=<mwp_ token>` (08 section 2.4).
+ * `milewage://pair?v=1&u=<url-encoded base URL>&t=<mwp_ token>` (08 section 2.4), or the https
+ * form the QR shows, `<base URL>/pair#v=1&t=<token>` (plan 24 Q1), whose base is the page's own.
  * Returns null for anything else, including another version, so a scan of a stray QR does nothing.
  */
 export function parsePairingPayload(text: string): PairingPayload | null {
-  const m = /^milewage:\/\/pair\?(.*)$/.exec(text.trim());
-  if (!m) return null;
+  const page = /^(https?:\/\/[^\s/?#]+(?:\/[^\s?#]*)?)\/pair#(.*)$/.exec(text.trim());
+  // The page form's base is the page itself: a `u` inside its fragment is overridden.
+  const query = page
+    ? `${page[2]}&u=${encodeURIComponent(page[1]!)}`
+    : /^milewage:\/\/pair\?(.*)$/.exec(text.trim())?.[1];
+  if (query === undefined) return null;
   const params = new Map<string, string>();
-  for (const pair of m[1]!.split('&')) {
+  for (const pair of query.split('&')) {
     const i = pair.indexOf('=');
     if (i < 0) return null;
     try {

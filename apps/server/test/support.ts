@@ -81,6 +81,7 @@ export function harness(
     diagnosticsPath: join(dir, 'diagnostics.db'),
     backupDir: join(dir, 'backups'),
     configDir: join(dir, 'config'),
+    apkPath: join(dir, 'config', 'milewage.apk'),
   });
   let app: ReturnType<typeof buildApp>['fastify'];
   let bus: ReturnType<typeof buildApp>['bus'];

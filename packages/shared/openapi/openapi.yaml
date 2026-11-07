@@ -50,7 +50,7 @@ x-modules:
     toggle: modules.devices
     default: true
     dependsOn: [core]
-    operations: [createPairingToken, redeemPairingToken, listDevices, renameDevice, revokeDevice]
+    operations: [createPairingToken, redeemPairingToken, listDevices, renameDevice, revokeDevice, downloadAndroidApp, checkAndroidApp]
   tracking:
     toggle: modules.tracking
     default: true
@@ -323,12 +323,33 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [token, expires_at, qr_payload]
+                required: [token, expires_at, qr_payload, pair_url]
                 properties:
                   token: { type: string, pattern: '^mwp_[A-Za-z0-9_-]{43}$' }
                   expires_at: { $ref: '#/components/schemas/EpochMs' }
-                  qr_payload: { type: string, description: "milewage://pair?v=1&u=<server url>&t=<token>" }
+                  qr_payload: { type: string, description: "milewage://pair?v=1&u=<server url>&t=<token>: the link that opens the phone app (Open in the MileWage app, the code text)." }
+                  pair_url: { type: string, description: "<server url>/pair#v=1&t=<token>: what the QR shows (plan 24 Q1). The phone app reads it; any other camera opens the server's pair page, which links to the app. The token is in the fragment, so it never reaches a server log." }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /app/android.apk:
+    get:
+      tags: [devices]
+      operationId: downloadAndroidApp
+      summary: The Android app this server hands out (plan 24 Q2). No sign-in. A 404 when the owner has not put the file in place (MILEWAGE_APK_PATH, default <config>/milewage.apk).
+      security: []
+      responses:
+        '200':
+          description: The APK file.
+          content:
+            application/vnd.android.package-archive: { schema: { type: string, contentMediaType: application/vnd.android.package-archive } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    head:
+      tags: [devices]
+      operationId: checkAndroidApp
+      summary: Whether the app file is there, without downloading it (the web shows Get the app only then).
+      security: []
+      responses:
+        '200': { description: The file is there. }
+        '404': { description: No app file on this server. }
   /pairing/redeem:
     post:
       tags: [devices]

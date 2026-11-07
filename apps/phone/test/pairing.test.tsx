@@ -35,8 +35,20 @@ describe('QR payload', () => {
     expect(p).toEqual({ baseUrl: 'https://a.b:8443/mw', token: TOKEN });
   });
 
+  it('parses the https page link the QR shows; the base is the page, not a smuggled u', () => {
+    const base = { baseUrl: 'https://box.tail1.ts.net', token: TOKEN };
+    expect(parsePairingPayload(`https://box.tail1.ts.net/pair#v=1&t=${TOKEN}`)).toEqual(base);
+    const evil = `https://box.tail1.ts.net/pair#v=1&t=${TOKEN}&u=https%3A%2F%2Fevil.example`;
+    expect(parsePairingPayload(evil)).toEqual(base);
+    expect(parsePairingPayload(`https://a.b/mw/pair#v=1&t=${TOKEN}`)?.baseUrl).toBe(
+      'https://a.b/mw',
+    );
+  });
+
   it.each([
     'https://example.com',
+    `https://a.b/pair?v=1&t=${TOKEN}`,
+    `https://a.b/pair#v=2&t=${TOKEN}`,
     `milewage://pair?v=2&u=https%3A%2F%2Fa.b&t=${TOKEN}`,
     `milewage://pair?v=1&u=ftp%3A%2F%2Fa.b&t=${TOKEN}`,
     'milewage://pair?v=1&u=https%3A%2F%2Fa.b&t=mwd_short',

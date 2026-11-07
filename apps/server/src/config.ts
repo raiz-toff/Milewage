@@ -24,6 +24,8 @@ export interface ServerConfig {
   diagnostics: { bundle: boolean };
   /** Answers to the open questions of 18 section 16 (`comma` in settings.json). */
   comma: CommaOptions;
+  /** `MILEWAGE_APK_PATH`: the phone app this server hands out (plan 24 Q2); served only if present. */
+  apkPath: string;
 }
 
 /** Export formats switched on: `modules.export_<format>` in the settings file, then `MILEWAGE_MODULE_EXPORT_<FORMAT>=0|1` (08 section 16.1). */
@@ -72,6 +74,7 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): S
       download: flag(env.MILEWAGE_BACKUP_DOWNLOAD, file?.download, 'backup.download'),
     },
     comma: loadCommaOptions(settings, env),
+    apkPath: env.MILEWAGE_APK_PATH || join(configDir, 'milewage.apk'),
     diagnostics: {
       bundle: flag(
         env.MILEWAGE_DIAGNOSTICS_BUNDLE,

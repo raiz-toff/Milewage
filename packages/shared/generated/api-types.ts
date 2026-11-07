@@ -147,6 +147,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/android.apk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The Android app this server hands out (plan 24 Q2). No sign-in. A 404 when the owner has not put the file in place (MILEWAGE_APK_PATH, default <config>/milewage.apk). */
+        get: operations["downloadAndroidApp"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        /** Whether the app file is there, without downloading it (the web shows Get the app only then). */
+        head: operations["checkAndroidApp"];
+        patch?: never;
+        trace?: never;
+    };
     "/pairing/redeem": {
         parameters: {
             query?: never;
@@ -2937,12 +2955,60 @@ export interface operations {
                     "application/json": {
                         token: string;
                         expires_at: components["schemas"]["EpochMs"];
-                        /** @description milewage://pair?v=1&u=<server url>&t=<token> */
+                        /** @description milewage://pair?v=1&u=<server url>&t=<token>: the link that opens the phone app (Open in the MileWage app, the code text). */
                         qr_payload: string;
+                        /** @description <server url>/pair#v=1&t=<token>: what the QR shows (plan 24 Q1). The phone app reads it; any other camera opens the server's pair page, which links to the app. The token is in the fragment, so it never reaches a server log. */
+                        pair_url: string;
                     };
                 };
             };
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    downloadAndroidApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The APK file. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.android.package-archive": string;
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    checkAndroidApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file is there. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No app file on this server. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     redeemPairingToken: {

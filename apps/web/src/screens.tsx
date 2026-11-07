@@ -166,6 +166,7 @@ export const screens: Screen[] = [
  */
 export const spaPaths = (list: Screen[] = screens): string[] => [
   '/',
+  '/pair', // public: the pairing QR's page (main.tsx)
   ...list.flatMap((s) => (s.path.endsWith('/*') ? [s.path.slice(0, -2), s.path] : [s.path])),
 ];
 
