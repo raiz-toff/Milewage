@@ -97,3 +97,11 @@ export function lineOf(points: RoutePoint[]) {
     },
   };
 }
+
+/** The part of the route between two times (a trip), with the ends placed on the line. */
+export function segmentOf(points: RoutePoint[], from: number, to: number): RoutePoint[] {
+  const a = positionAt(points, from);
+  const b = positionAt(points, to);
+  if (!a || !b || to <= from) return [];
+  return [a, ...points.filter((p) => p.t > from && p.t < to), b];
+}
