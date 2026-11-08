@@ -18,7 +18,7 @@ const codes = {};
 // XML comments go, repeated until none is left (one pass could leave a nested `<!--` behind), and
 // only tokens shaped like CLDR codes count, so a stray fragment can never become one.
 let body = regular;
-for (let last = ''; last !== body; ) {
+for (let last = ''; last !== body;) {
   last = body;
   body = body.replace(/<!--[\s\S]*?-->/g, '');
 }
