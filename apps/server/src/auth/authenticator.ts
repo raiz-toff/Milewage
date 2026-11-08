@@ -10,6 +10,8 @@ export const hashToken = (token: string) => createHash('sha256').update(token).d
 export const newToken = (prefix: 'mwd_' | 'mwp_') => prefix + randomBytes(32).toString('base64url');
 
 export type DeviceBranch = (tokenHash: string, request: FastifyRequest) => Principal;
+/** Resolves a one-off in-process grant (`mwi_`, plan 26 section 3.3) for this exact request, or undefined. */
+export type GrantBranch = (grant: string, request: FastifyRequest) => Principal | undefined;
 
 /**
  * `authenticate(request) -> Principal` (08 section 16.5): the one place a credential is read.
@@ -17,6 +19,7 @@ export type DeviceBranch = (tokenHash: string, request: FastifyRequest) => Princ
  */
 export class Authenticator {
   private devices?: DeviceBranch;
+  private grants?: GrantBranch;
   constructor(
     private sessions: SessionRepository,
     private now: () => number,
@@ -24,6 +27,11 @@ export class Authenticator {
 
   useDeviceBranch(branch: DeviceBranch) {
     this.devices = branch;
+  }
+
+  /** The mcp module's tools call REST routes in process with a grant that acts as the web owner. */
+  useGrantBranch(branch: GrantBranch) {
+    this.grants = branch;
   }
 
   authenticate: AuthFn = ((request: FastifyRequest, allow: 'S' | 'SD' | 'D'): Principal => {
@@ -36,6 +44,12 @@ export class Authenticator {
       if (allow === 'D')
         throw new ProblemError('scope_forbidden', 'Only a paired phone can do this.');
       return session;
+    }
+    const granted = bearer.startsWith('mwi_') ? this.grants?.(bearer, request) : undefined;
+    if (granted) {
+      if (allow === 'D')
+        throw new ProblemError('scope_forbidden', 'Only a paired phone can do this.');
+      return granted;
     }
     if (!this.devices || !/^mwd_[A-Za-z0-9_-]{43}$/.test(bearer)) {
       throw new ProblemError('auth_required', 'Sign in to continue.');

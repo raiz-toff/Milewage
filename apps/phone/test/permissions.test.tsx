@@ -1,15 +1,19 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { App } from '../src/App';
 import { FakePermissions } from '../src/permissions/fake';
 import {
   advance,
+  BATTERY_VISITED,
   canStartShift,
   describeLadder,
   initialLadder,
+  loadLadder,
   refresh,
   trackingMode,
   UNKNOWN_SNAPSHOT,
+  skip,
 } from '../src/permissions/ladder';
+import { MemoryStore } from '../src/pairing/pairing';
 import { FakeTracker } from '../src/tracker/fake';
 import { makeServices } from './support/mock';
 import { mockServer } from './support/mock';
@@ -111,7 +115,11 @@ describe('permissions screen', () => {
     const permissions = new FakePermissions();
     const tracker = new FakeTracker();
     render(
-      <App services={makeServices(mockServer({}).fetch, { permissions, tracker }).services} />,
+      <App
+        services={
+          makeServices(mockServer({}).fetch, { permissions, tracker, paired: true }).services
+        }
+      />,
     );
     fireEvent.press(await screen.findByRole('button', { name: 'Settings' }));
     fireEvent.press(await screen.findByRole('button', { name: 'Permissions' }));
@@ -126,5 +134,125 @@ describe('permissions screen', () => {
     fireEvent.press(await screen.findByRole('button', { name: 'Open battery settings' }));
     await waitFor(() => expect(tracker.batterySettingsOpened).toBe(1));
     expect(permissions.requests).toEqual(['foreground', 'background', 'activity', 'notifications']);
+  });
+});
+
+describe('"Not now" during setup (24 section 4.2)', () => {
+  it('leaves the step undone and moves on; a later step is still reachable', () => {
+    let s = { ...initialLadder(), disclosureAccepted: true };
+    expect(describeLadder(s).next).toBe('foreground');
+    s = skip(s);
+    // Background needs foreground first, so the ladder goes on to activity.
+    expect(describeLadder(s).next).toBe('activity');
+    expect(describeLadder(s).steps.find((x) => x.id === 'foreground')!.state).toBe('pending');
+    s = skip(skip(skip(s)));
+    expect(describeLadder(s).next).toBeNull();
+    expect(initialLadder(undefined, true).batteryVisited).toBe(true);
+  });
+});
+
+/** Snapshots wait until the test lets each one go, to model a slow or out-of-order Android read. */
+class SlowPermissions extends FakePermissions {
+  hold = false;
+  pending: (() => void)[] = [];
+  async snapshot() {
+    const snap = { ...this.snap };
+    if (!this.hold) return snap;
+    return new Promise<typeof snap>((resolve) => this.pending.push(() => resolve(snap)));
+  }
+}
+
+const ALL_GRANTED = {
+  foregroundLocation: 'granted',
+  backgroundLocation: 'granted',
+  activityRecognition: 'granted',
+  notifications: 'granted',
+} as const;
+
+function openApp(permissions: FakePermissions) {
+  const made = makeServices(mockServer({}).fetch, { permissions, paired: true });
+  render(<App services={made.services} />);
+  return made;
+}
+
+async function openPermissions() {
+  fireEvent.press(await screen.findByRole('button', { name: 'Settings' }));
+  fireEvent.press(await screen.findByRole('button', { name: 'Permissions' }));
+}
+
+describe('permissions screen after going back and coming back', () => {
+  it('keeps every finished step done, the disclosure and battery included', async () => {
+    openApp(new FakePermissions());
+    await openPermissions();
+    for (const name of [
+      'I understand',
+      'Allow location',
+      'Allow all the time',
+      'Allow activity recognition',
+      'Allow notifications',
+      'Open battery settings',
+    ]) {
+      fireEvent.press(await screen.findByRole('button', { name }));
+    }
+    expect(await screen.findByText('6 of 6 done')).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('button', { name: 'Go back' }));
+    fireEvent.press(await screen.findByRole('button', { name: 'Permissions' }));
+    expect(await screen.findByText('6 of 6 done')).toBeTruthy();
+    expect(screen.queryByText(/including when the app is closed/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'I understand' })).toBeNull();
+  });
+
+  it('shows "Checking" until Android answers, never "Required", and then the truth', async () => {
+    const permissions = new SlowPermissions(ALL_GRANTED);
+    const { plain } = openApp(permissions);
+    plain.data.set(BATTERY_VISITED, '1');
+    await openPermissions();
+    permissions.hold = true;
+    fireEvent.press(screen.getByRole('button', { name: 'Go back' }));
+    fireEvent.press(await screen.findByRole('button', { name: 'Permissions' }));
+
+    expect(await screen.findByText('Checking…')).toBeTruthy();
+    expect(screen.queryByText('Required')).toBeNull();
+    expect(screen.queryByText('Recommended')).toBeNull();
+    expect(screen.queryByText(/including when the app is closed/)).toBeNull();
+
+    await act(async () => permissions.pending.splice(0).forEach((go) => go()));
+    expect(await screen.findByText('6 of 6 done')).toBeTruthy();
+    expect(screen.queryByText('Required')).toBeNull();
+  });
+
+  it('a slow older read does not overwrite a newer one', async () => {
+    const permissions = new SlowPermissions(ALL_GRANTED);
+    openApp(permissions);
+    await openPermissions();
+    expect(await screen.findByText('5 of 6 done')).toBeTruthy();
+
+    permissions.hold = true;
+    permissions.snap = { ...permissions.snap, foregroundLocation: 'denied' };
+    fireEvent.press(screen.getByRole('button', { name: 'Check again' }));
+    permissions.snap = { ...permissions.snap, foregroundLocation: 'granted' };
+    fireEvent.press(screen.getByRole('button', { name: 'Check again' }));
+    await waitFor(() => expect(permissions.pending).toHaveLength(2));
+    const [older, newer] = permissions.pending.splice(0);
+    await act(async () => newer());
+    await act(async () => older());
+
+    expect(await screen.findByText('5 of 6 done')).toBeTruthy();
+    expect(screen.queryByText(/Without location permission/)).toBeNull();
+  });
+});
+
+describe('loadLadder', () => {
+  it('reads the disclosure and battery facts back from the store', async () => {
+    const plain = new MemoryStore();
+    expect(await loadLadder(new FakePermissions(), plain)).toMatchObject({
+      disclosureAccepted: false,
+      batteryVisited: false,
+    });
+    plain.data.set(BATTERY_VISITED, '1');
+    // A location answer on record means the disclosure was shown first.
+    const state = await loadLadder(new FakePermissions({ foregroundLocation: 'denied' }), plain);
+    expect(state).toMatchObject({ disclosureAccepted: true, batteryVisited: true });
   });
 });

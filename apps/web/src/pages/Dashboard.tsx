@@ -1,18 +1,12 @@
-import { useEffect, useState } from 'react';
-import { describe, unwrap } from '../api/client';
-import type { Schemas } from '../api/client';
-import { formatDistance, formatMoney } from '../format';
-import { useSession, useSettings } from '../session';
-import { GoalRing, SetupChecklist } from './DashboardExtras';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Picker } from '../ui/form';
-import { Skeleton } from '@/components/ui/skeleton';
-import { EmptyState, PageHeader, Section } from '../ui/layout';
-import { Est, ShiftCard } from './Shifts';
-
-type Summary = Schemas['Summary'];
+import { useSettings } from '../session';
+import { GoalRing, Notices, SetupChecklist } from './DashboardExtras';
+import { PageHeader } from '../ui/layout';
+import { DashboardHero } from './DashboardHero';
+import { RecentShifts } from './DashboardShifts';
 
 const DAY = 86_400_000;
 
@@ -30,12 +24,12 @@ export interface Period {
 export const PERIODS: Period[] = [
   {
     id: '30d',
-    label: 'Last 30 days',
+    label: '30 days',
     range: (now, tz) => ({ from: localDate(now - 29 * DAY, tz), to: localDate(now, tz) }),
   },
   {
     id: 'month',
-    label: 'This month',
+    label: 'Month',
     range: (now, tz) => {
       const to = localDate(now, tz);
       return { from: `${to.slice(0, 7)}-01`, to };
@@ -48,7 +42,7 @@ export const PERIODS: Period[] = [
   },
   {
     id: 'week',
-    label: 'This week',
+    label: 'Week',
     range: (now, tz, weekStart = 1) => {
       const to = localDate(now, tz);
       const t = Date.parse(`${to}T00:00:00Z`);
@@ -58,7 +52,7 @@ export const PERIODS: Period[] = [
   },
   {
     id: 'year',
-    label: 'This year',
+    label: 'Year',
     range: (now, tz) => {
       const to = localDate(now, tz);
       return { from: `${to.slice(0, 4)}-01-01`, to };
@@ -66,183 +60,95 @@ export const PERIODS: Period[] = [
   },
 ];
 
-function Metric({
-  title,
-  children,
-  note,
-}: {
-  title: string;
-  children: React.ReactNode;
-  note?: string;
-}) {
-  return (
-    <Card role="region" aria-label={title}>
-      <CardContent className="space-y-2">
-        <h2 className="text-sm text-muted-foreground">{title}</h2>
-        <p className="text-3xl font-semibold tracking-tight tabular-nums">{children}</p>
-        {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}
-      </CardContent>
-    </Card>
+/**
+ * "Good afternoon, Sam" and the date, both in the driver's time zone (Comma's header), with the
+ * one thing Comma's bottom bar does that the web also does: add an expense.
+ */
+function Greeting({ now }: { now: number }) {
+  const { display_name: name, timezone, modules } = useSettings();
+  const hour = Number(
+    new Intl.DateTimeFormat('en-GB', {
+      timeZone: timezone,
+      hour: 'numeric',
+      hourCycle: 'h23',
+    }).format(now),
   );
-}
-
-/** The latest few shifts, as on the Shifts page. Hidden when they cannot be read. */
-function RecentShifts() {
-  const { api } = useSession();
-  const settings = useSettings();
-  const [rows, setRows] = useState<Schemas['Shift'][] | null>(null);
-  useEffect(() => {
-    let live = true;
-    void unwrap(api.GET('/shifts', { params: { query: { limit: 5 } } }))
-      .then((p) => live && setRows(p.items))
-      .catch(() => live && setRows(null));
-    return () => {
-      live = false;
-    };
-  }, [api]);
-  if (!rows) return null;
+  const part = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
+  const date = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  }).format(now);
   return (
-    <Section
-      title="Recent shifts"
-      label="Recent shifts"
-      action={
-        <Button asChild variant="ghost" size="sm">
-          <Link to="/shifts">View all</Link>
+    <PageHeader title={`Good ${part}${name ? `, ${name}` : ''}`} description={date}>
+      {modules.expenses ? (
+        <Button asChild variant="outline">
+          <Link to="/expenses?new">
+            <Plus />
+            Add expense
+          </Link>
         </Button>
-      }
-    >
-      {rows.length === 0 ? (
-        <EmptyState>No shifts yet. Shifts start on the phone.</EmptyState>
-      ) : (
-        <ul className="space-y-3">
-          {rows.map((s) => (
-            <li key={s.id}>
-              <ShiftCard shift={s} settings={settings} />
-            </li>
-          ))}
-        </ul>
-      )}
-    </Section>
+      ) : null}
+    </PageHeader>
   );
 }
 
 /**
- * The three dashboard metrics of 05 section 4 and nothing else: hourly earnings, deduction
- * value, and the active/deadhead split. Earnings come from the driver's own stop labels, so
- * "not entered" is shown when there are none, never zero.
+ * The dashboard, laid out like the Comma phone app's Home: greeting, the earnings hero with its
+ * tiles and deduction tip, then setup, goal and the latest shifts. Only data MileWage has.
  */
 export function Dashboard({ now }: { now?: number }) {
-  const { api } = useSession();
   const settings = useSettings();
-  const [period, setPeriod] = useState(PERIODS[0]!.id);
-  const [summary, setSummary] = useState<Summary | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const { from, to } = PERIODS.find((p) => p.id === period)!.range(
-    now ?? Date.now(),
-    settings.timezone,
-    settings.week_start,
-  );
-
-  useEffect(() => {
-    let live = true;
-    setSummary(null);
-    setError(null);
-    void unwrap(api.GET('/summary', { params: { query: { from, to } } }))
-      .then((s) => live && setSummary(s))
-      .catch((e) => live && setError(describe(e)));
-    return () => {
-      live = false;
-    };
-  }, [api, from, to]);
-
-  const stops = settings.modules.stops;
-  const unit = settings.distance_unit;
+  const at = now ?? Date.now();
+  const [period, setPeriod] = useState('week');
+  const [ref, wide] = useWide(896);
+  const hero = <DashboardHero now={at} period={period} onPeriod={setPeriod} />;
+  const goal = settings.modules.goals ? <GoalRing /> : null;
   return (
-    <section className="space-y-6">
-      <PageHeader
-        title="Dashboard"
-        description={
-          <span className="tabular-nums">
-            {from} to {to}
-          </span>
-        }
-      >
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <label htmlFor="dashboard-period">Period</label>
-          <Picker
-            id="dashboard-period"
-            className="w-auto min-w-32"
-            value={period}
-            onChange={setPeriod}
-            options={PERIODS.map((p) => ({ value: p.id, label: p.label }))}
-          />
-        </div>
-      </PageHeader>
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      ) : summary === null ? (
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Skeleton className="h-32 rounded-xl" />
-          <Skeleton className="h-32 rounded-xl" />
-          <Skeleton className="h-32 rounded-xl" />
+    <section ref={ref} className="space-y-6">
+      <Greeting now={at} />
+      <div className="space-y-3 empty:hidden">
+        <Notices today={localDate(at, settings.timezone)} />
+      </div>
+      {wide ? (
+        // Wide: setup and goal form a side column; without either the main column takes it all.
+        <div className="grid grid-cols-[minmax(0,1fr)_20rem] items-start gap-6 has-[>[data-side]:empty]:grid-cols-1">
+          <div className="min-w-0 space-y-6">
+            {hero}
+            <RecentShifts />
+          </div>
+          <div data-side="" className="space-y-4 empty:hidden">
+            <SetupChecklist />
+            {goal}
+          </div>
         </div>
       ) : (
-        <div className="space-y-2">
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Metric
-              title="Hourly earnings"
-              note={
-                stops
-                  ? 'Pay plus tips from your stop labels, divided by shift hours.'
-                  : 'Needs stop labels. Detecting stops is switched off.'
-              }
-            >
-              {summary.hourly_earnings_cents === null
-                ? stops
-                  ? 'not entered'
-                  : 'unavailable'
-                : `${formatMoney(summary.hourly_earnings_cents, settings.currency)} / h`}
-            </Metric>
-            <Metric
-              title="Deduction value"
-              note={
-                summary.deduction_cents === null
-                  ? 'No tax rules are registered for this country.'
-                  : 'Distance times the rate for your country and year.'
-              }
-            >
-              {summary.deduction_cents === null
-                ? 'not available'
-                : formatMoney(summary.deduction_cents, settings.currency)}
-            </Metric>
-            {stops ? (
-              <Metric title="Active vs deadhead">
-                {formatDistance(summary.active_m, unit)} /{' '}
-                {formatDistance(summary.deadhead_m, unit)}
-                <Est />
-              </Metric>
-            ) : (
-              <Metric title="Business distance">
-                {formatDistance(summary.active_m + summary.deadhead_m, unit)}
-              </Metric>
-            )}
-          </div>
-          <div className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
-            <p className="tabular-nums">
-              {summary.shift_count} {summary.shift_count === 1 ? 'shift' : 'shifts'},{' '}
-              {summary.hours.toFixed(1)} hours, {formatDistance(summary.total_m, unit)} in total.
-            </p>
-            {stops ? <p>* estimated from detected stops</p> : null}
-          </div>
+        // Narrow: one column with setup first while it is unfinished (Comma has it below the goal).
+        <div className="space-y-6">
+          <SetupChecklist />
+          {hero}
+          {goal}
+          <RecentShifts />
         </div>
       )}
-      <div className="grid items-start gap-4 lg:grid-cols-2">
-        <SetupChecklist />
-        {settings.modules.goals ? <GoalRing /> : null}
-      </div>
-      <RecentShifts />
     </section>
   );
+}
+
+/** Whether the element is at least `px` wide (the sidebar takes part of the window). */
+function useWide(px: number) {
+  const ref = useRef<HTMLElement>(null);
+  const [wide, setWide] = useState(false);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // A little slack going back, so a scroll bar coming and going cannot flip it back and forth.
+    const check = () => setWide((was) => el.clientWidth >= (was ? px - 24 : px));
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [px]);
+  return [ref, wide] as const;
 }

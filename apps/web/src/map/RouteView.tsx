@@ -1,78 +1,144 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { ElasticSlider } from '@/components/elastic-slider';
 import { Section } from '../ui/layout';
 import { ApiError, unwrap } from '../api/client';
+import type { Schemas } from '../api/client';
 import { formatTime } from '../format';
 import { useSession, useSettings } from '../session';
 import { positionAt, speedIn, timeAt, toPoints } from './route';
 import type { RoutePoint } from './route';
+import type { MapPick, MapStop } from './MapView';
+import type { Picked } from '../pages/ShiftTimeline';
 
 const MapView = lazy(() => import('./MapView'));
 const STEPS = 1000;
 
-/** Route map and replay scrubber for one shift (module `replay`). */
-export function RouteView({ shiftId }: { shiftId: number }) {
-  const { api } = useSession();
-  const settings = useSettings();
-  const [points, setPoints] = useState<RoutePoint[] | null>(null);
-  const [source, setSource] = useState<'raw' | 'archive'>('raw');
-  const [note, setNote] = useState<string | null>(null);
-  const [step, setStep] = useState(0);
+const NONE: never[] = [];
+const NOTE = 'rounded-xl border border-dashed p-4 text-sm text-muted-foreground';
 
+/** A shift's recorded route; `points` is null while it loads and empty when there is none. */
+export interface ShiftRoute {
+  points: RoutePoint[] | null;
+  source: 'raw' | 'archive';
+  note: string | null;
+}
+
+/** Reads the route once per shift; asks nothing while `on` is false (module off, still running). */
+export function useShiftRoute(shiftId: number, on: boolean): ShiftRoute {
+  const { api } = useSession();
+  const [route, setRoute] = useState<ShiftRoute>({ points: null, source: 'raw', note: null });
   useEffect(() => {
+    if (!on) return;
     let live = true;
     void unwrap(api.GET('/shifts/{ref}/route', { params: { path: { ref: String(shiftId) } } }))
-      .then((r) => {
-        if (!live) return;
-        setSource(r.source);
-        setPoints(toPoints(r));
-        setStep(0);
-      })
+      .then((r) => live && setRoute({ points: toPoints(r), source: r.source, note: null }))
       .catch((e) => {
         if (!live) return;
-        setPoints([]);
         // 404 is the normal "no route" answer: replay off on the server, or nothing recorded.
-        setNote(
-          e instanceof ApiError && e.status === 404
-            ? 'No route is available for this shift.'
-            : 'The route could not be loaded.',
-        );
+        setRoute({
+          points: [],
+          source: 'raw',
+          note:
+            e instanceof ApiError && e.status === 404
+              ? 'No route is available for this shift.'
+              : 'The route could not be loaded.',
+        });
       });
     return () => {
       live = false;
     };
-  }, [api, shiftId]);
+  }, [api, shiftId, on]);
+  return route;
+}
+
+/**
+ * Route map and replay scrubber for one shift (module `replay`), with the shift's stops numbered
+ * as in the timeline. `picked` (from the timeline) is shown on the map; a stop clicked on the map
+ * is picked through `onPick`.
+ */
+export function RouteView({
+  route,
+  trips = NONE,
+  stops = NONE,
+  picked = null,
+  onPick,
+}: {
+  route: ShiftRoute;
+  trips?: Schemas['Trip'][];
+  stops?: Schemas['Stop'][];
+  picked?: Picked;
+  onPick?: (p: Picked) => void;
+}) {
+  const settings = useSettings();
+  const { points, source, note } = route;
+  const [step, setStep] = useState(0);
+  useEffect(() => setStep(0), [points]);
 
   const cursor = useMemo(
     () => (points && points.length ? positionAt(points, timeAt(points, step, STEPS)) : null),
     [points, step],
   );
 
+  const mapStops = useMemo(
+    (): MapStop[] =>
+      [...stops]
+        .sort((a, b) => a.started_at - b.started_at)
+        .map((s, i) => ({
+          key: s.stop_key,
+          n: i + 1,
+          lat: s.lat_e7 / 1e7,
+          lon: s.lon_e7 / 1e7,
+          low: s.confidence === 'low',
+        })),
+    [stops],
+  );
+  const trip = picked?.kind === 'trip' ? trips.find((t) => t.id === picked.id) : undefined;
+  const pick: MapPick = trip
+    ? { trip: [trip.started_at, trip.ended_at] }
+    : picked?.kind === 'stop'
+      ? { stop: picked.key }
+      : null;
+
   if (points === null) return <p className="text-muted-foreground">Loading route</p>;
   if (points.length === 0)
-    return <p className="text-muted-foreground">{note ?? 'No route points were recorded.'}</p>;
+    return (
+      <p className={NOTE}>
+        {note ?? 'No route points were recorded.'} The timeline lists the trips and stops.
+      </p>
+    );
 
   const tz = settings.timezone;
   return (
-    <Section label="Route" title="Route">
+    <Section
+      label="Route"
+      title="Route"
+      description="Numbers are the stops in the timeline. Pick a trip or a stop there to find it here."
+    >
       <Suspense fallback={<p className="text-muted-foreground">Loading map</p>}>
-        <MapView points={points} cursor={cursor} />
-      </Suspense>
-      <div className="flex items-center gap-4">
-        <input
-          type="range"
-          aria-label="Replay position"
-          className="flex-1 accent-primary"
-          min={0}
-          max={STEPS}
-          value={step}
-          onChange={(e) => setStep(Number(e.target.value))}
+        <MapView
+          points={points}
+          cursor={step > 0 ? cursor : null}
+          stops={mapStops}
+          pick={pick}
+          onPickStop={(key) => onPick?.({ kind: 'stop', key })}
         />
-        {cursor ? (
-          <output className="w-64 tabular-nums text-sm text-muted-foreground">
-            {formatTime(cursor.t, tz)} · {speedIn(cursor.speed, settings.distance_unit)}
-          </output>
-        ) : null}
-      </div>
+      </Suspense>
+      {/* chanhdai's Elastic Slider (owner's pick, 2026-11-08): the label and the time sit inside
+          the track; it stretches when dragged past an end. */}
+      <ElasticSlider
+        label="Replay"
+        aria-label="Replay position"
+        min={0}
+        max={STEPS}
+        step={1}
+        value={step}
+        onValueChange={setStep}
+        formatValue={() =>
+          cursor
+            ? `${formatTime(cursor.t, tz)} · ${speedIn(cursor.speed, settings.distance_unit)}`
+            : ''
+        }
+      />
       {cursor ? (
         <p className="tabular-nums text-xs text-muted-foreground">
           {cursor.lat.toFixed(5)}, {cursor.lon.toFixed(5)}

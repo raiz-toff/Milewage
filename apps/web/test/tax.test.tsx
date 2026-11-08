@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { renderApp, settingsFixture, signedIn, pick } from './support/kit';
+import { renderApp, settingsFixture, signedIn, pick, DASHBOARD } from './support/kit';
 
 afterEach(cleanup);
 
@@ -14,6 +14,7 @@ const report = (over: object = {}) => ({
   unverified: true,
   set_aside_bp: 2500,
   sales_tax_registered: false,
+  sales_tax_name: 'HST',
   notices: ['Estimates to bring to an accountant, not tax advice. Nothing here is filed.'],
   income: {
     gross_cents: 700_000,
@@ -31,10 +32,21 @@ const report = (over: object = {}) => ({
   estimate: {
     net_income_cents: 630_000,
     taxable_income_cents: 630_000,
-    cpp_cents: 0,
-    cpp2_cents: 0,
-    pension_note: null,
-    income_tax_cents: 157_500,
+    lines: [
+      {
+        key: 'pension_contribution',
+        label: 'Pension contribution (self-employed)',
+        cents: 0,
+        note: null,
+      },
+      {
+        key: 'pension_contribution_second_band',
+        label: 'Pension, second band',
+        cents: 0,
+        note: null,
+      },
+      { key: 'income_tax_set_aside', label: 'Income tax at 25%', cents: 157_500, note: null },
+    ],
     total_set_aside_cents: 157_500,
     instalment_cents: 39_375,
     sales_tax: null,
@@ -86,6 +98,48 @@ describe('tax screen (module tax)', () => {
     expect(screen.getByText(/expect a T4A/)).toBeTruthy();
   });
 
+  it("shows the country's lines as they come, with the note of a line not estimated", async () => {
+    const lines: { key: string; label: string; cents: number | null; note: string | null }[] = [
+      {
+        key: 'pension_contribution',
+        label: 'Pension contribution (self-employed)',
+        cents: null,
+        note: 'Region QC has its own pension plan; it is not estimated here.',
+      },
+      {
+        key: 'pension_contribution_second_band',
+        label: 'Pension, second band',
+        cents: null,
+        note: null,
+      },
+      { key: 'some_other_levy', label: 'Some other levy', cents: 1234, note: null },
+    ];
+    const r = report();
+    open({ ...r, estimate: { ...r.estimate, lines } } as unknown as typeof r);
+    expect(
+      await screen.findByRole('row', { name: /Pension contribution.*own pension plan/ }),
+    ).toBeTruthy();
+    expect(screen.getByRole('row', { name: /Pension, second band.*—/ })).toBeTruthy();
+    expect(screen.getByRole('row', { name: /Some other levy.*\$12\.34/ })).toBeTruthy();
+  });
+
+  it('shows platform fees and withheld tax only when there are some (plan 22)', async () => {
+    open();
+    await screen.findByRole('heading', { name: `Estimate for ${YEAR}` });
+    expect(screen.queryByText(/Platform fees|Tax withheld/)).toBeNull();
+    cleanup();
+    const base = report();
+    open(
+      report({
+        income: { ...base.income, fees_cents: -20_000, tax_withheld_cents: -3000 },
+      }),
+    );
+    expect(
+      await screen.findByRole('row', { name: /Platform fees \(already taken off\).*-\$200\.00/ }),
+    ).toBeTruthy();
+    expect(screen.getByRole('row', { name: /Tax withheld by platforms.*\$30\.00/ })).toBeTruthy();
+  });
+
   it('says so, and shows no estimate, for a country without a pack', async () => {
     open(
       report({
@@ -110,7 +164,8 @@ describe('tax screen (module tax)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save rate' }));
     await waitFor(() => expect(s.calls.some((c) => c.method === 'PUT')).toBe(true));
     expect(s.calls.find((c) => c.method === 'PUT')?.body).toEqual({ set_aside_bp: 3000 });
-    fireEvent.click(screen.getByLabelText('Registered for GST/HST'));
+    // The sales tax is named from the country data of the driver's place, not by the screen.
+    fireEvent.click(screen.getByLabelText('Registered for HST'));
     await waitFor(() => expect(s.calls.filter((c) => c.method === 'PUT')).toHaveLength(2));
     expect(s.calls.filter((c) => c.method === 'PUT')[1]?.body).toEqual({
       sales_tax_registered: true,
@@ -128,7 +183,7 @@ describe('tax screen (module tax)', () => {
 
   it('is absent when the module is off', async () => {
     const s = open(report(), false);
-    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: DASHBOARD })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Tax' })).toBeNull();
     expect(s.calls.some((c) => c.path.startsWith('/tax'))).toBe(false);
   });
@@ -179,13 +234,13 @@ describe('vehicle tax-year panel', () => {
         '/vehicles',
       );
     const on = mk(true);
-    pick(await screen.findByLabelText(/Deduct Corolla in/), 'actual_expenses');
+    pick(await screen.findByLabelText(/deduction for Corolla/), 'actual_expenses');
     await waitFor(() => expect(on.calls.some((c) => c.method === 'PUT')).toBe(true));
     expect(on.calls.find((c) => c.method === 'PUT')?.body).toEqual({ method: 'actual_expenses' });
     cleanup();
     const off = mk(false);
     await screen.findByText('Corolla');
-    expect(screen.queryByLabelText(/Deduct Corolla in/)).toBeNull();
+    expect(screen.queryByLabelText(/deduction for Corolla/)).toBeNull();
     expect(off.calls.some((c) => c.path.includes('tax-years'))).toBe(false);
   });
 });

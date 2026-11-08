@@ -2,9 +2,13 @@
 # MileWage first-run script for a home-lab host (10 section 8, install guide: infra/docs/install.md).
 # Writes infra/docker/.env (never overwrites one), builds and starts the stack, waits until it is healthy.
 #
+# Then the Tailscale step (plan 19 section 3.4): asks, runs `tailscale serve`, writes MILEWAGE_PUBLIC_URL.
+#
 # Usage: infra/install.sh [--port N] [--subnet CIDR] [--env-file PATH] [--no-start]
+#                         [--yes-tailscale | --no-tailscale]
 #   --env-file PATH  where to write the .env (default: infra/docker/.env); used by the tests
 #   --no-start       write the .env and stop (the "dry run")
+#   --yes-tailscale  turn on https through Tailscale without asking; --no-tailscale skips that step
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -12,6 +16,7 @@ port=8080
 subnet="172.29.88.0/24"
 env_file="$here/docker/.env"
 start=1
+tailscale_answer=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -19,7 +24,9 @@ while [ $# -gt 0 ]; do
     --subnet) subnet="${2:?--subnet needs a CIDR}"; shift 2 ;;
     --env-file) env_file="${2:?--env-file needs a path}"; shift 2 ;;
     --no-start) start=0; shift ;;
-    -h | --help) sed -n '2,9p' "$0"; exit 0 ;;
+    --yes-tailscale) tailscale_answer=y; shift ;;
+    --no-tailscale) tailscale_answer=n; shift ;;
+    -h | --help) sed -n '2,12p' "$0"; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
 done
@@ -46,6 +53,7 @@ else
     echo "Port $port is in use on this host; trying $((port + 1))." >&2
     port=$((port + 1))
   done
+  gateway="${subnet%.*/*}.1" # the network's first address: where Caddy sees the host's proxy come from
   mkdir -p "$(dirname "$env_file")"
   umask 077
   cat >"$env_file" <<EOF
@@ -53,6 +61,7 @@ else
 # are created in the browser on first run (08 section 2.3).
 MILEWAGE_HOST_PORT=$port
 MILEWAGE_PROXY_SUBNET=$subnet
+MILEWAGE_PROXY_GATEWAY=$gateway
 EOF
   echo "Wrote $env_file (port $port, proxy subnet $subnet)."
 fi
@@ -75,15 +84,102 @@ docker compose --env-file "$env_file" -f "$here/docker/docker-compose.yml" up -d
 url="http://127.0.0.1:${MILEWAGE_HOST_PORT}"
 curl -fsS "$url/healthz" >/dev/null || { echo "The stack is up but $url/healthz does not answer." >&2; exit 1; }
 
-cat <<EOF
+echo
+echo "MileWage is running at $url (loopback only)."
 
-MileWage is running at $url (loopback only).
+compose=(docker compose --env-file "$env_file" -f "$here/docker/docker-compose.yml")
+manual() {
+  cat <<EOF
 
 Next, on this host:
-  1. Open $url in a browser and create the owner account. Write down the recovery key it shows:
-     it is the only way to restore a backup. You must type its last 6 characters back to finish setup.
-  2. Install Tailscale on this host and on the phone, then (see infra/docs/install.md section 3,
+  1. Install Tailscale on this host and on the phone, then (see infra/docs/install.md section 3,
      including the privacy note about machine names before you enable HTTPS):
          tailscale serve --bg ${MILEWAGE_HOST_PORT}
-  3. Pair the phone from the web client (a QR code), using the https://<host>.<tailnet>.ts.net address.
+  2. Open https://<host>.<tailnet>.ts.net in a browser and create the owner account. Write down the
+     recovery key it shows: it is the only way to restore a backup.
+  3. In MileWage, follow the setup steps: Get the app, then Pair your phone.
+EOF
+}
+
+# The Tailscale step (plan 19 section 3.4). It never installs Tailscale, never signs in for the
+# driver and never runs `tailscale funnel` (that would put the server on the public internet).
+if [ "$tailscale_answer" = n ]; then
+  manual
+  exit 0
+fi
+if ! command -v tailscale >/dev/null 2>&1; then
+  echo
+  echo "Tailscale is not installed on this host. Install it from https://tailscale.com/download,"
+  echo "sign in, then run this script again (or follow the steps below)."
+  manual
+  exit 0
+fi
+status="$(tailscale status --json --peers=false 2>/dev/null || true)"
+if ! printf '%s' "$status" | grep -q '"BackendState": *"Running"'; then
+  echo
+  echo "Tailscale is installed but this host is not signed in. Run: sudo tailscale up"
+  echo "Then run this script again."
+  exit 0
+fi
+name="$(printf '%s' "$status" | sed -n 's/.*"DNSName": *"\([^"]*\)".*/\1/p' | head -n 1)"
+name="${name%.}"
+if [ -z "$name" ]; then
+  echo "Tailscale did not report this host's name; follow infra/docs/install.md section 3." >&2
+  manual
+  exit 0
+fi
+cat <<EOF
+
+Privacy note: turning on https publishes this name in a public list of certificates:
+    $name
+Choose a name you are happy to be public (not your name, address or employer) before you go on.
+EOF
+if ! printf '%s' "$status" | grep -q '"CertDomains"'; then
+  cat <<EOF
+
+HTTPS certificates are off for your tailnet. In the Tailscale admin console, open DNS, make sure
+MagicDNS is on, then turn on HTTPS Certificates. Then run this script again.
+EOF
+  exit 0
+fi
+if [ -z "$tailscale_answer" ]; then
+  printf 'Turn on https for %s? [y/N] ' "$name"
+  read -r tailscale_answer || tailscale_answer=n
+fi
+case "$tailscale_answer" in
+  y | Y | yes | Yes) ;;
+  *) echo "Skipped. Nothing was changed."; manual; exit 0 ;;
+esac
+
+if ! out="$(tailscale serve --bg "$MILEWAGE_HOST_PORT" 2>&1)"; then
+  echo "$out" >&2
+  echo "tailscale serve failed. Run it yourself: sudo tailscale serve --bg $MILEWAGE_HOST_PORT" >&2
+  exit 1
+fi
+
+public="https://$name"
+if grep -q '^MILEWAGE_PUBLIC_URL=' "$env_file"; then
+  sed -i "s|^MILEWAGE_PUBLIC_URL=.*|MILEWAGE_PUBLIC_URL=$public|" "$env_file"
+else
+  echo "MILEWAGE_PUBLIC_URL=$public" >>"$env_file"
+fi
+export MILEWAGE_PUBLIC_URL="$public"
+echo "Wrote MILEWAGE_PUBLIC_URL=$public to $env_file; restarting the API so it takes effect."
+"${compose[@]}" up -d --wait --wait-timeout 120 api
+
+echo "Checking $public (the first certificate can take a minute)..."
+ok=0
+for _ in $(seq 1 30); do
+  if curl -fsS --max-time 5 "$public/healthz" >/dev/null 2>&1; then ok=1; break; fi
+  sleep "${MILEWAGE_INSTALL_RETRY_S:-3}"
+done
+if [ "$ok" = 0 ]; then
+  echo "$public does not answer yet. Check that HTTPS certificates are on (install.md section 3)." >&2
+  exit 1
+fi
+cat <<EOF
+
+MileWage is reachable at $public from your devices on Tailscale.
+Open $public in your browser and create the owner account (write down the recovery key it shows),
+then follow the setup steps: Get the app, then Pair your phone.
 EOF

@@ -19,6 +19,7 @@ tags:
   - { name: auth }
   - { name: devices }
   - { name: settings }
+  - { name: countries }
   - { name: vehicles }
   - { name: shifts }
   - { name: stops }
@@ -40,17 +41,18 @@ tags:
   - { name: notifications }
   - { name: schedule }
   - { name: progress }
+  - { name: mcp }
   - { name: system }
 
 x-modules:
   core:
     toggle: never
-    operations: [getHealth, getSetupStatus, createOwner, confirmRecoveryKey, login, logout, changePassword, getSettings, updateSettings, listVehicles, createVehicle, updateVehicle, getSystemStatus, getSummary, listShifts, startShift, getShift, updateShift, purgeShift, endShift, finalizeShift, recalculateShift, setShiftOdometer, listOdometerReadings, createYearOdometerReading, deleteOdometerReading, listShiftTrips, putManualTrip, updateTrip, deleteManualTrip]
+    operations: [getHealth, getSetupStatus, listCountries, createOwner, confirmRecoveryKey, login, logout, changePassword, getSettings, updateSettings, listVehicles, createVehicle, updateVehicle, getSystemStatus, getSummary, listShifts, startShift, getShift, updateShift, purgeShift, endShift, finalizeShift, recalculateShift, setShiftOdometer, listOdometerReadings, createYearOdometerReading, deleteOdometerReading, listShiftTrips, putManualTrip, updateTrip, deleteManualTrip]
   devices:
     toggle: modules.devices
     default: true
     dependsOn: [core]
-    operations: [createPairingToken, redeemPairingToken, listDevices, renameDevice, revokeDevice]
+    operations: [createPairingToken, redeemPairingToken, listDevices, renameDevice, revokeDevice, getAppInfo, downloadAndroidApp, checkAndroidApp]
   tracking:
     toggle: modules.tracking
     default: true
@@ -97,12 +99,12 @@ x-modules:
     toggle: modules.platforms
     default: true
     dependsOn: [core]
-    operations: [listPlatforms, putPlatform, deletePlatform]
+    operations: [listPlatforms, putPlatform, deletePlatform, putPlatformLogo, getPlatformLogo, deletePlatformLogo]
   earnings:
     toggle: modules.earnings
     default: true
     dependsOn: [core]
-    operations: [listShiftEarnings, putShiftEarnings, deleteShiftEarnings]
+    operations: [listShiftEarnings, putShiftEarnings, deleteShiftEarnings, addEarningEntry, deleteEarningEntry]
   expenses:
     toggle: modules.expenses
     default: true
@@ -153,6 +155,11 @@ x-modules:
     default: false
     dependsOn: [goals, earnings]
     operations: [getProgress]
+  mcp:
+    toggle: modules.mcp
+    default: false
+    dependsOn: [core]
+    operations: [listMcpTokens, createMcpToken, revokeMcpToken, listMcpAudit]
 
 paths:
   /healthz:
@@ -260,6 +267,18 @@ paths:
         '422': { $ref: '#/components/responses/Unprocessable' }
         '429': { $ref: '#/components/responses/RateLimited' }
 
+  /countries:
+    get:
+      tags: [countries]
+      operationId: listCountries
+      summary: The countries a driver may choose, with their regions and what each supports (plan 21 section 3.9). Public, so first-run setup can list them.
+      security: []
+      responses:
+        '200':
+          description: Countries in the order screens list them.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Country' } }
   /auth/login:
     post:
       tags: [auth]
@@ -316,6 +335,15 @@ paths:
       tags: [devices]
       operationId: createPairingToken
       security: [{ sessionCookie: [] }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                base_url: { type: string, description: "The driver's correction of the address (plan 19 section 3.2): an absolute https URL with no path, query or credentials; plain http only on a development server." }
       responses:
         '201':
           description: One-time token, valid 10 minutes.
@@ -323,12 +351,64 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [token, expires_at, qr_payload]
+                required: [token, expires_at, qr_payload, pair_url, base_url, base_url_source]
                 properties:
                   token: { type: string, pattern: '^mwp_[A-Za-z0-9_-]{43}$' }
                   expires_at: { $ref: '#/components/schemas/EpochMs' }
-                  qr_payload: { type: string, description: "milewage://pair?v=1&u=<server url>&t=<token>" }
+                  qr_payload: { type: string, description: "milewage://pair?v=1&u=<server url>&t=<token>: the link that opens the phone app (Open in the MileWage app, the code text)." }
+                  pair_url: { type: string, description: "<server url>/pair#v=1&t=<token>: what the QR shows (plan 24 Q1). The phone app reads it; any other camera opens the server's pair page, which links to the app. The token is in the fragment, so it never reaches a server log." }
+                  base_url: { type: string, description: The server address inside the code, without a trailing slash. }
+                  base_url_source: { enum: [configured, request, driver], description: "Where base_url came from: MILEWAGE_PUBLIC_URL, the address of this request (as the browser sees it), or the driver's base_url." }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /app:
+    get:
+      tags: [devices]
+      operationId: getAppInfo
+      summary: What the public download page shows (no sign-in, the phone has no account yet). The app file is looked at on every request, so a new one is offered without a restart.
+      security: []
+      responses:
+        '200':
+          description: The app file on this server (or null), the store page (or null) and the download page's address.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [apk, store_url, page_url, base_url, base_url_source]
+                properties:
+                  apk:
+                    oneOf:
+                      - type: 'null'
+                      - type: object
+                        required: [size_bytes, updated_at, version]
+                        properties:
+                          size_bytes: { type: integer, minimum: 0 }
+                          updated_at: { $ref: '#/components/schemas/EpochMs' }
+                          version: { type: [string, 'null'], description: "From <file>.json, written by scripts/phone-release-build.sh --publish; null without it." }
+                  store_url: { type: [string, 'null'], description: MILEWAGE_APP_STORE_URL (an https link to the store page); null until the app is published. }
+                  page_url: { type: string, description: "<base_url>/app: the download page, for a QR code." }
+                  base_url: { type: string }
+                  base_url_source: { enum: [configured, request] }
+  /app/android.apk:
+    get:
+      tags: [devices]
+      operationId: downloadAndroidApp
+      summary: The Android app this server hands out (plan 24 Q2). No sign-in. A 404 when the owner has not put the file in place (MILEWAGE_APK_PATH, default <config>/milewage.apk).
+      security: []
+      responses:
+        '200':
+          description: The APK file.
+          content:
+            application/vnd.android.package-archive: { schema: { type: string, contentMediaType: application/vnd.android.package-archive } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    head:
+      tags: [devices]
+      operationId: checkAndroidApp
+      summary: Whether the app file is there, without downloading it (the web shows Get the app only then).
+      security: []
+      responses:
+        '200': { description: The file is there. }
+        '404': { description: No app file on this server. }
   /pairing/redeem:
     post:
       tags: [devices]
@@ -403,6 +483,83 @@ paths:
       security: [{ sessionCookie: [] }]
       responses:
         '204': { description: Revoked (idempotent). }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /mcp/tokens:
+    get:
+      tags: [mcp]
+      operationId: listMcpTokens
+      summary: The assistant access tokens, newest first (plan 26). The token itself is never listed.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Tokens, revoked and expired ones included.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/McpToken' } }
+    post:
+      tags: [mcp]
+      operationId: createMcpToken
+      summary: Make an assistant access token. The token is in this response only; the server keeps its SHA-256 hash.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, scope]
+              additionalProperties: false
+              properties:
+                name: { type: string, minLength: 1, maxLength: 64 }
+                scope: { enum: [read, write], description: 'write includes read.' }
+                expires_in_days: { enum: [30, 90, 365, null], description: 'Default 90; null never expires.' }
+      responses:
+        '201':
+          description: Made. Show `token` once.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/McpToken' }
+                  - type: object
+                    required: [token]
+                    properties: { token: { type: string, pattern: '^mwa_[A-Za-z0-9_-]{43}$' } }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /mcp/audit:
+    get:
+      tags: [mcp]
+      operationId: listMcpAudit
+      summary: The last 50 changes made by assistants, newest first (plan 26 section 3.7). Arguments are kept on the server only.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Audit rows.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, at, tool, outcome, target, token_id, token_name]
+                  properties:
+                    id: { type: integer }
+                    at: { $ref: '#/components/schemas/EpochMs' }
+                    tool: { type: string, description: 'The MCP tool, e.g. add_expense.' }
+                    outcome: { type: string, description: '`ok`, or `error: ` and the problem title.' }
+                    target: { type: [string, 'null'], description: 'The record touched, e.g. `expense:42` or `shift:17`.' }
+                    token_id: { type: integer }
+                    token_name: { type: string }
+  /mcp/tokens/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    delete:
+      tags: [mcp]
+      operationId: revokeMcpToken
+      summary: Revoke a token at once (idempotent).
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Revoked. }
         '404': { $ref: '#/components/responses/NotFound' }
 
   /settings:
@@ -485,6 +642,7 @@ paths:
                 year: { type: [integer, 'null'], minimum: 1900, maximum: 2100 }
                 plate: { type: [string, 'null'], maxLength: 16 }
                 power: { oneOf: [{ $ref: '#/components/schemas/VehiclePower' }, { type: 'null' }] }
+                ownership: { $ref: '#/components/schemas/VehicleOwnership' }
       responses:
         '200':
           description: Updated.
@@ -1017,6 +1175,57 @@ paths:
         '204': { description: Deleted or reset. }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /platforms/{slug}/logo:
+    parameters:
+      - { name: slug, in: path, required: true, schema: { type: string, pattern: '^[a-z0-9_]{1,32}$' } }
+    put:
+      tags: [platforms]
+      operationId: putPlatformLogo
+      summary: Upload or replace the driver's own logo for a platform, built-in or custom (plan 25 section 7). PNG, JPEG or WebP, 256 KB at most, checked against its first bytes; no SVG. JPEG location data is removed. Stored in the database, so backups carry it.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          image/png: { schema: { type: string, format: binary } }
+          image/jpeg: { schema: { type: string, format: binary } }
+          image/webp: { schema: { type: string, format: binary } }
+      responses:
+        '200':
+          description: Replaced.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlatformLogo' }
+        '201':
+          description: Stored.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlatformLogo' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '413': { $ref: '#/components/responses/TooLarge' }
+        '415': { description: Not a PNG, JPEG or WebP., content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    get:
+      tags: [platforms]
+      operationId: getPlatformLogo
+      summary: The uploaded logo with its stored type, `nosniff` and a sandboxing CSP (no-store, as every API answer). `?v=<logo_version>` only marks a new image after a change.
+      parameters:
+        - { name: v, in: query, schema: { type: string }, description: The platform's `logo_version`. }
+      responses:
+        '200':
+          description: The image.
+          content:
+            image/png: { schema: { type: string, format: binary } }
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/webp: { schema: { type: string, format: binary } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [platforms]
+      operationId: deletePlatformLogo
+      summary: Remove the platform's logo (idempotent); its badge shows the initials again.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Removed. }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /shifts/{ref}/earnings:
     parameters:
@@ -1060,6 +1269,47 @@ paths:
       tags: [earnings]
       operationId: deleteShiftEarnings
       summary: Remove the typed row (idempotent); the platform's labels apply again.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Earnings of the shift after the change.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShiftEarnings' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /shifts/{ref}/earnings/{platform}/entries:
+    parameters:
+      - { $ref: '#/components/parameters/Ref' }
+      - { name: platform, in: path, required: true, schema: { type: string, pattern: '^[a-z0-9_]{1,32}$' } }
+    post:
+      tags: [earnings]
+      operationId: addEarningEntry
+      summary: Add one entry (plan 22) to the platform's row, creating the row if missing. The shift must be ended or finalized. The amount's sign must match the type (422 otherwise).
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EarningEntryCreate' }
+      responses:
+        '200':
+          description: Earnings of the shift after the change.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShiftEarnings' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /shifts/{ref}/earnings/{platform}/entries/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/Ref' }
+      - { name: platform, in: path, required: true, schema: { type: string, pattern: '^[a-z0-9_]{1,32}$' } }
+      - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    delete:
+      tags: [earnings]
+      operationId: deleteEarningEntry
+      summary: Remove one entry (idempotent). The row stays; with no entries its total is 0. There is no edit; delete and add again.
       security: [{ sessionCookie: [] }]
       responses:
         '200':
@@ -2261,6 +2511,43 @@ components:
               path: { type: string, description: JSON Pointer into the request body. }
               message: { type: string }
 
+    Country:
+      type: object
+      required: [code, name, currency, unit, labels, supports, verified, work, regional_rules, regions]
+      properties:
+        code: { type: string, description: ISO 3166-1 alpha-2. }
+        name: { type: string, description: 'From Unicode CLDR (Intl.DisplayNames), in English.' }
+        currency: { type: string, description: ISO 4217. }
+        unit: { enum: [km, mi] }
+        labels:
+          type: object
+          required: [region, city]
+          description: What the country calls its levels, in libaddressinput's words (province, state, nation ...); null when it has none.
+          properties:
+            region: { type: [string, 'null'] }
+            city: { type: [string, 'null'] }
+        supports:
+          type: object
+          required: [mileage, tax]
+          properties:
+            mileage: { type: boolean, description: The country has published mileage rates. }
+            tax: { type: boolean, description: 'The country has a tax estimate and comma.tax_countries does not hide it.' }
+        verified: { type: boolean, description: False until a person has checked the figures against the primary sources. }
+        work: { type: array, items: { $ref: '#/components/schemas/WorkKind' }, description: 'Kinds of platform work the country''s data covers (plan 21 section 3.6a). With one kind, onboarding does not ask (plan 23).' }
+        regional_rules: { type: boolean, description: 'Some region or city has its own rules, so setting the region can change results.' }
+        regions: { type: array, items: { $ref: '#/components/schemas/CountryPlace' } }
+    WorkKind:
+      description: 'Location-based platform work (plan 21 section 3.6a): food or parcel delivery, ride-hailing, motorcycle taxi, courier.'
+      enum: [delivery, ride_hailing, moto_taxi, courier]
+    CountryPlace:
+      type: object
+      required: [code, name, own_rules, verified, cities]
+      properties:
+        code: { type: string, description: 'A region: the ISO 3166-2 part after the country, as settings.region stores it (ON). A city: its full code (US-NY-NYC).' }
+        name: { type: string }
+        own_rules: { type: boolean, description: This place has data that differs from the level above. }
+        verified: { type: boolean, description: True only if every level that supplies data was checked by a person. }
+        cities: { type: array, items: { $ref: '#/components/schemas/CountryPlace' } }
     SetupRequest:
       type: object
       required: [username, password, country, distance_unit, currency, timezone]
@@ -2275,7 +2562,7 @@ components:
     Modules:
       type: object
       description: Read-only module flags so clients can hide screens and buttons of absent modules.
-      required: [progress, schedule, notifications, import, maintenance, analytics, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, stops, sync, diagnostics, capture, backup_download, exporters, countries]
+      required: [progress, schedule, notifications, import, maintenance, analytics, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, stops, sync, diagnostics, capture, mcp, backup_download, exporters, countries]
       properties:
         platforms: { type: boolean, description: 'Platforms module registered (18 section 4.2).' }
         earnings: { type: boolean, description: 'Earnings module registered (18 section 4.3): the driver can type a total per shift and platform.' }
@@ -2297,12 +2584,13 @@ components:
         stops: { type: boolean, description: 'Effective flag: the stops module is registered AND settings.stops_enabled is true. When false the phone and the web hide every stop and estimated-split element.' }
         diagnostics: { type: boolean, description: 'Diagnostics module registered (16). When false the phone behaves as level off and the web hides the Diagnostics screens.' }
         capture: { type: boolean, description: 'Capture module registered (16 section 8); false by default.' }
+        mcp: { type: boolean, description: 'MCP module registered (plan 26): the AI assistant endpoint and its tokens; off by default.' }
         backup_download: { type: boolean }
         exporters: { type: array, items: { enum: [csv, pdf, gpx, geojson, expenses, tax_summary] } }
         countries: { type: array, items: { type: string, minLength: 2, maxLength: 2 } }
     Settings:
       type: object
-      required: [country, distance_unit, currency, timezone, raw_retention_days, stops_enabled, display_name, region, week_start, time_format, default_vehicle_id, engine_version, diagnostics, modules]
+      required: [country, distance_unit, currency, timezone, raw_retention_days, stops_enabled, display_name, region, logbook, own_mileage_rate, mileage_rate, week_start, time_format, default_vehicle_id, work_kinds, onboarded_at, setup_done, engine_version, diagnostics, modules]
       properties:
         modules: { $ref: '#/components/schemas/Modules' }
         engine_version: { type: integer, description: The server's track-engine algorithmVersion (14 section 11). A phone with a lower number still shows its own result until sync. }
@@ -2314,9 +2602,23 @@ components:
         stops_enabled: { type: boolean, description: 'Driver-facing toggle for auto-detected stops, the estimated active/deadhead split and web labelling (decision 1.5b). Default true. Captured per shift at shift start (Shift.segmenter), so changing it never alters an existing shift.' }
         display_name: { type: [string, 'null'], description: Greeting and export header. }
         region: { type: [string, 'null'], description: 'Subdivision code without the country (CA: ON, QC ...); validated by the country pack.' }
+        logbook:
+          type: [object, 'null']
+          description: What the tax office of the driver's country and region asks of odometer records (plan 21 logbook slot), for the Odometer screen. null when the country has no such rule; readings are then optional.
+          required: [readings, notes]
+          properties:
+            readings: { type: string }
+            notes: { type: array, items: { type: string } }
+        own_mileage_rate:
+          oneOf: [{ $ref: '#/components/schemas/OwnMileageRate' }, { type: 'null' }]
+          description: The driver's own rate (plan 21 Q5). Used only where the country has no official rates; it never replaces one.
+        mileage_rate: { enum: [official, yours, none], description: 'Which rate values mileage: the country''s published rates, the driver''s own (screens and exports label it "your rate", never official), or none.' }
         week_start: { enum: [0, 1], description: 0 Sunday, 1 Monday. Changes week boundaries, so the phone reads it. }
         time_format: { enum: [12h, 24h] }
         default_vehicle_id: { type: [integer, 'null'], description: Preselected when a shift starts; always an active vehicle. }
+        work_kinds: { type: array, items: { $ref: '#/components/schemas/WorkKind' }, description: 'The work the driver does, among what the country offers. When none is chosen and the country offers one kind, that kind (plan 23 rule 1).' }
+        onboarded_at: { oneOf: [{ $ref: '#/components/schemas/EpochMs' }, { type: 'null' }], description: 'When the driver finished the web onboarding (plan 23); null while it is not finished, so the web opens it.' }
+        setup_done: { type: array, items: { $ref: '#/components/schemas/SetupStep' }, description: 'Dashboard "Finish setting up" steps the driver finished or skipped. A listed step stays done even if, say, the goal is deleted later.' }
         diagnostics: { $ref: '#/components/schemas/DiagnosticsSettings' }
     SettingsPatch:
       type: object
@@ -2335,6 +2637,21 @@ components:
         week_start: { enum: [0, 1] }
         time_format: { enum: [12h, 24h] }
         default_vehicle_id: { type: [integer, 'null'], minimum: 1 }
+        own_mileage_rate:
+          oneOf: [{ $ref: '#/components/schemas/OwnMileageRate' }, { type: 'null' }]
+          description: Stored even where the country has official rates, but used only where it has none.
+        work_kinds: { type: array, uniqueItems: true, items: { $ref: '#/components/schemas/WorkKind' }, description: 'Only kinds the country offers (422 otherwise); a new country drops the kinds it does not offer.' }
+        onboarded: { type: boolean, description: 'true: onboarding finished (sets onboarded_at, keeping an earlier time); false: run it again (clears onboarded_at and setup_done).' }
+        setup_done: { type: array, uniqueItems: true, items: { $ref: '#/components/schemas/SetupStep' }, description: 'Steps to add to setup_done; steps already listed are kept (it never removes one).' }
+    SetupStep:
+      enum: [vehicle, goal, phone, backup]
+    OwnMileageRate:
+      type: object
+      additionalProperties: false
+      required: [cents_per_unit, unit]
+      properties:
+        cents_per_unit: { type: number, exclusiveMinimum: 0, maximum: 100000, description: 'Minor units of the currency per km or mile; hundredths are kept (30.5).' }
+        unit: { enum: [km, mi] }
     Device:
       type: object
       required: [id, name, platform, created_at, last_seen_at, revoked_at]
@@ -2348,8 +2665,23 @@ components:
         online: { type: boolean }
         clock_skew_ms: { type: [integer, 'null'], description: Last observed phone-minus-server clock difference; in memory only. }
 
+    McpToken:
+      type: object
+      required: [id, name, scope, created_at, expires_at, last_used_at, revoked_at]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        scope: { enum: [read, write] }
+        created_at: { $ref: '#/components/schemas/EpochMs' }
+        expires_at: { type: [integer, 'null'] }
+        last_used_at: { type: [integer, 'null'], description: Updated at most once a minute. }
+        revoked_at: { type: [integer, 'null'] }
+
     VehicleKind: { enum: [car, motorcycle, van, bicycle, ebike, scooter, walking], description: 'bicycle, ebike, scooter and walking are not automobiles: no mileage allowance rate applies (18 section 4.1).' }
     VehiclePower: { enum: [gas, hybrid, ev, other] }
+    VehicleOwnership:
+      enum: [owned, financed, leased, rented]
+      description: 'Who owns the vehicle (21 section 3.6c). owned: the driver owns it. financed: the driver is buying it with instalments (car loan, hire purchase, drive-to-own). leased: a fixed-term contract; the vehicle goes back at the end. rented: short-term, by the day, week or month. A record only: no tax rule reads it.'
     VehicleCreate:
       type: object
       required: [name, kind]
@@ -2362,9 +2694,10 @@ components:
         year: { type: [integer, 'null'], minimum: 1900, maximum: 2100 }
         plate: { type: [string, 'null'], maxLength: 16, description: The driver's own record; never exported unless the driver ticks it. }
         power: { oneOf: [{ $ref: '#/components/schemas/VehiclePower' }, { type: 'null' }] }
+        ownership: { $ref: '#/components/schemas/VehicleOwnership', description: Left out means owned. }
     Vehicle:
       type: object
-      required: [id, name, kind, make, model, year, plate, power, created_at, archived_at]
+      required: [id, name, kind, make, model, year, plate, power, ownership, created_at, archived_at]
       properties:
         id: { type: integer }
         name: { type: string }
@@ -2374,6 +2707,7 @@ components:
         year: { type: [integer, 'null'] }
         plate: { type: [string, 'null'] }
         power: { oneOf: [{ $ref: '#/components/schemas/VehiclePower' }, { type: 'null' }] }
+        ownership: { $ref: '#/components/schemas/VehicleOwnership' }
         created_at: { $ref: '#/components/schemas/EpochMs' }
         archived_at: { type: [integer, 'null'] }
 
@@ -2391,7 +2725,7 @@ components:
 
     Platform:
       type: object
-      required: [slug, label, custom, color, emoji, active, sort, hourly_target_cents]
+      required: [slug, label, custom, color, emoji, active, sort, hourly_target_cents, logo_version]
       properties:
         slug: { type: string }
         label: { type: string }
@@ -2401,6 +2735,15 @@ components:
         active: { type: boolean }
         sort: { type: integer }
         hourly_target_cents: { type: [integer, 'null'], description: Used by analytics only. }
+        logo_version: { type: [string, 'null'], description: 'Changes when the driver''s uploaded logo changes; null: no logo (plan 25 section 7). The image is GET /platforms/{slug}/logo?v=<logo_version>.' }
+    PlatformLogo:
+      type: object
+      required: [slug, mime, bytes, logo_version]
+      properties:
+        slug: { type: string }
+        mime: { enum: [image/png, image/jpeg, image/webp] }
+        bytes: { type: integer }
+        logo_version: { type: string }
     PlatformPut:
       type: object
       additionalProperties: false
@@ -2431,12 +2774,20 @@ components:
           type: array
           items:
             type: object
-            required: [platform, gross_cents, tips_cents, bonus_cents, orders, online_min, notes, source, edited_at]
+            description: One row per platform. Every amount is the sum of its entries with their signs (plan 22 section 3.3).
+            required: [platform, gross_cents, tips_cents, bonus_cents, fees_cents, adjustments_cents, total_cents, tax_withheld_cents, cash_collected_cents, balance_cents, orders, online_min, notes, source, edited_at, ledger]
             properties:
               platform: { type: string }
-              gross_cents: { type: integer }
-              tips_cents: { type: integer }
-              bonus_cents: { type: integer }
+              gross_cents: { type: integer, description: Sum of fare entries. }
+              tips_cents: { type: integer, description: Sum of tip entries. }
+              bonus_cents: { type: integer, description: Sum of bonus entries. }
+              fees_cents: { type: integer, description: Commission and platform fees; 0 or below. }
+              adjustments_cents: { type: integer }
+              total_cents: { type: integer, description: 'Earnings: gross + tips + bonus + fees + adjustments.' }
+              tax_withheld_cents: { type: integer, description: 0 or below; not part of earnings. }
+              cash_collected_cents: { type: integer, description: 0 or below; cash in the driver's hand, not part of earnings. }
+              balance_cents: { type: integer, description: Sum of all entries; below 0 means the driver owes the platform. }
+              ledger: { type: array, items: { $ref: '#/components/schemas/EarningEntry' } }
               orders: { type: [integer, 'null'] }
               online_min: { type: [integer, 'null'] }
               notes: { type: [string, 'null'] }
@@ -2456,16 +2807,39 @@ components:
           type: array
           items:
             type: object
-            required: [platform, gross_cents, tips_cents, bonus_cents, total_cents, orders, source]
+            required: [platform, gross_cents, tips_cents, bonus_cents, fees_cents, adjustments_cents, tax_withheld_cents, total_cents, orders, source]
             properties:
               platform: { type: string }
               gross_cents: { type: integer }
               tips_cents: { type: integer }
               bonus_cents: { type: integer }
+              fees_cents: { type: integer, description: 0 for stop labels. }
+              adjustments_cents: { type: integer }
+              tax_withheld_cents: { type: integer }
               total_cents: { type: integer }
               orders: { type: [integer, 'null'] }
               source: { enum: [labels, entered, mixed] }
 
+    EarningEntryType:
+      description: 'Plan 22 section 3.2. Above 0: fare, tip, bonus, top_up. Below 0: cash_collected, commission, platform_fee, tax_withheld, payout. Either sign: adjustment.'
+      enum: [fare, tip, bonus, cash_collected, commission, platform_fee, tax_withheld, top_up, payout, adjustment]
+    EarningEntryCreate:
+      type: object
+      additionalProperties: false
+      required: [type, amount_cents]
+      properties:
+        type: { $ref: '#/components/schemas/EarningEntryType' }
+        amount_cents: { type: integer, minimum: -1000000000, maximum: 1000000000, description: 'Minor units, signed: the effect on what the platform owes the driver. Never 0.' }
+        note: { type: [string, 'null'], maxLength: 2000 }
+    EarningEntry:
+      type: object
+      required: [id, type, amount_cents, note, created_at]
+      properties:
+        id: { type: integer }
+        type: { $ref: '#/components/schemas/EarningEntryType' }
+        amount_cents: { type: integer }
+        note: { type: [string, 'null'] }
+        created_at: { $ref: '#/components/schemas/EpochMs' }
     ExpenseCreate:
       type: object
       required: [spent_on, category, amount_cents]
@@ -2600,7 +2974,7 @@ components:
               note: { type: [string, 'null'] }
     TaxYear:
       type: object
-      required: [year, country, region, supported, unverified, set_aside_bp, sales_tax_registered, notices, income, deductions, estimate, deadlines, slip_alerts, jar]
+      required: [year, country, region, supported, unverified, set_aside_bp, sales_tax_registered, sales_tax_name, notices, income, deductions, estimate, deadlines, slip_alerts, jar]
       properties:
         year: { type: integer }
         country: { type: string }
@@ -2609,6 +2983,7 @@ components:
         unverified: { type: boolean, description: True while the pack's figures have not been compared with the primary publications; the screen shows an "unverified rates" notice. }
         set_aside_bp: { type: integer }
         sales_tax_registered: { type: boolean }
+        sales_tax_name: { type: [string, 'null'], description: 'The sales tax of the driver''s place from the country data (GST, HST), for the "Registered for ..." choice; null when none is known.' }
         notices: { type: array, items: { type: string } }
         income:
           type: [object, 'null']
@@ -2617,7 +2992,10 @@ components:
             gross_cents: { type: integer }
             tips_cents: { type: integer }
             bonus_cents: { type: integer }
-            total_cents: { type: integer }
+            fees_cents: { type: integer, description: 'Commission and platform fees (plan 22), 0 or below; already taken off total_cents.' }
+            adjustments_cents: { type: integer, description: Corrections to pay; part of total_cents. }
+            tax_withheld_cents: { type: integer, description: 'Tax the platforms kept, 0 or below; not part of total_cents and not yet subtracted from the estimate.' }
+            total_cents: { type: integer, description: 'gross + tips + bonus + fees + adjustments.' }
             by_platform: { type: array, items: { type: object, properties: { platform: { type: string }, total_cents: { type: integer } } } }
         deductions:
           type: [object, 'null']
@@ -2628,13 +3006,21 @@ components:
             vehicles: { type: array, items: { type: object, properties: { vehicle_id: { type: integer }, method: { enum: [standard_mileage, actual_expenses] } } } }
         estimate:
           type: [object, 'null']
+          required: [net_income_cents, taxable_income_cents, lines, total_set_aside_cents, instalment_cents, sales_tax]
           properties:
             net_income_cents: { type: integer }
             taxable_income_cents: { type: integer }
-            cpp_cents: { type: [integer, 'null'] }
-            cpp2_cents: { type: [integer, 'null'] }
-            pension_note: { type: [string, 'null'] }
-            income_tax_cents: { type: integer }
+            lines:
+              type: array
+              description: The amounts to set aside, as the country's tax pack computes them (CA, pension contribution, second band, income tax at the set-aside rate). They add up to total_set_aside_cents.
+              items:
+                type: object
+                required: [key, label, cents, note]
+                properties:
+                  key: { type: string, description: Stable name, also the export row name. }
+                  label: { type: string }
+                  cents: { type: [integer, 'null'], description: null when not estimated here; note says why. }
+                  note: { type: [string, 'null'] }
             total_set_aside_cents: { type: integer }
             instalment_cents: { type: integer }
             sales_tax:

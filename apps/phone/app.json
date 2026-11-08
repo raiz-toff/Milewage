@@ -29,14 +29,6 @@
     "plugins": [
       "./plugins/withManifestPolicy",
       [
-        "expo-camera",
-        {
-          "cameraPermission": "MileWage uses the camera only to scan the pairing code from your MileWage web app.",
-          "microphonePermission": false,
-          "recordAudioAndroid": false
-        }
-      ],
-      [
         "expo-splash-screen",
         {
           "image": "./assets/splash-icon.png",

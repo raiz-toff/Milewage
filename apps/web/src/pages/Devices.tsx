@@ -5,13 +5,133 @@ import { EmptyState, PageHeader, Section, TableBox, tableClass } from '../ui/lay
 import { Button as UiButton } from '@/components/ui/button';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
+import type { paths } from '@milewage/shared/generated/api-types';
 import { formatDateTime, formatTime } from '../format';
 import { useSession, useSettings } from '../session';
+import { AppButtons, useAppAvailable } from '../pairing/GetTheApp';
 import { Qr } from '../ui/Qr';
-import { Button, FormError } from '../ui/form';
+import { Button, Field, FormError } from '../ui/form';
+import { AddressWarning, addressProblem } from '../pairing/address';
 
 type Device = Schemas['Device'];
-type Pairing = { qr_payload: string; token: string; expires_at: number };
+export type Pairing =
+  paths['/pairing-tokens']['post']['responses'][201]['content']['application/json'];
+
+const SOURCE: Record<Pairing['base_url_source'], string> = {
+  configured: 'set on the server',
+  request: 'the address this page is open at',
+  driver: 'you changed it',
+};
+
+/**
+ * The one-time pairing QR and its link; also the onboarding wizard's phone step (plan 23). The QR
+ * carries the `https://<server>/pair#…` link any camera opens; "Open in the MileWage app" and
+ * "Get the app" sit beside it (plan 24 section 4.3). The address inside it is shown with
+ * Change address, and a warning comes first when the phone app cannot use it (plan 19 section 3.3).
+ * `remake` asks for a new code with the driver's address.
+ */
+export function PairingCode({
+  pairing,
+  remake,
+}: {
+  pairing: Pairing;
+  remake: (baseUrl: string) => Promise<void>;
+}) {
+  const { api } = useSession();
+  const { timezone } = useSettings();
+  const available = useAppAvailable(api);
+  const problem = addressProblem(pairing.base_url);
+  const [address, setAddress] = useState<string | null>(null); // non-null while changing
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Not a <form>: the wizard's phone step already sits inside one.
+  async function change() {
+    if (busy || !address?.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await remake(address!.trim());
+      setAddress(null);
+    } catch (err) {
+      setError(describe(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <AddressWarning problem={problem} />
+      <div className="flex flex-wrap items-start gap-6">
+        {problem === 'local' ? null : (
+          <div className="rounded-lg border bg-white p-2">
+            <Qr text={pairing.pair_url} label="Pairing code" />
+          </div>
+        )}
+        <div className="min-w-0 flex-1 basis-64 space-y-3">
+          {problem === 'local' ? null : (
+            <p className="text-sm text-muted-foreground">
+              Open MileWage on your phone and tap Scan the code. Valid once, until{' '}
+              {formatTime(pairing.expires_at, timezone)}.
+            </p>
+          )}
+          <AppButtons link={pairing.qr_payload} available={available} />
+          <p className="text-sm">
+            Your phone will connect to{' '}
+            <span className="font-medium break-all">{pairing.base_url}</span>{' '}
+            <span className="text-muted-foreground">({SOURCE[pairing.base_url_source]})</span>
+          </p>
+          {address === null ? (
+            <UiButton
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-auto px-0"
+              onClick={() => setAddress(pairing.base_url)}
+            >
+              Change address
+            </UiButton>
+          ) : (
+            <div role="group" aria-label="Change address" className="space-y-2">
+              <Field
+                label="Server address"
+                hint="The https address your phone reaches this server at, for example https://milewage-box.tail1234.ts.net"
+                inputMode="url"
+                autoComplete="off"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter') return;
+                  e.preventDefault();
+                  void change();
+                }}
+              />
+              <FormError message={error} />
+              <div className="flex gap-2">
+                <UiButton
+                  type="button"
+                  size="sm"
+                  disabled={busy || !address.trim()}
+                  onClick={() => void change()}
+                >
+                  Make a new code
+                </UiButton>
+                <UiButton type="button" variant="ghost" size="sm" onClick={() => setAddress(null)}>
+                  Cancel
+                </UiButton>
+              </div>
+            </div>
+          )}
+          <details className="text-sm text-muted-foreground">
+            <summary className="cursor-pointer">Show code text</summary>
+            <code className="mt-1 block break-all font-mono text-xs">{pairing.qr_payload}</code>
+          </details>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function DeviceRow({ device, onChanged }: { device: Device; onChanged: () => void }) {
   const { api } = useSession();
@@ -127,7 +247,6 @@ function DeviceRow({ device, onChanged }: { device: Device; onChanged: () => voi
 /** Module `devices`: pair a phone with a one-time QR code, rename, revoke. */
 export function Devices() {
   const { api } = useSession();
-  const { timezone } = useSettings();
   const [devices, setDevices] = useState<Device[] | null>(null);
   const [pairing, setPairing] = useState<Pairing | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -151,6 +270,8 @@ export function Devices() {
       setError(describe(e));
     }
   }
+  const remake = async (base_url: string) =>
+    setPairing(await unwrap(api.POST('/pairing-tokens', { body: { base_url } })));
 
   return (
     <section className="space-y-6">
@@ -165,22 +286,7 @@ export function Devices() {
       </PageHeader>
       {pairing || error ? (
         <Section title="Pair a phone">
-          {pairing ? (
-            <div className="flex flex-wrap items-start gap-6">
-              <div className="rounded-lg border bg-white p-2">
-                <Qr text={pairing.qr_payload} label="Pairing code" />
-              </div>
-              <div className="min-w-0 flex-1 space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  Scan in the MileWage app. Valid once, until{' '}
-                  {formatTime(pairing.expires_at, timezone)}.
-                </p>
-                <code className="block break-all font-mono text-xs text-muted-foreground">
-                  {pairing.qr_payload}
-                </code>
-              </div>
-            </div>
-          ) : null}
+          {pairing ? <PairingCode pairing={pairing} remake={remake} /> : null}
           <FormError message={error} />
         </Section>
       ) : null}

@@ -51,3 +51,42 @@ export const stop = (n: number, over: Partial<Schemas['Stop']> = {}): Schemas['S
   label: null,
   ...over,
 });
+
+const place = (code: string, name: string, own_rules = false) => ({
+  code,
+  name,
+  own_rules,
+  verified: false,
+  cities: [],
+});
+const country = (code: string, name: string, over: Partial<Schemas['Country']> = {}) => ({
+  code,
+  name,
+  currency: 'USD',
+  unit: 'mi' as const,
+  labels: { region: 'state', city: null },
+  supports: { mileage: true, tax: false },
+  verified: false,
+  work: ['delivery' as const],
+  regional_rules: false,
+  regions: [],
+  ...over,
+});
+
+/** `GET /countries`, shortened: a few regions each. */
+export const countriesFixture = (): Schemas['Country'][] => [
+  country('US', 'United States', { regions: [place('NY', 'New York')] }),
+  country('CA', 'Canada', {
+    currency: 'CAD',
+    unit: 'km',
+    labels: { region: 'province', city: null },
+    supports: { mileage: true, tax: true },
+    regional_rules: true,
+    regions: [place('AB', 'Alberta'), place('ON', 'Ontario', true), place('QC', 'Quebec', true)],
+  }),
+  country('GB', 'United Kingdom', {
+    currency: 'GBP',
+    labels: { region: 'nation', city: null },
+    regions: [place('ENG', 'England')],
+  }),
+];

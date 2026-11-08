@@ -1,6 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import type { ModuleRegistry } from '@milewage/shared';
-import { countryPacks } from '@milewage/shared';
+import {
+  countryModules,
+  mileageRateSource,
+  resolvePlace,
+  WORK_KINDS,
+  type OwnRate,
+} from '@milewage/shared';
 import { algorithmVersion } from '@milewage/track-engine';
 import {
   createSettingsRepository,
@@ -12,8 +18,9 @@ import { ProblemError } from '../errors';
 import type { EventEmit } from '../events';
 import { str, strictObject, type AuthFn } from './util';
 
-/** Registered country packs until the pack registry exists (08 section 16.3). */
-export const DEFAULT_COUNTRIES = ['US', 'CA', 'GB'] as const;
+/** The dashboard's "Finish setting up" steps; a listed step stays done (finished or skipped). */
+export const SETUP_STEPS = ['vehicle', 'goal', 'phone', 'backup'] as const;
+
 /** Driver admin modules (18): each is a flag in `modules` so the web can hide its screen. */
 export const COMMA_MODULES = [
   'platforms',
@@ -71,7 +78,7 @@ export function moduleFlags(
   const on = (name: string) => reg.isEnabled(name);
   const flag = (names: string[]) => Object.fromEntries(names.map((n) => [n, on(n)]));
   return {
-    ...flag(['sync', 'devices', 'tracking', 'replay', 'diagnostics', 'capture']),
+    ...flag(['sync', 'devices', 'tracking', 'replay', 'diagnostics', 'capture', 'mcp']),
     ...flag(COMMA_MODULES),
     stops: on('stops') && stopsEnabled,
     // The engine is always on; this flag is the `backup.download` toggle and its routes.
@@ -95,11 +102,23 @@ const patchSchema = strictObject(
     week_start: { enum: [0, 1] },
     time_format: { enum: ['12h', '24h'] },
     default_vehicle_id: { type: ['integer', 'null'], minimum: 1 },
+    own_mileage_rate: {
+      type: ['object', 'null'],
+      additionalProperties: false,
+      required: ['cents_per_unit', 'unit'],
+      properties: {
+        cents_per_unit: { type: 'number', exclusiveMinimum: 0, maximum: 100_000 },
+        unit: { enum: ['km', 'mi'] },
+      },
+    },
+    work_kinds: { type: 'array', items: { enum: [...WORK_KINDS] }, uniqueItems: true },
+    onboarded: { type: 'boolean' },
+    setup_done: { type: 'array', items: { enum: [...SETUP_STEPS] }, uniqueItems: true },
   },
   [],
   { minProperties: 1 },
 );
-type Patch = Partial<Record<string, string | number | boolean | null>>;
+type Patch = Partial<Record<string, string | number | boolean | object | null>>;
 
 type ReaderContext = {
   db: Db;
@@ -114,6 +133,33 @@ type ReaderContext = {
   captureFor?: (userId: number, deviceId: number) => object | null;
 };
 
+/** The odometer note of the driver's place (plan 21 `logbook` slot), or null. */
+function logbookOf(country: string, region: string | null) {
+  const c = countryModules.get(country);
+  const l = c && resolvePlace(c, region).data.logbook;
+  return l ? { readings: l.readings, notes: [...l.notes] } : null;
+}
+
+/** The driver's own mileage rate from the settings row, or null. */
+export function ownRateOf(row: SettingsRow | undefined): OwnRate | null {
+  return row?.ownRateHundredths && row.ownRateUnit
+    ? { centsPerUnit: row.ownRateHundredths / 100, unit: row.ownRateUnit }
+    : null;
+}
+
+/** Work kinds the country offers (plan 21 section 3.6a); none for an unknown country. */
+const offered = (country: string): readonly string[] => countryModules.get(country)?.work ?? [];
+
+/**
+ * The driver's work kinds: the chosen ones the country offers, or, when none is chosen and the
+ * country offers only one, that one (plan 23 rule 1: a question with one answer is not asked).
+ */
+export function workKindsOf(country: string, chosen: readonly string[] | null): string[] {
+  const kinds = offered(country);
+  const mine = (chosen ?? []).filter((k) => kinds.includes(k));
+  return mine.length || kinds.length !== 1 ? mine : [...kinds];
+}
+
 /** The `Settings` response for a user. Also returned to a phone when it pairs. */
 export function settingsReader(ctx: ReaderContext) {
   const repo = createSettingsRepository(ctx.db);
@@ -122,6 +168,7 @@ export function settingsReader(ctx: ReaderContext) {
     if (!row) throw new ProblemError('not_found', 'No settings for this user.');
     const verbose = row.diagnosticsLevel === 'verbose';
     const expired = verbose && (row.diagnosticsVerboseUntil ?? 0) <= ctx.now();
+    const own = ownRateOf(row);
     return {
       modules: moduleFlags(
         ctx.registry,
@@ -139,9 +186,15 @@ export function settingsReader(ctx: ReaderContext) {
       stops_enabled: row.stopsEnabled === 1,
       display_name: row.displayName,
       region: row.region,
+      logbook: logbookOf(row.country, row.region),
+      own_mileage_rate: own && { cents_per_unit: own.centsPerUnit, unit: own.unit },
+      mileage_rate: mileageRateSource(countryModules.get(row.country), own),
       week_start: row.weekStart,
       time_format: row.timeFormat,
       default_vehicle_id: row.defaultVehicleId,
+      work_kinds: workKindsOf(row.country, row.workKinds),
+      onboarded_at: row.onboardedAt,
+      setup_done: row.setupDone ?? [],
       diagnostics: {
         level: expired ? 'basic' : row.diagnosticsLevel,
         verbose_until: verbose && !expired ? row.diagnosticsVerboseUntil : null,
@@ -183,7 +236,10 @@ export function settingsRoutes(
     if (b.time_format) patch.timeFormat = b.time_format as '12h' | '24h';
     if (b.region !== undefined || b.country) {
       // A region belongs to its country: a new country clears a region it does not have.
-      const known = countryPacks.get(country)?.regions;
+      const c = countryModules.get(country);
+      const known = c?.places
+        .filter((p) => p.parent === c.code)
+        .map((p) => p.code.slice(c.code.length + 1));
       const ok = region == null || (known?.includes(region.toUpperCase()) ?? false);
       if (!ok && b.region != null) {
         throw new ProblemError('validation_failed', 'Settings are not valid.', [
@@ -206,6 +262,39 @@ export function settingsRoutes(
         ]);
       }
       patch.defaultVehicleId = b.default_vehicle_id === null ? null : Number(b.default_vehicle_id);
+    }
+    if (b.own_mileage_rate !== undefined) {
+      const r = b.own_mileage_rate as { cents_per_unit: number; unit: 'km' | 'mi' } | null;
+      // Hundredths of a cent: 0.305 €/km is entered as 30.5 cents and kept exactly.
+      patch.ownRateHundredths = r && Math.max(1, Math.round(r.cents_per_unit * 100));
+      patch.ownRateUnit = r && r.unit;
+    }
+    if (b.work_kinds !== undefined || b.country) {
+      // Kinds the (new) country does not offer: refused when sent, dropped on a country change.
+      const sent = b.work_kinds as string[] | undefined;
+      const wrong = sent?.filter((k) => !offered(country).includes(k)) ?? [];
+      if (wrong.length) {
+        throw new ProblemError('validation_failed', 'Settings are not valid.', [
+          {
+            path: '/work_kinds',
+            message: `must be among ${offered(country).join(', ') || 'none'}`,
+          },
+        ]);
+      }
+      const kept = (sent ?? prefs?.workKinds ?? []).filter((k) => offered(country).includes(k));
+      patch.workKinds = kept.length ? kept : null;
+    }
+    if (b.onboarded !== undefined) {
+      // Finishing keeps the first time; "Run setup again" clears it so the wizard opens.
+      patch.onboardedAt = b.onboarded ? (prefs?.onboardedAt ?? now) : null;
+      // Running setup again starts the dashboard checklist over too.
+      if (!b.onboarded) patch.setupDone = null;
+    }
+    if (b.setup_done !== undefined) {
+      // Added to what is stored, never taken away: two tabs cannot undo each other's steps.
+      const stored = b.onboarded === false ? [] : (prefs?.setupDone ?? []);
+      const added = (b.setup_done as string[]).filter((s) => !stored.includes(s));
+      patch.setupDone = [...stored, ...added];
     }
     if (b.country) patch.country = b.country.toUpperCase();
     if (b.currency) patch.currency = b.currency.toUpperCase();

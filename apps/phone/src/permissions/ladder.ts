@@ -40,13 +40,19 @@ export interface LadderState {
   disclosureAccepted: boolean;
   /** The driver has been sent to the battery settings page once. */
   batteryVisited: boolean;
+  /** Steps the driver chose "Not now" for during setup; they stay on the Home checklist. */
+  skipped?: StepId[];
 }
 
-export const initialLadder = (snapshot: PermSnapshot = UNKNOWN_SNAPSHOT): LadderState => ({
-  snapshot,
-  disclosureAccepted: false,
-  batteryVisited: false,
-});
+/** Plain-store key: the battery page was opened once (the OS cannot tell). */
+export const BATTERY_VISITED = 'perm.batteryVisited';
+/** Plain-store key: the location disclosure was accepted (the OS cannot tell). */
+export const DISCLOSURE_ACCEPTED = 'perm.disclosureAccepted';
+
+export const initialLadder = (
+  snapshot: PermSnapshot = UNKNOWN_SNAPSHOT,
+  batteryVisited = false,
+): LadderState => ({ snapshot, disclosureAccepted: false, batteryVisited });
 
 export type StepState = 'done' | 'current' | 'pending' | 'blocked';
 
@@ -129,8 +135,9 @@ export function describeLadder(state: LadderState): LadderView {
     let view: StepState;
     if (isDone(state, id)) view = 'done';
     else if (isBlocked(state.snapshot, id)) view = 'blocked';
-    else if (next === null && reachable(state, id)) view = 'current';
-    else view = 'pending';
+    else if (next === null && reachable(state, id) && !state.skipped?.includes(id)) {
+      view = 'current';
+    } else view = 'pending';
     // A blocked step does not hold the ladder: later steps stay reachable.
     if (view === 'current') next = id;
     steps.push({ id, state: view, required });
@@ -188,6 +195,34 @@ export async function advance(port: PermissionsPort, state: LadderState): Promis
   const field = FIELD[next];
   const merged = fresh[field] === 'undetermined' ? { ...fresh, [field]: answer } : fresh;
   return { ...state, snapshot: merged };
+}
+
+/** "Not now": the current step is left for later and the ladder moves on. */
+export function skip(state: LadderState): LadderState {
+  const { next } = describeLadder(state);
+  return next ? { ...state, skipped: [...(state.skipped ?? []), next] } : state;
+}
+
+/**
+ * The whole ladder as it stands now: the OS snapshot plus the facts only this app knows, read
+ * from the plain store so a screen that mounts again starts from the truth, not from "missing".
+ * The location prompt is only shown after the disclosure, so a location answer already on record
+ * (granted, denied or blocked) means the disclosure was read, also on installs that never saved it.
+ */
+export async function loadLadder(
+  port: PermissionsPort,
+  plain: { get(key: string): Promise<string | null> },
+): Promise<LadderState> {
+  const [snapshot, battery, disclosure] = await Promise.all([
+    port.snapshot(),
+    plain.get(BATTERY_VISITED),
+    plain.get(DISCLOSURE_ACCEPTED),
+  ]);
+  return {
+    snapshot,
+    disclosureAccepted: disclosure === '1' || snapshot.foregroundLocation !== 'undetermined',
+    batteryVisited: battery === '1',
+  };
 }
 
 /** Re-reads the OS after the driver comes back from system settings. */

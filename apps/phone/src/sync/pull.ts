@@ -211,8 +211,8 @@ export class ChangePuller {
       await this.run(
         `INSERT INTO shifts (client_id, server_id, vehicle_id, status, segmenter, started_at, ended_at, local_date,
            total_m, active_m, deadhead_m, personal_m, calc_version, calc_source, server_total_m, recon_status,
-           recon_reasons, notes, updated_at, sync_state)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'server', ?, ?, ?, ?, ?, 'on_server')`,
+           recon_reasons, notes, updated_at, sync_state, server_deduction_cents, server_deduction_known)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'server', ?, ?, ?, ?, ?, 'on_server', ?, 1)`,
         s.client_id,
         s.id,
         s.vehicle_id,
@@ -231,6 +231,7 @@ export class ChangePuller {
         reasons,
         s.notes,
         s.updated_at ?? this.now(),
+        s.deduction_cents ?? null,
       );
       return;
     }
@@ -292,6 +293,7 @@ export class ChangePuller {
          total_m = COALESCE(?, total_m), active_m = COALESCE(?, active_m), deadhead_m = COALESCE(?, deadhead_m),
          personal_m = COALESCE(?, personal_m), calc_version = COALESCE(?, calc_version), calc_source = 'server',
          server_total_m = ?, recon_status = ?, recon_reasons = ?, notes = ?, updated_at = ?,
+         server_deduction_cents = ?, server_deduction_known = 1,
          sync_state = CASE WHEN sync_state = 'needs_attention' THEN sync_state ELSE 'on_server' END
        WHERE client_id = ?`,
       s.id,
@@ -309,6 +311,7 @@ export class ChangePuller {
       reasons,
       notes,
       updatedAt,
+      s.deduction_cents ?? null,
       s.client_id,
     );
   }

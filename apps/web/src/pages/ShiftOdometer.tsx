@@ -20,7 +20,7 @@ const inUnit = (m: number, unit: 'km' | 'mi') =>
   String(Math.round((unit === 'km' ? m / 1000 : m / M_PER_MILE) * 10) / 10);
 
 /** The optional start and end odometer readings of one shift (07 section 2), editable here. */
-export function ShiftOdometer({ shift }: { shift: Schemas['Shift'] }) {
+export function ShiftOdometer({ shift, bare }: { shift: Schemas['Shift']; bare?: boolean }) {
   const { api } = useSession();
   const { distance_unit: unit, timezone } = useSettings();
   // A shift that runs past midnight can have its end reading on the next local day.
@@ -83,7 +83,7 @@ export function ShiftOdometer({ shift }: { shift: Schemas['Shift'] }) {
 
   if (values === null) return error ? <FormError message={error} /> : null;
   return (
-    <Section label="Odometer" title="Odometer">
+    <Section label="Odometer" title="Odometer" bare={bare}>
       <div className="grid grid-cols-2 gap-4">
         {KINDS.map(({ kind, label }) => (
           <div key={kind} className="space-y-2">

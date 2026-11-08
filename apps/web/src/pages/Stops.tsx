@@ -65,34 +65,43 @@ const ROLES = [
 const FIELD =
   'w-full min-w-24 h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30';
 
+/** The detected stops of a shift, read once per shift; label saves update the list in place. */
+export function useShiftStops(shiftId: number, on: boolean) {
+  const { api } = useSession();
+  const [stops, setStops] = useState<Stop[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!on) return;
+    let live = true;
+    void unwrap(api.GET('/shifts/{ref}/stops', { params: { path: { ref: String(shiftId) } } }))
+      .then((list) => live && setStops(list))
+      .catch((e) => live && setError(describe(e)));
+    return () => {
+      live = false;
+    };
+  }, [api, shiftId, on]);
+  return { stops, setStops, error };
+}
+
 /**
  * Detected stops of a shift with optional labels (module `stops`, web only). A save or a clear
  * recomputes the shift on the server; the new shift goes to `onShift` so the split above
  * and the trips below show the new estimate.
  */
-export function StopsPanel({ shift, onShift }: { shift: Shift; onShift: (shift: Shift) => void }) {
+export function StopsPanel({
+  shift,
+  onShift,
+  data: { stops, setStops, error },
+}: {
+  shift: Shift;
+  onShift: (shift: Shift) => void;
+  data: ReturnType<typeof useShiftStops>;
+}) {
   const { api } = useSession();
   const { currency, timezone } = useSettings();
-  const [stops, setStops] = useState<Stop[] | null>(null);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
-  const [error, setError] = useState<string | null>(null);
   const [rowError, setRowError] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
-
-  useEffect(() => {
-    let live = true;
-    void unwrap(api.GET('/shifts/{ref}/stops', { params: { path: { ref: String(shift.id) } } }))
-      .then((list) => {
-        if (!live) return;
-        setStops(list);
-        setDrafts(Object.fromEntries(list.map((s) => [s.stop_key, draftOf(s)])));
-      })
-      .catch((e) => live && setError(describe(e)));
-    return () => {
-      live = false;
-    };
-    // Read once per shift; later changes come back in the label responses.
-  }, [api, shift.id]);
 
   function apply(key: string, stop: Stop | null, next: Shift) {
     setStops((old) => (old ?? []).flatMap((s) => (s.stop_key !== key ? [s] : stop ? [stop] : [])));

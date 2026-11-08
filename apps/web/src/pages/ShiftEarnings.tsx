@@ -4,28 +4,39 @@ import { Button as UiButton } from '@/components/ui/button';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
-import { formatMoney } from '../format';
+import { formatMoney, toCents } from '../format';
+import { EarningLedger } from './EarningLedger';
+import type { EarnedSummary } from './ShiftFacts';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
+import { PlatformBadge, PlatformName } from '../platforms/PlatformBadge';
+import type { PlatformLike } from '../platforms/PlatformBadge';
+import { builtinPlatform } from '@milewage/shared';
 
 type Earnings = Schemas['ShiftEarnings'];
 type Platform = Schemas['Platform'];
 
-/** Dollars typed by the driver to whole cents; blank is 0, anything else invalid is NaN. */
-export const toCents = (text: string): number =>
-  text.trim() === '' ? 0 : Math.round(Number(text.replace(',', '.')) * 100);
+export { toCents };
 
 /**
  * The driver's own total per platform for one shift (module `earnings`, 18 section 4.3). One
  * figure typed after the fact, never a tap per delivery. It replaces the sum of that platform's
  * stop labels, which stay visible below as the breakdown.
  */
-export function ShiftEarnings({ shift }: { shift: Schemas['Shift'] }) {
+export function ShiftEarnings({
+  shift,
+  onSummary,
+}: {
+  shift: Schemas['Shift'];
+  /** Told the shift's earned total and platform names whenever they change. */
+  onSummary?: (s: EarnedSummary) => void;
+}) {
   const { api } = useSession();
   const { currency, modules } = useSettings();
   const [data, setData] = useState<Earnings | null>(null);
   const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [ledger, setLedger] = useState(false);
   const [form, setForm] = useState({
     platform: 'other',
     gross: '',
@@ -47,10 +58,13 @@ export function ShiftEarnings({ shift }: { shift: Schemas['Shift'] }) {
     void load();
   }, [load]);
 
-  const options =
-    platforms.length > 0
-      ? platforms.map((p) => ({ value: p.slug, label: p.label }))
-      : [{ value: 'other', label: 'Other' }];
+  const known: PlatformLike[] =
+    platforms.length > 0 ? platforms : [{ slug: 'other', label: 'Other' }];
+  const options = known.map((p) => ({
+    value: p.slug,
+    label: p.label,
+    icon: <PlatformBadge platform={p} />,
+  }));
   async function save(e: FormEvent) {
     e.preventDefault();
     const platform = options.some((o) => o.value === form.platform)
@@ -96,21 +110,42 @@ export function ShiftEarnings({ shift }: { shift: Schemas['Shift'] }) {
     }
   }
 
-  const label = (slug: string) => options.find((o) => o.value === slug)?.label ?? slug;
+  /** A platform by slug: the driver's list, else the built-in name, else the slug itself. */
+  const platformOf = (slug: string): PlatformLike =>
+    known.find((p) => p.slug === slug) ?? { slug, label: builtinPlatform(slug)?.label ?? slug };
+  const label = (slug: string) => platformOf(slug).label;
+  const shown = JSON.stringify(data?.effective.map((r) => platformOf(r.platform)));
+  useEffect(() => {
+    if (!data) return;
+    onSummary?.({
+      cents: data.effective.length ? data.effective.reduce((t, r) => t + r.total_cents, 0) : null,
+      platforms: JSON.parse(shown) as PlatformLike[],
+    });
+  }, [data, shown, onSummary]);
 
+  // Nothing yet: one line says so and how, and the less common lines wait behind a button.
+  const none = data?.effective.length === 0;
   return (
-    <Section label="Earnings" title="Earnings">
+    <Section
+      label="Earnings"
+      title="Earnings"
+      // The form follows the card's width, not the window's (the card can sit in a column).
+      className="@container"
+      description={
+        none
+          ? 'No earnings entered or labelled for this shift. Type the total the platform shows.'
+          : undefined
+      }
+    >
       <FormError message={error} />
-      {data === null ? null : data.effective.length === 0 ? (
-        <p className="text-muted-foreground">No earnings entered or labelled for this shift.</p>
-      ) : (
+      {data === null || none ? null : (
         <ul className="space-y-1">
           {data.effective.map((r) => (
             <li key={r.platform} className="flex items-center gap-3">
-              <span>
+              <PlatformName platform={platformOf(r.platform)}>
                 {label(r.platform)}: {formatMoney(r.total_cents, currency)}
                 {r.orders !== null ? `, ${r.orders} orders` : ''}
-              </span>
+              </PlatformName>
               <span className="text-sm text-muted-foreground">
                 {r.source === 'labels' ? 'from stop labels' : 'entered by you'}
               </span>
@@ -129,7 +164,11 @@ export function ShiftEarnings({ shift }: { shift: Schemas['Shift'] }) {
           ))}
         </ul>
       )}
-      <form className="grid max-w-2xl gap-3 sm:grid-cols-5" onSubmit={(e) => void save(e)}>
+      <form
+        // Two fields a row when narrow (platform and the button across), five when wide.
+        className="grid max-w-2xl grid-cols-2 gap-3 *:first:col-span-2 @xl:grid-cols-5 @xl:*:first:col-span-1 [&>button]:col-span-2 @xl:[&>button]:col-span-1"
+        onSubmit={(e) => void save(e)}
+      >
         <SelectField
           label="Platform"
           value={options.some((o) => o.value === form.platform) ? form.platform : options[0]!.value}
@@ -156,10 +195,25 @@ export function ShiftEarnings({ shift }: { shift: Schemas['Shift'] }) {
           Save total
         </Button>
       </form>
-      <p className="text-xs text-muted-foreground">
-        Type the figure the platform shows for this shift. It replaces that platform&apos;s stop
-        labels in your totals.
-      </p>
+      {none ? null : (
+        <p className="text-xs text-muted-foreground">
+          Type the figure the platform shows for this shift. It replaces that platform&apos;s stop
+          labels in your totals.
+        </p>
+      )}
+      {data === null ? null : none && !ledger ? (
+        <UiButton
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="-ml-2 self-start text-muted-foreground"
+          onClick={() => setLedger(true)}
+        >
+          Add a cash trip, fee or payout line
+        </UiButton>
+      ) : (
+        <EarningLedger shiftId={shift.id} data={data} options={options} onChange={setData} />
+      )}
     </Section>
   );
 }

@@ -1,4 +1,4 @@
-import { estimateTax, taxPacks, type ModuleRegistry } from '@milewage/shared';
+import { countryModules, resolvePlace, type ModuleRegistry } from '@milewage/shared';
 import {
   createEarningsRepository,
   createExpenseRepository,
@@ -15,9 +15,24 @@ import { deductionOfShift } from './processing/presenter';
 export interface TaxReportOptions {
   db: Db;
   registry: ModuleRegistry;
-  /** Countries whose estimate is on (`comma.tax_countries`). */
+  /** `comma.tax_countries`: countries whose estimate is not hidden. */
   countries: readonly string[];
   override?: 'replace' | 'sum';
+}
+
+/**
+ * A country's tax pack and the driver's resolved place, if shown. The country's pack decides
+ * whether an estimate exists; `comma.tax_countries` can only hide it (plan 21, owner decision Q3).
+ */
+export function shownTax(
+  country: string,
+  region: string | null | undefined,
+  shown: readonly string[],
+) {
+  const c = countryModules.get(country);
+  return c?.tax && shown.includes(c.code)
+    ? { pack: c.tax, place: resolvePlace(c, region) }
+    : undefined;
 }
 
 /** Everything `GET /tax/{year}` and the `tax_summary` export say, computed at read time (18 section 7.2). */
@@ -26,7 +41,7 @@ export function taxReport(o: TaxReportOptions, userId: number, year: number, col
   const tax = createTaxRepository(o.db);
   const inputs = tax.year(userId, year);
   const country = settings?.country ?? '';
-  const pack = o.countries.includes(country) ? taxPacks.get(country) : undefined;
+  const { pack, place } = shownTax(country, settings?.region, o.countries) ?? {};
   const from = `${year}-01-01`;
   const to = `${year}-12-31`;
 
@@ -40,8 +55,10 @@ export function taxReport(o: TaxReportOptions, userId: number, year: number, col
     unverified: pack ? !pack.verified : true,
     set_aside_bp: inputs.setAsideBp,
     sales_tax_registered: inputs.salesTaxRegistered === 1,
+    // The names of the sales tax components at the driver's place (plan 21 `salesTax` slot).
+    sales_tax_name: place?.data.salesTax?.map((t) => t.label).join(' + ') || null,
   };
-  if (!pack) {
+  if (!pack || !place) {
     return {
       ...base,
       notices: [`No tax estimate is available for ${country || 'this country'} yet.`],
@@ -71,6 +88,10 @@ export function taxReport(o: TaxReportOptions, userId: number, year: number, col
           gross_cents: sum((r) => r.grossCents),
           tips_cents: sum((r) => r.tipsCents),
           bonus_cents: sum((r) => r.bonusCents),
+          // Plan 22: fees are already taken off the total; withheld tax is shown, not yet credited.
+          fees_cents: sum((r) => r.feesCents),
+          adjustments_cents: sum((r) => r.adjustmentsCents),
+          tax_withheld_cents: sum((r) => r.taxWithheldCents),
           total_cents: sum(totalOf),
           by_platform: [...byPlatform].map(([platform, total_cents]) => ({
             platform,
@@ -100,32 +121,40 @@ export function taxReport(o: TaxReportOptions, userId: number, year: number, col
   const mileageCents = mileage.reduce((a, b) => a + b, 0);
 
   const est = income
-    ? estimateTax(pack, {
-        year,
-        region: settings?.region ?? null,
-        incomeCents: income.total_cents,
-        expensesCents: expenses,
-        mileageCents,
-        setAsideBp: inputs.setAsideBp,
-        salesTaxRegistered: inputs.salesTaxRegistered === 1,
-        collectedCents,
-        creditCents: credits,
-      })
+    ? pack.estimate(
+        {
+          year,
+          region: settings?.region ?? null,
+          incomeCents: income.total_cents,
+          expensesCents: expenses,
+          mileageCents,
+          setAsideBp: inputs.setAsideBp,
+          salesTaxRegistered: inputs.salesTaxRegistered === 1,
+          collectedCents,
+          creditCents: credits,
+        },
+        place,
+      )
     : null;
-  const slipAlerts = [...byPlatform]
-    .filter(([, total]) => total > pack.slipThresholdCents)
-    .map(([platform, total]) => ({
-      platform,
-      total_cents: total,
-      threshold_cents: pack.slipThresholdCents,
-      slip: pack.slipName,
-    }));
+  const slip = pack.slip;
+  const slipAlerts = !slip
+    ? []
+    : [...byPlatform]
+        .filter(([, total]) => total > slip.thresholdCents)
+        .map(([platform, total]) => ({
+          platform,
+          total_cents: total,
+          threshold_cents: slip.thresholdCents,
+          slip: slip.name,
+        }));
   return {
     ...base,
     notices: [
       ...(pack.verified
         ? []
-        : ['Unverified rates: these figures have not been checked against the CRA publications.']),
+        : [
+            `Unverified rates: these figures have not been checked against ${pack.checkedAgainst}.`,
+          ]),
       'Estimates to bring to an accountant, not tax advice. Nothing here is filed.',
       ...(income
         ? []
@@ -141,7 +170,7 @@ export function taxReport(o: TaxReportOptions, userId: number, year: number, col
         .map((v) => ({ vehicle_id: v.vehicleId, method: v.method })),
     },
     estimate: est,
-    deadlines: pack.deadlines(year),
+    deadlines: pack.deadlines(year, place),
     slip_alerts: slipAlerts,
     jar: {
       balance_cents: balance,

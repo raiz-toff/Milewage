@@ -1,10 +1,22 @@
 // @vitest-environment jsdom
+import { File as NodeFile } from 'node:buffer';
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
-import { bodyOf } from '../src/pages/Expenses';
-import { renderApp, settingsFixture, signedIn, menu } from './support/kit';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { bodyOf, quickCategories } from '../src/pages/Expenses';
+import {
+  renderApp,
+  settingsFixture,
+  signedIn,
+  menu,
+  pick,
+  pickDay,
+  DASHBOARD,
+} from './support/kit';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 const cat = (slug: string, label: string, over: object = {}) => ({
   slug,
@@ -15,7 +27,16 @@ const cat = (slug: string, label: string, over: object = {}) => ({
   covered_by_standard_rate: false,
   ...over,
 });
-const CATS = [cat('fuel', 'Fuel'), cat('meals', 'Meals', { default_business_pct: 50 })];
+const CATS = [
+  cat('fuel', 'Fuel', { vehicle_related: true, covered_by_standard_rate: true }),
+  cat('parking', 'Parking', { vehicle_related: true }),
+  cat('tolls', 'Tolls', { vehicle_related: true }),
+  cat('insurance', 'Insurance', { vehicle_related: true, covered_by_standard_rate: true }),
+  cat('phone', 'Phone', { default_business_pct: 50 }),
+  cat('wash', 'Car wash', { vehicle_related: true }),
+  cat('meals', 'Meals', { default_business_pct: 50 }),
+  cat('accounting', 'Accounting and tax help'),
+];
 const expense = (over: object = {}) => ({
   id: 1,
   spent_on: '2023-11-14',
@@ -47,20 +68,34 @@ const totals = {
   by_category: [],
 };
 
-function open(rows: object[] = [expense()], due: object[] = [], enabled = true, receipts = true) {
+function open(
+  rows: object[] = [expense()],
+  due: object[] = [],
+  enabled = true,
+  receipts = true,
+  more: { vehicle?: number; shifts?: object[] } = {},
+) {
   return renderApp(
     {
-      ...signedIn(settingsFixture({ modules: { expenses: enabled, receipts } })),
+      ...signedIn(
+        settingsFixture({
+          modules: { expenses: enabled, receipts },
+          default_vehicle_id: more.vehicle ?? null,
+        }),
+      ),
       'GET /expenses': () => ({ body: { items: rows, next_cursor: null } }),
       'GET /expenses/totals': () => ({ body: totals }),
       'GET /expenses/due': () => ({ body: due }),
       'GET /expenses/categories': () => ({ body: CATS }),
       'GET /expenses/merchants': () => ({ body: ['Shell'] }),
-      'GET /vehicles': () => ({ body: [] }),
-      'GET /shifts': () => ({ body: { items: [], next_cursor: null } }),
+      'GET /vehicles': () => ({
+        body: more.vehicle ? [{ id: more.vehicle, name: 'Corolla' }] : [],
+      }),
+      'GET /shifts': () => ({ body: { items: more.shifts ?? [], next_cursor: null } }),
       'POST /expenses': () => ({ status: 201, body: expense({ id: 2 }) }),
       'POST /expenses/9/occurrences': () => ({ status: 201, body: expense({ id: 3 }) }),
       'PUT /expenses/9/snooze': () => ({ body: expense({ id: 9 }) }),
+      'PATCH /expenses/1': () => ({ body: expense() }),
       'DELETE /expenses/1': () => ({ status: 204 }),
       'PUT /expenses/1/receipt': () => ({ status: 201, body: { expense_id: 1 } }),
       'DELETE /expenses/2/receipt': () => ({ status: 204 }),
@@ -81,11 +116,103 @@ describe('expenses screen (module expenses)', () => {
     expect(await screen.findByText('covered by the mileage rate')).toBeTruthy();
   });
 
+  it('opens with amount, date and a few categories; the rest waits behind More details', async () => {
+    open();
+    await screen.findByText('Shell');
+    fireEvent.click(screen.getByRole('button', { name: 'Add expense' }));
+    expect(document.activeElement).toBe(await screen.findByLabelText('Amount'));
+    const group = screen.getByRole('group', { name: 'Category' });
+    expect([...group.querySelectorAll('button[aria-pressed]')].map((b) => b.textContent)).toEqual([
+      'Fuel',
+      'Parking',
+      'Tolls',
+      'Phone',
+      'Car wash',
+    ]);
+    expect(screen.getByRole('button', { name: 'Fuel', pressed: true })).toBeTruthy();
+    expect(screen.getByText('Deductible in full.')).toBeTruthy();
+    for (const hidden of ['Merchant', 'Vehicle', 'Shift', 'Repeats', 'Notes'])
+      expect(screen.queryByLabelText(hidden)).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: 'Deductible' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '75%' })).toBeNull();
+    const more = screen.getByRole('button', { name: 'More details' });
+    expect(more.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(more);
+    expect(more.getAttribute('aria-expanded')).toBe('true');
+    for (const shown of ['Merchant', 'Repeats', 'Notes'])
+      expect(screen.getByLabelText(shown)).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: 'Deductible' })).toBeTruthy();
+    // No vehicle and no shift nearby: nothing to choose, so no field.
+    expect(screen.queryByLabelText('Vehicle')).toBeNull();
+    expect(screen.queryByLabelText('Shift')).toBeNull();
+  });
+
+  it("offers the driver's most used categories first, and every other one under More", async () => {
+    const used = [1, 2, 3].map((id) => expense({ id, category: 'meals', merchant: `M${id}` }));
+    open([...used, expense({ id: 4, category: 'accounting', merchant: 'CPA' })]);
+    await screen.findByText('CPA');
+    fireEvent.click(screen.getByRole('button', { name: 'Add expense' }));
+    const group = await screen.findByRole('group', { name: 'Category' });
+    expect([...group.querySelectorAll('button[aria-pressed]')].map((b) => b.textContent)).toEqual([
+      'Fuel',
+      'Parking',
+      'Tolls',
+      'Meals',
+      'Accounting and tax help',
+    ]);
+    pick(screen.getByLabelText('More categories'), 'insurance');
+    expect(screen.getByLabelText('More categories').textContent).toMatch('Insurance');
+    expect(group.querySelector('[aria-pressed="true"]')).toBeNull();
+    expect(quickCategories(CATS as never, [])).toEqual([
+      'fuel',
+      'parking',
+      'tolls',
+      'phone',
+      'wash',
+    ]);
+  });
+
+  it('puts vehicle costs on the default vehicle and offers nearby shifts', async () => {
+    const shift = { id: 7, local_date: '2023-11-13' };
+    const s = open([expense()], [], true, true, { vehicle: 5, shifts: [shift] });
+    await screen.findByText('Shell');
+    fireEvent.click(screen.getByRole('button', { name: 'Add expense' }));
+    fireEvent.change(await screen.findByLabelText('Amount'), { target: { value: '40' } });
+    expect(screen.getByRole('note').textContent).toMatch(/standard mileage rate/);
+    fireEvent.click(screen.getByRole('button', { name: 'Phone' }));
+    expect(screen.queryByRole('note')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Parking' }));
+    fireEvent.click(screen.getByRole('button', { name: 'More details' }));
+    await waitFor(() => expect(screen.getByLabelText('Shift')).toBeTruthy());
+    pick('Shift', '7');
+    fireEvent.click(screen.getByRole('button', { name: 'Save expense' }));
+    await waitFor(() => expect(s.calls.some((c) => c.method === 'POST')).toBe(true));
+    expect(s.calls.find((c) => c.method === 'POST')?.body).toMatchObject({
+      category: 'parking',
+      vehicle_id: 5,
+      shift_id: 7,
+    });
+  });
+
+  it('edits with every detail shown, and saves the changes', async () => {
+    const s = open([expense({ notes: 'Weekly fill' })]);
+    await screen.findByText('Shell');
+    menu(/Shell/, 'Edit');
+    expect(screen.getByRole('button', { name: 'More details' }).getAttribute('aria-expanded')).toBe(
+      'true',
+    );
+    expect((screen.getByLabelText('Notes') as HTMLInputElement).value).toBe('Weekly fill');
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(s.calls.some((c) => c.method === 'PATCH')).toBe(true));
+  });
+
   it('adds an expense: the category sets the business share, quick picks change it, cents are sent', async () => {
     const s = open();
     await screen.findByText('Shell');
     fireEvent.click(screen.getByRole('button', { name: 'Add expense' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Meals' }));
+    pick(await screen.findByLabelText('More categories'), 'meals');
+    expect(screen.getByText('Deductible: 50 % business use.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'More details' }));
     expect(screen.getByRole('button', { name: '50%', pressed: true })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: '75%' }));
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '12.30' } });
@@ -101,6 +228,27 @@ describe('expenses screen (module expenses)', () => {
       merchant: 'Tim',
       recurrence: null,
       next_due: null,
+    });
+  });
+
+  it('the date and the next due date are picked on calendars, sent as YYYY-MM-DD', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-03-15T15:00:00Z'));
+    const s = open();
+    await screen.findByText('Shell');
+    fireEvent.click(screen.getByRole('button', { name: 'Add expense' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'More details' }));
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+    pickDay('Date', /March 2nd, 2026/);
+    pick(screen.getByLabelText('Repeats'), 'monthly');
+    pickDay('Next due', /March 30th, 2026/);
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save expense' }));
+    await waitFor(() => expect(s.calls.some((c) => c.method === 'POST')).toBe(true));
+    expect(s.calls.find((c) => c.method === 'POST')?.body).toMatchObject({
+      spent_on: '2026-03-02',
+      recurrence: 'monthly',
+      next_due: '2026-03-30',
     });
   });
 
@@ -134,7 +282,8 @@ describe('expenses screen (module expenses)', () => {
   it('attaches a receipt as the raw file with its own content type, and shows view and remove', async () => {
     const s = open([expense(), expense({ id: 2, merchant: 'Esso', has_receipt: true })]);
     const input = (await screen.findByLabelText(/Attach receipt to Shell/)) as HTMLInputElement;
-    const file = new File(['%PDF-1.4'], 'r.pdf', { type: 'application/pdf' });
+    // Node's File, as a browser's would be: Node's fetch cannot read jsdom's File as a body.
+    const file = new NodeFile(['%PDF-1.4'], 'r.pdf', { type: 'application/pdf' });
     fireEvent.change(input, { target: { files: [file] } });
     await waitFor(() =>
       expect(s.calls.some((c) => c.method === 'PUT' && c.path === '/expenses/1/receipt')).toBe(
@@ -164,7 +313,7 @@ describe('expenses screen (module expenses)', () => {
 
   it('is absent when the module is off: no navigation entry, and the URL leads elsewhere', async () => {
     const s = open([expense()], [], false);
-    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: DASHBOARD })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Expenses' })).toBeNull();
     expect(s.calls.some((c) => c.path.startsWith('/expenses'))).toBe(false);
   });

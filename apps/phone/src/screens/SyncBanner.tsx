@@ -4,12 +4,14 @@ import { AlertTriangle, CloudCheck, CloudOff } from 'lucide-react-native';
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 import { Button } from '../components/ui/button';
 import { Text } from '../components/ui/text';
+import { isTailnetAddress } from '../connect/reach';
 import { useServices } from '../services';
 import { reminderFor, type SyncStatus } from '../sync/status';
 import { useColors } from '../theme/theme';
 
 const DAY = 86_400_000;
 const K_REMINDER = 'reminder.lastShownAt';
+const HINT_AFTER_MS = 10 * 60_000;
 
 /**
  * The one sync notice on the home screen (15 section 4.3, 4.4): what is not on the server yet,
@@ -18,22 +20,28 @@ const K_REMINDER = 'reminder.lastShownAt';
  */
 export function SyncBanner({ onSettings }: { onSettings: () => void }) {
   const C = useColors();
-  const { status, sync, monitor, plain, shift, uploader, runner } = useServices();
+  const { status, sync, monitor, plain, shift, uploader, runner, pairing, net } = useServices();
   const [s, setS] = useState<SyncStatus | null>(null);
   const [reminder, setReminder] = useState('');
   const [busy, setBusy] = useState(false);
+  /** Plan 19 section 3.5: something waiting 10 minutes for a `.ts.net` server, no VPN on. */
+  const [tailscaleOff, setTailscaleOff] = useState(false);
 
   const refresh = useCallback(async () => {
     const next = await status();
     setS(next);
     const state = await plain.get(K_REMINDER);
     const now = Date.now();
+    const base = (await pairing.load())?.credential.baseUrl ?? '';
+    const waited = next.oldestAt !== null && now - next.oldestAt >= HINT_AFTER_MS;
+    // With no VPN a tailnet address cannot be reached at all, so no failed upload is needed.
+    setTailscaleOff(waited && isTailnetAddress(base) && (await net.vpnActive()) === false);
     const r = reminderFor(next.oldestAt, next.unsyncedShifts, now, state ? Number(state) : null);
     if (r.level !== 'none') {
       await plain.set(K_REMINDER, String(now));
       setReminder(r.text);
     }
-  }, [status, plain]);
+  }, [status, plain, pairing, net]);
 
   useEffect(() => {
     void refresh();
@@ -67,6 +75,21 @@ export function SyncBanner({ onSettings }: { onSettings: () => void }) {
       </AlertTitle>
       {s.message && <AlertDescription accessibilityRole="alert">{s.message}</AlertDescription>}
       {reminder !== '' && <AlertDescription>{reminder}</AlertDescription>}
+      {tailscaleOff && (
+        <View className="gap-2 pt-1">
+          <AlertDescription>
+            Tailscale is off on this phone, so your server cannot be reached.
+          </AlertDescription>
+          <Button
+            variant="outline"
+            size="sm"
+            className="self-start"
+            onPress={() => void net.openTailscale()}
+          >
+            <Text>Open Tailscale</Text>
+          </Button>
+        </View>
+      )}
       {wrong && (
         <View className="flex-row flex-wrap gap-2 pt-1">
           <Button

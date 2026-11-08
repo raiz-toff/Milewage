@@ -18,6 +18,9 @@ services:
     logging: *logging
     ports:
       - '127.0.0.1:${MILEWAGE_HOST_PORT:-8080}:8080'
+    environment:
+      # Caddy keeps the forwarded headers only from this address (plan 19 section 3.1).
+      - MILEWAGE_PROXY_GATEWAY=${MILEWAGE_PROXY_GATEWAY:-172.29.88.1}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -41,6 +44,13 @@ services:
       # The API believes X-Forwarded-For only from this network, which holds just Caddy and the API
       # (the fixed /24 below). Without it every login and redeem limit would see Caddy's address.
       - MILEWAGE_TRUST_PROXY=${MILEWAGE_PROXY_SUBNET:-172.29.88.0/24}
+      # The address phones are given, e.g. https://<host>.<tailnet>.ts.net (plan 19 section 3.2).
+      # Empty: the address the browser is on.
+      - MILEWAGE_PUBLIC_URL=${MILEWAGE_PUBLIC_URL:-}
+      # The app's store page once it is published (https); the download page then offers it first.
+      - MILEWAGE_APP_STORE_URL=${MILEWAGE_APP_STORE_URL:-}
+      # 1 turns on the MCP endpoint for AI assistants (plan 26); empty leaves it off.
+      - MILEWAGE_MODULE_MCP=${MILEWAGE_MODULE_MCP:-}
     volumes:
       - data:/app/data
       - backups:/app/backups
@@ -54,6 +64,8 @@ networks:
     ipam:
       config:
         - subnet: ${MILEWAGE_PROXY_SUBNET:-172.29.88.0/24}
+          # Set, not left to Docker, so Caddy's trusted address and the real gateway always agree.
+          gateway: ${MILEWAGE_PROXY_GATEWAY:-172.29.88.1}
 
 volumes:
   data:

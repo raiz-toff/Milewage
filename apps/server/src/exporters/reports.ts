@@ -134,6 +134,12 @@ export const taxSummaryExporter: Exporter = {
       yield row(['Income', 'Gross', money(inc.gross_cents)]);
       yield row(['Income', 'Tips', money(inc.tips_cents)]);
       yield row(['Income', 'Bonus', money(inc.bonus_cents)]);
+      // Plan 22: only when entered, so today's files are unchanged. Fees and withheld tax are
+      // amounts taken, written above zero as on the OECD platform statement.
+      if (inc.fees_cents) yield row(['Income', 'Platform_Fees_Taken', money(-inc.fees_cents)]);
+      if (inc.adjustments_cents) yield row(['Income', 'Adjustments', money(inc.adjustments_cents)]);
+      if (inc.tax_withheld_cents)
+        yield row(['Income', 'Tax_Withheld_By_Platforms', money(-inc.tax_withheld_cents)]);
       for (const p of inc.by_platform)
         yield row(['Income_By_Platform', p.platform, money(p.total_cents)]);
     } else yield row(['Income', 'Total', 'not entered']);
@@ -151,17 +157,14 @@ export const taxSummaryExporter: Exporter = {
     if (est) {
       yield row(['Estimate', 'Net_Income', money(est.net_income_cents)]);
       yield row(['Estimate', 'Taxable_Income', money(est.taxable_income_cents)]);
-      yield row([
-        'Estimate',
-        'Pension_Contribution',
-        est.cpp_cents === null ? (est.pension_note ?? '') : money(est.cpp_cents),
-      ]);
-      yield row([
-        'Estimate',
-        'Pension_Contribution_Second_Band',
-        est.cpp2_cents === null ? '' : money(est.cpp2_cents),
-      ]);
-      yield row(['Estimate', 'Income_Tax_Set_Aside', money(est.income_tax_cents)]);
+      // Each line of the country's estimate; the row name is its key (`income_tax_set_aside` → `Income_Tax_Set_Aside`).
+      for (const l of est.lines) {
+        const name = l.key.replace(
+          /(^|_)([a-z])/g,
+          (_, sep: string, c: string) => sep + c.toUpperCase(),
+        );
+        yield row(['Estimate', name, l.cents === null ? (l.note ?? '') : money(l.cents)]);
+      }
       yield row(['Estimate', 'Total_Set_Aside', money(est.total_set_aside_cents)]);
       yield row(['Estimate', 'Instalment', money(est.instalment_cents)]);
       if (est.sales_tax) {

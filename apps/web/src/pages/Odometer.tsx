@@ -6,7 +6,7 @@ import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { formatDateTime, formatDistance } from '../format';
 import { useSession, useSettings } from '../session';
-import { Button, Field, FormError, SelectField } from '../ui/form';
+import { Button, DateField, Field, FormError, SelectField } from '../ui/form';
 import { localDate } from './Dashboard';
 
 type Reading = Schemas['OdometerReading'];
@@ -52,13 +52,14 @@ const KIND_TEXT: Record<Reading['kind'], string> = {
 };
 
 /**
- * Odometer logbook (07 section 2, 04 audit): fiscal-year start and end readings the CRA asks for,
+ * Odometer logbook (07 section 2, 04 audit): fiscal-year start and end readings (what the tax
+ * office asks comes from the `logbook` field of the settings, plan 21),
  * and the optional per-shift readings the phone or web entered. Readings are optional everywhere
  * and are shown in the driver's unit.
  */
 export function OdometerPage() {
   const { api } = useSession();
-  const { distance_unit: unit, timezone, country } = useSettings();
+  const { distance_unit: unit, timezone, logbook } = useSettings();
   const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
   const [vehicleId, setVehicleId] = useState('');
   const [readings, setReadings] = useState<Reading[] | null>(null);
@@ -157,9 +158,7 @@ export function OdometerPage() {
       <PageHeader
         title="Odometer"
         description={
-          country === 'CA'
-            ? undefined
-            : 'Readings are optional. Enter them if your tax office asks.'
+          logbook ? undefined : 'Readings are optional. Enter them if your tax office asks.'
         }
       >
         {vehicles.length > 1 ? (
@@ -172,20 +171,20 @@ export function OdometerPage() {
         ) : null}
       </PageHeader>
 
-      {country === 'CA' ? (
+      {logbook ? (
         <div
           role="note"
           className="space-y-1 rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm"
         >
           <p>
-            The CRA asks for the odometer reading at the start and end of each fiscal year.
+            {logbook.readings}
             {missingStart ? ` There is no year-start reading for ${year} yet.` : ''}
           </p>
-          <p className="text-muted-foreground">
-            A full 12-month logbook can serve as a base year; a 3-month sample can then be used
-            while your use stays within 10% of the base year. MileWage stores the readings but has
-            no base-year or sample mode. Check the rules with the CRA.
-          </p>
+          {logbook.notes.map((n) => (
+            <p key={n} className="text-muted-foreground">
+              {n}
+            </p>
+          ))}
         </div>
       ) : null}
 
@@ -206,7 +205,7 @@ export function OdometerPage() {
               { value: 'year_end', label: 'Year end' },
             ]}
           />
-          <Field label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <DateField label="Date" value={date} onChange={setDate} />
           <Field
             label={`Odometer (${unit})`}
             inputMode="decimal"

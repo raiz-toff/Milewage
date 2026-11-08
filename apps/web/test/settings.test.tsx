@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { changes } from '../src/pages/SettingsPage';
 import { renderApp, settingsFixture, signedIn, pick, optionsOf } from './support/kit';
 import type { Handler } from './support/kit';
+import { countriesFixture } from './support/fixtures';
 
 afterEach(cleanup);
 
@@ -56,7 +57,7 @@ describe('settings page', () => {
     expect(((await screen.findByLabelText('Name')) as HTMLInputElement).value).toBe('');
     await go('Units and format');
     expect(((await screen.findByLabelText('Currency')) as HTMLInputElement).value).toBe('CAD');
-    await go('Tracking');
+    await go('Tracking and privacy');
     expect(
       ((await screen.findByLabelText('Keep raw GPS points (days)')) as HTMLInputElement).value,
     ).toBe('90');
@@ -67,7 +68,7 @@ describe('settings page', () => {
     const { calls } = server(settingsFixture(), undefined, '/settings/units');
     pick(await screen.findByLabelText('Distance unit'), 'mi');
     // An unsaved edit survives moving to another settings page and is saved from there.
-    await go('Tracking');
+    await go('Tracking and privacy');
     fireEvent.change(await screen.findByLabelText('Keep raw GPS points (days)'), {
       target: { value: '120' },
     });
@@ -88,7 +89,7 @@ describe('settings page', () => {
     fireEvent.click(save());
     await screen.findByRole('status');
     expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ stops_enabled: false });
-    await go('Modules');
+    await go('Server modules');
     await screen.findByRole('region', { name: 'Modules' });
     expect(flag('stops')).toBe('Off');
   });
@@ -116,12 +117,57 @@ describe('settings page', () => {
   it('offers only the countries the server lists and shows the module flags', async () => {
     server(settingsFixture({ modules: { countries: ['CA', 'GB'], replay: false } }));
     expect(optionsOf(await screen.findByLabelText('Country'))).toEqual(['CA', 'GB']);
-    await go('Modules');
+    await go('Server modules');
     await screen.findByRole('region', { name: 'Modules' });
     expect(flag('replay')).toBe('Off');
     expect(flag('sync')).toBe('On');
     const mods = screen.getByRole('region', { name: 'Modules' });
     expect(['csv', 'gpx', 'geojson'].every((f) => within(mods).getByText(f))).toBe(true);
+  });
+
+  it('names countries, offers the regions in a drop-down and prompts for a region with its own rules', async () => {
+    const { calls } = server();
+    const country = await screen.findByLabelText('Country');
+    await waitFor(() => expect(country.textContent).toBe('Canada'));
+    const prompt =
+      'Set your province to include its own rules. Until then, only the national rules apply.';
+    expect(screen.getByRole('note').textContent).toBe(prompt);
+    expect(optionsOf('Province')).toEqual(['', 'AB', 'ON', 'QC']);
+    pick('Province', 'QC');
+    expect(screen.queryByRole('note')).toBeNull();
+    fireEvent.click(save());
+    await screen.findByRole('status');
+    expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ region: 'QC' });
+
+    // A new country starts without a region; one without regional rules gets no prompt.
+    pick('Country', 'US');
+    expect((screen.getByLabelText('State') as HTMLElement).textContent).toBe('Not set');
+    expect(screen.queryByRole('note')).toBeNull();
+    pick('Country', 'GB');
+    expect(screen.getByLabelText('Nation')).toBeTruthy();
+  });
+
+  it('offers your own mileage rate only where the country has no official rate', async () => {
+    const np = { ...countriesFixture()[0]!, code: 'NP', name: 'Nepal', regions: [] };
+    const { calls } = renderApp(
+      {
+        ...signedIn(settingsFixture({ country: 'NP', currency: 'NPR' })),
+        'GET /countries': () => ({
+          body: [...countriesFixture(), { ...np, supports: { mileage: false, tax: false } }],
+        }),
+        'PATCH /settings': ({ body }) => ({ body: settingsFixture(body as object) }),
+      },
+      '/settings',
+    );
+    const rate = await screen.findByLabelText('Your mileage rate (NPR per km)');
+    fireEvent.change(rate, { target: { value: '12.305' } });
+    fireEvent.click(save());
+    await screen.findByRole('status');
+    expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({
+      own_mileage_rate: { cents_per_unit: 1230.5, unit: 'km' },
+    });
+    pick('Country', 'CA');
+    expect(screen.queryByLabelText(/Your mileage rate/)).toBeNull();
   });
 
   it('hides the diagnostics level when the diagnostics module is off', async () => {
@@ -144,6 +190,7 @@ describe('settings page', () => {
       region: '',
       week_start: '1' as const,
       time_format: '24h' as const,
+      own_rate: '',
     };
     expect(changes(s, same)).toEqual({});
     expect(changes(s, { ...same, raw_retention_days: '30' })).toEqual({ raw_retention_days: 30 });
@@ -152,7 +199,7 @@ describe('settings page', () => {
   it('saves the profile fields: empty name and region become null, week start a number', async () => {
     const { calls } = server();
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Sam' } });
-    fireEvent.change(screen.getByLabelText(/^Region/), { target: { value: 'on' } });
+    pick(await screen.findByLabelText('Province'), 'ON');
     await go('Units and format');
     pick(await screen.findByLabelText('Week starts on'), '0');
     pick(screen.getByLabelText('Time format'), '12h');
@@ -164,7 +211,7 @@ describe('settings page', () => {
       week_start: 0,
       time_format: '12h',
     });
-    await go('General');
+    await go('Profile and region');
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: '' } });
     fireEvent.click(save());
     await waitFor(() => expect(calls.filter((c) => c.method === 'PATCH')).toHaveLength(2));

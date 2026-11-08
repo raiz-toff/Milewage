@@ -15,11 +15,25 @@ export interface Recorded {
 
 export type Handler = (req: Recorded) => Response | Promise<Response>;
 
+/** A MileWage answer: JSON with the header every MileWage response carries. */
 export const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json', 'X-MileWage-Api': '1', ...headers },
   });
+
+/** The phone's network as a test sets it: VPN on or off, Tailscale installed or not. */
+export function fakeNet(vpn: boolean | null = true, installed = true) {
+  const n = {
+    vpn,
+    installed,
+    opened: 0,
+    vpnActive: async () => n.vpn,
+    tailscaleInstalled: async () => n.installed,
+    openTailscale: async () => void (n.opened += 1),
+  };
+  return n;
+}
 
 export const problem = (status: number, code: string, retryable = false, headers = {}) =>
   json(status, { type: 'about:blank', title: code, status, code, retryable }, headers);
@@ -89,6 +103,7 @@ export function makeServices(
   const services: Services = createServices({
     tracker,
     permissions: new FakePermissions(),
+    net: fakeNet(),
     secure,
     plain,
     openAppDb: async () => openNodeAppDb(),

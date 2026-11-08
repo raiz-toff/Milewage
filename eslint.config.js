@@ -24,6 +24,25 @@ const forbiddenModules = [
   'node-fetch',
 ];
 
+// Plan 21 section 3.4 rule 1: code asks a country module for data and never checks a country or
+// region code itself. The codes are every ISO 3166-1 region CLDR names (through Intl), so a byte
+// marker such as 'II' passes; `CA-ON` style subdivision codes are caught by their shape.
+const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
+const AZ = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
+const isoCountries = AZ.flatMap((a) => AZ.map((b) => a + b)).filter((c) => regionNames.of(c) !== c);
+const code = `Literal[value=/^(${isoCountries.join('|')})(-[A-Z0-9]{1,3})?$/]`;
+const countryCheck =
+  'A country or region code in logic: read the data from the country module instead (plan 21 section 3.4).';
+const countryLiteralRule = [
+  'error',
+  ...[
+    `BinaryExpression[operator=/^[!=]==?$/] > ${code}`,
+    `SwitchCase > ${code}.test`,
+    `CallExpression[callee.property.name=/^(includes|indexOf|has)$/] > ${code}`,
+    `CallExpression > MemberExpression.callee[property.name=/^(includes|indexOf)$/] > ArrayExpression > ${code}`,
+  ].map((selector) => ({ selector, message: countryCheck })),
+];
+
 export default tseslint.config(
   {
     ignores: [
@@ -66,6 +85,11 @@ export default tseslint.config(
   {
     files: ['infra/vm-tests/**/*.cjs'],
     rules: { '@typescript-eslint/no-require-imports': 'off' }, // runs inside the api image as CommonJS
+  },
+  {
+    files: ['apps/*/src/**/*.{ts,tsx}', 'packages/*/src/**/*.{ts,tsx}'],
+    ignores: ['packages/shared/src/countries/**'],
+    rules: { 'no-restricted-syntax': countryLiteralRule },
   },
   {
     files: ['packages/track-engine/src/**/*.ts'],

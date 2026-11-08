@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { rangeOf } from '../src/pages/Analytics';
-import { renderApp, settingsFixture, signedIn } from './support/kit';
+import { offsetOf, rangeOf, rangeText } from '../src/pages/Analytics';
+import { renderApp, settingsFixture, signedIn, DASHBOARD } from './support/kit';
 
 afterEach(cleanup);
 
@@ -82,9 +82,10 @@ describe('analytics screen (module analytics)', () => {
     expect(figures.textContent).toMatch(/Net take-home\$220\.00/);
     expect(screen.getByText(/Not enough shifts to project/)).toBeTruthy();
     expect(screen.getByText(/estimated from detected stops/)).toBeTruthy();
-    expect(screen.getByRole('region', { name: 'Income sources' }).textContent).toMatch(
-      /doordash: \$300\.00 \(100%\)/,
-    );
+    const sources = screen.getByRole('region', { name: 'Income sources' });
+    // The platform's name and badge (plan 25), not its slug.
+    expect(sources.textContent).toMatch(/DoorDash: \$300\.00 \(100%\)/);
+    expect(sources.querySelector('[data-platform="doordash"]')).not.toBeNull();
     expect(screen.getByRole('region', { name: 'Work rhythm' }).textContent).toMatch(
       /Busiest weekday: Tuesday/,
     );
@@ -124,6 +125,36 @@ describe('analytics screen (module analytics)', () => {
     );
   });
 
+  it('shows the period as a date picker; a day picked opens the period that holds it', async () => {
+    const s = open();
+    await screen.findByLabelText('Figures');
+    const trigger = screen.getByRole('button', { name: /^Period: / });
+    fireEvent.click(trigger);
+    const dialog = await screen.findByRole('dialog', { name: 'Pick a period' });
+    expect(dialog.querySelectorAll('select')).toHaveLength(2); // month and year dropdowns
+    // The week shown is shaded: its first and last day and the five between.
+    expect(dialog.querySelectorAll('.rdp-range_start, .rdp-range_end')).toHaveLength(2);
+    expect(dialog.querySelectorAll('.rdp-range_middle')).toHaveLength(5);
+    const days = [...dialog.querySelectorAll<HTMLButtonElement>('button[aria-label]')].filter(
+      (b) => /\d{4}/.test(b.getAttribute('aria-label')!) && !b.disabled,
+    );
+    fireEvent.click(days[0]!);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(
+      (screen.getByRole('button', { name: 'Next period' }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+    expect(s.calls.filter((c) => c.path === '/analytics').length).toBeGreaterThan(1);
+  });
+
+  it('offsetOf and rangeText: the period of a day, and a short range in the local order', () => {
+    expect(offsetOf('week', '2027-01-04', '2027-01-15', 1)).toBe(-1);
+    expect(offsetOf('week', '2027-01-11', '2027-01-15', 1)).toBe(0);
+    expect(offsetOf('month', '2026-11-30', '2027-01-15', 1)).toBe(-2);
+    expect(offsetOf('year', '2024-06-01', '2027-01-15', 1)).toBe(-3);
+    expect(rangeText('2026-11-02', '2026-11-08', 'en-CA')).toBe('Nov 2–8, 2026');
+    expect(rangeText('2026-11-02', '2026-11-08', 'en-GB')).toBe('2–8 Nov 2026');
+  });
+
   it('rangeOf: weeks follow the start day, months and years are calendar ones', () => {
     expect(rangeOf('week', 0, '2027-01-15', 1)).toEqual({ from: '2027-01-11', to: '2027-01-17' });
     expect(rangeOf('week', -1, '2027-01-15', 0)).toEqual({ from: '2027-01-03', to: '2027-01-09' });
@@ -133,7 +164,7 @@ describe('analytics screen (module analytics)', () => {
 
   it('is absent when the module is off', async () => {
     const s = open({}, false);
-    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: DASHBOARD })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Analytics' })).toBeNull();
     expect(s.calls.some((c) => c.path === '/analytics')).toBe(false);
   });

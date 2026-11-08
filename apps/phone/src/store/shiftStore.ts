@@ -44,6 +44,9 @@ export interface ShiftRow {
   notes: string | null;
   updated_at: number;
   sync_state: SyncState;
+  /** The server's deduction value from the pull feed; only meaningful when `server_deduction_known` is 1. */
+  server_deduction_cents: number | null;
+  server_deduction_known: 0 | 1;
 }
 
 export interface TripRow {
@@ -256,6 +259,16 @@ export class ShiftStore {
       'SELECT shift_client_id, kind, reading_m, recorded_at FROM odometer_readings WHERE shift_client_id = ?',
       clientId,
     );
+  }
+
+  /** When this vehicle's odometer was last read, on any shift (the phone's or the server's); or null. */
+  async lastOdometerAt(vehicleId: number): Promise<number | null> {
+    const row = await this.db.getFirstAsync<{ at: number | null }>(
+      `SELECT MAX(o.recorded_at) AS at FROM odometer_readings o
+       JOIN shifts s ON s.client_id = o.shift_client_id WHERE s.vehicle_id = ?`,
+      vehicleId,
+    );
+    return row?.at ?? null;
   }
 
   async setOdometer(

@@ -210,7 +210,7 @@ Comma C1. The Tax Centre and the standard-mileage guardrail use it. Mileage dedu
 
 ### 5.1 Categories (data, not a table)
 
-A registry in the shared package, like platforms: `{ slug, label, default_deductible, default_business_pct, vehicle_related, covered_by_standard_rate }`. Comma's 20: `fuel, maintenance, parking, tolls, insurance, licensing, interest, leasing, fees, phone, data_plan, wash, supplies, meals, bank_fees, software, accounting, bike_maintenance, out_of_pocket, other`. Defaults as in Comma: all deductible at 100 % except `phone`, `data_plan`, `meals` at 50 % and `out_of_pocket` not deductible at 0 %. `covered_by_standard_rate` is true for `fuel`, `maintenance`, `insurance`. The country pack may relabel or add a category; **mapping categories to T2125 or Schedule C line numbers is out of this version** (the line numbers are not verified, `11` §4 policy).
+A registry in the shared package, like platforms: `{ slug, label, default_deductible, default_business_pct, vehicle_related, covered_by_standard_rate }`. Comma's 20: `fuel, maintenance, parking, tolls, insurance, licensing, interest, leasing, fees, phone, data_plan, wash, supplies, meals, bank_fees, software, accounting, bike_maintenance, out_of_pocket, other`. Defaults as in Comma: all deductible at 100 % except `phone`, `data_plan`, `meals` at 50 % and `out_of_pocket` not deductible at 0 %. `covered_by_standard_rate` is true for `fuel`, `maintenance`, `insurance`. The country pack may relabel or add a category; **mapping categories to T2125 or Schedule C line numbers is out of this version** (the line numbers are not verified, `11` §4 policy). Two categories beyond Comma's, `vehicle_rental` and `vehicle_finance`, come from [`21`](./21-jurisdictions-plan.md) §3.6c (vehicle ownership).
 
 ### 5.2 Tables
 
@@ -260,7 +260,7 @@ CREATE INDEX idx_exp_due       ON expenses(user_id, next_due) WHERE recurrence I
 | `snoozeExpense` | `PUT /expenses/{id}/snooze` | S | Body `until`. |
 | `listExpenseCategories` | `GET /expenses/categories` | S | The registry with defaults for the form. |
 
-Web: Expenses screen (list, filters, YTD tiles, add/edit form with category grid, business-use quick picks 25/50/75/100, shift suggestion within 7 days). The double-count warning is informational.
+Web: Expenses screen (list, filters, YTD tiles, add/edit form, business-use quick picks 25/50/75/100, shift suggestion within 7 days). The form asks for the amount and the date first. Of the categories, five are one tap (the driver's most used, topped up with fuel, parking, tolls, phone and car wash). The rest are in one **More** list, grouped into Vehicle and Work and other (W7a; owner, 2026-11-08: the full grid of 22 was too much at once). Under the category, one line says what will be deducted ("Deductible in full.", "Deductible: 50 % business use.", "Not deductible."). Merchant, the deductible flag and business share, vehicle, shift, repeats and notes are under **More details**, closed for a new expense and open when editing; vehicle is offered only when the driver has one and shift only when one is within 7 days. A vehicle category goes on the default vehicle (W7b). The double-count warning is informational.
 
 ### 5.4 Module `receipts` (sub-module of expenses)
 

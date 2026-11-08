@@ -12,9 +12,11 @@ import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
 import java.lang.ref.WeakReference
+import java.time.Instant
 import org.json.JSONObject
 
 class LocationTrackingService : Service() {
@@ -26,8 +28,8 @@ class LocationTrackingService : Service() {
     private var cadence = CadenceConfig()
     /** The running distance shown in the notification; rebuilt from the buffer after a restart. */
     private var live: LiveDistance? = null
-    /** What the notification shows now, so it is only re-posted when the text changes. */
-    private var shownTitle: String? = null
+    /** What the notification shows now, so it is only re-posted when something on it changes. */
+    private var shown: ShiftNotice.Text? = null
     private val pauseGpsRunnable = Runnable {
         Log.d(TAG, "Still for ${cadence.stillTimeoutMs}ms — pausing GPS to save battery.")
         stopLocationUpdates()
@@ -53,6 +55,8 @@ class LocationTrackingService : Service() {
         const val KEY_NOTICE = "notice"
         /** Brand yellow (apps/phone/src/theme/colors.ts), the notification's accent. */
         private const val ACCENT = 0xFFFFC21F.toInt()
+        /** Android 17, where MetricStyle arrived. */
+        private const val METRIC_STYLE_SDK = 37
 
         @Volatile private var running: WeakReference<LocationTrackingService>? = null
 
@@ -365,11 +369,14 @@ class LocationTrackingService : Service() {
         return acc
     }
 
-    /** Re-posts the notification when what it says has changed (at most once per new fix). */
+    /**
+     * Re-posts the notification when what it shows has changed: at most once per new fix, and only
+     * when a figure moves by 0.1 km or mi. The clock ticks on the system side, so it never needs a
+     * re-post; fewer updates mean no flicker and none of the system's rate limiting.
+     */
     private fun refreshNotice(force: Boolean = false) {
         val n = notice()
-        val title = n.text(live?.runningTotalM() ?: 0).title
-        if (!force && title == shownTitle) return
+        if (!force && n.text(live?.runningTotalM() ?: 0) == shown) return
         try {
             getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, buildNotification(n))
         } catch (e: SecurityException) {
@@ -379,22 +386,46 @@ class LocationTrackingService : Service() {
     }
 
     /**
-     * Collapsed: the shift's distance, today's total and a live clock in the header. Expanded:
-     * today's total, start time and vehicle. On Android 16 it asks to be a promoted ongoing
-     * notification, so the distance also shows as a chip in the status bar. Tapping opens the app.
+     * The driver's view of the shift while another app is on screen (09 section 5.10). Android 17+:
+     * MetricStyle with the shift's distance, a live clock and today's total side by side, and the
+     * start time and vehicle in the header. Android 8 to 16: the distance as the title, a live clock
+     * in the header, today's total or the start time and vehicle as the text, both when expanded. It
+     * asks to be a promoted ongoing notification (a Live Update on Android 16+), so the distance
+     * also shows as a status-bar chip. Standard templates only: custom layouts cannot be promoted.
+     * Tapping opens the running shift, where it is ended.
      */
     private fun buildNotification(n: ShiftNotice = notice()): Notification {
         val t = n.text(live?.runningTotalM() ?: 0)
-        shownTitle = t.title
+        shown = t
+        if (Build.VERSION.SDK_INT >= METRIC_STYLE_SDK) {
+            try {
+                // The clock is a metric here, so the header shows the start time and vehicle.
+                return base(n, t)
+                    .setContentTitle(t.metricTitle)
+                    .setSubText(t.subText)
+                    .setShowWhen(false)
+                    .setStyle(metricStyle(t.metrics))
+                    .build()
+            } catch (e: RuntimeException) {
+                // A style the system refuses must never stop the foreground service.
+                Log.e(TAG, "MetricStyle refused; using the text layout", e)
+            }
+        }
+        val builder = base(n, t)
+            .setContentTitle(t.title)
+            .setContentText(t.text)
+            .setShowWhen(true)
+            .setUsesChronometer(true)
+        t.expanded?.let { builder.setStyle(NotificationCompat.BigTextStyle().bigText(it)) }
+        return builder.build()
+    }
+
+    /** What every layout shares: icon, accent, silent ongoing service, Live Update request, tap. */
+    private fun base(n: ShiftNotice, t: ShiftNotice.Text): NotificationCompat.Builder {
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.milewage_notification)
             .setColor(ACCENT)
-            .setContentTitle(t.title)
-            .setContentText(t.text)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(t.expanded))
             .setWhen(n.startedAt)
-            .setShowWhen(true)
-            .setUsesChronometer(true)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setSilent(true)
@@ -418,8 +449,26 @@ class LocationTrackingService : Service() {
             )
             builder.setContentIntent(contentIntent)
         }
+        return builder
+    }
 
-        return builder.build()
+    /** Up to three figures side by side; the first (the shift's distance) is the chip's. */
+    @RequiresApi(METRIC_STYLE_SDK)
+    private fun metricStyle(metrics: List<ShiftNotice.Metric>): NotificationCompat.MetricStyle {
+        val style = NotificationCompat.MetricStyle()
+        for (m in metrics) {
+            val value = when (m) {
+                is ShiftNotice.Metric.Distance ->
+                    NotificationCompat.Metric.FixedFloat(m.value, m.unit, 1, 1)
+                is ShiftNotice.Metric.Elapsed ->
+                    NotificationCompat.Metric.TimeDifference.forStopwatch(
+                        Instant.ofEpochMilli(m.since),
+                        NotificationCompat.Metric.TimeDifference.FORMAT_CHRONOMETER
+                    )
+            }
+            style.addMetric(NotificationCompat.Metric(value, m.label))
+        }
+        return style.setCriticalMetric(0)
     }
 
     private fun createNotificationChannel() {

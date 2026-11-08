@@ -83,6 +83,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/countries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The countries a driver may choose, with their regions and what each supports (plan 21 section 3.9). Public, so first-run setup can list them. */
+        get: operations["listCountries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/login": {
         parameters: {
             query?: never;
@@ -147,6 +164,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the public download page shows (no sign-in, the phone has no account yet). The app file is looked at on every request, so a new one is offered without a restart. */
+        get: operations["getAppInfo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/android.apk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The Android app this server hands out (plan 24 Q2). No sign-in. A 404 when the owner has not put the file in place (MILEWAGE_APK_PATH, default <config>/milewage.apk). */
+        get: operations["downloadAndroidApp"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        /** Whether the app file is there, without downloading it (the web shows Get the app only then). */
+        head: operations["checkAndroidApp"];
+        patch?: never;
+        trace?: never;
+    };
     "/pairing/redeem": {
         parameters: {
             query?: never;
@@ -196,6 +248,60 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["renameDevice"];
+        trace?: never;
+    };
+    "/mcp/tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The assistant access tokens, newest first (plan 26). The token itself is never listed. */
+        get: operations["listMcpTokens"];
+        put?: never;
+        /** Make an assistant access token. The token is in this response only; the server keeps its SHA-256 hash. */
+        post: operations["createMcpToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mcp/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The last 50 changes made by assistants, newest first (plan 26 section 3.7). Arguments are kept on the server only. */
+        get: operations["listMcpAudit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mcp/tokens/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke a token at once (idempotent). */
+        delete: operations["revokeMcpToken"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/settings": {
@@ -618,6 +724,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/platforms/{slug}/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        /** The uploaded logo with its stored type, `nosniff` and a sandboxing CSP (no-store, as every API answer). `?v=<logo_version>` only marks a new image after a change. */
+        get: operations["getPlatformLogo"];
+        /** Upload or replace the driver's own logo for a platform, built-in or custom (plan 25 section 7). PNG, JPEG or WebP, 256 KB at most, checked against its first bytes; no SVG. JPEG location data is removed. Stored in the database, so backups carry it. */
+        put: operations["putPlatformLogo"];
+        post?: never;
+        /** Remove the platform's logo (idempotent); its badge shows the initials again. */
+        delete: operations["deletePlatformLogo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/shifts/{ref}/earnings": {
         parameters: {
             query?: never;
@@ -655,6 +782,49 @@ export interface paths {
         post?: never;
         /** Remove the typed row (idempotent); the platform's labels apply again. */
         delete: operations["deleteShiftEarnings"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shifts/{ref}/earnings/{platform}/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Integer id or UUID client_id. */
+                ref: components["parameters"]["Ref"];
+                platform: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add one entry (plan 22) to the platform's row, creating the row if missing. The shift must be ended or finalized. The amount's sign must match the type (422 otherwise). */
+        post: operations["addEarningEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shifts/{ref}/earnings/{platform}/entries/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Integer id or UUID client_id. */
+                ref: components["parameters"]["Ref"];
+                platform: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove one entry (idempotent). The row stays; with no entries its total is 0. There is no edit; delete and add again. */
+        delete: operations["deleteEarningEntry"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1477,6 +1647,49 @@ export interface components {
                 message: string;
             }[];
         };
+        Country: {
+            /** @description ISO 3166-1 alpha-2. */
+            code: string;
+            /** @description From Unicode CLDR (Intl.DisplayNames), in English. */
+            name: string;
+            /** @description ISO 4217. */
+            currency: string;
+            /** @enum {unknown} */
+            unit: "km" | "mi";
+            /** @description What the country calls its levels, in libaddressinput's words (province, state, nation ...); null when it has none. */
+            labels: {
+                region: string | null;
+                city: string | null;
+            };
+            supports: {
+                /** @description The country has published mileage rates. */
+                mileage: boolean;
+                /** @description The country has a tax estimate and comma.tax_countries does not hide it. */
+                tax: boolean;
+            };
+            /** @description False until a person has checked the figures against the primary sources. */
+            verified: boolean;
+            /** @description Kinds of platform work the country's data covers (plan 21 section 3.6a). With one kind, onboarding does not ask (plan 23). */
+            work: components["schemas"]["WorkKind"][];
+            /** @description Some region or city has its own rules, so setting the region can change results. */
+            regional_rules: boolean;
+            regions: components["schemas"]["CountryPlace"][];
+        };
+        /**
+         * @description Location-based platform work (plan 21 section 3.6a): food or parcel delivery, ride-hailing, motorcycle taxi, courier.
+         * @enum {unknown}
+         */
+        WorkKind: "delivery" | "ride_hailing" | "moto_taxi" | "courier";
+        CountryPlace: {
+            /** @description A region: the ISO 3166-2 part after the country, as settings.region stores it (ON). A city: its full code (US-NY-NYC). */
+            code: string;
+            name: string;
+            /** @description This place has data that differs from the level above. */
+            own_rules: boolean;
+            /** @description True only if every level that supplies data was checked by a person. */
+            verified: boolean;
+            cities: components["schemas"]["CountryPlace"][];
+        };
         SetupRequest: {
             username: string;
             password: string;
@@ -1525,6 +1738,8 @@ export interface components {
             diagnostics: boolean;
             /** @description Capture module registered (16 section 8); false by default. */
             capture: boolean;
+            /** @description MCP module registered (plan 26): the AI assistant endpoint and its tokens; off by default. */
+            mcp: boolean;
             backup_download: boolean;
             exporters: ("csv" | "pdf" | "gpx" | "geojson" | "expenses" | "tax_summary")[];
             countries: string[];
@@ -1545,6 +1760,18 @@ export interface components {
             display_name: string | null;
             /** @description Subdivision code without the country (CA: ON, QC ...); validated by the country pack. */
             region: string | null;
+            /** @description What the tax office of the driver's country and region asks of odometer records (plan 21 logbook slot), for the Odometer screen. null when the country has no such rule; readings are then optional. */
+            logbook: {
+                readings: string;
+                notes: string[];
+            } | null;
+            /** @description The driver's own rate (plan 21 Q5). Used only where the country has no official rates; it never replaces one. */
+            own_mileage_rate: components["schemas"]["OwnMileageRate"] | null;
+            /**
+             * @description Which rate values mileage: the country's published rates, the driver's own (screens and exports label it "your rate", never official), or none.
+             * @enum {unknown}
+             */
+            mileage_rate: "official" | "yours" | "none";
             /**
              * @description 0 Sunday
              * @enum {unknown}
@@ -1554,6 +1781,12 @@ export interface components {
             time_format: "12h" | "24h";
             /** @description Preselected when a shift starts; always an active vehicle. */
             default_vehicle_id: number | null;
+            /** @description The work the driver does, among what the country offers. When none is chosen and the country offers one kind, that kind (plan 23 rule 1). */
+            work_kinds: components["schemas"]["WorkKind"][];
+            /** @description When the driver finished the web onboarding (plan 23); null while it is not finished, so the web opens it. */
+            onboarded_at: components["schemas"]["EpochMs"] | null;
+            /** @description Dashboard "Finish setting up" steps the driver finished or skipped. A listed step stays done even if, say, the goal is deleted later. */
+            setup_done: components["schemas"]["SetupStep"][];
             diagnostics: components["schemas"]["DiagnosticsSettings"];
         };
         SettingsPatch: {
@@ -1577,6 +1810,22 @@ export interface components {
             /** @enum {unknown} */
             time_format?: "12h" | "24h";
             default_vehicle_id?: number | null;
+            /** @description Stored even where the country has official rates, but used only where it has none. */
+            own_mileage_rate?: components["schemas"]["OwnMileageRate"] | null;
+            /** @description Only kinds the country offers (422 otherwise); a new country drops the kinds it does not offer. */
+            work_kinds?: components["schemas"]["WorkKind"][];
+            /** @description true: onboarding finished (sets onboarded_at, keeping an earlier time); false: run it again (clears onboarded_at and setup_done). */
+            onboarded?: boolean;
+            /** @description Steps to add to setup_done; steps already listed are kept (it never removes one). */
+            setup_done?: components["schemas"]["SetupStep"][];
+        };
+        /** @enum {unknown} */
+        SetupStep: "vehicle" | "goal" | "phone" | "backup";
+        OwnMileageRate: {
+            /** @description Minor units of the currency per km or mile; hundredths are kept (30.5). */
+            cents_per_unit: number;
+            /** @enum {unknown} */
+            unit: "km" | "mi";
         };
         Device: {
             id: number;
@@ -1590,6 +1839,17 @@ export interface components {
             /** @description Last observed phone-minus-server clock difference; in memory only. */
             clock_skew_ms?: number | null;
         };
+        McpToken: {
+            id: number;
+            name: string;
+            /** @enum {unknown} */
+            scope: "read" | "write";
+            created_at: components["schemas"]["EpochMs"];
+            expires_at: number | null;
+            /** @description Updated at most once a minute. */
+            last_used_at: number | null;
+            revoked_at: number | null;
+        };
         /**
          * @description bicycle, ebike, scooter and walking are not automobiles: no mileage allowance rate applies (18 section 4.1).
          * @enum {unknown}
@@ -1597,6 +1857,11 @@ export interface components {
         VehicleKind: "car" | "motorcycle" | "van" | "bicycle" | "ebike" | "scooter" | "walking";
         /** @enum {unknown} */
         VehiclePower: "gas" | "hybrid" | "ev" | "other";
+        /**
+         * @description Who owns the vehicle (21 section 3.6c). owned: the driver owns it. financed: the driver is buying it with instalments (car loan, hire purchase, drive-to-own). leased: a fixed-term contract; the vehicle goes back at the end. rented: short-term, by the day, week or month. A record only: no tax rule reads it.
+         * @enum {unknown}
+         */
+        VehicleOwnership: "owned" | "financed" | "leased" | "rented";
         VehicleCreate: {
             name: string;
             kind: components["schemas"]["VehicleKind"];
@@ -1606,6 +1871,8 @@ export interface components {
             /** @description The driver's own record; never exported unless the driver ticks it. */
             plate?: string | null;
             power?: components["schemas"]["VehiclePower"] | null;
+            /** @description Left out means owned. */
+            ownership?: components["schemas"]["VehicleOwnership"];
         };
         Vehicle: {
             id: number;
@@ -1616,6 +1883,7 @@ export interface components {
             year: number | null;
             plate: string | null;
             power: components["schemas"]["VehiclePower"] | null;
+            ownership: components["schemas"]["VehicleOwnership"];
             created_at: components["schemas"]["EpochMs"];
             archived_at: number | null;
         };
@@ -1639,6 +1907,15 @@ export interface components {
             sort: number;
             /** @description Used by analytics only. */
             hourly_target_cents: number | null;
+            /** @description Changes when the driver's uploaded logo changes; null: no logo (plan 25 section 7). The image is GET /platforms/{slug}/logo?v=<logo_version>. */
+            logo_version: string | null;
+        };
+        PlatformLogo: {
+            slug: string;
+            /** @enum {unknown} */
+            mime: "image/png" | "image/jpeg" | "image/webp";
+            bytes: number;
+            logo_version: string;
         };
         PlatformPut: {
             label?: string;
@@ -1661,9 +1938,24 @@ export interface components {
         ShiftEarnings: {
             entries: {
                 platform: string;
+                /** @description Sum of fare entries. */
                 gross_cents: number;
+                /** @description Sum of tip entries. */
                 tips_cents: number;
+                /** @description Sum of bonus entries. */
                 bonus_cents: number;
+                /** @description Commission and platform fees; 0 or below. */
+                fees_cents: number;
+                adjustments_cents: number;
+                /** @description Earnings: gross + tips + bonus + fees + adjustments. */
+                total_cents: number;
+                /** @description 0 or below; not part of earnings. */
+                tax_withheld_cents: number;
+                /** @description 0 or below; cash in the driver's hand */
+                cash_collected_cents: number;
+                /** @description Sum of all entries; below 0 means the driver owes the platform. */
+                balance_cents: number;
+                ledger: components["schemas"]["EarningEntry"][];
                 orders: number | null;
                 online_min: number | null;
                 notes: string | null;
@@ -1682,11 +1974,33 @@ export interface components {
                 gross_cents: number;
                 tips_cents: number;
                 bonus_cents: number;
+                /** @description 0 for stop labels. */
+                fees_cents: number;
+                adjustments_cents: number;
+                tax_withheld_cents: number;
                 total_cents: number;
                 orders: number | null;
                 /** @enum {unknown} */
                 source: "labels" | "entered" | "mixed";
             }[];
+        };
+        /**
+         * @description Plan 22 section 3.2. Above 0: fare, tip, bonus, top_up. Below 0: cash_collected, commission, platform_fee, tax_withheld, payout. Either sign: adjustment.
+         * @enum {unknown}
+         */
+        EarningEntryType: "fare" | "tip" | "bonus" | "cash_collected" | "commission" | "platform_fee" | "tax_withheld" | "top_up" | "payout" | "adjustment";
+        EarningEntryCreate: {
+            type: components["schemas"]["EarningEntryType"];
+            /** @description Minor units, signed: the effect on what the platform owes the driver. Never 0. */
+            amount_cents: number;
+            note?: string | null;
+        };
+        EarningEntry: {
+            id: number;
+            type: components["schemas"]["EarningEntryType"];
+            amount_cents: number;
+            note: string | null;
+            created_at: components["schemas"]["EpochMs"];
         };
         ExpenseCreate: {
             /**
@@ -1838,12 +2152,21 @@ export interface components {
             unverified: boolean;
             set_aside_bp: number;
             sales_tax_registered: boolean;
+            /** @description The sales tax of the driver's place from the country data (GST, HST), for the "Registered for ..." choice; null when none is known. */
+            sales_tax_name: string | null;
             notices: string[];
             /** @description Effective earnings of the year; null when none were entered or labelled. */
             income: {
                 gross_cents?: number;
                 tips_cents?: number;
                 bonus_cents?: number;
+                /** @description Commission and platform fees (plan 22), 0 or below; already taken off total_cents. */
+                fees_cents?: number;
+                /** @description Corrections to pay; part of total_cents. */
+                adjustments_cents?: number;
+                /** @description Tax the platforms kept, 0 or below; not part of total_cents and not yet subtracted from the estimate. */
+                tax_withheld_cents?: number;
+                /** @description gross + tips + bonus + fees + adjustments. */
                 total_cents?: number;
                 by_platform?: {
                     platform?: string;
@@ -1863,15 +2186,20 @@ export interface components {
                 }[];
             } | null;
             estimate: {
-                net_income_cents?: number;
-                taxable_income_cents?: number;
-                cpp_cents?: number | null;
-                cpp2_cents?: number | null;
-                pension_note?: string | null;
-                income_tax_cents?: number;
-                total_set_aside_cents?: number;
-                instalment_cents?: number;
-                sales_tax?: {
+                net_income_cents: number;
+                taxable_income_cents: number;
+                /** @description The amounts to set aside, as the country's tax pack computes them (CA, pension contribution, second band, income tax at the set-aside rate). They add up to total_set_aside_cents. */
+                lines: {
+                    /** @description Stable name */
+                    key: string;
+                    label: string;
+                    /** @description null when not estimated here; note says why. */
+                    cents: number | null;
+                    note: string | null;
+                }[];
+                total_set_aside_cents: number;
+                instalment_cents: number;
+                sales_tax: {
                     collected_cents?: number;
                     credits_cents?: number;
                     owing_cents?: number;
@@ -2846,6 +3174,26 @@ export interface operations {
             429: components["responses"]["RateLimited"];
         };
     };
+    listCountries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Countries in the order screens list them. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Country"][];
+                };
+            };
+        };
+    };
     login: {
         parameters: {
             query?: never;
@@ -2926,7 +3274,14 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @description The driver's correction of the address (plan 19 section 3.2): an absolute https URL with no path, query or credentials; plain http only on a development server. */
+                    base_url?: string;
+                };
+            };
+        };
         responses: {
             /** @description One-time token, valid 10 minutes. */
             201: {
@@ -2937,12 +3292,102 @@ export interface operations {
                     "application/json": {
                         token: string;
                         expires_at: components["schemas"]["EpochMs"];
-                        /** @description milewage://pair?v=1&u=<server url>&t=<token> */
+                        /** @description milewage://pair?v=1&u=<server url>&t=<token>: the link that opens the phone app (Open in the MileWage app, the code text). */
                         qr_payload: string;
+                        /** @description <server url>/pair#v=1&t=<token>: what the QR shows (plan 24 Q1). The phone app reads it; any other camera opens the server's pair page, which links to the app. The token is in the fragment, so it never reaches a server log. */
+                        pair_url: string;
+                        /** @description The server address inside the code */
+                        base_url: string;
+                        /**
+                         * @description Where base_url came from: MILEWAGE_PUBLIC_URL, the address of this request (as the browser sees it), or the driver's base_url.
+                         * @enum {unknown}
+                         */
+                        base_url_source: "configured" | "request" | "driver";
                     };
                 };
             };
             401: components["responses"]["Unauthorized"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    getAppInfo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The app file on this server (or null), the store page (or null) and the download page's address. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        apk: null | {
+                            size_bytes: number;
+                            updated_at: components["schemas"]["EpochMs"];
+                            /** @description From <file>.json, written by scripts/phone-release-build.sh --publish; null without it. */
+                            version: string | null;
+                        };
+                        /** @description MILEWAGE_APP_STORE_URL (an https link to the store page); null until the app is published. */
+                        store_url: string | null;
+                        /** @description <base_url>/app: the download page, for a QR code. */
+                        page_url: string;
+                        base_url: string;
+                        /** @enum {unknown} */
+                        base_url_source: "configured" | "request";
+                    };
+                };
+            };
+        };
+    };
+    downloadAndroidApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The APK file. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.android.package-archive": string;
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    checkAndroidApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file is there. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No app file on this server. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     redeemPairingToken: {
@@ -3047,6 +3492,117 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Device"];
                 };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listMcpTokens: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tokens, revoked and expired ones included. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpToken"][];
+                };
+            };
+        };
+    };
+    createMcpToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /**
+                     * @description write includes read.
+                     * @enum {unknown}
+                     */
+                    scope: "read" | "write";
+                    /**
+                     * @description Default 90; null never expires.
+                     * @enum {unknown}
+                     */
+                    expires_in_days?: 30 | 90 | 365 | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Made. Show `token` once. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpToken"] & {
+                        token: string;
+                    };
+                };
+            };
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    listMcpAudit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Audit rows. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id: number;
+                        at: components["schemas"]["EpochMs"];
+                        /** @description The MCP tool, e.g. add_expense. */
+                        tool: string;
+                        /** @description `ok`, or `error: ` and the problem title. */
+                        outcome: string;
+                        /** @description The record touched, e.g. `expense:42` or `shift:17`. */
+                        target: string | null;
+                        token_id: number;
+                        token_name: string;
+                    }[];
+                };
+            };
+        };
+    };
+    revokeMcpToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             404: components["responses"]["NotFound"];
         };
@@ -3163,6 +3719,7 @@ export interface operations {
                     year?: number | null;
                     plate?: string | null;
                     power?: components["schemas"]["VehiclePower"] | null;
+                    ownership?: components["schemas"]["VehicleOwnership"];
                 };
             };
         };
@@ -3962,6 +4519,104 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
+    getPlatformLogo: {
+        parameters: {
+            query?: {
+                /** @description The platform's `logo_version`. */
+                v?: string;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The image. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                    "image/jpeg": string;
+                    "image/webp": string;
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    putPlatformLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "image/png": string;
+                "image/jpeg": string;
+                "image/webp": string;
+            };
+        };
+        responses: {
+            /** @description Replaced. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformLogo"];
+                };
+            };
+            /** @description Stored. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformLogo"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            413: components["responses"]["TooLarge"];
+            /** @description Not a PNG */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    deletePlatformLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
     listShiftEarnings: {
         parameters: {
             query?: never;
@@ -4025,6 +4680,63 @@ export interface operations {
                 /** @description Integer id or UUID client_id. */
                 ref: components["parameters"]["Ref"];
                 platform: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Earnings of the shift after the change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftEarnings"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    addEarningEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Integer id or UUID client_id. */
+                ref: components["parameters"]["Ref"];
+                platform: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EarningEntryCreate"];
+            };
+        };
+        responses: {
+            /** @description Earnings of the shift after the change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftEarnings"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    deleteEarningEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Integer id or UUID client_id. */
+                ref: components["parameters"]["Ref"];
+                platform: string;
+                id: number;
             };
             cookie?: never;
         };

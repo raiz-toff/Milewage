@@ -36,6 +36,8 @@ This document is a specification, not code. The OpenAPI document in §13 is the 
 | **Web session** | Cookie `mw_session`: opaque 256-bit random value, `HttpOnly; Secure; SameSite=Strict; Path=/`. Sliding 30-day expiry. | SHA-256 hash in a session table (see §14 fix F4). | The web client. |
 | **Device** | `Authorization: Bearer mwd_<43 base64url chars>` (256-bit random, `mwd_` prefix so secret scanners can find a leaked one). No expiry; valid until revoked. | SHA-256 hash in `devices.token_hash` (`07` §2.1). Plaintext never stored. | The phone. |
 | **Pairing token** | `mwp_<43 chars>`, one-time, expires in 10 minutes. | SHA-256 hash in `pairing_tokens.token_hash`. | The QR code only. |
+| **Assistant token** (module `mcp`, plan 26) | `Authorization: Bearer mwa_<43 chars>`, scope `read` or `write` (write includes read), optional expiry (30, 90 or 365 days; 90 by default), revocable. Accepted **only** by `POST /api/v1/mcp`, never by a REST route. | SHA-256 hash in `mcp_tokens.token_hash`; shown once at creation. | An AI assistant (MCP client). |
+| **Internal grant** (module `mcp`) | `mwi_<43 chars>`, in memory only, for one in-process request of an MCP tool, bound to its method and URL; acts as the owner's web session. | Never stored or sent over the network. | The MCP tools calling REST routes in process. |
 
 Device credentials are opaque rather than JWTs so that revocation is instant (`10` §9). `devices.last_seen_at` is updated on any authenticated request, at most once per minute.
 
@@ -99,7 +101,7 @@ sequenceDiagram
     Phone->>Phone: stores token in Android Keystore-backed storage
 ```
 
-- **QR payload** (the `qr_payload` string returned by the API, rendered as a QR by the web client): `milewage://pair?v=1&u=<url-encoded server base URL>&t=<mwp_ token>`. The server base URL is taken from the `X-Forwarded-Proto` and `X-Forwarded-Host` headers of the web request that created the token, which Caddy must pass through (`10` §8). The driver can see and edit it before the QR is shown, which covers a wrong guess.
+- **QR payload** (the `qr_payload` string returned by the API, rendered as a QR by the web client): `milewage://pair?v=1&u=<url-encoded server base URL>&t=<mwp_ token>`. The server base URL is, in order (plan 19 §3.2): the driver's correction (`base_url` in the request body, an absolute https URL without a path; http only on a development server), then `MILEWAGE_PUBLIC_URL`, then the `X-Forwarded-Proto` and `X-Forwarded-Host` headers of the web request that created the token, which Caddy passes through (`10` §8). The response carries `base_url` and `base_url_source` (`driver`, `configured`, `request`); the web shows the address with **Change address**, which covers a wrong guess.
 - **Redeem** is unauthenticated but rate-limited (10 attempts per 15 minutes per client IP; see §7.4). A token that is unknown, expired or already used returns the same `401 invalid_pairing_token`, so the response does not reveal which.
 - **Reinstall or second phone:** a new `devices` row and token. Its `seq` is independent (`UNIQUE(device_id, seq)`), so there is no collision. If the phone's buffer survived the re-pair, it keeps its `seq` values and uploads them under the new device.
 - **Revoke:** `DELETE /devices/{id}` sets `revoked_at`. The next request from that phone returns `401 device_revoked`. The phone stops uploading, keeps its local buffer, and asks the driver to re-pair (§4). Revocation is instant because the check is a hash lookup on every request.
@@ -2511,7 +2513,7 @@ Inconsistencies found while writing this document. "Wins" says which document is
 | Registry | Registered by | Used by | Plausible swap or addition |
 |---|---|---|---|
 | Exporter | one file per format | `exportData` | A new format later (XLSX, a verified QuickBooks preset), as `04` anticipates. |
-| CountryPack | one file per country | settings validation, summary, PDF, deduction | Australia (deferred in `07` §7.2) and every other tax region. |
+| CountryPack | one folder per country, regions and cities inside it (**amended by [`21`](./21-jurisdictions-plan.md), 2026-11-07**: country module + place tree with data slots) | settings validation, summary, PDF, deduction, tax estimate, platforms | Australia (deferred in `07` §7.2) and every other tax region. |
 | BackupTarget | one file per target | backup engine | S3-compatible upload in v1.1. |
 | Segmenter (single slot) | `stops` when the shift's `segmenter` is `stops`, otherwise the built-in whole-shift segmenter | `tracking` | Rideshare or general-business mode already exists as the off state. |
 | Platform registry | a list of slugs in the shared package | stop label validation | **Data, not an interface**: platforms differ in name only in v1, so nothing is gained from a plugin type. Adding one is a line in a list. |

@@ -48,6 +48,16 @@ test('the modules object follows the registry: registered is true, absent is fal
   });
 });
 
+test("logbook: the odometer note of the driver's place, null where the country has none", async () => {
+  await patch({ country: 'CA', region: 'QC' });
+  expect((await get('/settings')).json().logbook).toMatchObject({
+    readings: expect.stringContaining('CRA asks for the odometer reading'),
+    notes: [expect.stringContaining('base year')],
+  });
+  await patch({ country: 'US', region: null });
+  expect((await get('/settings')).json().logbook).toBeNull();
+});
+
 test('PATCH /settings validates and stores; unknown fields and empty bodies are 422', async () => {
   const ok = await patch({
     country: 'ca',

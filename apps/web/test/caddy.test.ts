@@ -12,7 +12,35 @@ describe('Caddyfile screen list', () => {
   });
 
   it('turns a pattern into its bare path and its wildcard', () => {
-    expect(spaPaths([{ path: '/a/*', label: 'A', element: null }])).toEqual(['/', '/a', '/a/*']);
-    expect(spaPaths([{ path: '/b', label: 'B', element: null }])).toEqual(['/', '/b']);
+    const a = spaPaths([{ path: '/a/*', label: 'A', element: null }]);
+    expect(a).toEqual(['/', '/pair', '/app', '/onboarding', '/onboarding/*', '/a', '/a/*']);
+    expect(spaPaths([{ path: '/b', label: 'B', element: null }])).toEqual([
+      '/',
+      '/pair',
+      '/app',
+      '/onboarding',
+      '/onboarding/*',
+      '/b',
+    ]);
+  });
+});
+
+const compose = readFileSync(
+  new URL('../../../infra/docker/docker-compose.yml', import.meta.url),
+  'utf8',
+);
+
+describe('Caddy keeps the forwarded headers of the host proxy (plan 19 section 3.1)', () => {
+  it('trusts exactly the Docker gateway, not every private address', () => {
+    const block = /^\{\n([\s\S]*?)^\}/m.exec(caddyfile)![1]!;
+    const trusted = /^\s*trusted_proxies (.+)$/m.exec(block);
+    expect(trusted, 'trusted_proxies in the global block').not.toBeNull();
+    expect(trusted![1]!.trim()).toBe('static {$MILEWAGE_PROXY_GATEWAY:172.29.88.1}/32');
+  });
+
+  it('the gateway Caddy trusts is the one the network is given, with the same default', () => {
+    expect(compose).toContain('- MILEWAGE_PROXY_GATEWAY=${MILEWAGE_PROXY_GATEWAY:-172.29.88.1}');
+    expect(compose).toContain('gateway: ${MILEWAGE_PROXY_GATEWAY:-172.29.88.1}');
+    expect(compose).toContain('subnet: ${MILEWAGE_PROXY_SUBNET:-172.29.88.0/24}');
   });
 });

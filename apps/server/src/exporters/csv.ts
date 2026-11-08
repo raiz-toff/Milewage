@@ -1,3 +1,6 @@
+import { countryModules, mileageRateSource } from '@milewage/shared';
+import { createSettingsRepository } from '../db';
+import { ownRateOf } from '../routes/settings';
 import { localDate } from '../time';
 import { createOdometerChecks } from './odometer';
 import type { ExportContext, Exporter } from './registry';
@@ -76,6 +79,9 @@ function* tripLevel(c: ExportContext) {
 
 function* shiftLevel(c: ExportContext) {
   const u = c.unit === 'mi' ? 'Miles' : 'Km';
+  // A value at the driver's own rate is labelled as theirs, never as an official deduction (Q5).
+  const s = createSettingsRepository(c.db).get(c.userId);
+  const yours = mileageRateSource(s && countryModules.get(s.country), ownRateOf(s)) === 'yours';
   yield row([
     'Date',
     'Shift_ID',
@@ -91,7 +97,7 @@ function* shiftLevel(c: ExportContext) {
     `Active_${u}`,
     `Deadhead_${u}`,
     `Total_${u}`,
-    'Deduction_Value',
+    yours ? 'Deduction_Value_Your_Rate' : 'Deduction_Value',
     'Split_Estimated',
     'Notes',
     `Odometer_Start_${u}`,

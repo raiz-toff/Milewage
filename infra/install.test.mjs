@@ -1,6 +1,15 @@
 import { spawnSync } from 'node:child_process';
 import { createServer } from 'node:net';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
@@ -22,10 +31,16 @@ test('writes the .env with the defaults, owner-only, and holds no secret', () =>
   expect(r.status).toBe(0);
   expect(envText()).toContain('MILEWAGE_HOST_PORT=18555');
   expect(envText()).toContain('MILEWAGE_PROXY_SUBNET=172.29.88.0/24');
+  expect(envText()).toContain('MILEWAGE_PROXY_GATEWAY=172.29.88.1\n');
   expect(envText()).not.toMatch(/KEY|SECRET|PASSWORD|TOKEN/i);
   expect(
     spawnSync('stat', ['-c', '%a', join(dir, 'sub', '.env')], { encoding: 'utf8' }).stdout.trim(),
   ).toBe('600');
+});
+
+test('the gateway Caddy trusts is the first address of the chosen subnet', () => {
+  expect(run('--subnet', '10.77.5.0/24').status).toBe(0);
+  expect(envText()).toContain('MILEWAGE_PROXY_GATEWAY=10.77.5.1\n');
 });
 
 test('never overwrites an existing .env', () => {
@@ -64,4 +79,100 @@ test('refuses a bad port and a bad subnet and writes nothing', () => {
   }
   expect(run('--bogus').status).toBe(2);
   writeFileSync(join(dir, 'unused'), '');
+});
+
+/**
+ * The Tailscale step (plan 19 section 3.4) with fake `docker`, `curl` and `tailscale`, on a PATH
+ * that holds only the tools the script needs, so the host's own Tailscale is never touched.
+ */
+function fakeHost({ tailscale = null, serveFails = false } = {}) {
+  const bin = join(dir, 'bin');
+  mkdirSync(bin);
+  for (const tool of ['sed', 'grep', 'head', 'seq', 'sleep', 'mkdir', 'cat', 'dirname']) {
+    const real = spawnSync('bash', ['-c', `command -v ${tool}`], {
+      encoding: 'utf8',
+    }).stdout.trim();
+    symlinkSync(real, join(bin, tool));
+  }
+  const fake = (name, body) => {
+    writeFileSync(join(bin, name), `#!/bin/bash\necho "$*" >>"${dir}/${name}.log"\n${body}\n`);
+    chmodSync(join(bin, name), 0o755);
+  };
+  fake('docker', 'exit 0');
+  fake('curl', 'exit 0');
+  if (tailscale !== null) {
+    writeFileSync(join(dir, 'status.json'), JSON.stringify(tailscale, null, 2));
+    fake(
+      'tailscale',
+      `case "$1" in status) cat "${dir}/status.json" ;; serve) ${serveFails ? 'echo denied; exit 1' : 'exit 0'} ;; esac`,
+    );
+  }
+  return (args = [], input = '') =>
+    spawnSync(
+      '/bin/bash',
+      [script, '--env-file', join(dir, 'sub', '.env'), '--port', '18570', ...args],
+      {
+        encoding: 'utf8',
+        input,
+        env: { PATH: bin, MILEWAGE_INSTALL_RETRY_S: '0' },
+      },
+    );
+}
+const log = (name) =>
+  existsSync(join(dir, `${name}.log`)) ? readFileSync(join(dir, `${name}.log`), 'utf8') : '';
+const signedIn = (over = {}) => ({
+  BackendState: 'Running',
+  Self: { HostName: 'box', DNSName: 'box.tail1234.ts.net.' },
+  CertDomains: ['box.tail1234.ts.net'],
+  ...over,
+});
+
+test('Tailscale missing: says where to get it, changes nothing, exits 0', () => {
+  const r = fakeHost()();
+  expect(r.status, r.stderr).toBe(0);
+  expect(r.stdout).toContain('https://tailscale.com/download');
+  expect(envText()).not.toContain('MILEWAGE_PUBLIC_URL');
+});
+
+test('asks after the privacy note; yes serves the port and writes the address, then checks it', () => {
+  const r = fakeHost({ tailscale: signedIn() })([], 'y\n');
+  expect(r.status, r.stderr).toBe(0);
+  expect(r.stdout).toMatch(
+    /Privacy note[\s\S]*box\.tail1234\.ts\.net[\s\S]*Turn on https for box\.tail1234\.ts\.net\? \[y\/N\]/,
+  );
+  expect(log('tailscale')).toContain('serve --bg 18570');
+  expect(log('tailscale')).not.toContain('funnel');
+  expect(envText()).toContain('MILEWAGE_PUBLIC_URL=https://box.tail1234.ts.net\n');
+  expect(log('docker')).toMatch(/up -d --wait --wait-timeout 120 api/);
+  expect(log('curl')).toContain('https://box.tail1234.ts.net/healthz');
+  expect(r.stdout).toContain('Open https://box.tail1234.ts.net in your browser');
+});
+
+test('no, --no-tailscale, not signed in, or certificates off: nothing is served or written', () => {
+  const cases = [
+    [{ tailscale: signedIn() }, [], 'n\n', 'Skipped'],
+    [{ tailscale: signedIn() }, ['--no-tailscale'], '', 'tailscale serve --bg 18570'],
+    [{ tailscale: signedIn({ BackendState: 'NeedsLogin' }) }, [], 'y\n', 'sudo tailscale up'],
+    [{ tailscale: signedIn({ CertDomains: undefined }) }, [], 'y\n', 'HTTPS Certificates'],
+  ];
+  for (const [host, args, input, says] of cases) {
+    rmSync(dir, { recursive: true, force: true });
+    mkdirSync(dir);
+    const r = fakeHost(host)(args, input);
+    expect(r.status, says).toBe(0);
+    expect(r.stdout, says).toContain(says);
+    expect(log('tailscale'), says).not.toContain('serve');
+    expect(envText(), says).not.toContain('MILEWAGE_PUBLIC_URL');
+  }
+});
+
+test('--yes-tailscale answers for the driver; a failing serve exits 1 with the command to run', () => {
+  expect(fakeHost({ tailscale: signedIn() })(['--yes-tailscale']).status).toBe(0);
+  expect(envText()).toContain('MILEWAGE_PUBLIC_URL=https://box.tail1234.ts.net');
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir);
+  const r = fakeHost({ tailscale: signedIn(), serveFails: true })(['--yes-tailscale']);
+  expect(r.status).toBe(1);
+  expect(r.stderr).toContain('sudo tailscale serve --bg 18570');
+  expect(envText()).not.toContain('MILEWAGE_PUBLIC_URL');
 });

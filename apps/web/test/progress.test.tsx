@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { renderApp, settingsFixture, signedIn } from './support/kit';
+import { renderApp, settingsFixture, signedIn, DASHBOARD } from './support/kit';
 
 afterEach(cleanup);
 
@@ -64,7 +64,7 @@ describe('progress screen (module progress)', () => {
 
   it('is absent when the module is off (the default)', async () => {
     const s = open(false);
-    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: DASHBOARD })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Progress' })).toBeNull();
     expect(s.calls.some((c) => c.path === '/progress')).toBe(false);
   });

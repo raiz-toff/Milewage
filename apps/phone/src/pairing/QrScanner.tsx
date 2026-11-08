@@ -1,6 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Modal, Pressable, View } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  AppState,
+  Linking,
+  Modal,
+  PermissionsAndroid,
+  Pressable,
+  View,
+} from 'react-native';
+import { loadQrCamera } from '../../native/qr-scanner';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraOff, Flashlight, FlashlightOff, ScanLine, X } from 'lucide-react-native';
 import { Button } from '../components/ui/button';
@@ -14,10 +22,12 @@ import { parsePairingPayload } from './pairing';
 const FRAME = 248;
 const CORNER = 36;
 
+const CAMERA = PermissionsAndroid.PERMISSIONS.CAMERA;
+
 /**
  * Scans the pairing QR code that Devices on the web app shows. The camera opens full screen only
  * after a tap, reads one QR code, closes, and hands the text to pairing (09 section 5.3: CAMERA is
- * used here and nowhere else; no microphone).
+ * used here and nowhere else; no microphone). Decoding is ZXing, without Google (24 section 6).
  */
 export function QrScanner({
   onScanned,
@@ -27,7 +37,9 @@ export function QrScanner({
   busy?: boolean;
 }) {
   const C = useColors();
-  const [permission, requestPermission] = useCameraPermissions();
+  const Camera = useMemo(loadQrCamera, []);
+  /** Android never asks again after "Don't allow" twice: then only app settings can turn it on. */
+  const [blocked, setBlocked] = useState(false);
   const [open, setOpen] = useState(false);
   const [torch, setTorch] = useState(false);
   const done = useRef(false);
@@ -43,10 +55,19 @@ export function QrScanner({
     return () => clearTimeout(t);
   }, [wrongCode]);
 
+  // The camera stops when the app leaves the screen; close the scanner with it.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => s !== 'active' && setOpen(false));
+    return () => sub.remove();
+  }, []);
+
   const start = async () => {
-    const p = permission?.granted ? permission : await requestPermission();
-    if (!p.granted) {
-      if (p.canAskAgain) {
+    const answer = (await PermissionsAndroid.check(CAMERA))
+      ? PermissionsAndroid.RESULTS.GRANTED
+      : await PermissionsAndroid.request(CAMERA);
+    setBlocked(answer === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN);
+    if (answer !== PermissionsAndroid.RESULTS.GRANTED) {
+      if (answer === PermissionsAndroid.RESULTS.DENIED) {
         toast.show({
           tone: 'error',
           title: 'Camera permission is needed to scan.',
@@ -60,8 +81,6 @@ export function QrScanner({
     setTorch(false);
     setOpen(true);
   };
-
-  const blocked = permission && !permission.granted && !permission.canAskAgain;
 
   return (
     <View className="gap-3">
@@ -93,12 +112,10 @@ export function QrScanner({
         statusBarTranslucent
       >
         <View className="flex-1 bg-black">
-          <CameraView
+          <Camera
             style={{ flex: 1 }}
-            facing="back"
-            enableTorch={torch}
-            barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-            onBarcodeScanned={({ data }) => {
+            torch={torch}
+            onScanned={({ nativeEvent: { text: data } }) => {
               if (done.current) return;
               done.current = true;
               if (!parsePairingPayload(data.trim())) {

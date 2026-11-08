@@ -1,19 +1,33 @@
 import { useState } from 'react';
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { FormEvent, ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { describe, unwrap } from '../api/client';
+import { levelWord, useCountries } from '../countries';
 import type { Schemas, Settings } from '../api/client';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
+import { PageHeader } from '../ui/layout';
 import { Account } from './Account';
+import { AssistantsCard } from './Assistants';
 import { ImportCard } from './Import';
 import { AlertsCard } from './Notifications';
 import { PlatformsCard } from './Platforms';
+import { InstallSection } from '../pwa/Install';
 
 type Patch = Schemas['SettingsPatch'];
 
@@ -29,6 +43,8 @@ interface Draft {
   region: string;
   week_start: '0' | '1';
   time_format: '12h' | '24h';
+  /** The driver's own mileage rate in major units (0.30), or ''. */
+  own_rate: string;
 }
 
 const draftOf = (s: Settings): Draft => ({
@@ -43,6 +59,7 @@ const draftOf = (s: Settings): Draft => ({
   region: s.region ?? '',
   week_start: s.week_start === 0 ? '0' : '1',
   time_format: s.time_format,
+  own_rate: s.own_mileage_rate ? String(s.own_mileage_rate.cents_per_unit / 100) : '',
 });
 
 /** Only the fields that differ from the saved settings, so a save never rewrites the rest. */
@@ -52,6 +69,13 @@ export function changes(saved: Settings, draft: Draft): Patch {
   for (const key of Object.keys(draft) as (keyof Draft)[]) {
     if (draft[key] === was[key]) continue;
     const v = draft[key];
+    if (key === 'own_rate') {
+      patch.own_mileage_rate =
+        v === ''
+          ? null
+          : { cents_per_unit: Math.round(Number(v) * 10_000) / 100, unit: draft.distance_unit };
+      continue;
+    }
     patch[key] =
       key === 'raw_retention_days' || key === 'week_start'
         ? Number(v)
@@ -75,14 +99,12 @@ function ModuleFlags({ modules }: { modules: Settings['modules'] }) {
       'stops',
       'diagnostics',
       'capture',
+      'mcp',
       'platforms',
     ] as const
   ).map((k) => [k, modules[k]] as const);
   return (
-    <SettingsCard
-      title="Modules"
-      description="Set when the server starts; they cannot be changed here."
-    >
+    <SettingsCard>
       <section aria-label="Modules" className="space-y-4">
         <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {flags.map(([name, on]) => (
@@ -113,46 +135,265 @@ function ModuleFlags({ modules }: { modules: Settings['modules'] }) {
 }
 
 type SectionId =
-  'general' | 'units' | 'tracking' | 'account' | 'platforms' | 'import' | 'alerts' | 'modules';
+  | 'profile'
+  | 'units'
+  | 'alerts'
+  | 'app'
+  | 'platforms'
+  | 'tracking'
+  | 'data'
+  | 'account'
+  | 'assistants'
+  | 'modules';
 
-const SECTIONS: {
+/** How a section keeps its changes; said under its heading so nobody wonders. */
+const SAVES = {
+  shared:
+    'Saved with the Save button below, together with unsaved changes in the other sections that use it.',
+  instant: 'Each change is saved at once.',
+  own: 'Uses its own button, not the Save bar of the preferences.',
+} as const;
+
+interface Section {
   id: SectionId;
   label: string;
-  module?: 'platforms' | 'import' | 'notifications';
-}[] = [
-  { id: 'general', label: 'General' },
-  { id: 'units', label: 'Units and format' },
-  { id: 'tracking', label: 'Tracking' },
-  { id: 'account', label: 'Account' },
-  { id: 'platforms', label: 'Platforms', module: 'platforms' },
-  { id: 'import', label: 'Import', module: 'import' },
-  { id: 'alerts', label: 'Alerts', module: 'notifications' },
-  { id: 'modules', label: 'Modules' },
+  description: string;
+  saves?: keyof typeof SAVES;
+  /** Shown only when this module runs on the server. */
+  module?: 'platforms' | 'notifications' | 'mcp';
+}
+
+/** The settings sections in groups, in order. One topic per section, one URL each. */
+const GROUPS: { label: string; sections: Section[] }[] = [
+  {
+    label: 'Preferences',
+    sections: [
+      {
+        id: 'profile',
+        label: 'Profile and region',
+        description: 'Your name, and the country and region whose mileage and tax rules apply.',
+        saves: 'shared',
+      },
+      {
+        id: 'units',
+        label: 'Units and format',
+        description: 'How distances, money, dates and times are shown.',
+        saves: 'shared',
+      },
+      {
+        id: 'alerts',
+        label: 'Alerts',
+        description: 'What MileWage tells you about, here and on the phone.',
+        saves: 'instant',
+        module: 'notifications',
+      },
+      {
+        id: 'app',
+        label: 'App on this device',
+        description: 'Install MileWage so it opens in its own window, like an app.',
+      },
+    ],
+  },
+  {
+    label: 'Work and tracking',
+    sections: [
+      {
+        id: 'platforms',
+        label: 'Platforms',
+        description: 'The apps you work for. Active ones are offered when you label shifts.',
+        saves: 'instant',
+        module: 'platforms',
+      },
+      {
+        id: 'tracking',
+        label: 'Tracking and privacy',
+        description: "What the server works out from your phone's GPS, and how long it keeps it.",
+        saves: 'shared',
+      },
+    ],
+  },
+  {
+    label: 'Data and account',
+    sections: [
+      {
+        id: 'data',
+        label: 'Your data',
+        description: 'Bring records in, and where to find backups and exports.',
+      },
+      {
+        id: 'account',
+        label: 'Account and security',
+        description: 'Your password, and the phones that can send data to this server.',
+        saves: 'own',
+      },
+      {
+        id: 'assistants',
+        label: 'AI assistants',
+        description:
+          'Tokens that let an AI assistant such as Claude read your records and add to them.',
+        saves: 'own',
+        module: 'mcp',
+      },
+      {
+        id: 'modules',
+        label: 'Server modules',
+        description:
+          'What this server runs. They are set when the server starts and are read only here.',
+      },
+    ],
+  },
 ];
 
-function SettingsCard({
-  title,
-  description,
-  children,
-}: {
-  title?: string;
-  description?: string;
-  children: ReactNode;
-}) {
+/** Old section addresses, kept working. */
+const MOVED: Record<string, SectionId> = { general: 'profile', import: 'data' };
+
+/** Which section each preference belongs to, to say where unsaved changes are. */
+const FIELD_SECTION: Record<keyof Draft, SectionId> = {
+  display_name: 'profile',
+  country: 'profile',
+  region: 'profile',
+  own_rate: 'profile',
+  distance_unit: 'units',
+  currency: 'units',
+  week_start: 'units',
+  time_format: 'units',
+  timezone: 'units',
+  stops_enabled: 'tracking',
+  raw_retention_days: 'tracking',
+  diagnostics_level: 'tracking',
+};
+
+const ALL_SECTIONS = GROUPS.flatMap((g) => g.sections);
+const labelOf = (id: SectionId) => ALL_SECTIONS.find((s) => s.id === id)?.label ?? id;
+
+/** Groups with only the sections whose module is on; a group left empty is dropped. */
+const visibleGroups = (modules: Settings['modules']) =>
+  GROUPS.map((g) => ({
+    ...g,
+    sections: g.sections.filter((s) => !s.module || modules[s.module]),
+  })).filter((g) => g.sections.length > 0);
+
+type Group = ReturnType<typeof visibleGroups>[number];
+
+/**
+ * The section list. Where there is room it is a grouped list beside the form that stays in view;
+ * where there is not, one menu button that names the open section. Neither ever scrolls sideways.
+ */
+function SettingsNav({ groups }: { groups: Group[] }) {
+  const { pathname } = useLocation();
+  const sections = groups.flatMap((g) => g.sections);
+  const current = sections.find((s) => pathname.startsWith(`/settings/${s.id}`)) ?? sections[0];
+  return (
+    <nav
+      aria-label="Settings sections"
+      className="@2xl:sticky @2xl:top-20 @2xl:max-h-[calc(100svh-6rem)] @2xl:self-start @2xl:overflow-y-auto @2xl:[scrollbar-width:thin]"
+    >
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <UiButton variant="outline" className="w-full justify-between @md:w-72 @2xl:hidden">
+            <span className="truncate">
+              <span className="text-muted-foreground">Section:</span> {current?.label}
+            </span>
+            <ChevronDown />
+          </UiButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-(--radix-dropdown-menu-trigger-width)">
+          {groups.map((g, i) => (
+            <DropdownMenuGroup key={g.label}>
+              {i > 0 ? <DropdownMenuSeparator /> : null}
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                {g.label}
+              </DropdownMenuLabel>
+              {g.sections.map((s) => (
+                <DropdownMenuItem key={s.id} asChild>
+                  <Link
+                    to={`/settings/${s.id}`}
+                    aria-current={s === current ? 'page' : undefined}
+                    className="aria-[current=page]:font-medium"
+                  >
+                    {s.label}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <div className="hidden space-y-4 text-sm @2xl:block">
+        {groups.map((g, i) => (
+          <div key={g.label} className="space-y-1">
+            <p
+              id={`settings-group-${i}`}
+              className="px-3 text-xs font-medium text-muted-foreground"
+            >
+              {g.label}
+            </p>
+            <ul aria-labelledby={`settings-group-${i}`} className="flex flex-col gap-1">
+              {g.sections.map((s) => (
+                <li key={s.id}>
+                  <NavLink
+                    to={`/settings/${s.id}`}
+                    className={({ isActive }) =>
+                      cn(
+                        'block rounded-md px-3 py-1.5 transition-colors',
+                        isActive
+                          ? 'bg-muted font-medium text-foreground'
+                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                      )
+                    }
+                  >
+                    {s.label}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
+/** The top of a section: its name, what it is for and how it saves. */
+function SectionHeader({ section }: { section: Section }) {
+  return (
+    <div className="space-y-1">
+      <h2 className="text-lg font-semibold tracking-tight">{section.label}</h2>
+      <p className="text-sm text-muted-foreground">{section.description}</p>
+      {section.saves ? (
+        <p className="text-xs text-muted-foreground">{SAVES[section.saves]}</p>
+      ) : null}
+    </div>
+  );
+}
+
+/** A row that leads to another page of the app. */
+function LinkRow({ to, title, children }: { to: string; title: string; children: string }) {
+  return (
+    <li>
+      <Link
+        to={to}
+        className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted"
+      >
+        <span className="space-y-0.5">
+          <span className="block text-sm font-medium">{title}</span>
+          <span className="block text-sm text-muted-foreground">{children}</span>
+        </span>
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+      </Link>
+    </li>
+  );
+}
+
+function SettingsCard({ children }: { children: ReactNode }) {
   return (
     <Card>
-      {title ? (
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-          {description ? <CardDescription>{description}</CardDescription> : null}
-        </CardHeader>
-      ) : null}
       <CardContent>{children}</CardContent>
     </Card>
   );
 }
 
-/** The saved preferences and the unsaved draft, shared by the General, Units and Tracking pages. */
+/** The saved preferences and the unsaved draft, shared by the Profile, Units and Tracking pages. */
 function usePrefs() {
   const { api, setSettings } = useSession();
   const saved = useSettings();
@@ -161,7 +402,13 @@ function usePrefs() {
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const patch = changes(saved, draft);
+  const was = draftOf(saved);
+  const edited = (Object.keys(draft) as (keyof Draft)[]).filter((k) => draft[k] !== was[k]);
   return {
+    /** Sections with edits not yet saved, in menu order. */
+    unsaved: ALL_SECTIONS.map((s) => s.id).filter((id) =>
+      edited.some((k) => FIELD_SECTION[k] === id),
+    ),
     saved,
     draft,
     error,
@@ -217,7 +464,9 @@ function PrefsForm({ prefs, children }: { prefs: Prefs; children: ReactNode }) {
             </p>
           ) : (
             <p className="text-muted-foreground">
-              {dirty ? 'You have unsaved changes.' : 'All changes saved.'}
+              {dirty
+                ? `Unsaved changes: ${prefs.unsaved.map(labelOf).join(', ')}.`
+                : 'All changes saved.'}
             </p>
           )}
         </div>
@@ -234,13 +483,17 @@ function PrefsForm({ prefs, children }: { prefs: Prefs; children: ReactNode }) {
   );
 }
 
-function GeneralSection({ prefs }: { prefs: Prefs }) {
+function ProfileSection({ prefs }: { prefs: Prefs }) {
   const { draft, set, saved } = prefs;
+  const tree = useCountries();
   const countries = saved.modules.countries.includes(draft.country)
     ? saved.modules.countries
     : [draft.country, ...saved.modules.countries];
+  const country = tree.find((c) => c.code === draft.country);
+  const regions = country?.regions ?? [];
+  const word = levelWord(country);
   return (
-    <SettingsCard title="General" description="How you appear and where you drive.">
+    <SettingsCard>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <Field
@@ -253,16 +506,51 @@ function GeneralSection({ prefs }: { prefs: Prefs }) {
         <SelectField
           label="Country"
           value={draft.country}
-          onChange={(v) => set({ country: v })}
-          options={countries.map((c) => ({ value: c, label: c }))}
+          // A region belongs to its country, so a new country starts without one.
+          onChange={(v) => set({ country: v, region: '' })}
+          options={countries.map((c) => ({
+            value: c,
+            label: tree.find((t) => t.code === c)?.name ?? c,
+          }))}
         />
-        <Field
-          label="Region"
-          hint="Province or state code, for example ON or QC."
-          maxLength={3}
-          value={draft.region}
-          onChange={(e) => set({ region: e.target.value.toUpperCase() })}
-        />
+        {regions.length > 0 ? (
+          <SelectField
+            label={word}
+            value={draft.region}
+            onChange={(v) => set({ region: v })}
+            options={[
+              { value: '', label: 'Not set' },
+              ...regions.map((r) => ({ value: r.code, label: r.name })),
+            ]}
+          />
+        ) : tree.length === 0 ? (
+          <Field
+            label="Region"
+            hint="Province or state code, for example ON."
+            maxLength={3}
+            value={draft.region}
+            onChange={(e) => set({ region: e.target.value.toUpperCase() })}
+          />
+        ) : null}
+        {country && !country.supports.mileage ? (
+          <div className="sm:col-span-2">
+            <Field
+              label={`Your mileage rate (${draft.currency} per ${draft.distance_unit})`}
+              hint="MileWage has no official rate for this country. Deductions use your rate and are always labelled your rate, never official."
+              type="number"
+              min={0}
+              step="any"
+              value={draft.own_rate}
+              onChange={(e) => set({ own_rate: e.target.value })}
+            />
+          </div>
+        ) : null}
+        {country?.regional_rules && !draft.region ? (
+          <p role="note" className="text-sm text-muted-foreground sm:col-span-2">
+            Set your {word.toLowerCase()} to include its own rules. Until then, only the national
+            rules apply.
+          </p>
+        ) : null}
       </div>
     </SettingsCard>
   );
@@ -271,10 +559,7 @@ function GeneralSection({ prefs }: { prefs: Prefs }) {
 function UnitsSection({ prefs }: { prefs: Prefs }) {
   const { draft, set } = prefs;
   return (
-    <SettingsCard
-      title="Units and format"
-      description="How distances, money, dates and times are shown."
-    >
+    <SettingsCard>
       <div className="grid gap-4 sm:grid-cols-2">
         <SelectField
           label="Distance unit"
@@ -325,7 +610,7 @@ function UnitsSection({ prefs }: { prefs: Prefs }) {
 function TrackingSection({ prefs }: { prefs: Prefs }) {
   const { draft, set, saved } = prefs;
   return (
-    <SettingsCard title="Tracking" description="What the server keeps from your phone's GPS.">
+    <SettingsCard>
       <div className="space-y-6">
         <div className="flex items-start justify-between gap-6">
           <div className="space-y-1">
@@ -372,17 +657,41 @@ function TrackingSection({ prefs }: { prefs: Prefs }) {
   );
 }
 
-/** Settings, one page per section under /settings/<section>; /settings opens General. */
+/**
+ * Opens the onboarding wizard again at its first step (plan 23 section 4.4). The driver stays
+ * onboarded, so leaving half-way returns to the app; Finish keeps the first time.
+ */
+function RunSetupAgain() {
+  return (
+    <SettingsCard>
+      <section aria-label="Setup" className="space-y-3">
+        <h3 className="text-base leading-snug font-medium">Setup</h3>
+        <p className="text-sm text-muted-foreground">
+          Go through the first-run questions again. Your answers stay until you change them.
+        </p>
+        <UiButton variant="outline" asChild>
+          <Link to="/onboarding/start">Run setup again</Link>
+        </UiButton>
+      </section>
+    </SettingsCard>
+  );
+}
+
+/** Settings, one page per section under /settings/<section>; /settings opens the first. */
 export function SettingsPage() {
   const prefs = usePrefs();
   const { modules } = prefs.saved;
-  const sections = SECTIONS.filter((s) => !s.module || modules[s.module]);
+  const groups = visibleGroups(modules);
+  const first = groups[0]!.sections[0]!.id;
 
   const pages: Record<SectionId, ReactNode> = {
-    general: (
-      <PrefsForm prefs={prefs}>
-        <GeneralSection prefs={prefs} />
-      </PrefsForm>
+    profile: (
+      <>
+        <PrefsForm prefs={prefs}>
+          <ProfileSection prefs={prefs} />
+        </PrefsForm>
+        <RunSetupAgain />
+      </>
     ),
     units: (
       <PrefsForm prefs={prefs}>
@@ -394,9 +703,14 @@ export function SettingsPage() {
         <TrackingSection prefs={prefs} />
       </PrefsForm>
     ),
-    account: (
+    alerts: (
       <SettingsCard>
-        <Account />
+        <AlertsCard />
+      </SettingsCard>
+    ),
+    app: (
+      <SettingsCard>
+        <InstallSection />
       </SettingsCard>
     ),
     platforms: (
@@ -404,59 +718,83 @@ export function SettingsPage() {
         <PlatformsCard />
       </SettingsCard>
     ),
-    import: (
-      <SettingsCard>
-        <ImportCard />
-      </SettingsCard>
+    data: (
+      <>
+        {modules.import ? (
+          <SettingsCard>
+            <ImportCard />
+          </SettingsCard>
+        ) : null}
+        <Card className="py-0">
+          <ul aria-label="Elsewhere in MileWage" className="divide-y">
+            <LinkRow to="/backups" title="Backups">
+              Encrypted copies of all your data: make one, download it, check the last run.
+            </LinkRow>
+            {modules.exporters.length > 0 ? (
+              <LinkRow to="/exports" title="Exports">
+                Files of your shifts, trips and totals for your records or an accountant.
+              </LinkRow>
+            ) : null}
+          </ul>
+        </Card>
+      </>
     ),
-    alerts: (
-      <SettingsCard>
-        <AlertsCard />
-      </SettingsCard>
+    account: (
+      <>
+        <SettingsCard>
+          <Account />
+        </SettingsCard>
+        {modules.devices ? (
+          <Card className="py-0">
+            <ul aria-label="Elsewhere in MileWage">
+              <LinkRow to="/devices" title="Devices">
+                The phones paired with this server. Revoke one you lost or replaced.
+              </LinkRow>
+            </ul>
+          </Card>
+        ) : null}
+      </>
     ),
+    assistants: <AssistantsCard />,
     modules: <ModuleFlags modules={modules} />,
   };
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground">
-          Your profile, units, tracking and account on this server.
-        </p>
-      </div>
-      <div className="grid gap-6 lg:grid-cols-[180px_minmax(0,1fr)] lg:gap-8">
-        <nav
-          aria-label="Settings sections"
-          className="-mx-1 overflow-x-auto lg:sticky lg:top-20 lg:mx-0 lg:self-start lg:overflow-visible"
-        >
-          <ul className="flex gap-1 px-1 text-sm lg:flex-col lg:px-0">
-            {sections.map((s) => (
-              <li key={s.id} className="shrink-0">
-                <NavLink
-                  to={`/settings/${s.id}`}
-                  className={({ isActive }) =>
-                    cn(
-                      'block rounded-md px-3 py-1.5 whitespace-nowrap transition-colors',
-                      isActive
-                        ? 'bg-muted font-medium text-foreground'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                    )
-                  }
-                >
-                  {s.label}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <div className="max-w-3xl min-w-0">
-          <Routes>
-            {sections.map((s) => (
-              <Route key={s.id} path={s.id} element={pages[s.id]} />
-            ))}
-            <Route path="*" element={<Navigate to="/settings/general" replace />} />
-          </Routes>
+      <PageHeader
+        title="Settings"
+        description="Your preferences, the apps you work for, tracking, your data and your account."
+      />
+      {/* Sized by its own width, not the window's: the side list needs room beside the form. */}
+      <div className="@container">
+        <div className="grid gap-6 @2xl:grid-cols-[200px_minmax(0,1fr)] @2xl:gap-8">
+          <SettingsNav groups={groups} />
+          <div className="max-w-3xl min-w-0">
+            <Routes>
+              {groups
+                .flatMap((g) => g.sections)
+                .map((s) => (
+                  <Route
+                    key={s.id}
+                    path={s.id}
+                    element={
+                      <div className="space-y-4">
+                        <SectionHeader section={s} />
+                        {pages[s.id]}
+                      </div>
+                    }
+                  />
+                ))}
+              {Object.entries(MOVED).map(([from, to]) => (
+                <Route
+                  key={from}
+                  path={from}
+                  element={<Navigate to={`/settings/${to}`} replace />}
+                />
+              ))}
+              <Route path="*" element={<Navigate to={`/settings/${first}`} replace />} />
+            </Routes>
+          </div>
         </div>
       </div>
     </div>

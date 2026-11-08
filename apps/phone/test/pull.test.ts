@@ -89,7 +89,13 @@ describe('pull (GET /sync/changes)', () => {
       },
       {
         changes: [
-          entry(2, 'shift', 'upsert', 'aaaa', shiftData({ client_id: 'aaaa', id: 6 })),
+          entry(
+            2,
+            'shift',
+            'upsert',
+            'aaaa',
+            shiftData({ client_id: 'aaaa', id: 6, deduction_cents: 350 }),
+          ),
           entry(
             3,
             'trip',
@@ -106,6 +112,9 @@ describe('pull (GET /sync/changes)', () => {
             engine_version: 1,
             diagnostics: { level: 'off', verbose_until: null },
             modules: { sync: true },
+            region: 'ON',
+            own_mileage_rate: null,
+            mileage_rate: 'official',
           }),
         ],
         next_cursor: 4,
@@ -121,17 +130,52 @@ describe('pull (GET /sync/changes)', () => {
       sync_state: 'on_server',
       calc_source: 'server',
       total_m: 5000,
+      server_deduction_cents: 350,
+      server_deduction_known: 1,
     });
     expect((await services.shifts.trips('aaaa')).map((t) => t.trip_key)).toEqual(['aaaa:1:active']);
-    expect(JSON.parse(plain.data.get('pairing.settings')!).country).toBe('CA');
+    expect(JSON.parse(plain.data.get('pairing.settings')!)).toMatchObject({
+      country: 'CA',
+      region: 'ON',
+      mileage_rate: 'official',
+    });
     await services.puller.pull({ force: true });
     expect(server.calls.at(-1)!.url).toContain('after=4');
+  });
+
+  it('a vehicle with fields the phone does not use (ownership, 21 section 3.6c) is cached as before', async () => {
+    const v = { id: 4, name: 'Yulu', kind: 'scooter', make: null, model: null, year: null };
+    const f = feed([
+      {
+        changes: [
+          entry(1, 'vehicle', 'upsert', '4', { ...v, ownership: 'rented', archived_at: null }),
+          entry(2, 'vehicle', 'upsert', '4', {
+            ...v,
+            ownership: 'some_future_value',
+            archived_at: 7,
+          }),
+        ],
+        next_cursor: 2,
+        has_more: false,
+      },
+    ]);
+    const { services } = await phone(f.routes);
+    expect(await services.puller.pull({ force: true })).toEqual({ state: 'ok', applied: 2 });
+    expect(await services.shifts.vehicleKinds()).toEqual(new Map([[4, 'scooter']]));
   });
 
   it('a web recompute replaces the number, and the phone figure goes to the diff list', async () => {
     const f = feed([
       {
-        changes: [entry(1, 'shift', 'upsert', ID, shiftData({ total_m: 4900, active_m: 4900 }))],
+        changes: [
+          entry(
+            1,
+            'shift',
+            'upsert',
+            ID,
+            shiftData({ total_m: 4900, active_m: 4900, deduction_cents: null }),
+          ),
+        ],
         next_cursor: 1,
         has_more: false,
       },
@@ -143,7 +187,13 @@ describe('pull (GET /sync/changes)', () => {
       { status: 'match', reasons: [] },
     );
     await services.puller.pull({ force: true });
-    expect(await services.shifts.get(ID)).toMatchObject({ total_m: 4900, calc_source: 'server' });
+    // A null deduction from the server (no rate, or actual expenses) is known, not missing.
+    expect(await services.shifts.get(ID)).toMatchObject({
+      total_m: 4900,
+      calc_source: 'server',
+      server_deduction_cents: null,
+      server_deduction_known: 1,
+    });
     const [diff] = await services.shifts.conflicts(ID);
     expect(diff).toMatchObject({ reason: 'recon_diff' });
     expect(d(diff!, 'km')).toMatch(

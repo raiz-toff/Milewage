@@ -1,4 +1,4 @@
-import { taxPacks, type ModuleRegistry } from '@milewage/shared';
+import type { ModuleRegistry } from '@milewage/shared';
 import type { EventEmit } from './events';
 import {
   createBackupRepository,
@@ -8,6 +8,7 @@ import {
   type Db,
 } from './db';
 import { goalViewer } from './routes/goals';
+import { shownTax } from './tax-report';
 import { localDate } from './time';
 
 export type NotificationKind =
@@ -105,10 +106,11 @@ export function evaluate(
   const inDays = (date: string) =>
     (Date.parse(`${date}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / DAY;
 
-  if (c.registry.isEnabled('tax') && c.taxCountries.includes(prefs.country)) {
-    const pack = taxPacks.get(prefs.country);
+  const tax = shownTax(prefs.country, prefs.region, c.taxCountries);
+  if (c.registry.isEnabled('tax') && tax) {
     const year = Number(today.slice(0, 4));
-    for (const d of [...(pack?.deadlines(year - 1) ?? []), ...(pack?.deadlines(year) ?? [])]) {
+    const dates = (y: number) => tax.pack.deadlines(y, tax.place);
+    for (const d of [...dates(year - 1), ...dates(year)]) {
       if (inDays(d.date) >= 0 && inDays(d.date) <= 10)
         notify(c, userId, 'tax_deadline', `tax_deadline:${d.date}`, `tax_deadline.${d.kind}`);
     }

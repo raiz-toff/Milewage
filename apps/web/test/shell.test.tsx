@@ -26,7 +26,8 @@ describe('auth shell', () => {
       'GET /setup/status': () => ({ body: { state: 'needs_setup' } }),
     });
     expect(await screen.findByRole('heading', { name: 'Set up MileWage' })).toBeTruthy();
-    expect(calls.map((c) => c.path)).toEqual(['/setup/status']);
+    // Only public routes: the state, then the country list of the form.
+    await waitFor(() => expect(calls.map((c) => c.path)).toEqual(['/setup/status', '/countries']));
   });
 
   it('an unreachable server is reported, not left loading', async () => {

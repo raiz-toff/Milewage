@@ -9,22 +9,31 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { describe, unwrap } from '../api/client';
 import type { Schemas, Settings } from '../api/client';
-import { formatDateTime, formatDistance, formatDuration, formatMoney, formatTime } from '../format';
-import { RouteView } from '../map/RouteView';
+import { deductionWord, formatDistance, formatDuration, formatMoney, formatTime } from '../format';
+import { RouteView, useShiftRoute } from '../map/RouteView';
+import { PlatformName } from '../platforms/PlatformBadge';
 import { useSession, useSettings } from '../session';
-import { Button, FormError } from '../ui/form';
+import { FormError } from '../ui/form';
 import { localDate } from './Dashboard';
 import { ExportButtons } from './Exports';
+import { AddTrip } from './AddTrip';
 import { ShiftEarnings } from './ShiftEarnings';
+import { ShiftChecks, ShiftFigures, useVehicleName } from './ShiftFacts';
+import type { EarnedSummary } from './ShiftFacts';
 import { ShiftOdometer } from './ShiftOdometer';
-import { StopsPanel } from './Stops';
-import { TripsTable } from './Trips';
+import { InProgressCard, MoreCard, NoRouteCard, ShiftNotes } from './ShiftStates';
+import { ShiftTimeline } from './ShiftTimeline';
+import type { Picked } from './ShiftTimeline';
+import { StopsPanel, useShiftStops } from './Stops';
+import { useShiftTrips } from './Trips';
 
 type Shift = Schemas['Shift'];
 
 /** The split is shown only while stops are on and only for a shift that was segmented by stops. */
 export const showsSplit = (s: Shift, settings: Settings) =>
   settings.modules.stops && s.segmenter === 'stops';
+
+const count = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** An estimate always carries its marker (05 section 3.1a). Totals never do. */
 export function Est() {
@@ -47,11 +56,11 @@ export const weekOf = (d: string, weekStart: number) =>
   addDays(d, -((new Date(utcMs(d)).getUTCDay() - weekStart + 7) % 7));
 
 /** A calendar date as words; the date is already local, so it is formatted as UTC. */
-const dateWords = (d: string, opts: Intl.DateTimeFormatOptions) =>
+export const dateWords = (d: string, opts: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', ...opts }).format(utcMs(d));
 
 /** "Nov 13 – 19, 2023", or "Oct 30 – Nov 5, 2023" when the week spans two months. */
-const weekWords = (from: string, to: string) => {
+export const weekWords = (from: string, to: string) => {
   const start = dateWords(from, { month: 'short', day: 'numeric' });
   const end =
     from.slice(0, 7) === to.slice(0, 7)
@@ -179,7 +188,7 @@ export function ShiftCard({ shift, settings }: { shift: Shift; settings: Setting
           ) : null}
           {shift.deduction_cents !== null ? (
             <div className="text-xs text-muted-foreground tabular-nums">
-              {formatMoney(shift.deduction_cents, settings.currency)} deduction
+              {formatMoney(shift.deduction_cents, settings.currency)} {deductionWord(settings)}
             </div>
           ) : null}
         </div>
@@ -354,7 +363,10 @@ export function ShiftList() {
               ) : undefined
             }
           />
-          <StatCard label="Deduction" value={formatMoney(data.summary.deduction_cents, currency)} />
+          <StatCard
+            label={deductionWord(settings, true)}
+            value={formatMoney(data.summary.deduction_cents, currency)}
+          />
           <StatCard
             label="Hourly earnings"
             value={earnedWords(data.summary.hourly_earnings_cents, currency)}
@@ -393,54 +405,33 @@ export function ShiftList() {
   );
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex justify-between gap-6 border-t py-2 first:border-t-0 first:pt-0">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="text-right tabular-nums">{children}</dd>
-    </div>
-  );
-}
-
 export function ShiftDetail() {
   const { ref } = useParams();
   const { api } = useSession();
   const settings = useSettings();
   const [shift, setShift] = useState<Shift | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notes, setNotes] = useState('');
-  const [saved, setSaved] = useState(false);
+  const [earned, setEarned] = useState<EarnedSummary | null>(null);
+  const vehicle = useVehicleName(shift?.vehicle_id ?? 0);
+  const [picked, setPicked] = useState<Picked>(null);
+  const [adding, setAdding] = useState(false);
+  const { trips, error: tripsError } = useShiftTrips(shift?.id ?? 0, shift?.calculated_at ?? 0);
+  const stopsData = useShiftStops(shift?.id ?? 0, !!shift && settings.modules.stops);
+  // A running shift has no route yet (worked out when it ends), so it is not asked for.
+  const route = useShiftRoute(
+    shift?.id ?? 0,
+    !!shift && shift.status !== 'active' && settings.modules.replay,
+  );
 
   useEffect(() => {
     let live = true;
     void unwrap(api.GET('/shifts/{ref}', { params: { path: { ref: ref ?? '' } } }))
-      .then((s) => {
-        if (!live) return;
-        setShift(s);
-        setNotes(s.notes ?? '');
-      })
+      .then((s) => live && setShift(s))
       .catch((e) => live && setError(describe(e)));
     return () => {
       live = false;
     };
   }, [api, ref]);
-
-  async function saveNotes() {
-    if (!shift) return;
-    setError(null);
-    try {
-      const s = await unwrap(
-        api.PATCH('/shifts/{ref}', {
-          params: { path: { ref: String(shift.id) } },
-          body: { notes: notes.trim() === '' ? null : notes },
-        }),
-      );
-      setShift(s);
-      setSaved(true);
-    } catch (e) {
-      setError(describe(e));
-    }
-  }
 
   if (error && !shift)
     return (
@@ -449,12 +440,38 @@ export function ShiftDetail() {
       </p>
     );
   if (!shift) return <p className="text-muted-foreground">Loading</p>;
-  const split = showsSplit(shift, settings);
+  const active = shift.status === 'active';
+  // The split means nothing on a shift with no distance yet (running, or nothing recorded).
+  const split = showsSplit(shift, settings) && !!shift.total_m;
   const tz = settings.timezone;
+  const replay = settings.modules.replay;
+  const showEarnings = settings.modules.earnings && !active;
+  const review = shift.flags?.filter((f) => f.severity === 'review').length ?? 0;
+  const context = [
+    `${formatTime(shift.started_at, tz)} – ${shift.ended_at ? formatTime(shift.ended_at, tz) : 'now'}`,
+    formatDuration(shift.started_at, shift.ended_at),
+    vehicle,
+  ].filter(Boolean);
+  const platforms = showEarnings ? (earned?.platforms ?? []) : [];
+  const stops = stopsData.stops ?? [];
+  // Nothing was recorded: no trips, no stops and no route points (or no map to ask).
+  const empty =
+    !active && trips?.length === 0 && stops.length === 0 && (!replay || route.points?.length === 0);
+  const orphans = shift.flags?.some((f) => f.code === 'label_orphaned');
+  // Only start and end in the timeline.
+  const sparse = active || empty;
+  // Little to show (also a shift without stops): the quieter tools fold into one "More" card.
+  const folded = sparse || (stopsData.stops?.length === 0 && !orphans);
+  // Label stops only when there is a stop to label, or a label that lost its stop.
+  const showLabels =
+    settings.modules.stops && (stopsData.stops === null || stops.length > 0 || orphans);
+  const exporters = settings.modules.exporters.length > 0 && !active;
 
-  const unit = settings.distance_unit;
+  const notes = (bare?: boolean) => <ShiftNotes shift={shift} onShift={setShift} bare={bare} />;
+  const exportButtons = <ExportButtons selection={{ shift_id: shift.id }} />;
+
   return (
-    <section className="space-y-6">
+    <section className="@container space-y-6">
       <UiButton asChild variant="ghost" size="sm" className="-ml-2">
         <Link to={`/shifts?week=${weekOf(shift.local_date, settings.week_start)}`}>
           <ChevronLeft />
@@ -462,146 +479,202 @@ export function ShiftDetail() {
         </Link>
       </UiButton>
       <PageHeader
-        title={`Shift on ${shift.local_date}`}
+        title={dateWords(shift.local_date, {
+          weekday: 'long',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })}
         description={
           <span className="tabular-nums">
-            {dateWords(shift.local_date, { weekday: 'long' })} · {formatTime(shift.started_at, tz)}{' '}
-            – {shift.ended_at ? formatTime(shift.ended_at, tz) : 'now'}
+            {context.join(' · ')}
+            {platforms.map((p) => (
+              <span key={p.slug}>
+                {' · '}
+                <PlatformName platform={p} className="align-middle" />
+              </span>
+            ))}
           </span>
         }
       >
         <StatusBadge shift={shift} />
+        {review > 0 ? (
+          <Badge asChild variant="outline" className="border-primary/60">
+            <a href="#checks">{review} to review</a>
+          </Badge>
+        ) : null}
       </PageHeader>
 
       <div className="space-y-2">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <StatCard label="Total" value={formatDistance(shift.total_m, unit)} />
-          {split ? (
-            <>
-              <StatCard
-                label="Active"
-                value={
-                  <>
-                    {formatDistance(shift.active_m, unit)}
-                    <Est />
-                  </>
-                }
-              />
-              <StatCard
-                label="Deadhead"
-                value={
-                  <>
-                    {formatDistance(shift.deadhead_m, unit)}
-                    <Est />
-                  </>
-                }
-              />
-            </>
-          ) : null}
-          <StatCard label="Duration" value={formatDuration(shift.started_at, shift.ended_at)} />
-          <StatCard
-            label="Deduction"
-            value={formatMoney(shift.deduction_cents, settings.currency)}
-          />
-        </div>
+        <ShiftFigures
+          shift={shift}
+          settings={settings}
+          split={split}
+          earned={showEarnings ? earned : undefined}
+          est={<Est />}
+        />
         {split ? (
           <p className="text-xs text-muted-foreground">* estimated from detected stops</p>
         ) : null}
       </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="min-w-0 space-y-6">
-          {settings.modules.replay ? <RouteView shiftId={shift.id} /> : null}
-          <Section label="Trips" title="Trips">
-            <TripsTable shift={shift} split={split} reloadKey={shift.calculated_at ?? 0} />
-          </Section>
-          {settings.modules.stops ? (
-            <Section label="Stops" title="Stops">
-              <StopsPanel shift={shift} onShift={setShift} />
-            </Section>
-          ) : null}
-          {settings.modules.earnings && shift.status !== 'active' ? (
-            <ShiftEarnings shift={shift} />
-          ) : null}
+      <div
+        className={cn(
+          'grid items-start gap-6',
+          (replay || sparse) && '@3xl:grid-cols-[minmax(0,1fr)_22rem]',
+        )}
+      >
+        <div className="min-w-0">
+          {active ? (
+            <InProgressCard earnings={settings.modules.earnings} />
+          ) : empty ? (
+            <div id="checks" className="scroll-mt-20">
+              <NoRouteCard shift={shift} replay={replay} onAdd={() => setAdding(true)} />
+            </div>
+          ) : replay ? (
+            <RouteView
+              route={route}
+              trips={trips ?? undefined}
+              stops={stopsData.stops ?? undefined}
+              picked={picked}
+              onPick={setPicked}
+            />
+          ) : (
+            <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+              The route map is off on this server, so the shift is shown as a list only.
+            </p>
+          )}
         </div>
-
-        <div className="space-y-6">
-          <Section title="Details">
-            <dl className="text-sm">
-              <Row label="Started">{formatDateTime(shift.started_at, tz)}</Row>
-              <Row label="Ended">
-                {shift.ended_at ? formatDateTime(shift.ended_at, tz) : 'in progress'}
-              </Row>
-              <Row label="Personal">{formatDistance(shift.personal_m, unit)}</Row>
-              <Row label="Status">{shift.status}</Row>
-              {shift.recon_status ? <Row label="Phone check">{shift.recon_status}</Row> : null}
-            </dl>
-          </Section>
-
-          <Section label="Flags" title="Flags">
-            {shift.flags?.length ? (
-              <ul className="space-y-2">
-                {shift.flags.map((f, i) => (
-                  <li key={`${f.code}-${i}`} className="flex items-center justify-between gap-3">
-                    <span
-                      className={
-                        f.severity === 'review' ? 'text-sm' : 'text-sm text-muted-foreground'
-                      }
-                    >
-                      {f.code}
-                    </span>
-                    <Badge variant={f.severity === 'review' ? 'outline' : 'secondary'}>
-                      {f.severity}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">None.</p>
-            )}
-          </Section>
-
-          <ShiftOdometer shift={shift} />
-
-          <Section title="Notes">
-            <label className="sr-only" htmlFor="notes">
-              Notes
-            </label>
-            <textarea
-              id="notes"
-              className="w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-              rows={3}
-              maxLength={2000}
-              value={notes}
-              onChange={(e) => {
-                setSaved(false);
-                setNotes(e.target.value);
+        <Section
+          label="Timeline"
+          title="Timeline"
+          action={
+            // With nothing recorded, the button sits in the card that explains why (once).
+            shift.status === 'ended' && !adding && !empty ? (
+              <UiButton variant="outline" size="sm" onClick={() => setAdding(true)}>
+                Add a trip
+              </UiButton>
+            ) : undefined
+          }
+          description={
+            sparse
+              ? 'Start and end only'
+              : trips
+                ? [count(trips.length, 'trip'), stopsData.stops && count(stops.length, 'stop')]
+                    .filter(Boolean)
+                    .join(' · ')
+                : undefined
+          }
+        >
+          {adding ? (
+            <AddTrip
+              shift={shift}
+              onCancel={() => setAdding(false)}
+              onSaved={(s) => {
+                setAdding(false);
+                setShift(s);
               }}
             />
-            <FormError message={error} />
-            <div className="flex items-center gap-3">
-              <Button
-                type="button"
-                busy={notes === (shift.notes ?? '')}
-                onClick={() => void saveNotes()}
-              >
-                Save notes
-              </Button>
-              {saved ? (
-                <span role="status" className="text-sm text-muted-foreground">
-                  Saved.
-                </span>
-              ) : null}
-            </div>
-          </Section>
-
-          {settings.modules.exporters.length > 0 ? (
-            <Section label="Export" title="Export this shift">
-              <ExportButtons selection={{ shift_id: shift.id }} />
-            </Section>
           ) : null}
-        </div>
+          {tripsError ? (
+            <p className="text-muted-foreground">Trips could not be loaded. {tripsError}</p>
+          ) : trips === null ? (
+            <p className="text-muted-foreground">Loading trips</p>
+          ) : (
+            <div data-timeline-scroll className="@3xl:max-h-[30rem] @3xl:overflow-y-auto">
+              {trips.length === 0 && !sparse ? (
+                <p className="mb-2 text-muted-foreground">No trips were recorded.</p>
+              ) : null}
+              <ShiftTimeline
+                shift={shift}
+                trips={trips}
+                stops={stops}
+                split={split}
+                est={<Est />}
+                picked={picked}
+                onPick={setPicked}
+              />
+            </div>
+          )}
+        </Section>
       </div>
+
+      {folded ? (
+        <div
+          className={cn(
+            'grid items-start gap-6',
+            showEarnings && '@3xl:grid-cols-[minmax(0,1fr)_22rem]',
+          )}
+        >
+          {showEarnings ? (
+            <div className="min-w-0">
+              <ShiftEarnings shift={shift} onSummary={setEarned} />
+            </div>
+          ) : null}
+          <div className={cn('min-w-0 space-y-6', !showEarnings && 'max-w-xl')}>
+            {sparse ? null : (
+              <div id="checks" className="scroll-mt-20">
+                <ShiftChecks shift={shift} />
+              </div>
+            )}
+            <MoreCard
+              rows={[
+                {
+                  key: 'odometer',
+                  title: 'Odometer',
+                  hint: 'Start and end readings, if you noted them',
+                  body: <ShiftOdometer shift={shift} bare />,
+                },
+                {
+                  key: 'notes',
+                  title: 'Notes',
+                  hint: shift.notes ?? 'None yet',
+                  open: !!shift.notes,
+                  body: notes(true),
+                },
+                ...(exporters
+                  ? [
+                      {
+                        key: 'export',
+                        title: 'Export',
+                        hint: 'Download this shift as a file',
+                        body: exportButtons,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="grid items-start gap-6 @3xl:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="min-w-0 space-y-6">
+            {showEarnings ? <ShiftEarnings shift={shift} onSummary={setEarned} /> : null}
+            <ShiftOdometer shift={shift} />
+          </div>
+          <div className="min-w-0 space-y-6">
+            <div id="checks" className="scroll-mt-20">
+              <ShiftChecks shift={shift} />
+            </div>
+            {notes()}
+            {exporters ? (
+              <Section label="Export" title="Export this shift">
+                {exportButtons}
+              </Section>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      {showLabels && (!folded || orphans) ? (
+        <Section
+          label="Stops"
+          title="Label stops"
+          description="Optional. A label corrects the estimate for that stop and adds its payout."
+        >
+          <StopsPanel shift={shift} onShift={setShift} data={stopsData} />
+        </Section>
+      ) : null}
     </section>
   );
 }

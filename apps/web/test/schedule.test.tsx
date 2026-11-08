@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { monthGrid } from '../src/pages/Schedule';
-import { renderApp, settingsFixture, signedIn } from './support/kit';
+import { renderApp, settingsFixture, signedIn, DASHBOARD } from './support/kit';
 
 afterEach(cleanup);
 
@@ -81,7 +81,7 @@ describe('schedule screen (module schedule)', () => {
 
   it('is absent when the module is off (the default)', async () => {
     const s = open(false);
-    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: DASHBOARD })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Schedule' })).toBeNull();
     expect(s.calls.some((c) => c.path.startsWith('/schedule'))).toBe(false);
   });

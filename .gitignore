@@ -17,4 +17,3 @@ apps/phone/native/**/android/.gradle/
 infra/vm-tests/artifacts/
 # Local dev data for `npm run dev` (scripts/dev.mjs)
 .dev/
-.expo/

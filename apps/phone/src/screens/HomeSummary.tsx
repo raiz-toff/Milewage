@@ -9,12 +9,27 @@ import { useServices } from '../services';
 import { localDate } from '../store/shiftStore';
 import { summarize, type HomeSummary as Summary } from '../store/summary';
 
-export function money(cents: number | null, currency: string): string {
-  if (cents === null) return 'not available';
+/** ISO 4217 currencies whose minor unit is not 2 digits (used when Intl cannot say). */
+const MINOR_DIGITS: Record<string, number> = {
+  ...Object.fromEntries(
+    'BIF CLP DJF GNF ISK JPY KMF KRW PYG RWF UGX UYI VND VUV XAF XOF XPF'
+      .split(' ')
+      .map((c) => [c, 0]),
+  ),
+  ...Object.fromEntries('BHD IQD JOD KWD LYD OMR TND'.split(' ').map((c) => [c, 3])),
+  CLF: 4,
+  UYW: 4,
+};
+
+/** Amounts are in the currency's minor unit; its own number of digits says where the point goes. */
+export function money(minor: number | null, currency: string): string {
+  if (minor === null) return 'not available';
   try {
-    return new Intl.NumberFormat('en', { style: 'currency', currency }).format(cents / 100);
+    const f = new Intl.NumberFormat('en', { style: 'currency', currency });
+    return f.format(minor / 10 ** (f.resolvedOptions().maximumFractionDigits ?? 2));
   } catch {
-    return `${(cents / 100).toFixed(2)} ${currency}`;
+    const digits = MINOR_DIGITS[currency.toUpperCase()] ?? 2;
+    return `${(minor / 10 ** digits).toFixed(digits)} ${currency}`;
   }
 }
 
@@ -27,23 +42,29 @@ const PERIOD = { W: 'week', M: 'month' } as const;
 export function HomeSummary({ refreshKey }: { refreshKey?: unknown }) {
   const { shifts, pairing } = useServices();
   const [tab, setTab] = useState<keyof typeof PERIOD>('W');
-  const [data, setData] = useState<{ s: Summary; unit: 'km' | 'mi'; currency: string } | null>(
-    null,
-  );
+  const [data, setData] = useState<{
+    s: Summary;
+    unit: 'km' | 'mi';
+    currency: string;
+    yours: boolean;
+  } | null>(null);
 
   useEffect(() => {
     void (async () => {
       const state = await pairing.load();
       if (!state?.settings) return;
       const flags = deriveFlags(state.settings);
+      const own = state.settings.own_mileage_rate;
       setData({
         s: summarize(await shifts.list(5000), {
           today: localDate(Date.now(), flags.timezone),
           country: state.settings.country,
           vehicleKinds: await shifts.vehicleKinds(),
+          ownRate: own && { centsPerUnit: own.cents_per_unit, unit: own.unit },
         }),
         unit: flags.distanceUnit,
         currency: state.settings.currency,
+        yours: state.settings.mileage_rate === 'yours',
       });
     })();
   }, [shifts, pairing, refreshKey]);
@@ -95,7 +116,11 @@ export function HomeSummary({ refreshKey }: { refreshKey?: unknown }) {
       </Card>
       <View className="flex-row gap-3">
         <Metric label="Shifts" value={String(p.shifts)} />
-        <Metric label="Deduction value" value={money(p.deductionCents, data.currency)} />
+        <Metric
+          // A value at the driver's own rate is never shown as an official one (plan 21 Q5).
+          label={data.yours ? 'Deduction value (your rate)' : 'Deduction value'}
+          value={money(p.deductionCents, data.currency)}
+        />
       </View>
     </View>
   );

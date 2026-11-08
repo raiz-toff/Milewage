@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, expect, test } from 'vitest';
+import { mkdirSync, utimesSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { harness, TRACKING_OFF, type Harness } from './support';
 
 let h: Harness;
@@ -30,12 +32,18 @@ test('pairing: QR payload, one-time token, device credential and settings', asyn
     'x-forwarded-proto': 'https',
     'x-forwarded-host': 'mw.example.ts.net',
   });
-  const { token, expires_at, qr_payload } = made.json();
+  const { token, expires_at, qr_payload, pair_url } = made.json();
   expect(token).toMatch(/^mwp_[A-Za-z0-9_-]{43}$/);
   expect(expires_at).toBe(h.clock.t + 600_000);
   expect(qr_payload).toBe(
     `milewage://pair?v=1&u=${encodeURIComponent('https://mw.example.ts.net')}&t=${token}`,
   );
+  // What the QR shows: any camera opens the pair page; the token stays in the fragment.
+  expect(pair_url).toBe(`https://mw.example.ts.net/pair#v=1&t=${token}`);
+  expect(made.json()).toMatchObject({
+    base_url: 'https://mw.example.ts.net',
+    base_url_source: 'request',
+  });
 
   const ok = await redeem(token);
   expect(ok.statusCode).toBe(201);
@@ -114,6 +122,58 @@ test('redeem: 10 failures per 15 minutes per IP, then 429 with Retry-After', asy
   expect((await redeem(await mint(), '10.1.1.2')).statusCode).toBe(201);
 });
 
+test('MILEWAGE_PUBLIC_URL is the address in the code, whatever address the browser is on', async () => {
+  const c = harness({}, { publicUrl: 'https://box.tail1234.ts.net' });
+  const { cookie: owner } = await c.signUp();
+  const made = await c.call('POST', '/pairing-tokens', undefined, {
+    cookie: owner,
+    'x-forwarded-proto': 'http',
+    'x-forwarded-host': '192.168.1.20:8080',
+  });
+  const { token, qr_payload, pair_url, base_url, base_url_source } = made.json();
+  expect([base_url, base_url_source]).toEqual(['https://box.tail1234.ts.net', 'configured']);
+  expect(pair_url).toBe(`https://box.tail1234.ts.net/pair#v=1&t=${token}`);
+  expect(qr_payload).toContain(`u=${encodeURIComponent('https://box.tail1234.ts.net')}&`);
+  await c.close();
+});
+
+test("the driver's corrected address is used once it is a bare https address", async () => {
+  const ask = (base_url: unknown) => web('POST', '/pairing-tokens', { base_url });
+  const ok = (await ask(' https://Box.tail1234.ts.net/ ')).json();
+  expect([ok.base_url, ok.base_url_source]).toEqual(['https://box.tail1234.ts.net', 'driver']);
+  expect(ok.pair_url).toBe(`https://box.tail1234.ts.net/pair#v=1&t=${ok.token}`);
+  // Outside production a debug build may use plain http on the home network.
+  expect((await ask('http://192.168.1.20:8080')).json().base_url).toBe('http://192.168.1.20:8080');
+  for (const bad of [
+    'box.ts.net',
+    'ftp://box.ts.net',
+    'https://u:p@box.ts.net',
+    'https://box.ts.net/mw',
+    'https://box.ts.net/?a=1',
+    42,
+  ]) {
+    const res = await ask(bad);
+    expect([res.statusCode, res.json().code], String(bad)).toEqual([422, 'validation_failed']);
+  }
+  expect(h.db.prepare('SELECT COUNT(*) FROM pairing_tokens').pluck().get()).toBe(2);
+});
+
+test('a production server refuses a plain http address from the driver', async () => {
+  const p = harness({}, { httpAddressAllowed: false });
+  const { cookie: owner } = await p.signUp();
+  const res = await p.call(
+    'POST',
+    '/pairing-tokens',
+    { base_url: 'http://192.168.1.20' },
+    { cookie: owner },
+  );
+  expect([res.statusCode, res.json().detail]).toEqual([
+    422,
+    'The address must start with https://',
+  ]);
+  await p.close();
+});
+
 test('with the devices module off there are no pairing routes', async () => {
   const off = harness({ devices: false, sync: false, ...TRACKING_OFF });
   const { cookie: c } = await off.signUp();
@@ -121,4 +181,72 @@ test('with the devices module off there are no pairing routes', async () => {
     404,
   );
   await off.close();
+});
+
+test('the phone app download: none until the file is there, then the file, without sign-in', async () => {
+  const get = (method: 'GET' | 'HEAD') => h.app.inject({ method, url: '/api/v1/app/android.apk' });
+  expect([(await get('GET')).statusCode, (await get('GET')).json().code]).toEqual([
+    404,
+    'not_found',
+  ]);
+  expect((await get('HEAD')).statusCode).toBe(404); // the web hides "Get the app"
+  mkdirSync(join(h.dir, 'config'), { recursive: true });
+  writeFileSync(join(h.dir, 'config', 'milewage.apk'), 'PK-app');
+  const ok = await get('GET');
+  expect(ok.statusCode).toBe(200);
+  expect(ok.headers['content-type']).toBe('application/vnd.android.package-archive');
+  expect(ok.headers['content-disposition']).toBe('attachment; filename="milewage.apk"');
+  expect(ok.body).toBe('PK-app');
+  expect((await get('HEAD')).statusCode).toBe(200);
+});
+
+test('the download page info: no sign-in, the file read at request time, its version', async () => {
+  const info = async (headers: Record<string, string> = {}) =>
+    (await h.app.inject({ method: 'GET', url: '/api/v1/app', headers })).json();
+  const first = await h.app.inject({ method: 'GET', url: '/api/v1/app' });
+  expect(first.headers['cache-control']).toBe('no-store');
+  expect(first.json()).toEqual({
+    apk: null,
+    store_url: null,
+    page_url: 'http://localhost:80/app',
+    base_url: 'http://localhost:80',
+    base_url_source: 'request',
+  });
+  // Through Caddy and `tailscale serve`: the page is offered at the Tailscale address.
+  const ts = { 'x-forwarded-proto': 'https', 'x-forwarded-host': 'mw.example.ts.net' };
+  expect((await info(ts)).page_url).toBe('https://mw.example.ts.net/app');
+  // A build is put in place while the server runs: offered at once, no restart.
+  const apk = join(h.dir, 'config', 'milewage.apk');
+  mkdirSync(join(h.dir, 'config'), { recursive: true });
+  writeFileSync(apk, 'PK-app-1');
+  utimesSync(apk, 1_800_000_000, 1_800_000_000);
+  expect((await info()).apk).toEqual({
+    size_bytes: 8,
+    updated_at: 1_800_000_000_000,
+    version: null,
+  });
+  writeFileSync(
+    `${apk}.json`,
+    JSON.stringify({ version: '0.1.0', built_at: '2026-11-07T18:04:00Z' }),
+  );
+  expect((await info()).apk.version).toBe('0.1.0');
+  writeFileSync(`${apk}.json`, JSON.stringify({ version: '<script>' }));
+  expect((await info()).apk.version).toBeNull();
+});
+
+test('the store link and the configured address are offered when set', async () => {
+  const s = harness(
+    {},
+    {
+      appStoreUrl: 'https://play.google.com/store/apps/details?id=app.milewage',
+      publicUrl: 'https://box.tail1234.ts.net',
+    },
+  );
+  const res = (await s.app.inject({ method: 'GET', url: '/api/v1/app' })).json();
+  expect(res).toMatchObject({
+    store_url: 'https://play.google.com/store/apps/details?id=app.milewage',
+    page_url: 'https://box.tail1234.ts.net/app',
+    base_url_source: 'configured',
+  });
+  await s.close();
 });

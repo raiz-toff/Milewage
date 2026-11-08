@@ -105,18 +105,28 @@ export function TaxPage() {
                 <tbody>
                   {[
                     ['Earnings (base, tips, bonus)', money(report.income.total_cents)],
+                    // Shown only when entered (plan 22), so nothing changes for other drivers.
+                    ...(report.income.fees_cents
+                      ? [['Platform fees (already taken off)', money(report.income.fees_cents)]]
+                      : []),
+                    ...(report.income.tax_withheld_cents
+                      ? [
+                          [
+                            'Tax withheld by platforms (not counted below)',
+                            money(-report.income.tax_withheld_cents),
+                          ],
+                        ]
+                      : []),
                     ['Expenses you can deduct', `− ${money(report.deductions?.expenses_cents)}`],
                     [
                       'Mileage deduction (a deduction, not cash)',
                       `− ${money(report.deductions?.mileage_cents)}`,
                     ],
                     ['Taxable income', money(est.taxable_income_cents)],
-                    [
-                      'Pension contribution (self-employed)',
-                      est.cpp_cents === null ? (est.pension_note ?? '—') : money(est.cpp_cents),
-                    ],
-                    ['Pension, second band', money(est.cpp2_cents)],
-                    [`Income tax at ${report.set_aside_bp / 100}%`, money(est.income_tax_cents)],
+                    ...est.lines.map((l) => [
+                      l.label,
+                      l.cents === null && l.note ? l.note : money(l.cents),
+                    ]),
                     ['Set aside in total', money(est.total_set_aside_cents)],
                     ['Quarterly instalment (a quarter)', money(est.instalment_cents)],
                   ].map(([k, v]) => (
@@ -171,7 +181,7 @@ export function TaxPage() {
                   checked={report.sales_tax_registered}
                   onChange={(e) => void putYear({ sales_tax_registered: e.target.checked })}
                 />
-                Registered for GST/HST
+                Registered for {report.sales_tax_name ?? 'sales tax'}
               </label>
               {report.sales_tax_registered ? (
                 <Field

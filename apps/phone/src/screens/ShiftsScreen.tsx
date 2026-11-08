@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Route } from 'lucide-react-native';
+import { ChevronRight, Route } from 'lucide-react-native';
 import { Button } from '../components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Skeleton } from '../components/ui/skeleton';
@@ -13,7 +13,7 @@ import { useServices } from '../services';
 import type { ShiftRow } from '../store/shiftStore';
 import { markerFor } from '../sync/status';
 import { useColors } from '../theme/theme';
-import { Dot } from '../ui/Parts';
+import { Dot, ListRow, Rows } from '../ui/Parts';
 import { Screen } from '../ui/Screen';
 import { useToast } from '../ui/Toast';
 
@@ -96,36 +96,37 @@ export function ShiftsScreen({ navigation }: ScreenProps<'Shifts'>) {
         </Card>
       )}
       {rows && rows.length > 0 && (
-        <View className="gap-3">
-          {rows.map((s) => {
-            const active = s.status === 'active';
-            return (
-              <Pressable
-                key={s.client_id}
-                accessibilityRole="button"
-                accessibilityLabel={`Shift ${s.local_date}`}
-                onPress={() => navigation.navigate('ShiftDetail', { clientId: s.client_id })}
-                className="flex-row items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 active:bg-accent"
-              >
-                <View className="flex-1 gap-2 pr-1">
-                  <View className="flex-row flex-wrap items-center gap-2">
-                    {active && <Dot color={C.signal} size={7} pulse />}
-                    <Text variant="label">{s.local_date}</Text>
-                    <Text variant="muted" tabular>
-                      {formatClock(s.started_at, zone)}
+        <Card className="py-0">
+          <Rows>
+            {rows.map((s) => {
+              const active = s.status === 'active';
+              return (
+                <ListRow
+                  key={s.client_id}
+                  accessibilityLabel={`Shift ${s.local_date}`}
+                  onPress={() => navigation.navigate('ShiftDetail', { clientId: s.client_id })}
+                >
+                  <View className="flex-1 gap-1.5">
+                    <View className="flex-row items-center gap-2">
+                      {active && <Dot color={C.signal} size={7} pulse />}
+                      <Text variant="label">{s.local_date}</Text>
+                      <Text variant="muted" tabular>
+                        {formatClock(s.started_at, zone)}
+                      </Text>
+                    </View>
+                    <Text variant="muted" numberOfLines={2}>
+                      {active ? 'In progress' : totalsCaption(s)} · {markerFor(s).label}
                     </Text>
                   </View>
-                  <Text variant="muted" numberOfLines={2}>
-                    {active ? 'In progress' : totalsCaption(s)} · {markerFor(s).label}
+                  <Text variant="label" tabular className="text-base">
+                    {s.total_m === null ? '-' : formatDistance(s.total_m, unit)}
                   </Text>
-                </View>
-                <Text variant="large" tabular>
-                  {s.total_m === null ? '-' : formatDistance(s.total_m, unit)}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+                  <ChevronRight size={16} color={C.mutedForeground} />
+                </ListRow>
+              );
+            })}
+          </Rows>
+        </Card>
       )}
     </Screen>
   );

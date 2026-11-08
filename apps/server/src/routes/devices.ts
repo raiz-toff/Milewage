@@ -1,9 +1,12 @@
+import { createReadStream, readFileSync, statSync } from 'node:fs';
+import type { FastifyRequest } from 'fastify';
 import type { RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import { hashToken, newToken, type Authenticator } from '../auth/authenticator';
 import { FailureLimiter } from '../auth/limiter';
 import { createDeviceRepository, type Db, type DeviceRow } from '../db';
 import { ProblemError } from '../errors';
+import { checkPublicUrl, type BaseUrlSource } from '../public-url';
 import { idParams, str, strictObject } from './util';
 
 const redeemSchema = strictObject(
@@ -18,6 +21,25 @@ const redeemSchema = strictObject(
 const renameSchema = strictObject({ name: str(1, 64) }, ['name']);
 const first = (v: string | string[] | undefined) =>
   Array.isArray(v) ? v[0] : v?.split(',')[0]?.trim();
+const fileStat = (path: string) => {
+  try {
+    const s = statSync(path);
+    return s.isFile() ? s : null;
+  } catch {
+    return null;
+  }
+};
+const fileSize = (path: string) => fileStat(path)?.size ?? null;
+/** The version the build script writes next to the app file (`<file>.json`); null when absent or odd. */
+const apkVersion = (path: string): string | null => {
+  try {
+    const v: unknown = (JSON.parse(readFileSync(`${path}.json`, 'utf8')) as { version?: unknown })
+      .version;
+    return typeof v === 'string' && /^[0-9A-Za-z.+-]{1,32}$/.test(v) ? v : null;
+  } catch {
+    return null;
+  }
+};
 const view = (d: DeviceRow, skew?: number) => ({
   id: d.id,
   name: d.name,
@@ -34,10 +56,27 @@ export interface DevicesContext {
   authn: Authenticator;
   /** Core service: the `Settings` response, returned to a phone when it pairs. */
   readSettings: (host: ServerRouteHost) => (userId: number) => object;
+  /** The phone app file, served by `GET /app/android.apk` when it exists (plan 24 Q2). */
+  apkPath?: string;
+  /** `MILEWAGE_PUBLIC_URL`: the address phones are given; null or absent to use the request's. */
+  publicUrl?: string | null;
+  /** Accept a plain http address from the driver (development only). */
+  httpAddressAllowed?: boolean;
+  /** `MILEWAGE_APP_STORE_URL`: the app's store page; null until the app is published. */
+  appStoreUrl?: string | null;
 }
 
 /** Pairing, device credentials and the device list (08 section 2.4). */
-export function devicesRoutes({ db, now, authn, readSettings }: DevicesContext) {
+export function devicesRoutes({
+  db,
+  now,
+  authn,
+  readSettings,
+  apkPath,
+  publicUrl,
+  httpAddressAllowed = process.env.NODE_ENV !== 'production',
+  appStoreUrl = null,
+}: DevicesContext) {
   return (routeHost: RouteHost) => {
     const host = routeHost as ServerRouteHost;
     const { app } = host;
@@ -58,16 +97,84 @@ export function devicesRoutes({ db, now, authn, readSettings }: DevicesContext) 
       return { kind: 'device', userId: d.userId, deviceId: d.id };
     });
 
-    app.post('/pairing-tokens', async (req, reply) => {
+    /**
+     * The address phones are given (plan 19 section 3.2): the driver's correction, then
+     * `MILEWAGE_PUBLIC_URL`, then the address this request came in on (as the browser sees it).
+     */
+    const address = (
+      req: FastifyRequest,
+      driver?: string,
+    ): { url: string; source: BaseUrlSource } => {
+      if (driver !== undefined) {
+        const checked = checkPublicUrl(driver, httpAddressAllowed);
+        if ('error' in checked) {
+          throw new ProblemError('validation_failed', checked.error, [
+            { path: '/base_url', message: checked.error },
+          ]);
+        }
+        return { url: checked.url, source: 'driver' };
+      }
+      if (publicUrl) return { url: publicUrl, source: 'configured' };
+      const proto = first(req.headers['x-forwarded-proto']) ?? 'http';
+      const url = `${proto}://${first(req.headers['x-forwarded-host']) ?? req.headers.host}`;
+      return { url, source: 'request' };
+    };
+
+    app.post('/pairing-tokens', { bodyLimit: 4096 }, async (req, reply) => {
       const { userId } = auth(req, 'S');
+      const asked = (req.body ?? {}) as { base_url?: unknown };
+      if (asked.base_url !== undefined && typeof asked.base_url !== 'string') {
+        throw new ProblemError('validation_failed', 'base_url must be text.');
+      }
+      const { url: base, source } = address(req, asked.base_url);
       const token = newToken('mwp_');
       const createdAt = now();
       const expiresAt = createdAt + 10 * 60 * 1000;
       repo.addPairingToken({ userId, tokenHash: hashToken(token), createdAt, expiresAt });
-      const proto = first(req.headers['x-forwarded-proto']) ?? 'http';
-      const base = `${proto}://${first(req.headers['x-forwarded-host']) ?? req.headers.host}`;
       const qr = `milewage://pair?v=1&u=${encodeURIComponent(base)}&t=${token}`;
-      return reply.status(201).send({ token, expires_at: expiresAt, qr_payload: qr });
+      // The QR carries the https form: the phone app reads it, and so does any camera app, which
+      // opens the server's /pair page. The token is in the fragment, so no server log sees it.
+      const pairUrl = `${base}/pair#v=1&t=${token}`;
+      return reply.status(201).send({
+        token,
+        expires_at: expiresAt,
+        qr_payload: qr,
+        pair_url: pairUrl,
+        base_url: base,
+        base_url_source: source,
+      });
+    });
+
+    // What the download page shows (no sign-in: the phone has no account yet). The file is looked
+    // at on every request, so a new build put in place is offered without a restart.
+    app.get('/app', async (req, reply) => {
+      const stat = apkPath ? fileStat(apkPath) : null;
+      const { url, source } = address(req);
+      return reply.header('Cache-Control', 'no-store').send({
+        apk: stat
+          ? {
+              size_bytes: stat.size,
+              updated_at: Math.round(stat.mtimeMs),
+              version: apkVersion(apkPath!),
+            }
+          : null,
+        store_url: appStoreUrl,
+        page_url: `${url}/app`,
+        base_url: url,
+        base_url_source: source,
+      });
+    });
+
+    // The app this server was built with (plan 24 Q2): no sign-in, a phone downloads it before
+    // it is paired. Nothing is served until the owner puts the file there (install.md).
+    app.get('/app/android.apk', async (_req, reply) => {
+      const size = apkPath ? fileSize(apkPath) : null;
+      if (size === null) throw new ProblemError('not_found', 'This server has no app file.');
+      return reply
+        .header('Content-Type', 'application/vnd.android.package-archive')
+        .header('Content-Length', size)
+        .header('Content-Disposition', 'attachment; filename="milewage.apk"')
+        .send(createReadStream(apkPath!));
     });
 
     app.post(

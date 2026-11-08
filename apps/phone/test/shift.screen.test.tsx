@@ -22,13 +22,19 @@ describe('home screen', () => {
     drive(tracker);
     // 445 m is 0.3 mi in the cached unit (miles).
     await waitFor(() =>
-      expect(screen.getByLabelText('Distance').props.children.join('')).toBe('0.3 mi'),
+      expect(screen.getByLabelText('Distance').props.accessibilityValue.text).toBe('0.3 mi'),
     );
-    // Ending is a swipe; a tap does nothing, and a screen reader's activate action ends it.
-    const slider = screen.getByRole('button', { name: 'End shift' });
-    fireEvent.press(slider);
+    expect(screen.getByLabelText('Time')).toBeTruthy();
+    expect(screen.getByText('Civic · since 19:00')).toBeTruthy();
+    // One End shift button, and it asks first; Keep recording leaves the shift running.
+    fireEvent.press(screen.getByRole('button', { name: 'End shift' }));
+    expect(await screen.findByText('End this shift?')).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: 'Keep recording' }));
+    await waitFor(() => expect(screen.queryByText('End this shift?')).toBeNull());
     expect(screen.getByText('Shift running')).toBeTruthy();
-    fireEvent(slider, 'accessibilityAction', { nativeEvent: { actionName: 'activate' } });
+    expect(tracker.isTracking()).toBe(true);
+    fireEvent.press(screen.getByRole('button', { name: 'End shift' }));
+    fireEvent.press((await screen.findAllByRole('button', { name: 'End shift' })).at(-1)!);
     expect(await screen.findByText('Shift ended.')).toBeTruthy();
     expect(screen.getByText('No shift running.')).toBeTruthy();
   });

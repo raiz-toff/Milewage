@@ -3,7 +3,7 @@ import { cleanup, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Modules } from '../src/api/client';
 import { screens, visibleScreens } from '../src/screens';
-import { ALL_ON, renderApp, settingsFixture, signedIn } from './support/kit';
+import { ALL_ON, renderApp, settingsFixture, signedIn, DASHBOARD } from './support/kit';
 
 afterEach(cleanup);
 
@@ -147,13 +147,13 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
   it('devices off: not in the navigation, and its URL leads to the first visible screen', async () => {
     open({ devices: false }, '/devices');
     expect(await navNames()).not.toContain('Devices');
-    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: DASHBOARD })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Pair a phone' })).toBeNull();
   });
 
   it('replay off: shift detail has no route section and asks for no route', async () => {
     const { calls } = open({ replay: false }, '/shifts/1');
-    await screen.findByRole('heading', { name: /2023-11-14/ });
+    await screen.findByRole('heading', { name: /Nov 14, 2023/ });
     expect(screen.queryByRole('region', { name: 'Route' })).toBeNull();
     expect(calls.some((c) => c.path.endsWith('/route'))).toBe(false);
   });
@@ -165,16 +165,16 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
     expect(screen.queryByText(/estimated/)).toBeNull();
     cleanup();
     open({ stops: false }, '/shifts/1');
-    await screen.findByRole('heading', { name: /2023-11-14/ });
-    expect(screen.queryByText('Active')).toBeNull();
-    expect(screen.queryByText('Deadhead')).toBeNull();
+    await screen.findByRole('heading', { name: /Nov 14, 2023/ });
+    expect(screen.queryByText(/km active/)).toBeNull();
+    expect(screen.queryByText(/deadhead/)).toBeNull();
     expect(screen.queryByText(/estimated/)).toBeNull();
   });
 
   it('stops on: the split and its estimate marker are there', async () => {
     open({ stops: true }, '/shifts/1');
-    await screen.findByRole('heading', { name: /2023-11-14/ });
-    expect(screen.getByText('Active')).toBeTruthy();
+    await screen.findByRole('heading', { name: /Nov 14, 2023/ });
+    expect(screen.getByText(/km active/).textContent).toContain('*');
     expect(screen.getByText(/estimated from detected stops/)).toBeTruthy();
   });
 

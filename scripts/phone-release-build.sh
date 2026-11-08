@@ -2,7 +2,19 @@
 # Release APK build of the phone app on the `coder` machine (Node 22.22, JDK 17, Android SDK).
 # Output: apps/phone/android/app/build/outputs/apk/release/app-release.apk
 # The APK is signed with the Expo template's debug key; the signed pipeline is M10.3.
+# --publish PATH (or MILEWAGE_APK_PUBLISH=PATH): then copy it to PATH, where the server hands it out
+# (scripts/publish-apk.sh; e.g. .dev/config/milewage.apk for `npm run dev`). Other arguments go to Gradle.
 set -euo pipefail
+
+publish="${MILEWAGE_APK_PUBLISH:-}"
+gradle_args=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --publish) publish="${2:?--publish needs a path}"; shift 2 ;;
+    *) gradle_args+=("$1"); shift ;;
+  esac
+done
+case "$publish" in '' | /*) ;; *) publish="$PWD/$publish" ;; esac
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PATH="${NODE22_BIN:-$HOME/.local/node22/bin}:$PATH"
@@ -30,5 +42,8 @@ cd apps/phone
 npx expo prebuild --platform android --no-install --clean
 printf 'sdk.dir=%s\n' "$ANDROID_HOME" >android/local.properties
 cd android
-./gradlew --no-daemon assembleRelease :comma-tracker:testDebugUnitTest "$@"
+./gradlew --no-daemon assembleRelease :comma-tracker:testDebugUnitTest :qr-scanner:testDebugUnitTest :net-check:testDebugUnitTest ${gradle_args[@]+"${gradle_args[@]}"}
 ls -l app/build/outputs/apk/release/*.apk
+if [[ -n "$publish" ]]; then
+  "$ROOT/scripts/publish-apk.sh" app/build/outputs/apk/release/app-release.apk "$publish"
+fi

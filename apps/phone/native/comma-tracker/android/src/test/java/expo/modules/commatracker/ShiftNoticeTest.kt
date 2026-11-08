@@ -1,6 +1,9 @@
 package expo.modules.commatracker
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LiveDistanceTest {
@@ -36,20 +39,44 @@ class LiveDistanceTest {
 
 class ShiftNoticeTest {
     @Test
-    fun `first shift of the day`() {
-        val t = ShiftNotice(startedAt = 0, footer = "Started 09:02 · Prius").text(12_345)
+    fun `first shift of the day, the distance leads, then start time and vehicle, nothing repeated`() {
+        val t = ShiftNotice(startedAt = 7, footer = "Started 09:02 · Prius").text(12_345)
         assertEquals("12.3 km this shift", t.title)
-        assertEquals("Today 12.3 km · first shift", t.text)
-        assertEquals("Today 12.3 km · first shift\nStarted 09:02 · Prius\nTap to open MileWage", t.expanded)
+        assertEquals("Started 09:02 · Prius", t.text)
+        assertNull("no expanded text that only repeats the collapsed one", t.expanded)
         assertEquals("12.3 km", t.chip)
+        // Android 17: the figures side by side, the details in the header.
+        assertEquals("Shift in progress", t.metricTitle)
+        assertEquals("Started 09:02 · Prius", t.subText)
+        assertEquals(
+            listOf(
+                ShiftNotice.Metric.Distance("Shift", 12.3f, "km"),
+                ShiftNotice.Metric.Elapsed("Time", 7),
+            ),
+            t.metrics,
+        )
     }
 
     @Test
     fun `adds the shifts already ended today, in miles`() {
-        val t = ShiftNotice(startedAt = 0, unit = "mi", earlierM = 16_093, earlierShifts = 2).text(1_609)
+        val t = ShiftNotice(startedAt = 0, unit = "mi", earlierM = 16_093, earlierShifts = 2, footer = "Started 14:10")
+            .text(1_609)
         assertEquals("1.0 mi this shift", t.title)
-        assertEquals("Today 11.0 mi over 3 shifts", t.text)
-        assertEquals("Today 11.0 mi over 3 shifts\nTap to open MileWage", t.expanded)
+        assertEquals("Today 11.0 mi · 3 shifts", t.text)
+        assertEquals("Today 11.0 mi · 3 shifts\nStarted 14:10", t.expanded)
+        assertEquals(ShiftNotice.Metric.Distance("Today", 11.0f, "mi"), t.metrics.last())
+        assertEquals(3, t.metrics.size)
+    }
+
+    @Test
+    fun `labels fit Android's ten characters and nothing changes between fixes in the same tenth`() {
+        val n = ShiftNotice(startedAt = 0, earlierShifts = 1, earlierM = 5_000)
+        n.text(1_000).metrics.forEach { assertTrue(it.label, it.label.length <= 10) }
+        assertEquals("no re-post for 1,020 m after 1,040 m", n.text(1_040), n.text(1_020))
+        assertNotEquals(n.text(1_040), n.text(1_060))
+        // Without details from the app it still says what it is.
+        assertEquals("Shift in progress", ShiftNotice(startedAt = 0).text(0).text)
+        assertNull(ShiftNotice(startedAt = 0).text(0).subText)
     }
 
     @Test

@@ -1,5 +1,5 @@
 import { dirname, join } from 'node:path';
-import { defineModule, type ModuleRegistry } from '@milewage/shared';
+import { countryModules, defineModule, type ModuleRegistry } from '@milewage/shared';
 import { Authenticator } from './auth/authenticator';
 import { nightlyBackupJob } from './backup/schedule';
 import { fileSecrets, secretsCodec, type SecretsStore } from './backup/secrets';
@@ -29,7 +29,7 @@ import { createServerState, type ServerState } from './state';
 import { coreRoutes, type CoreContext } from './routes/core';
 import { devicesRoutes } from './routes/devices';
 import { diagnosticsRoutes } from './routes/diagnostics';
-import { DEFAULT_COUNTRIES, settingsReader } from './routes/settings';
+import { settingsReader } from './routes/settings';
 import { createShiftProcessor } from './processing/shift-processor';
 import { createLateRecompute } from './processing/late-recompute';
 import { createArchiver } from './processing/archive';
@@ -59,6 +59,8 @@ import { expensesRoutes } from './routes/expenses';
 import { platformsRoutes, platformKnown } from './routes/platforms';
 import { stopsRoutes } from './routes/stops';
 import { trackingRoutes } from './routes/tracking';
+import { mcpTokenRoutes } from './mcp/tokens';
+import { mcpEndpoint } from './mcp/endpoint';
 
 export const coreModule = defineModule({ name: 'core', dependsOn: [], toggleable: false });
 export const devicesModule = defineModule({ name: 'devices', dependsOn: ['core'] });
@@ -114,6 +116,8 @@ export const progressModule = defineModule({
 });
 /** The Tax Center: an estimate, never a filing (18 section 7). CA only until other packs are verified. */
 export const taxModule = defineModule({ name: 'tax', dependsOn: ['core'] });
+/** The MCP endpoint for the driver's AI assistant and its access tokens; **off by default** (plan 26). */
+export const mcpModule = defineModule({ name: 'mcp', dependsOn: ['core'], defaultEnabled: false });
 /** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */
 export const backupModule = defineModule({
   name: 'backup',
@@ -143,6 +147,7 @@ export const serverModules = [
   notificationsModule,
   scheduleModule,
   progressModule,
+  mcpModule,
   backupModule,
 ] as const;
 
@@ -166,6 +171,14 @@ export interface ServerContext extends CoreContext {
   configDir?: string;
   /** Use this secrets store instead of `<configDir>/secrets.json`. */
   secrets?: SecretsStore;
+  /** The Android app file `GET /app/android.apk` serves when it exists (plan 24 Q2). */
+  apkPath?: string;
+  /** `MILEWAGE_PUBLIC_URL` (plan 19 section 3.2): the address in pairing codes; null to use the request's. */
+  publicUrl?: string | null;
+  /** Accept a plain http address from the driver (outside production only); default from `NODE_ENV`. */
+  httpAddressAllowed?: boolean;
+  /** `MILEWAGE_APP_STORE_URL`: the app's store page, for the download page; null until published. */
+  appStoreUrl?: string | null;
   /** Start the nightly 03:30 job (off in tests). */
   backupSchedule?: boolean;
   /** Exporters; defaults to csv, gpx and geojson. A new format registers here without other edits. */
@@ -215,7 +228,7 @@ export function buildBackupService(
 export function createServerModules(ctx: ServerContext) {
   const authn = new Authenticator(createSessionRepository(ctx.db), ctx.now);
   const secrets = ctx.secrets ?? fileSecrets(ctx.configDir ?? 'config');
-  const countries = ctx.countries ?? DEFAULT_COUNTRIES;
+  const countries = ctx.countries ?? countryModules.codes();
   const captureFor = (_userId: number, deviceId: number) => {
     if (!registry?.isEnabled('capture')) return null;
     const c = createCaptureStore(diagnosticsStore().db);
@@ -526,6 +539,13 @@ export function createServerModules(ctx: ServerContext) {
       ...captureModule,
       routes: capture.routes,
       jobs: [capture.job],
+    }),
+    defineModule({
+      ...mcpModule,
+      routes: (host) => {
+        mcpTokenRoutes({ ...ctx, authn })(host);
+        mcpEndpoint({ ...ctx, authn })(host);
+      },
     }),
     defineModule({
       ...backupModule,

@@ -1,6 +1,13 @@
 {
 	admin off
 	auto_https off
+	# The host's `tailscale serve` reaches Caddy through the Docker gateway of the stack's network
+	# (plan 19 section 3.1). Trusting that one address keeps its X-Forwarded-Proto (https),
+	# X-Forwarded-Host and X-Forwarded-For; any other sender's are replaced as before. Caddy is
+	# published on loopback only, so nothing outside the host can reach it to forge them.
+	servers {
+		trusted_proxies static {$MILEWAGE_PROXY_GATEWAY:172.29.88.1}/32
+	}
 }
 
 :8080 {
@@ -31,9 +38,23 @@
 		}
 		reverse_proxy api:3000
 	}
-	# The browser-tab and home-screen icons (apps/web/public): fixed names, revalidated daily.
-	# Anything not listed here or under /assets is a 404, so a new public file needs a line here.
-	@icons path /favicon.ico /apple-touch-icon.png
+	# The installable web app's files (plan 27): the manifest is checked again on every visit, so
+	# a change is seen at once; Go's MIME table has no .webmanifest. Icons rarely change.
+	handle /manifest.webmanifest {
+		root * /srv/web
+		header Cache-Control "no-cache"
+		header Content-Type "application/manifest+json"
+		file_server
+	}
+	# The service worker, and the page it keeps for offline starts (it fetches /index.html by
+	# name): always asked for again, so a new version is found (plan 27 section 4.2).
+	@fresh path /sw.js /index.html
+	handle @fresh {
+		root * /srv/web
+		header Cache-Control "no-cache"
+		file_server
+	}
+	@icons path /favicon.ico /favicon.svg /favicon-light.svg /favicon-dark.svg /apple-touch-icon.png /icons/*
 	handle @icons {
 		root * /srv/web
 		header Cache-Control "public, max-age=86400"
@@ -42,7 +63,7 @@
 	# The web client (apps/web, built into /srv/web by the caddy image target). Only its own
 	# screens fall back to index.html, so any other unknown path is still a 404.
 	# Keep this list in step with apps/web/src/screens.tsx.
-	@spa path / /dashboard /shifts /shifts/* /expenses /progress /schedule /notifications /analytics /goals /tax /vehicles /odometer /exports /devices /backups /settings /settings/*
+	@spa path / /pair /app /onboarding /onboarding/* /dashboard /shifts /shifts/* /expenses /progress /schedule /notifications /analytics /goals /tax /vehicles /odometer /exports /devices /backups /settings /settings/*
 	handle @spa {
 		root * /srv/web
 		rewrite * /index.html

@@ -123,7 +123,16 @@ CREATE TABLE conflict_log (
 
 const V2 = `ALTER TABLE odometer_readings ADD COLUMN server_id INTEGER;`;
 
+// The server's deduction value of a shift as the pull feed last sent it (plan 21, J9): the
+// server's number wins over the phone's own estimate. `server_deduction_known` = 1 once the feed
+// sent the shift, so a null value ("no deduction here") is told apart from "not seen yet".
+const V3 = `
+ALTER TABLE shifts ADD COLUMN server_deduction_cents INTEGER;
+ALTER TABLE shifts ADD COLUMN server_deduction_known INTEGER NOT NULL DEFAULT 0;
+`;
+
 export const MIGRATIONS: Migration[] = [
   { version: 1, sql: V1 },
   { version: 2, sql: V2 },
+  { version: 3, sql: V3 },
 ];

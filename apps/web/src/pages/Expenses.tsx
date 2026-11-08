@@ -1,14 +1,24 @@
-import { useCallback, useEffect, useState } from 'react';
-import { FileX, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useId, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { ChevronDown, FileX, Pencil, Plus, Trash2 } from 'lucide-react';
 import { RowMenu } from '../ui/RowMenu';
 import { EmptyState, PageHeader, Section, StatCard, TableBox, tableClass } from '../ui/layout';
 import { Button as UiButton } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
-import { Button, Field, FormError, SelectField } from '../ui/form';
+import { Button, DateField, Field, FormError, SelectField } from '../ui/form';
 import { toCents } from './ShiftEarnings';
 
 type Expense = Schemas['Expense'];
@@ -16,14 +26,30 @@ type Category = Schemas['ExpenseCategory'];
 
 const DAY = 86_400_000;
 const PICKS = [25, 50, 75, 100];
-const blank = (today: string) => ({
+/** Common driving costs, offered as one tap until the driver's own most used take their place. */
+const COMMON = ['fuel', 'parking', 'tolls', 'phone', 'wash'];
+const chip = (on: boolean) =>
+  `rounded-full border px-3 py-1 text-sm ${on ? 'border-primary bg-primary/15 font-medium' : 'border-border text-muted-foreground'}`;
+
+/** The five categories offered first: the most used in `rows`, topped up with common ones, in list order. */
+export function quickCategories(cats: Category[], rows: Expense[]): string[] {
+  const count = new Map<string, number>();
+  for (const r of rows) count.set(r.category, (count.get(r.category) ?? 0) + 1);
+  const used = [...count].sort((a, b) => b[1] - a[1]).map(([slug]) => slug);
+  const known = new Set(cats.map((c) => c.slug));
+  const chosen = [...new Set([...used, ...COMMON])].filter((s) => known.has(s)).slice(0, 5);
+  return cats.map((c) => c.slug).filter((s) => chosen.includes(s));
+}
+
+/** A new expense: today, fuel, deductible in full, on the default vehicle (fuel is a vehicle cost). */
+const blank = (today: string, vehicle = '') => ({
   spent_on: today,
   category: 'fuel',
   amount: '',
   merchant: '',
   deductible: true,
   business_pct: 100,
-  vehicle_id: '',
+  vehicle_id: vehicle,
   shift_id: '',
   notes: '',
   recurrence: '',
@@ -68,7 +94,9 @@ export function bodyOf(d: Draft): Schemas['ExpenseCreate'] {
  */
 export function ExpensesPage() {
   const { api } = useSession();
-  const { currency, modules } = useSettings();
+  const { currency, modules, default_vehicle_id } = useSettings();
+  // Vehicle costs go on the driver's default vehicle unless they choose another.
+  const auto = default_vehicle_id === null ? '' : String(default_vehicle_id);
   const [items, setItems] = useState<Expense[] | null>(null);
   const [totals, setTotals] = useState<Schemas['ExpenseTotals'] | null>(null);
   const [due, setDue] = useState<Expense[]>([]);
@@ -77,7 +105,14 @@ export function ExpensesPage() {
   const [shifts, setShifts] = useState<Schemas['Shift'][]>([]);
   const [filter, setFilter] = useState({ category: '', deductible: '' });
   const [merchants, setMerchants] = useState<string[]>([]);
-  const [draft, setDraft] = useState<Draft | null>(null);
+  // `?new` (the dashboard's Add expense) opens the form at once.
+  const [params] = useSearchParams();
+  const [draft, setDraft] = useState<Draft | null>(() =>
+    params.has('new') ? blank(new Date().toISOString().slice(0, 10), auto) : null,
+  );
+  // Merchant, deductible share, vehicle, shift, repeats and notes wait behind "More details".
+  const [more, setMore] = useState(false);
+  const ids = useId();
   const [editing, setEditing] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -134,6 +169,15 @@ export function ExpensesPage() {
   }, [api, typed]);
 
   const cat = (slug: string) => cats.find((c) => c.slug === slug);
+  const quick = quickCategories(cats, items ?? []);
+  // The rest, in two short groups instead of one long list.
+  const rest = cats.filter((c) => !quick.includes(c.slug));
+  const groups = (
+    [
+      ['Vehicle', rest.filter((c) => c.vehicle_related)],
+      ['Work and other', rest.filter((c) => !c.vehicle_related)],
+    ] as const
+  ).filter(([, list]) => list.length > 0);
   const pick = (slug: string) =>
     setDraft(
       (d) =>
@@ -142,6 +186,12 @@ export function ExpensesPage() {
           category: slug,
           deductible: cat(slug)?.default_deductible ?? true,
           business_pct: cat(slug)?.default_business_pct ?? 100,
+          vehicle_id:
+            d.vehicle_id !== '' && d.vehicle_id !== auto
+              ? d.vehicle_id
+              : cat(slug)?.vehicle_related
+                ? auto
+                : '',
         },
     );
 
@@ -201,7 +251,13 @@ export function ExpensesPage() {
         }
       >
         {draft === null ? (
-          <Button type="button" onClick={() => setDraft(blank(today))}>
+          <Button
+            type="button"
+            onClick={() => {
+              setDraft(blank(today, auto));
+              setMore(false);
+            }}
+          >
             <Plus />
             Add expense
           </Button>
@@ -262,122 +318,195 @@ export function ExpensesPage() {
       ) : null}
 
       {draft === null ? null : (
-        <Section title={editing === null ? 'New expense' : 'Edit expense'}>
+        <Section title={editing === null ? 'New expense' : 'Edit expense'} className="max-w-2xl">
           <form className="space-y-4" onSubmit={(e) => void save(e)}>
-            <div role="group" aria-label="Category" className="flex flex-wrap gap-2">
-              {cats.map((c) => (
-                <button
-                  key={c.slug}
-                  type="button"
-                  aria-pressed={draft.category === c.slug}
-                  className={`rounded-full border px-3 py-1 text-sm ${draft.category === c.slug ? 'border-primary bg-primary/15 font-medium' : 'border-border text-muted-foreground'}`}
-                  onClick={() => pick(c.slug)}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <Field
-                label="Date"
-                type="date"
-                value={draft.spent_on}
-                onChange={(e) => setDraft({ ...draft, spent_on: e.target.value })}
-              />
+            <div className="grid grid-cols-2 gap-3">
               <Field
                 label="Amount"
                 inputMode="decimal"
+                autoFocus
                 value={draft.amount}
                 onChange={(e) => setDraft({ ...draft, amount: e.target.value })}
               />
-              <Field
-                label="Merchant"
-                list="merchants"
-                maxLength={120}
-                value={draft.merchant}
-                onChange={(e) => setDraft({ ...draft, merchant: e.target.value })}
+              <DateField
+                label="Date"
+                value={draft.spent_on}
+                onChange={(spent_on) => setDraft({ ...draft, spent_on })}
               />
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-primary"
-                  checked={draft.deductible}
-                  onChange={(e) => setDraft({ ...draft, deductible: e.target.checked })}
-                />
-                Deductible
-              </label>
-              <span className="text-sm text-muted-foreground">Business use</span>
-              {PICKS.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  aria-pressed={draft.business_pct === p}
-                  className={`rounded-full border px-3 py-1 text-sm ${draft.business_pct === p ? 'border-primary bg-primary/15 font-medium' : 'border-border text-muted-foreground'}`}
-                  onClick={() => setDraft({ ...draft, business_pct: p })}
+            <div role="group" aria-labelledby={`${ids}-cat`} className="space-y-2">
+              <div id={`${ids}-cat`} className="text-sm font-medium">
+                Category
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {quick.map((slug) => (
+                  <button
+                    key={slug}
+                    type="button"
+                    aria-pressed={draft.category === slug}
+                    className={chip(draft.category === slug)}
+                    onClick={() => pick(slug)}
+                  >
+                    {cat(slug)?.label ?? slug}
+                  </button>
+                ))}
+                <Select
+                  value={quick.includes(draft.category) ? '' : draft.category}
+                  onValueChange={pick}
                 >
-                  {p}%
-                </button>
-              ))}
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <SelectField
-                label="Vehicle"
-                value={draft.vehicle_id}
-                onChange={(v) => setDraft({ ...draft, vehicle_id: v })}
-                options={[
-                  { value: '', label: 'None' },
-                  ...vehicles.map((v) => ({ value: String(v.id), label: v.name })),
-                ]}
-              />
-              <SelectField
-                label="Shift"
-                value={draft.shift_id}
-                onChange={(v) => setDraft({ ...draft, shift_id: v })}
-                options={[
-                  { value: '', label: 'None' },
-                  ...shifts.map((s) => ({ value: String(s.id), label: s.local_date })),
-                ]}
-              />
-              <SelectField
-                label="Repeats"
-                value={draft.recurrence}
-                onChange={(v) =>
-                  setDraft({ ...draft, recurrence: v, next_due: draft.next_due || draft.spent_on })
-                }
-                options={[
-                  { value: '', label: 'No' },
-                  { value: 'weekly', label: 'Weekly' },
-                  { value: 'monthly', label: 'Monthly' },
-                  { value: 'yearly', label: 'Yearly' },
-                ]}
-              />
-              {draft.recurrence ? (
-                <Field
-                  label="Next due"
-                  type="date"
-                  value={draft.next_due}
-                  onChange={(e) => setDraft({ ...draft, next_due: e.target.value })}
-                />
-              ) : null}
-            </div>
-            <datalist id="merchants">
-              {merchants.map((m) => (
-                <option key={m} value={m} />
-              ))}
-            </datalist>
-            <Field
-              label="Notes"
-              maxLength={2000}
-              value={draft.notes}
-              onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
-            />
-            {cat(draft.category)?.covered_by_standard_rate && draft.vehicle_id ? (
-              <p role="note" className="text-sm text-muted-foreground">
-                If this vehicle uses the standard mileage rate, the rate already covers this cost:
-                it is saved but not deducted.
+                  <SelectTrigger
+                    size="sm"
+                    aria-label="More categories"
+                    className={`min-w-0 rounded-full ${quick.includes(draft.category) ? '' : 'border-primary bg-primary/15 font-medium'}`}
+                  >
+                    <SelectValue placeholder="More…" />
+                  </SelectTrigger>
+                  <SelectContent position="popper" align="start">
+                    {groups.map(([name, list]) => (
+                      <SelectGroup key={name}>
+                        <SelectLabel>{name}</SelectLabel>
+                        {list.map((c) => (
+                          <SelectItem key={c.slug} value={c.slug} data-value={c.slug}>
+                            {c.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {!draft.deductible
+                  ? 'Not deductible.'
+                  : draft.business_pct === 100
+                    ? 'Deductible in full.'
+                    : `Deductible: ${draft.business_pct} % business use.`}
+                {cat(draft.category)?.covered_by_standard_rate && draft.vehicle_id ? (
+                  <span role="note">
+                    {' '}
+                    If this vehicle uses the standard mileage rate, the rate already covers this
+                    cost: it is saved but not deducted.
+                  </span>
+                ) : null}
               </p>
+            </div>
+            <div className="space-y-1">
+              <button
+                type="button"
+                aria-expanded={more}
+                onClick={() => setMore(!more)}
+                className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                <ChevronDown
+                  aria-hidden="true"
+                  className={`size-4 transition-transform motion-reduce:transition-none ${more ? '' : '-rotate-90'}`}
+                />
+                More details
+              </button>
+              {more ? null : (
+                <p className="pl-5 text-xs text-muted-foreground">
+                  Merchant, deductible share, vehicle, shift, repeats, notes
+                </p>
+              )}
+            </div>
+            {more ? (
+              <div className="space-y-4">
+                <Field
+                  label="Merchant"
+                  list="merchants"
+                  maxLength={120}
+                  value={draft.merchant}
+                  onChange={(e) => setDraft({ ...draft, merchant: e.target.value })}
+                />
+                <datalist id="merchants">
+                  {merchants.map((m) => (
+                    <option key={m} value={m} />
+                  ))}
+                </datalist>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-primary"
+                      checked={draft.deductible}
+                      onChange={(e) => setDraft({ ...draft, deductible: e.target.checked })}
+                    />
+                    Deductible
+                  </label>
+                  {draft.deductible ? (
+                    <div role="group" aria-label="Business use" className="flex flex-wrap gap-2">
+                      <span className="self-center text-sm text-muted-foreground">
+                        Business use
+                      </span>
+                      {PICKS.map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          aria-pressed={draft.business_pct === p}
+                          className={chip(draft.business_pct === p)}
+                          onClick={() => setDraft({ ...draft, business_pct: p })}
+                        >
+                          {p}%
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {vehicles.length > 0 || draft.vehicle_id ? (
+                    <SelectField
+                      label="Vehicle"
+                      value={draft.vehicle_id}
+                      onChange={(v) => setDraft({ ...draft, vehicle_id: v })}
+                      options={[
+                        { value: '', label: 'None' },
+                        ...vehicles.map((v) => ({ value: String(v.id), label: v.name })),
+                      ]}
+                    />
+                  ) : null}
+                  {shifts.length > 0 || draft.shift_id ? (
+                    <SelectField
+                      label="Shift"
+                      value={draft.shift_id}
+                      onChange={(v) => setDraft({ ...draft, shift_id: v })}
+                      options={[
+                        { value: '', label: 'None' },
+                        ...shifts.map((s) => ({ value: String(s.id), label: s.local_date })),
+                      ]}
+                    />
+                  ) : null}
+                  <SelectField
+                    label="Repeats"
+                    value={draft.recurrence}
+                    onChange={(v) =>
+                      setDraft({
+                        ...draft,
+                        recurrence: v,
+                        next_due: draft.next_due || draft.spent_on,
+                      })
+                    }
+                    options={[
+                      { value: '', label: 'No' },
+                      { value: 'weekly', label: 'Weekly' },
+                      { value: 'monthly', label: 'Monthly' },
+                      { value: 'yearly', label: 'Yearly' },
+                    ]}
+                  />
+                  {draft.recurrence ? (
+                    <DateField
+                      label="Next due"
+                      value={draft.next_due}
+                      onChange={(next_due) => setDraft({ ...draft, next_due })}
+                    />
+                  ) : null}
+                </div>
+                <Field
+                  label="Notes"
+                  maxLength={2000}
+                  value={draft.notes}
+                  onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
+                />
+              </div>
             ) : null}
             <div className="flex gap-3">
               <Button type="submit">{editing === null ? 'Save expense' : 'Save changes'}</Button>
@@ -483,6 +612,7 @@ export function ExpensesPage() {
                             onSelect: () => {
                               setDraft(draftOf(x));
                               setEditing(x.id);
+                              setMore(true);
                             },
                           },
                           ...(modules.receipts && x.has_receipt

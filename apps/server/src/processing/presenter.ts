@@ -1,4 +1,11 @@
-import { countryPacks, type VehicleKind } from '@milewage/shared';
+import {
+  countryModules,
+  mileageDeduction,
+  mileageRateSource,
+  ownRateDeduction,
+  periodStart,
+  type VehicleKind,
+} from '@milewage/shared';
 import {
   createProcessingRepository,
   createSettingsRepository,
@@ -7,6 +14,7 @@ import {
   type ShiftRow,
 } from '../db';
 import { deductionMethodFor } from '../deduction-method';
+import { ownRateOf } from '../routes/settings';
 import { shiftView } from '../routes/shifts';
 
 /**
@@ -16,9 +24,12 @@ import { shiftView } from '../routes/shifts';
  */
 export function deductionOfShift(db: Db, r: ShiftRow): number | null {
   if (r.totalM === null || r.status === 'active') return null;
-  const country = createSettingsRepository(db).get(r.userId)?.country;
-  const pack = country ? countryPacks.get(country) : undefined;
-  if (!pack) return null;
+  const settings = createSettingsRepository(db).get(r.userId);
+  const pack = settings ? countryModules.get(settings.country) : undefined;
+  // The driver's own rate only where the country has no official rates (owner decision Q5).
+  const own = ownRateOf(settings);
+  const source = mileageRateSource(pack, own);
+  if (source === 'none') return null;
   // A vehicle deducted through its expenses has no mileage deduction value (18 section 7.1).
   if (
     deductionMethodFor(db, r.userId, r.vehicleId, Number(r.localDate.slice(0, 4))) ===
@@ -26,6 +37,8 @@ export function deductionOfShift(db: Db, r: ShiftRow): number | null {
   )
     return null;
   const kind = createVehicleRepository(db).find(r.userId, r.vehicleId)?.kind ?? 'car';
+  if (source === 'yours' || !pack)
+    return ownRateDeduction(own!, { totalM: r.totalM, vehicleKind: kind as VehicleKind });
   const prior = db
     .prepare(
       `SELECT coalesce(sum(s.total_m), 0) FROM shifts s JOIN vehicles v ON v.id = s.vehicle_id
@@ -37,14 +50,14 @@ export function deductionOfShift(db: Db, r: ShiftRow): number | null {
     .get(
       r.userId,
       kind,
-      pack.periodStart(r.localDate),
+      periodStart(pack.mileage, r.localDate),
       r.localDate,
       r.localDate,
       r.startedAt,
       r.startedAt,
       r.id,
     ) as number;
-  return pack.deduction({
+  return mileageDeduction(pack, {
     totalM: r.totalM,
     priorM: prior,
     date: r.localDate,

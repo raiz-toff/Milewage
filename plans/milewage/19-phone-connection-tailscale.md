@@ -1,7 +1,7 @@
 # 19 — Phone Connection over Tailscale
 
 **Lead Agent:** Agent 2 (Self-Hosted Docker & Backend Architect) with Agents 1 and 4
-**Status:** DRAFT PLAN — awaiting owner sign-off (§10). Nothing below is built yet.
+**Status:** Building (2026-11-07): T1 done (`pr-T1-caddy-trusted-proxies`), T2 done (`pr-T2-public-url`), T3 done (`pr-T3-web-address`), T5 done (`pr-T5-install-tailscale`); T6's Vite part done. The rest below is not built yet.
 **Parent:** [`plans/milewage/README.md`](./README.md) · Builds on decision 1.7 (`06`) and [`10`](./10-backup-restore-and-ops-spec.md) §8 · Amends [`08`](./08-api-spec.md) §2.4, [`10`](./10-backup-restore-and-ops-spec.md) §8.1, [`15`](./15-offline-storage-and-sync-spec.md) §9.4, [`17`](./17-gate4-execution-roadmap.md) M10.1, `infra/docs/install.md` §3
 
 Tailscale was chosen as the way the phone reaches the home server on 2026-11-03 (decision 1.7). This plan turns that decision into a feature a driver can follow from start to finish, and fixes what stops it working today.
@@ -185,11 +185,11 @@ No new abstraction: Cloudflare Tunnel and others need only `MILEWAGE_PUBLIC_URL`
 
 | ID | Title | Track | Tests | LOC | Dep |
 |---|---|---|---|---|---|
-| **T1** | Caddy `trusted_proxies` for the gateway + smoke regression for the https QR; fix `10` §8.1 and `install.md` §3 text (P1, P5) | infra | smoke | 60 | — |
-| **T2** | `MILEWAGE_PUBLIC_URL`; `base_url` in and out of `POST /pairing-tokens`; OpenAPI + generated types (P2, P3) | server | server | 150 | — |
-| **T3** | Devices page: address line, **Change address**, warnings, code-text disclosure (P2, P3) | web | web | 180 | T2 |
+| **T1** | Caddy `trusted_proxies` for the gateway + smoke regression for the https QR; fix `10` §8.1 and `install.md` §3 text (P1, P5). **Done 2026-11-07** (smoke check added with A1's public `GET /app`) | infra | smoke | 60 | — |
+| **T2** | `MILEWAGE_PUBLIC_URL`; `base_url` in and out of `POST /pairing-tokens`; OpenAPI + generated types (P2, P3). **Done 2026-11-07**; the driver's `base_url` wins over the configured one (see `progress.md` T2) | server | server | 150 | — |
+| **T3** | Devices page: address line, **Change address**, warnings, code-text disclosure (P2, P3). **Done 2026-11-07**; also on the wizard's phone step | web | web | 180 | T2 |
 | **T4** | Phone: pre-redeem address checks, failure mapping, Open Tailscale, banner hint; `expo-network` and `<queries>` (P4) | phone | phone | 250 | — |
-| **T5** | `install.sh` Tailscale step and flags; `install.test.mjs` | infra | install tests | 200 | T2 |
+| **T5** | `install.sh` Tailscale step and flags; `install.test.mjs`. **Done 2026-11-07** | infra | install tests | 200 | T2 |
 | **T6** | Dev path: Vite `allowedHosts` (**done 2026-11-07**), README dev section (P6) | web | manual | 20 | — |
 | **T7** | Install guide rewrite with screenshots (host, admin console, phone app); Spike D + D7 run by the owner; `D-results.md` | infra + owner | owner run | 150 | T1–T5 |
 
@@ -214,7 +214,7 @@ This replaces the single row M10.1 in `17` with T1 to T7. M10.1's exit ("guide f
 | Doc | Change |
 |---|---|
 | `10` §8.1 | `trusted_proxies static 127.0.0.1/32` → the Docker gateway of the proxy subnet (P5); remove "unverified" for the source address |
-| `08` §2.4 | QR base: `MILEWAGE_PUBLIC_URL`, then the driver's `base_url`, then the forwarded headers; response fields `base_url`, `base_url_source` |
+| `08` §2.4 | QR base: the driver's `base_url`, then `MILEWAGE_PUBLIC_URL`, then the forwarded headers (applied in T2); response fields `base_url`, `base_url_source` |
 | `15` §9.4 | Unreachable state: the Tailscale hint rows of §3.5 |
 | `17` | M10.1 replaced by T1 to T7 (§7) |
 | `install.md` §3 | Rewritten around the install script; the "Unverified" paragraph removed |

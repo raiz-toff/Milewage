@@ -2,22 +2,17 @@ import { useState } from 'react';
 import { Button as UiButton } from '@/components/ui/button';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
+import { useCountries } from '../countries';
 import { useSession } from '../session';
 import { Button, Card, Field, FormError, SelectField } from '../ui/form';
 import { RecoveryKey } from './RecoveryKey';
-
-/** The packs the server ships (08 section 16.3); settings later shows the server's own list. */
-const COUNTRIES = [
-  { value: 'CA', label: 'Canada', currency: 'CAD', unit: 'km' },
-  { value: 'US', label: 'United States', currency: 'USD', unit: 'mi' },
-  { value: 'GB', label: 'United Kingdom', currency: 'GBP', unit: 'mi' },
-] as const;
 
 const browserZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
 /** First run: create the owner, then show the recovery key once and ask for its last 6. */
 export function Setup({ onRestore }: { onRestore?: () => void } = {}) {
   const { api } = useSession();
+  const countries = useCountries();
   const [form, setForm] = useState({
     username: '',
     password: '',
@@ -34,7 +29,7 @@ export function Setup({ onRestore }: { onRestore?: () => void } = {}) {
   if (key) return <RecoveryKey recoveryKey={key} />;
 
   function pickCountry(code: string) {
-    const c = COUNTRIES.find((x) => x.value === code);
+    const c = countries.find((x) => x.code === code);
     set(c ? { country: code, currency: c.currency, distance_unit: c.unit } : { country: code });
   }
 
@@ -75,7 +70,11 @@ export function Setup({ onRestore }: { onRestore?: () => void } = {}) {
           label="Country"
           value={form.country}
           onChange={pickCountry}
-          options={COUNTRIES.map((c) => ({ value: c.value, label: c.label }))}
+          options={
+            countries.length
+              ? countries.map((c) => ({ value: c.code, label: c.name }))
+              : [{ value: form.country, label: form.country }]
+          }
         />
         <SelectField
           label="Distance unit"

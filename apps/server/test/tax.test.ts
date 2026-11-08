@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-import { caTaxPack, estimateTax, type TaxInput } from '@milewage/shared';
+import { caCountry, estimateTax, type TaxEstimate, type TaxInput } from '@milewage/shared';
 import { harness, type Harness } from './support';
 
 // 18 section 7: the Tax Center. CA only; the figures are unverified and say so.
@@ -55,6 +55,7 @@ describe('the estimate', () => {
       unverified: true,
       country: 'CA',
       set_aside_bp: 2500,
+      sales_tax_name: 'HST', // Ontario, from the country data
       income: {
         gross_cents: 7_000_000,
         tips_cents: 500_000,
@@ -66,9 +67,11 @@ describe('the estimate', () => {
     expect(t.estimate).toMatchObject({
       net_income_cents: 7_985_700,
       taxable_income_cents: 7_985_700,
-      cpp_cents: 846_090, // (74 600 - 3 500) x 11.90 %
-      cpp2_cents: 42_056, // (79 857 - 74 600) x 8 %
-      income_tax_cents: 1_996_425,
+      lines: [
+        { key: 'pension_contribution', cents: 846_090, note: null }, // (74 600 - 3 500) x 11.90 %
+        { key: 'pension_contribution_second_band', cents: 42_056 }, // (79 857 - 74 600) x 8 %
+        { key: 'income_tax_set_aside', label: 'Income tax at 25%', cents: 1_996_425 },
+      ],
       total_set_aside_cents: 2_884_571,
       instalment_cents: 721_143,
       sales_tax: null,
@@ -92,7 +95,7 @@ describe('the estimate', () => {
     await seed();
     await send('PUT', '/tax/2026', { set_aside_bp: 3000, sales_tax_registered: true });
     const t = await year('?collected_cents=100000');
-    expect(t.estimate.income_tax_cents).toBe(2_395_710);
+    expect(t.estimate.lines[2]).toMatchObject({ key: 'income_tax_set_aside', cents: 2_395_710 });
     expect(t.estimate.sales_tax).toEqual({
       collected_cents: 100_000,
       credits_cents: 200, // only the parking expense carries a credit; the double-counted fuel is out
@@ -102,6 +105,32 @@ describe('the estimate', () => {
     expect((await send('PUT', '/tax/2026', { set_aside_bp: 20_000 })).statusCode).toBe(422);
     expect((await send('PUT', '/tax/2026', {})).statusCode).toBe(422);
     expect((await send('GET', '/tax/1999')).statusCode).toBe(422);
+  });
+
+  test('a commission comes off the income and withheld tax is shown apart (plan 22)', async () => {
+    const id = await seed();
+    const before = (await year()).estimate.taxable_income_cents;
+    const add = (type: string, amount_cents: number) =>
+      send('POST', `/shifts/${id}/earnings/doordash/entries`, { type, amount_cents });
+    await add('commission', -1_000_000);
+    await add('adjustment', 20_000);
+    await add('tax_withheld', -30_000);
+    const t = await year();
+    expect(t.income).toMatchObject({
+      gross_cents: 7_000_000,
+      fees_cents: -1_000_000,
+      adjustments_cents: 20_000,
+      tax_withheld_cents: -30_000,
+      total_cents: 7_020_000,
+    });
+    const i = t.income;
+    expect(i.gross_cents + i.tips_cents + i.bonus_cents + i.fees_cents + i.adjustments_cents).toBe(
+      i.total_cents,
+    );
+    expect(t.estimate.taxable_income_cents).toBe(before - 980_000);
+    const csv = (await send('GET', '/exports/tax_summary?year=2026')).body;
+    expect(csv).toContain('Income,Platform_Fees_Taken,10000.00\r\nIncome,Adjustments,200.00');
+    expect(csv).toContain('Income,Tax_Withheld_By_Platforms,300.00');
   });
 
   test('no earnings means no estimate, never a zero one; a year without CPP figures says so', async () => {
@@ -117,6 +146,7 @@ describe('the estimate', () => {
     await send('PATCH', '/settings', { country: 'US' });
     const us = await year();
     expect(us).toMatchObject({ supported: false, estimate: null, income: null, deadlines: [] });
+    expect(us.sales_tax_name).toBeNull();
     expect(us.notices[0]).toMatch(/No tax estimate/);
     const off = harness({}, { comma: { taxCountries: [] } });
     try {
@@ -126,6 +156,20 @@ describe('the estimate', () => {
       expect(t.supported).toBe(false); // CA switched off by configuration
     } finally {
       await off.close();
+    }
+  });
+
+  test('tax countries can only hide a pack: listing a country without one shows nothing', async () => {
+    const on = harness({}, { comma: { taxCountries: ['CA', 'US', 'GB'] } });
+    try {
+      const { cookie: c } = await on.signUp();
+      for (const country of ['US', 'GB']) {
+        await on.call('PATCH', '/settings', { country }, { cookie: c });
+        const t = (await on.call('GET', '/tax/2026', undefined, { cookie: c })).json();
+        expect([country, t.supported, t.deadlines]).toEqual([country, false, []]);
+      }
+    } finally {
+      await on.close();
     }
   });
 });
@@ -213,26 +257,37 @@ describe('the pack arithmetic (shared)', () => {
     collectedCents: 0,
     creditCents: 0,
   };
+  const est = (i: TaxInput) => estimateTax(caCountry, i)!;
+  const pension = (e: TaxEstimate) => [e.lines[0]!.cents, e.lines[1]!.cents, e.lines[0]!.note];
+  test('lines add up to the total and the instalment is a quarter of it', () => {
+    const e = est(base);
+    expect(e.lines.reduce((a, l) => a + (l.cents ?? 0), 0)).toBe(e.total_set_aside_cents);
+    expect(e.instalment_cents).toBe(Math.floor(e.total_set_aside_cents / 4 + 0.5));
+  });
   test('below the exemption nothing is contributed; a loss is not negative tax', () => {
-    expect(estimateTax(caTaxPack, { ...base, incomeCents: 300_000 })).toMatchObject({
-      cpp_cents: 0,
-      cpp2_cents: 0,
-    });
-    const loss = estimateTax(caTaxPack, { ...base, incomeCents: 100_000, expensesCents: 400_000 });
+    expect(pension(est({ ...base, incomeCents: 300_000 }))).toEqual([0, 0, null]);
+    const loss = est({ ...base, incomeCents: 100_000, expensesCents: 400_000 });
     expect([loss.net_income_cents, loss.taxable_income_cents, loss.total_set_aside_cents]).toEqual([
       -300_000, 0, 0,
     ]);
   });
   test('Quebec and years without figures leave the contribution out and say why', () => {
-    const qc = estimateTax(caTaxPack, { ...base, region: 'QC' });
-    expect([qc.cpp_cents, qc.pension_note]).toEqual([null, expect.stringContaining('QC')]);
-    const y = estimateTax(caTaxPack, { ...base, year: 2023 });
-    expect([y.cpp_cents, y.pension_note]).toEqual([null, expect.stringContaining('2023')]);
-    expect(caTaxPack.verified).toBe(false);
+    expect(pension(est({ ...base, region: 'QC' }))).toEqual([
+      null,
+      null,
+      'Region QC has its own pension plan; it is not estimated here.',
+    ]);
+    expect(pension(est({ ...base, year: 2023 }))).toEqual([
+      null,
+      null,
+      'The pack has no contribution figures for 2023.',
+    ]);
+    expect(pension(est({ ...base, year: 2027 }))[2]).toContain('2027'); // the figures end with 2026
+    expect(caCountry.tax?.verified).toBe(false);
   });
   test('other provinces use their own sales tax rate', () => {
     const r = (region: string) =>
-      estimateTax(caTaxPack, { ...base, region, salesTaxRegistered: true }).sales_tax?.rate_bp;
+      est({ ...base, region, salesTaxRegistered: true }).sales_tax?.rate_bp;
     expect([r('NS'), r('AB'), r('ON')]).toEqual([1500, 500, 1300]);
   });
 });

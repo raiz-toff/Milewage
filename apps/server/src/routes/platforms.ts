@@ -1,8 +1,15 @@
-import { BUILTIN_PLATFORMS, builtinPlatform, CUSTOM_SLUG, type RouteHost } from '@milewage/shared';
+import {
+  builtinPlatform,
+  countryModules,
+  CUSTOM_SLUG,
+  resolvePlace,
+  type RouteHost,
+} from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import { createPlatformRepository, createSettingsRepository, type Db } from '../db';
 import { ProblemError } from '../errors';
+import { deleteLogo, logoVersion, platformLogoRoutes } from './platform-logos';
 import { strictObject } from './util';
 
 const slugParams = strictObject({ slug: { type: 'string', pattern: '^[a-z0-9_]{1,32}$' } }, [
@@ -30,7 +37,15 @@ export function platformKnown(db: Db, userId: number, slug: string): boolean {
 }
 
 /** Module `platforms` (18 section 4.2): the registry merged with the driver's overrides. */
-export function platformsRoutes({ db, authn }: { db: Db; authn: Authenticator }) {
+export function platformsRoutes({
+  db,
+  authn,
+  now,
+}: {
+  db: Db;
+  authn: Authenticator;
+  now: () => number;
+}) {
   return (host: RouteHost) => {
     const { app } = host as ServerRouteHost;
     const repo = createPlatformRepository(db);
@@ -49,20 +64,25 @@ export function platformsRoutes({ db, authn }: { db: Db; authn: Authenticator })
         active: (row?.active ?? 1) === 1,
         sort: row?.sort ?? order * 10,
         hourly_target_cents: row?.hourlyTargetCents ?? null,
+        logo_version: logoVersion(db, userId, slug),
       };
     };
 
+    platformLogoRoutes(app, {
+      db,
+      authn,
+      now,
+      known: (userId, slug) => platformKnown(db, userId, slug),
+    });
+
     app.get('/platforms', { schema: { querystring: query } }, async (req) => {
       const { userId } = authn.authenticate(req, 'SD');
-      const country = settings.get(userId)?.country ?? '';
+      const s = settings.get(userId);
       const all = (req.query as { include_inactive?: boolean }).include_inactive === true;
-      const slugs = [
-        ...BUILTIN_PLATFORMS.filter((p) => p.countries.includes(country)).map((p) => p.slug),
-        ...repo
-          .list(userId)
-          .map((r) => r.slug)
-          .filter((s) => !builtinPlatform(s) || !builtinPlatform(s)!.countries.includes(country)),
-      ];
+      // The country's list for the driver's region (a region may add or remove an app), then their own.
+      const country = s?.country ? countryModules.get(s.country) : undefined;
+      const offered = country ? (resolvePlace(country, s?.region).data.platforms ?? []) : [];
+      const slugs = [...offered.map((p) => p.slug), ...repo.list(userId).map((r) => r.slug)];
       return [...new Set(slugs)]
         .map((s, i) => view(s, userId, i))
         .filter((p): p is NonNullable<typeof p> => p !== undefined && (all || p.active))
@@ -127,6 +147,7 @@ export function platformsRoutes({ db, authn }: { db: Db; authn: Authenticator })
         );
       }
       repo.delete(userId, slug); // a built-in override is reset to its defaults
+      deleteLogo(db, userId, slug);
       return reply.status(204).send();
     });
   };

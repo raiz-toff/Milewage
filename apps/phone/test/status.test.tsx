@@ -159,8 +159,9 @@ describe('wrong server and restore generation', () => {
     const db = openNodeAppDb();
     await migrate(db);
     await db.runAsync(
-      `INSERT INTO shifts (client_id, vehicle_id, status, segmenter, started_at, local_date, updated_at, sync_state)
-       VALUES ('a', 3, 'ended', 'whole_shift', 1, '2026-11-01', 1, 'on_server')`,
+      `INSERT INTO shifts (client_id, vehicle_id, status, segmenter, started_at, local_date, updated_at, sync_state,
+         server_deduction_cents, server_deduction_known)
+       VALUES ('a', 3, 'ended', 'whole_shift', 1, '2026-11-01', 1, 'on_server', 99, 1)`,
     );
     const m = new ConnectionMonitor(db);
     m.observe(new Headers({ 'X-MileWage-Instance': 'i', 'X-MileWage-Restore-Gen': '2' }), 'i');
@@ -172,17 +173,18 @@ describe('wrong server and restore generation', () => {
     m.observe(new Headers({ 'X-MileWage-Instance': 'i', 'X-MileWage-Restore-Gen': '3' }), 'i');
     await m.settled();
     expect(m.restored).toBe(true);
-    expect(
-      (await db.getFirstAsync<{ sync_state: string }>('SELECT sync_state FROM shifts'))!.sync_state,
-    ).toBe('local');
+    // The restored server may value the shift differently: the phone estimates until it is resent.
+    expect(await db.getFirstAsync('SELECT sync_state, server_deduction_known FROM shifts')).toEqual(
+      { sync_state: 'local', server_deduction_known: 0 },
+    );
   });
 });
 
 describe('home banner', () => {
   it('shows what is not on the server, offers Sync now, and says so when a phone was revoked', async () => {
-    let n = 0;
+    let revoked = false;
     const routes = server({
-      'POST /shifts': () => (++n === 1 ? problem(503, 'x', true) : problem(401, 'device_revoked')),
+      'POST /shifts': () => (revoked ? problem(401, 'device_revoked') : problem(503, 'x', true)),
     });
     const { services } = setup(routes);
     await services.shift.start({ vehicleId: 3 });
@@ -191,7 +193,10 @@ describe('home banner', () => {
     expect(
       await screen.findByText(/Not yet on server: 1 shift · 0 points · oldest \d+ days ago/),
     ).toBeTruthy();
+    revoked = true;
     fireEvent.press(screen.getByRole('button', { name: 'Sync now' }));
-    expect(await screen.findByText(/removed from your server/)).toBeTruthy();
+    // Revoked with no shift running: the app start gate goes back to the first-run screens.
+    expect(await screen.findByText(/disconnected from your server. Connect again/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Sync now' })).toBeNull();
   });
 });

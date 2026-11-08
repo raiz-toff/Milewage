@@ -95,6 +95,13 @@ export class ShiftController {
     return this.active;
   }
 
+  /** True while a shift is recorded and not ended, read without attaching anything. */
+  async running(): Promise<boolean> {
+    const raw = this.active ? null : await this.d.store.get(KEY);
+    const a = this.active ?? (raw ? (JSON.parse(raw) as ActiveShift) : null);
+    return !!a && a.endedAt === null;
+  }
+
   /** Restores a shift after an app restart and re-attaches the live distance. */
   async load(): Promise<ActiveShift | null> {
     const raw = await this.d.store.get(KEY);

@@ -4,6 +4,7 @@ import { App } from '../../src/App';
 import { createApi } from '../../src/api/client';
 import type { Modules, Settings } from '../../src/api/client';
 import { SessionProvider } from '../../src/session';
+import { countriesFixture } from './fixtures';
 
 // jsdom has no matchMedia; the shadcn sidebar and the theme switcher query it.
 if (typeof window !== 'undefined' && !window.matchMedia) {
@@ -56,6 +57,44 @@ export function pick(target: string | HTMLElement, value: string) {
   fireEvent.click(option);
 }
 
+/** The date field `label` (shadcn Date Picker): a button named by its label and the day shown. */
+export const dateButton = (label: string) =>
+  screen.getByRole('button', {
+    name: (name) => name.startsWith(`${label} `) && !name.startsWith(`${label} calendar`),
+  });
+
+/** Open the calendar of the date field `label` and click the day named `day`, in the month shown. */
+export function pickDay(label: string, day: RegExp) {
+  fireEvent.click(dateButton(label));
+  clickDay(label, day);
+}
+
+function clickDay(label: string, day: RegExp) {
+  const dialog = screen.getByRole('dialog', { name: label });
+  const button = [...dialog.querySelectorAll<HTMLElement>('button')].find((b) =>
+    day.test(b.getAttribute('aria-label') ?? ''),
+  );
+  if (!button) throw new Error(`No day ${String(day)} in the ${label} calendar`);
+  fireEvent.click(button);
+}
+
+/** Pick `iso` (YYYY-MM-DD) in the date field `label`, using the month and year dropdowns. */
+export function pickDate(label: string, iso: string) {
+  const [y, m, d] = iso.split('-').map(Number) as [number, number, number];
+  fireEvent.click(dateButton(label));
+  const dialog = screen.getByRole('dialog', { name: label });
+  const [month, year] = [...dialog.querySelectorAll('select')];
+  if (!month || !year) throw new Error(`No month and year dropdowns in the ${label} calendar`);
+  fireEvent.change(year, { target: { value: String(y) } });
+  fireEvent.change(month, { target: { value: String(m - 1) } });
+  const name = new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' }).format(
+    Date.UTC(y, m - 1, 1),
+  );
+  const teen = d % 100 >= 11 && d % 100 <= 13;
+  const ord = `${d}${(!teen && ['th', 'st', 'nd', 'rd'][d % 10]) || 'th'}`;
+  clickDay(label, new RegExp(`${name} ${ord}, ${y}`));
+}
+
 const actionsFor = (name: string | RegExp) =>
   screen.getByRole('button', {
     name:
@@ -86,6 +125,9 @@ export function optionsOf(target: string | HTMLElement): string[] {
   return values;
 }
 
+/** The dashboard's heading: the greeting, whatever the time of day (W4a). */
+export const DASHBOARD = /^Good (morning|afternoon|evening)/;
+
 export type Handler = (req: { body: unknown; url: URL }) => {
   status?: number;
   body?: unknown;
@@ -96,6 +138,8 @@ export interface Call {
   path: string;
   body: unknown;
   contentType: string;
+  /** The query string, e.g. `?from=2026-01-01&to=2026-01-31`. */
+  query: string;
 }
 
 export const ALL_ON: Modules = {
@@ -106,6 +150,7 @@ export const ALL_ON: Modules = {
   stops: true,
   diagnostics: true,
   capture: false,
+  mcp: false,
   platforms: true,
   earnings: true,
   expenses: true,
@@ -135,9 +180,16 @@ export function settingsFixture(
     stops_enabled: true,
     display_name: null,
     region: null,
+    logbook: null,
+    own_mileage_rate: null,
+    mileage_rate: 'official',
     week_start: 1,
     time_format: '24h',
     default_vehicle_id: null,
+    work_kinds: ['delivery'],
+    setup_done: [],
+    // Onboarded, so screens open as before the wizard (plan 23); wizard tests set null.
+    onboarded_at: 1,
     engine_version: 3,
     diagnostics: { level: 'basic', verbose_until: null, capture: null },
     ...over,
@@ -155,8 +207,10 @@ export function fakeServer(table: Record<string, Handler>) {
     // jsdom's File streams never finish under Node's Request, so a multipart body is not read.
     const text = contentType.includes('multipart') ? '' : await req.text();
     const body = text ? (contentType.includes('json') ? JSON.parse(text) : text) : undefined;
-    calls.push({ method: req.method, path, body, contentType });
-    const handler = table[`${req.method} ${path}`];
+    calls.push({ method: req.method, path, body, contentType, query: url.search });
+    // A key ending in `/*` answers any last path segment (an id the page makes up, like a UUID).
+    const handler =
+      table[`${req.method} ${path}`] ?? table[`${req.method} ${path.replace(/[^/]+$/, '*')}`];
     if (!handler) {
       return problem(404, 'not_found');
     }
@@ -214,6 +268,7 @@ export function renderApp(table: Record<string, Handler>, url = '/') {
 export const signedIn = (settings: Settings = settingsFixture()): Record<string, Handler> => ({
   'GET /setup/status': () => ({ body: { state: 'ready' } }),
   'GET /settings': () => ({ body: settings }),
+  'GET /countries': () => ({ body: countriesFixture() }),
   'GET /platforms': () => ({ body: [] }),
   'GET /notifications': () => ({ body: { items: [], next_cursor: null, unread_count: 0 } }),
   'GET /notifications/prefs': () => ({
