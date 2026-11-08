@@ -229,6 +229,8 @@ This replaces the single row M10.1 in `17` with T1 to T7. M10.1's exit ("guide f
 | Q1 | Should `install.sh` run `tailscale serve` itself after asking, or only print the command? | **Ask, then run it.** The fewer commands a driver types, the fewer go wrong |
 | Q2 | Keep the driver-editable address on the Devices page (`08` §2.4 already promises it)? | **Yes**, behind **Change address**, because it is the only fix when the guess is wrong |
 | Q3 | Allow plain `http://` on home Wi-Fi in the release app as an opt-in? | **No.** It fails on mobile data anyway and the plans reject it (`12` §4) |
+
+**Q3 changed 2026-11-08 (owner):** plain `http://` is allowed **only to private / home addresses**, with a home and an away address picked automatically, and the phone finding the server on the Wi-Fi: plan [`28`](./28-home-away-linking-plan.md).
 | Q4 | Phone hint after pairing (§3.5, the 10-minute banner) | **Yes**, it is one line and only for `.ts.net` addresses |
 | Q5 | Caddy trust: exactly the gateway address, or all private ranges? | **Gateway only**, the narrowest setting that works |
 | Q6 | Order: T1 + T6 first so you can test now, then T2 to T5? | **Yes** |
