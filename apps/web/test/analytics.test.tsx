@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { rangeOf } from '../src/pages/Analytics';
+import { offsetOf, rangeOf, rangeText } from '../src/pages/Analytics';
 import { renderApp, settingsFixture, signedIn, DASHBOARD } from './support/kit';
 
 afterEach(cleanup);
@@ -123,6 +123,36 @@ describe('analytics screen (module analytics)', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Year', pressed: true })).toBeTruthy(),
     );
+  });
+
+  it('shows the period as a date picker; a day picked opens the period that holds it', async () => {
+    const s = open();
+    await screen.findByLabelText('Figures');
+    const trigger = screen.getByRole('button', { name: /^Period: / });
+    fireEvent.click(trigger);
+    const dialog = await screen.findByRole('dialog', { name: 'Pick a period' });
+    expect(dialog.querySelectorAll('select')).toHaveLength(2); // month and year dropdowns
+    // The week shown is shaded: its first and last day and the five between.
+    expect(dialog.querySelectorAll('.rdp-range_start, .rdp-range_end')).toHaveLength(2);
+    expect(dialog.querySelectorAll('.rdp-range_middle')).toHaveLength(5);
+    const days = [...dialog.querySelectorAll<HTMLButtonElement>('button[aria-label]')].filter(
+      (b) => /\d{4}/.test(b.getAttribute('aria-label')!) && !b.disabled,
+    );
+    fireEvent.click(days[0]!);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(
+      (screen.getByRole('button', { name: 'Next period' }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+    expect(s.calls.filter((c) => c.path === '/analytics').length).toBeGreaterThan(1);
+  });
+
+  it('offsetOf and rangeText: the period of a day, and a short range in the local order', () => {
+    expect(offsetOf('week', '2027-01-04', '2027-01-15', 1)).toBe(-1);
+    expect(offsetOf('week', '2027-01-11', '2027-01-15', 1)).toBe(0);
+    expect(offsetOf('month', '2026-11-30', '2027-01-15', 1)).toBe(-2);
+    expect(offsetOf('year', '2024-06-01', '2027-01-15', 1)).toBe(-3);
+    expect(rangeText('2026-11-02', '2026-11-08', 'en-CA')).toBe('Nov 2–8, 2026');
+    expect(rangeText('2026-11-02', '2026-11-08', 'en-GB')).toBe('2–8 Nov 2026');
   });
 
   it('rangeOf: weeks follow the start day, months and years are calendar ones', () => {

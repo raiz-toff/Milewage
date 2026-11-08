@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button as UiButton } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Skeleton } from '@/components/ui/skeleton';
+import { dateLocale, dateToIso, isoToDate } from '../dateText';
 import { EmptyState, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
 import { describe, unwrap } from '../api/client';
 import { formatMoney } from '../format';
@@ -28,6 +32,25 @@ export function rangeOf(mode: Mode, offset: number, today: string, weekStart: nu
   return { from: `${y + offset}-01-01`, to: `${y + offset}-12-31` };
 }
 
+/** How many periods from the one containing `today` to the one containing `day` (≤ 0 in the past). */
+export function offsetOf(mode: Mode, day: string, today: string, weekStart: number): number {
+  const [y, m] = day.split('-').map(Number) as [number, number];
+  const [ty, tm] = today.split('-').map(Number) as [number, number];
+  if (mode === 'year') return y - ty;
+  if (mode === 'month') return (y - ty) * 12 + (m - tm);
+  const start = (d: string) => Date.parse(rangeOf('week', 0, d, weekStart).from);
+  return Math.round((start(day) - start(today)) / (7 * DAY));
+}
+
+/** "Nov 2 – 8, 2026" in the driver's country's order (Intl formatRange). */
+export function rangeText(from: string, to: string, locale: string): string {
+  const at = (d: string) => Date.parse(`${d}T00:00:00Z`);
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }).formatRange(
+    at(from),
+    at(to),
+  );
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Data = Record<string, any>;
 const GROUPS = [
@@ -43,13 +66,16 @@ const GROUPS = [
 /** Analytics (module `analytics`, 18 section 10.1): a period navigator and the groups the server returns. */
 export function AnalyticsPage() {
   const { api } = useSession();
-  const { timezone, currency, week_start: weekStart } = useSettings();
+  const { timezone, currency, country, week_start: weekStart } = useSettings();
   const platformOf = usePlatformOf();
   const [mode, setMode] = useState<Mode>('week');
   const [offset, setOffset] = useState(0);
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const range = rangeOf(mode, offset, localDate(Date.now(), timezone), weekStart);
+  const today = localDate(Date.now(), timezone);
+  const range = rangeOf(mode, offset, today, weekStart);
+  const [picking, setPicking] = useState(false);
+  const period = rangeText(range.from, range.to, dateLocale(country));
   const money = (c: number | null | undefined) =>
     c == null ? 'not available' : formatMoney(c, currency);
 
@@ -109,47 +135,92 @@ export function AnalyticsPage() {
     <section className="space-y-6">
       <PageHeader title="Analytics" description="Your figures for a week, a month or a year." />
       <FormError message={error} />
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded-lg bg-muted p-1">
-          {(['week', 'month', 'year'] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              aria-pressed={mode === m}
-              className={`rounded-md px-3 py-1 text-sm transition-colors ${mode === m ? 'bg-background font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-              onClick={() => {
-                setMode(m);
-                setOffset(0);
-              }}
-            >
-              {m[0]!.toUpperCase() + m.slice(1)}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1">
-          <UiButton
+      <div className="inline-flex rounded-lg bg-muted p-1">
+        {(['week', 'month', 'year'] as const).map((m) => (
+          <button
+            key={m}
             type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Previous period"
-            onClick={() => setOffset(offset - 1)}
+            aria-pressed={mode === m}
+            className={`rounded-md px-3 py-1 text-sm transition-colors ${mode === m ? 'bg-background font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+            onClick={() => {
+              setMode(m);
+              setOffset(0);
+            }}
           >
-            <ChevronLeft />
-          </UiButton>
-          <span className="tabular-nums text-sm">
-            {range.from} to {range.to}
-          </span>
-          <UiButton
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Next period"
-            disabled={offset >= 0}
-            onClick={() => setOffset(offset + 1)}
+            {m[0]!.toUpperCase() + m.slice(1)}
+          </button>
+        ))}
+      </div>
+      {/* The period header of the Shifts page (Comma's and Uber's earnings header): arrows at the
+          edges, the period over the period's gross; the period opens a calendar. */}
+      <div className="flex items-center justify-between gap-2">
+        <UiButton
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label="Previous period"
+          onClick={() => setOffset(offset - 1)}
+        >
+          <ChevronLeft />
+        </UiButton>
+        <div className="flex min-w-0 flex-col items-center text-center">
+          {/* The period as a shadcn Date Picker: any day picked opens the period that holds it. */}
+          <Popover open={picking} onOpenChange={setPicking}>
+            <PopoverTrigger asChild>
+              <UiButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={`Period: ${period}`}
+                className="font-normal text-muted-foreground tabular-nums"
+              >
+                <CalendarIcon />
+                {period}
+              </UiButton>
+            </PopoverTrigger>
+            <PopoverContent aria-label="Pick a period" align="center" className="w-auto p-0">
+              <Calendar
+                mode="single"
+                captionLayout="dropdown"
+                autoFocus
+                defaultMonth={isoToDate(range.from)}
+                startMonth={isoToDate(`${Number(today.slice(0, 4)) - 10}-01-01`)}
+                endMonth={isoToDate(today)}
+                today={isoToDate(today)}
+                weekStartsOn={weekStart as 0 | 1}
+                disabled={{ after: isoToDate(today)! }}
+                modifiers={{
+                  range_start: isoToDate(range.from)!,
+                  range_middle: { after: isoToDate(range.from)!, before: isoToDate(range.to)! },
+                  range_end: isoToDate(range.to)!,
+                }}
+                onSelect={(d) => {
+                  if (d) setOffset(offsetOf(mode, dateToIso(d), today, weekStart));
+                  setPicking(false);
+                }}
+              />
+            </PopoverContent>
+          </Popover>
+          <div
+            aria-live="polite"
+            className="truncate text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl"
           >
-            <ChevronRight />
-          </UiButton>
+            {cards ? money(cards.gross_cents) : <Skeleton className="mx-auto mt-1 h-10 w-40" />}
+          </div>
+          {cards ? (
+            <div className="mt-1 text-xs text-muted-foreground">gross · {cards.total_hours} h</div>
+          ) : null}
         </div>
+        <UiButton
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label="Next period"
+          disabled={offset >= 0}
+          onClick={() => setOffset(offset + 1)}
+        >
+          <ChevronRight />
+        </UiButton>
       </div>
       {data === null ? (
         <p className="text-sm text-muted-foreground">Loading</p>
