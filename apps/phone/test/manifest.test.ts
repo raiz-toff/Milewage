@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
-import { existsSync, readFileSync } from 'fs';
-import { join } from 'path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'fs';
+import { join, sep } from 'path';
 
 jest.mock('expo/config-plugins', () => ({
   withAndroidManifest: (config: any, fn: (c: any) => any) => fn(config),
@@ -70,17 +70,32 @@ describe('manifest lint (09 section 5.3)', () => {
     expect(removed.map((p: any) => p.$['android:name'])).toEqual(FORBIDDEN);
   });
 
-  // Runs after a release build (scripts/phone-release-build.sh); skipped when no build output exists.
+  // Runs after a release build (scripts/phone-release-build.sh); skipped when no build output exists,
+  // or when the build output is older than the sources it was made from (a stale manifest from an
+  // earlier build says nothing about the current app config, plugins or native modules).
   const merged = join(
     root,
     'android/app/build/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml',
   );
-  (existsSync(merged) ? it : it.skip)(
-    'the merged release manifest has no forbidden permission',
-    () => {
-      expect(forbiddenIn(read(merged))).toEqual([]);
-    },
-  );
+  const newest = (dir: string): number =>
+    Math.max(
+      0,
+      ...readdirSync(dir, { withFileTypes: true, recursive: true })
+        .filter((e) => e.isFile() && !e.parentPath.includes(`${sep}build${sep}`))
+        .map((e) => statSync(join(e.parentPath, e.name)).mtimeMs),
+    );
+  const mergedIsFresh =
+    existsSync(merged) &&
+    statSync(merged).mtimeMs >=
+      Math.max(
+        statSync(join(root, 'app.config.js')).mtimeMs,
+        statSync(join(root, 'package.json')).mtimeMs,
+        newest(join(root, 'plugins')),
+        newest(join(root, 'native')),
+      );
+  (mergedIsFresh ? it : it.skip)('the merged release manifest has no forbidden permission', () => {
+    expect(forbiddenIn(read(merged))).toEqual([]);
+  });
 
   // No Google ML Kit and no Google usage logging (datatransport): the QR scanner is ZXing
   // (plan 24 section 6, Q1). expo-camera and the other Android scanners all use ML Kit.
@@ -94,7 +109,7 @@ describe('manifest lint (09 section 5.3)', () => {
       expect(read(join(root, 'native', m, 'android', 'build.gradle'))).not.toMatch(GOOGLE_SCANNING);
     }
   });
-  (existsSync(merged) ? it : it.skip)('the merged release manifest has no ML Kit', () => {
+  (mergedIsFresh ? it : it.skip)('the merged release manifest has no ML Kit', () => {
     expect(read(merged)).not.toMatch(GOOGLE_SCANNING);
   });
 
@@ -108,13 +123,13 @@ describe('manifest lint (09 section 5.3)', () => {
     expect(xml.match(/<package /g)).toHaveLength(1);
     expect(forbiddenIn(xml)).toEqual([]);
   });
-  (existsSync(merged) ? it : it.skip)('the merged release manifest can see Tailscale', () => {
+  (mergedIsFresh ? it : it.skip)('the merged release manifest can see Tailscale', () => {
     expect(read(merged)).toMatch(TAILSCALE);
   });
 
   // Every permission in the merged manifest is one we declared or a known harmless library one.
   const BENIGN = ['INTERNET', 'VIBRATE', 'ACCESS_NETWORK_STATE'].map((n) => PREFIX + n);
-  (existsSync(merged) ? it : it.skip)(
+  (mergedIsFresh ? it : it.skip)(
     'the merged release manifest requests only known permissions',
     () => {
       const wanted = [...ALLOWED.map((n: string) => PREFIX + n), ...BENIGN];
