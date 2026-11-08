@@ -2,7 +2,7 @@
 import { File as NodeFile } from 'node:buffer';
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { bodyOf } from '../src/pages/Expenses';
+import { bodyOf, quickCategories } from '../src/pages/Expenses';
 import {
   renderApp,
   settingsFixture,
@@ -27,7 +27,16 @@ const cat = (slug: string, label: string, over: object = {}) => ({
   covered_by_standard_rate: false,
   ...over,
 });
-const CATS = [cat('fuel', 'Fuel'), cat('meals', 'Meals', { default_business_pct: 50 })];
+const CATS = [
+  cat('fuel', 'Fuel', { vehicle_related: true, covered_by_standard_rate: true }),
+  cat('parking', 'Parking', { vehicle_related: true }),
+  cat('tolls', 'Tolls', { vehicle_related: true }),
+  cat('insurance', 'Insurance', { vehicle_related: true, covered_by_standard_rate: true }),
+  cat('phone', 'Phone', { default_business_pct: 50 }),
+  cat('wash', 'Car wash', { vehicle_related: true }),
+  cat('meals', 'Meals', { default_business_pct: 50 }),
+  cat('accounting', 'Accounting and tax help'),
+];
 const expense = (over: object = {}) => ({
   id: 1,
   spent_on: '2023-11-14',
@@ -93,11 +102,37 @@ describe('expenses screen (module expenses)', () => {
     expect(await screen.findByText('covered by the mileage rate')).toBeTruthy();
   });
 
+  it("offers the driver's most used categories first, and every other one under More", async () => {
+    const used = [1, 2, 3].map((id) => expense({ id, category: 'meals', merchant: `M${id}` }));
+    open([...used, expense({ id: 4, category: 'accounting', merchant: 'CPA' })]);
+    await screen.findByText('CPA');
+    fireEvent.click(screen.getByRole('button', { name: 'Add expense' }));
+    expect(document.activeElement).toBe(await screen.findByLabelText('Amount'));
+    const group = screen.getByRole('group', { name: 'Category' });
+    expect([...group.querySelectorAll('button[aria-pressed]')].map((b) => b.textContent)).toEqual([
+      'Fuel',
+      'Parking',
+      'Tolls',
+      'Meals',
+      'Accounting and tax help',
+    ]);
+    pick(screen.getByLabelText('More categories'), 'insurance');
+    expect(screen.getByLabelText('More categories').textContent).toMatch('Insurance');
+    expect(group.querySelector('[aria-pressed="true"]')).toBeNull();
+    expect(quickCategories(CATS as never, [])).toEqual([
+      'fuel',
+      'parking',
+      'tolls',
+      'phone',
+      'wash',
+    ]);
+  });
+
   it('adds an expense: the category sets the business share, quick picks change it, cents are sent', async () => {
     const s = open();
     await screen.findByText('Shell');
     fireEvent.click(screen.getByRole('button', { name: 'Add expense' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Meals' }));
+    pick(await screen.findByLabelText('More categories'), 'meals');
     expect(screen.getByRole('button', { name: '50%', pressed: true })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: '75%' }));
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '12.30' } });
@@ -122,7 +157,7 @@ describe('expenses screen (module expenses)', () => {
     const s = open();
     await screen.findByText('Shell');
     fireEvent.click(screen.getByRole('button', { name: 'Add expense' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Meals' }));
+    await screen.findByLabelText('Amount');
     expect(document.querySelector('input[type="date"]')).toBeNull();
     pickDay('Date', /March 2nd, 2026/);
     pick(screen.getByLabelText('Repeats'), 'monthly');

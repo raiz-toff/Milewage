@@ -1,9 +1,18 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { FileX, Pencil, Plus, Trash2 } from 'lucide-react';
 import { RowMenu } from '../ui/RowMenu';
 import { EmptyState, PageHeader, Section, StatCard, TableBox, tableClass } from '../ui/layout';
 import { Button as UiButton } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
@@ -17,6 +26,21 @@ type Category = Schemas['ExpenseCategory'];
 
 const DAY = 86_400_000;
 const PICKS = [25, 50, 75, 100];
+/** Common driving costs, offered as one tap until the driver's own most used take their place. */
+const COMMON = ['fuel', 'parking', 'tolls', 'phone', 'wash'];
+const chip = (on: boolean) =>
+  `rounded-full border px-3 py-1 text-sm ${on ? 'border-primary bg-primary/15 font-medium' : 'border-border text-muted-foreground'}`;
+
+/** The five categories offered first: the most used in `rows`, topped up with common ones, in list order. */
+export function quickCategories(cats: Category[], rows: Expense[]): string[] {
+  const count = new Map<string, number>();
+  for (const r of rows) count.set(r.category, (count.get(r.category) ?? 0) + 1);
+  const used = [...count].sort((a, b) => b[1] - a[1]).map(([slug]) => slug);
+  const known = new Set(cats.map((c) => c.slug));
+  const chosen = [...new Set([...used, ...COMMON])].filter((s) => known.has(s)).slice(0, 5);
+  return cats.map((c) => c.slug).filter((s) => chosen.includes(s));
+}
+
 const blank = (today: string) => ({
   spent_on: today,
   category: 'fuel',
@@ -83,6 +107,7 @@ export function ExpensesPage() {
   const [draft, setDraft] = useState<Draft | null>(() =>
     params.has('new') ? blank(new Date().toISOString().slice(0, 10)) : null,
   );
+  const ids = useId();
   const [editing, setEditing] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -139,6 +164,15 @@ export function ExpensesPage() {
   }, [api, typed]);
 
   const cat = (slug: string) => cats.find((c) => c.slug === slug);
+  const quick = quickCategories(cats, items ?? []);
+  // The rest, in two short groups instead of one long list.
+  const rest = cats.filter((c) => !quick.includes(c.slug));
+  const groups = (
+    [
+      ['Vehicle', rest.filter((c) => c.vehicle_related)],
+      ['Work and other', rest.filter((c) => !c.vehicle_related)],
+    ] as const
+  ).filter(([, list]) => list.length > 0);
   const pick = (slug: string) =>
     setDraft(
       (d) =>
@@ -267,41 +301,71 @@ export function ExpensesPage() {
       ) : null}
 
       {draft === null ? null : (
-        <Section title={editing === null ? 'New expense' : 'Edit expense'}>
+        <Section title={editing === null ? 'New expense' : 'Edit expense'} className="max-w-2xl">
           <form className="space-y-4" onSubmit={(e) => void save(e)}>
-            <div role="group" aria-label="Category" className="flex flex-wrap gap-2">
-              {cats.map((c) => (
-                <button
-                  key={c.slug}
-                  type="button"
-                  aria-pressed={draft.category === c.slug}
-                  className={`rounded-full border px-3 py-1 text-sm ${draft.category === c.slug ? 'border-primary bg-primary/15 font-medium' : 'border-border text-muted-foreground'}`}
-                  onClick={() => pick(c.slug)}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3">
+              <Field
+                label="Amount"
+                inputMode="decimal"
+                autoFocus
+                value={draft.amount}
+                onChange={(e) => setDraft({ ...draft, amount: e.target.value })}
+              />
               <DateField
                 label="Date"
                 value={draft.spent_on}
                 onChange={(spent_on) => setDraft({ ...draft, spent_on })}
               />
-              <Field
-                label="Amount"
-                inputMode="decimal"
-                value={draft.amount}
-                onChange={(e) => setDraft({ ...draft, amount: e.target.value })}
-              />
-              <Field
-                label="Merchant"
-                list="merchants"
-                maxLength={120}
-                value={draft.merchant}
-                onChange={(e) => setDraft({ ...draft, merchant: e.target.value })}
-              />
             </div>
+            <div role="group" aria-labelledby={`${ids}-cat`} className="space-y-2">
+              <div id={`${ids}-cat`} className="text-sm font-medium">
+                Category
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {quick.map((slug) => (
+                  <button
+                    key={slug}
+                    type="button"
+                    aria-pressed={draft.category === slug}
+                    className={chip(draft.category === slug)}
+                    onClick={() => pick(slug)}
+                  >
+                    {cat(slug)?.label ?? slug}
+                  </button>
+                ))}
+                <Select
+                  value={quick.includes(draft.category) ? '' : draft.category}
+                  onValueChange={pick}
+                >
+                  <SelectTrigger
+                    size="sm"
+                    aria-label="More categories"
+                    className={`min-w-0 rounded-full ${quick.includes(draft.category) ? '' : 'border-primary bg-primary/15 font-medium'}`}
+                  >
+                    <SelectValue placeholder="More…" />
+                  </SelectTrigger>
+                  <SelectContent position="popper" align="start">
+                    {groups.map(([name, list]) => (
+                      <SelectGroup key={name}>
+                        <SelectLabel>{name}</SelectLabel>
+                        {list.map((c) => (
+                          <SelectItem key={c.slug} value={c.slug} data-value={c.slug}>
+                            {c.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <Field
+              label="Merchant"
+              list="merchants"
+              maxLength={120}
+              value={draft.merchant}
+              onChange={(e) => setDraft({ ...draft, merchant: e.target.value })}
+            />
             <div className="flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-2">
                 <input

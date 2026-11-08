@@ -260,7 +260,7 @@ CREATE INDEX idx_exp_due       ON expenses(user_id, next_due) WHERE recurrence I
 | `snoozeExpense` | `PUT /expenses/{id}/snooze` | S | Body `until`. |
 | `listExpenseCategories` | `GET /expenses/categories` | S | The registry with defaults for the form. |
 
-Web: Expenses screen (list, filters, YTD tiles, add/edit form with category grid, business-use quick picks 25/50/75/100, shift suggestion within 7 days). The double-count warning is informational.
+Web: Expenses screen (list, filters, YTD tiles, add/edit form, business-use quick picks 25/50/75/100, shift suggestion within 7 days). The form asks for the amount and the date first. Of the categories, five are one tap (the driver's most used, topped up with fuel, parking, tolls, phone and car wash). The rest are in one **More** list, grouped into Vehicle and Work and other (W7a; owner, 2026-11-08: the full grid of 22 was too much at once). The double-count warning is informational.
 
 ### 5.4 Module `receipts` (sub-module of expenses)
 
