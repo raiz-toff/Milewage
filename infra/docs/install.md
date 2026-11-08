@@ -70,3 +70,34 @@ Never copy `milewage.db` by hand while the API runs. Logs rotate (3 files of 10 
 ## 6. Check that it works
 
 `infra/docker/smoke.sh` builds a throwaway stack on port 18080 and checks health, the web client, loopback-only publishing and log rotation (needs Docker; exits 2 when Docker is missing). The numbers in `infra/vm-tests/README.md` are for the real VM acceptance runs.
+
+## 7. Connect an AI assistant (optional)
+
+MileWage can let an AI assistant such as Claude read your records and add to them, over the Model Context Protocol (plan 26). It is **off** until you turn it on:
+
+1. In `infra/docker/.env` add `MILEWAGE_MODULE_MCP=1` (or put `{ "modules": { "mcp": true } }` in `settings.json` in the `config` volume), then `docker compose -f infra/docker/docker-compose.yml up -d --wait api`.
+2. In MileWage open **Settings › AI assistants**, give the token a name, choose **Read only** or **Read and change**, and press **Make a token**. Copy it at once: it is shown only this time. The page also shows the two commands below with your address and token filled in.
+3. Connect from a computer in your tailnet (the endpoint is `https://<your address>/api/v1/mcp`):
+   - **Claude Code:** `claude mcp add --transport http milewage https://<your address>/api/v1/mcp --header "Authorization: Bearer mwa_…"`
+   - **Claude Desktop:** Settings › Developer › Edit config, and add to `claude_desktop_config.json`:
+     ```json
+     {
+       "mcpServers": {
+         "milewage": {
+           "command": "npx",
+           "args": [
+             "-y",
+             "mcp-remote@0.15.2",
+             "https://<your address>/api/v1/mcp",
+             "--header",
+             "Authorization:${MILEWAGE_AUTH}"
+           ],
+           "env": { "MILEWAGE_AUTH": "Bearer mwa_…" }
+         }
+       }
+     }
+     ```
+     (needs Node.js on that computer; restart Claude Desktop afterwards).
+4. Ask, for example, "How much did I make per hour last week?" or "Add a $54.20 fuel expense from Esso today". Your assistant asks before each change unless you allowed it.
+
+Revoke a token on the same page as soon as you stop using it; changes made by assistants are listed there too. claude.ai's own connectors reach servers from the internet, not from your tailnet, so they cannot connect to a Tailscale-only MileWage; do not open the endpoint with `tailscale funnel` for them.

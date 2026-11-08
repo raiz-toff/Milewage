@@ -1,6 +1,6 @@
 # 26 — MCP server: let the driver's AI assistant read and enter MileWage data
 
-**Status: plan, 2026-11-08.** Owner request: "I want to have MCP server integrated into
+**Status: built, 2026-11-08** (M0–M3 merged; M4–M7 pushed). Install note: `infra/docs/install.md` section 7. Owner request: "I want to have MCP server integrated into
 MileWage so user can edit or analyse data or do data entry so easily."
 
 The driver connects an AI client (Claude Code, Claude Desktop, claude.ai, or any other client that
@@ -287,7 +287,7 @@ A section in the "Data and account" group, shown when `modules.mcp` is on:
 3. **Your tokens:** name, access, made, last used, expires, **Revoke** (with confirmation).
 4. **Recent changes by assistants:** the last 50 audit rows (time, token, what changed, link).
 
-### 3.10 Connecting a client (goes into `infra/install.md` with M7)
+### 3.10 Connecting a client (in `infra/docs/install.md` section 7)
 
 Claude Code (on a computer in your tailnet):
 

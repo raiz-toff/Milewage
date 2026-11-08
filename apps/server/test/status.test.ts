@@ -247,9 +247,19 @@ describe('log rotation and pinned images in the compose file (10 sections 11.2, 
   ) as {
     services: Record<
       string,
-      { image: string; logging?: { driver: string; options: Record<string, string> } }
+      {
+        image: string;
+        logging?: { driver: string; options: Record<string, string> };
+        environment?: string[];
+      }
     >;
   };
+
+  test('the api takes MILEWAGE_MODULE_MCP from .env, empty (module off) by default (plan 26)', () => {
+    expect(compose.services.api!.environment).toContain(
+      'MILEWAGE_MODULE_MCP=${MILEWAGE_MODULE_MCP:-}',
+    );
+  });
 
   test.each(['caddy', 'api'])('%s uses json-file with 10m x 3', (name) => {
     expect(compose.services[name]!.logging).toEqual({

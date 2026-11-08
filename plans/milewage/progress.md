@@ -2041,3 +2041,11 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Not done: screenshots (the machine is short of memory; no browser was started).
 - `npm run verify` steps, one after another: typecheck (server, phone, web), lint and prettier, `version:check`, `openapi:check` green; vitest with 2 workers 142 files, 1125 passed, 3 skipped; phone 33 suites, 282 passed.
 - Assumption (owner to confirm): the commands use the address the page is open at (on Tailscale that is the `https://….ts.net` address), not `MILEWAGE_PUBLIC_URL`.
+
+## PR M7 — Docs and compose: connecting an AI assistant (plan 26)
+
+- Branch `pr-M7-mcp-docs` (pushed, not merged), stacked on `pr-M6-mcp-web-v2`.
+- Done: `infra/docs/install.md` section 7 **Connect an AI assistant (optional)**: turn the module on (`MILEWAGE_MODULE_MCP=1` in `infra/docker/.env`, or `settings.json`), make a token in Settings › AI assistants, connect Claude Code (`claude mcp add --transport http … --header "Authorization: Bearer mwa_…"`) or Claude Desktop (`mcp-remote@0.15.2` in `claude_desktop_config.json`, the bearer in `env`), example questions, revoking, and why claude.ai connectors cannot reach a Tailscale-only server (no `tailscale funnel`). `docker-compose.yml` passes `MILEWAGE_MODULE_MCP` to the API (empty: off). Plan 08 section 2.1 lists the assistant token and the internal grant as principals. Plan 26's status line says what is built.
+- Standards checked: [Claude Code MCP](https://code.claude.com/docs/en/mcp), [`mcp-remote`](https://www.npmjs.com/package/mcp-remote), [Claude custom connectors](https://claude.com/docs/connectors/custom) (cloud-side), [Compose variable interpolation](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/) (`${VAR:-}` from `.env`).
+- Tests: `apps/server/test/status.test.ts` 1 new (the compose file passes `MILEWAGE_MODULE_MCP=${MILEWAGE_MODULE_MCP:-}` to the API); fails without the change.
+- `npm run verify` steps, one after another: typecheck (server, phone, web), lint and prettier, `version:check`, `openapi:check` green; vitest with 2 workers 142 files, 1126 passed, 3 skipped; phone 33 suites, 282 passed.
