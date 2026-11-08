@@ -1,0 +1,28 @@
+// The dev server on the home network (plan 28 section 4.6): with `npm run dev -- --host` Vite
+// listens on the LAN, so the API is told its home address and the server is announced over mDNS.
+// MILEWAGE_LAN_DISCOVERY=0 turns both off.
+
+const PRIVATE_V4 = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/;
+
+/** The first private IPv4 address of this machine (os.networkInterfaces()), or null. */
+export function homeIPv4(interfaces) {
+  for (const list of Object.values(interfaces)) {
+    for (const a of list ?? []) {
+      if ((a.family === 'IPv4' || a.family === 4) && !a.internal && PRIVATE_V4.test(a.address)) {
+        return a.address;
+      }
+    }
+  }
+  return null;
+}
+
+/** `{port, homeUrl}` when the Vite arguments open it to the LAN (`--host`), else null. */
+export function devLan(args, env, interfaces) {
+  if (env.MILEWAGE_LAN_DISCOVERY === '0') return null;
+  if (!args.some((a) => a === '--host' || a.startsWith('--host='))) return null;
+  const i = args.findIndex((a) => a === '--port' || a.startsWith('--port='));
+  const port = Number(i < 0 ? 5173 : args[i].includes('=') ? args[i].split('=')[1] : args[i + 1]);
+  const ip = homeIPv4(interfaces);
+  if (!ip || !Number.isInteger(port)) return null;
+  return { port, homeUrl: `http://${ip}:${port}` };
+}

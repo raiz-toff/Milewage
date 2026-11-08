@@ -66,7 +66,7 @@ Plex does. To keep it fast and safe:
 - **Phone:** Android's [`NsdManager`](https://developer.android.com/reference/android/net/nsd/NsdManager)
   (`discoverServices`, then `resolveService`, one at a time before Android 14). It runs in the
   system, so no `CHANGE_WIFI_MULTICAST_STATE` or multicast lock is needed.
-- **Server library:** [`@homebridge/ciao`](https://github.com/homebridge/ciao) 1.4.0 (MIT,
+- **Server library:** [`@homebridge/ciao`](https://github.com/homebridge/ciao) 1.3.12, the last release out longer than two weeks (MIT,
   RFC 6762/6763 compliant: probing, conflict renaming, announcements, goodbye packets on stop;
   four small dependencies). Alternative `bonjour-service` (MIT, built on `multicast-dns`) does less
   of the RFC's probing and conflict handling.
@@ -264,7 +264,8 @@ poll redeems it with the existing `repo.redeem`, so a linked phone is the same r
 | H1 | `pr-H1-home-away-server` | Shared `home-address.ts`; `MILEWAGE_HOME_URL`; `home_url` / `away_url` in pairing codes (QR `h`) and in the redeem answer; OpenAPI |
 | H2 | `pr-H2-cookie-http-lan` | Session cookie `Secure` only on https; Vite proxy workaround removed |
 | H3 | `pr-H3-link-requests` | Server: link requests with a code (section 4.4); OpenAPI |
-| H4 | `pr-H4-lan-discovery-server` | Advertiser (`@homebridge/ciao`), dev script, compose `lan` profile and bind address, `install.sh --lan`, install guide |
+| H4 | `pr-H4-lan-discovery-server` | Advertiser (`@homebridge/ciao`), `advertise.mjs`, dev script |
+| H4b | `pr-H4b-lan-docker` | Compose `lan` profile and bind address, `MILEWAGE_HOME_URL` in compose, `install.sh --lan`, install guide |
 | H5 | `pr-H5-web-link-a-phone` | Web: Link a phone on your Wi-Fi, home and away lines, warnings |
 | H6 | `pr-H6-phone-home-away` | Phone: http only to home addresses (cleartext on, code gate), home/away credential, the picker with probe, `h` in codes, transport in `net-check` |
 | H7 | `pr-H7-phone-discovery` | Phone: `NsdManager` browsing in `net-check`, Connect "On this Wi-Fi", Link this phone screen with polling; Tailscale screen out of the first-run path |
