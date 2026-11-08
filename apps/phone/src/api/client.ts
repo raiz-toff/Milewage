@@ -1,3 +1,5 @@
+import { httpAllowed } from '@milewage/shared';
+
 /**
  * Thin JSON client for `/api/v1` (08). `fetch` and the clock are injected so tests use a mock
  * server. It never logs: tokens and bodies stay out of every message it builds.
@@ -26,7 +28,15 @@ export interface ApiResponse<T> {
 }
 
 export interface ApiClientOptions {
-  baseUrl: string;
+  /** The server, or how to pick one per request (home or away, plan 28). */
+  baseUrl: string | (() => Promise<string>);
+  /**
+   * Plain http to any address (debug builds only). Otherwise http goes only to a home address
+   * (plan 28 section 4.1): the app allows cleartext at the platform level, and this is the gate.
+   */
+  anyHttp?: boolean;
+  /** Called when a request got no answer at all (the home/away choice is looked at again). */
+  onUnreachable?: () => void;
   fetch: FetchFn;
   now?: () => number;
   /** Device bearer token. Omitted for the unauthenticated redeem call. */
@@ -46,10 +56,6 @@ export class ApiClient {
     this.now = opts.now ?? Date.now;
   }
 
-  get baseUrl(): string {
-    return this.opts.baseUrl;
-  }
-
   async request<T>(
     method: 'GET' | 'POST' | 'PUT' | 'PATCH',
     path: string,
@@ -59,6 +65,10 @@ export class ApiClient {
   ): Promise<ApiResponse<T>> {
     // Retryable on purpose: queued data is kept and retried, nothing is sent while blocked.
     if (this.opts.blocked?.()) throw new ApiError(0, 'wrong_server', true);
+    const base =
+      typeof this.opts.baseUrl === 'string' ? this.opts.baseUrl : await this.opts.baseUrl();
+    // Never sent: plain http outside the home network (owner decision 2026-11-08).
+    if (!this.opts.anyHttp && !httpAllowed(base)) throw new ApiError(0, 'insecure_address', false);
     const headers: Record<string, string> = {
       Accept: 'application/json',
       'X-Client-Time': String(this.now()),
@@ -75,12 +85,13 @@ export class ApiClient {
     }
     let res: Response;
     try {
-      res = await this.opts.fetch(`${this.opts.baseUrl}/api/v1${path}`, {
+      res = await this.opts.fetch(`${base}/api/v1${path}`, {
         method,
         headers,
         body: payload,
       });
     } catch {
+      this.opts.onUnreachable?.();
       throw new ApiError(0, 'network', true);
     }
     this.opts.onResponse?.(res.headers);

@@ -20,12 +20,17 @@ describe('address checks and messages (plan 19 section 3.5)', () => {
     expect(isTailnetAddress('https://ts.net.example.com')).toBe(false);
   });
 
-  it('refuses this-computer addresses always, and http only in a release build', () => {
+  it('refuses this-computer addresses always, and http outside the home network in a release build', () => {
     for (const u of ['http://localhost:5173', 'https://127.0.0.1', 'http://[::1]:8080']) {
       expect(addressProblem(u, false)).toMatch(/points at the computer that made it/);
     }
-    expect(addressProblem('http://192.168.1.20:8080', true)).toMatch(/unsecured address \(http\)/);
-    expect(addressProblem('http://192.168.1.20:8080', false)).toBeNull(); // debug build
+    // Plain http only on the home network (plan 28); a debug build takes any.
+    expect(addressProblem('http://box.example.com:8080', true)).toMatch(
+      /unsecured address \(http\) outside your home network/,
+    );
+    expect(addressProblem('http://box.example.com:8080', false)).toBeNull(); // debug build
+    expect(addressProblem('http://192.168.1.20:8080', true)).toBeNull();
+    expect(addressProblem('http://milewage.local', true)).toBeNull();
     expect(addressProblem(TAILNET, true)).toBeNull();
   });
 

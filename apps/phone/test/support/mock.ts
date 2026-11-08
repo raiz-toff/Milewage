@@ -27,8 +27,10 @@ export function fakeNet(vpn: boolean | null = true, installed = true) {
   const n = {
     vpn,
     installed,
+    local: true as boolean | null,
     opened: 0,
     vpnActive: async () => n.vpn,
+    localNetwork: async () => n.local,
     tailscaleInstalled: async () => n.installed,
     openTailscale: async () => void (n.opened += 1),
   };

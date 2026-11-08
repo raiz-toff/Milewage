@@ -6,7 +6,7 @@ import android.net.ConnectivityManager
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
-/** What the Connect screen needs to say which step is wrong (plan 19 §3.5). Reads only. */
+/** What the Connect screen needs to say which step is wrong (plan 19 §3.5), and the network kind (plan 28). Reads only. */
 class NetCheckModule : Module() {
   private val context: Context
     get() = requireNotNull(appContext.reactContext)
@@ -20,6 +20,17 @@ class NetCheckModule : Module() {
         val cm = context.getSystemService(ConnectivityManager::class.java)
         val caps = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) }
         VpnState.of(caps?.let { c -> { t: Int -> c.hasTransport(t) } })
+      } catch (e: Exception) {
+        null
+      }
+    }
+
+    // Whether the active network is Wi-Fi or Ethernet (plan 28): only then is the home address tried.
+    Function("localNetwork") {
+      try {
+        val cm = context.getSystemService(ConnectivityManager::class.java)
+        val caps = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) }
+        LocalNetwork.of(caps?.let { c -> { t: Int -> c.hasTransport(t) } })
       } catch (e: Exception) {
         null
       }

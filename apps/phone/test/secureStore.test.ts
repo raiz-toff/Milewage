@@ -67,7 +67,7 @@ describe('SecureKeyValueStore', () => {
       plain: new MemoryStore(),
       fetch: server.fetch,
     });
-    await first.redeem({ baseUrl: 'http://x', token: 'mwp_abcdefghijklmnop' });
+    await first.redeem({ baseUrl: 'https://x', token: 'mwp_abcdefghijklmnop' });
     const after = new Pairing({
       secure: new SecureKeyValueStore(ks),
       plain: new MemoryStore(),
@@ -89,7 +89,7 @@ describe('SecureKeyValueStore', () => {
       plain: new MemoryStore(),
       fetch: server.fetch,
     });
-    await p.redeem({ baseUrl: 'http://x', token: 'mwp_abcdefghijklmnop' });
+    await p.redeem({ baseUrl: 'https://x', token: 'mwp_abcdefghijklmnop' });
     ks.broken = true;
     expect(await p.load()).toBeNull();
     expect(await p.session()).toBeNull();

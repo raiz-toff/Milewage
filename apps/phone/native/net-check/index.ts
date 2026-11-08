@@ -3,6 +3,8 @@ import { requireOptionalNativeModule } from 'expo';
 export interface NetCheckModule {
   /** True when this phone's traffic goes through a VPN; null when Android cannot tell. */
   vpnActive(): boolean | null;
+  /** True on Wi-Fi or Ethernet (also under a VPN), false on mobile data alone, null with no network. */
+  localNetwork(): boolean | null;
   /** Only packages named under `<queries>` (Tailscale) are visible. */
   isInstalled(pkg: string): boolean;
   /** Opens the app; false when it is not installed. */

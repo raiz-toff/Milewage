@@ -26,6 +26,19 @@ describe('manifest lint (09 section 5.3)', () => {
     expect(declared.map((p) => PREFIX + p).filter((p) => FORBIDDEN.includes(p))).toEqual([]);
   });
 
+  it('cleartext is allowed at the platform and gated in code; no local network permission yet', () => {
+    // Plan 28: network security config cannot name IP ranges, so http is allowed for the app and
+    // ApiClient refuses it outside home addresses (homeaway.test.ts). ACCESS_LOCAL_NETWORK must not
+    // be declared before the app targets Android 17 (API 37).
+    const expo = require('../app.config.js').expo;
+    const build = expo.plugins.find(
+      (p: unknown) => Array.isArray(p) && p[0] === 'expo-build-properties',
+    );
+    expect(build[1].android.usesCleartextTraffic).toBe(true);
+    expect(expo.android.permissions).not.toContain('ACCESS_LOCAL_NETWORK');
+    expect(expo.android.permissions).not.toContain('NEARBY_WIFI_DEVICES');
+  });
+
   it('the tracker module manifest requests no forbidden permission and has no boot receiver', () => {
     const xml = read(join(moduleDir, 'AndroidManifest.xml'));
     expect(forbiddenIn(xml)).toEqual([]);
@@ -95,6 +108,9 @@ describe('manifest lint (09 section 5.3)', () => {
       );
   (mergedIsFresh ? it : it.skip)('the merged release manifest has no forbidden permission', () => {
     expect(forbiddenIn(read(merged))).toEqual([]);
+    // Plan 28: http is allowed at the platform (gated in ApiClient); no local network permission.
+    expect(read(merged)).toMatch(/android:usesCleartextTraffic="true"/);
+    expect(read(merged)).not.toMatch(/ACCESS_LOCAL_NETWORK|NEARBY_WIFI_DEVICES/);
   });
 
   // No Google ML Kit and no Google usage logging (datatransport): the QR scanner is ZXing

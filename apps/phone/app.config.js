@@ -66,7 +66,9 @@ module.exports = {
         {
           android: {
             minSdkVersion: 24,
-            usesCleartextTraffic: false,
+            // Plan 28: http only to home-network addresses, enforced in ApiClient (Android's
+            // network security config cannot express IP ranges, so the platform allows it).
+            usesCleartextTraffic: true,
             allowBackup: false,
           },
         },

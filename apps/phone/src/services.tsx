@@ -3,6 +3,7 @@ import { createContext, useContext, type ComponentType, type ReactNode } from 'r
 import { Platform } from 'react-native';
 import type { FetchFn } from './api/client';
 import { nativeNet, type NetPort } from './connect/reach';
+import { healthProbe, RoutePicker } from './connect/route';
 import { installCrashHandler, PhoneDiagnostics } from './diagnostics/phoneDiagnostics';
 import { createLazyAppDb } from './db/lazyDb';
 import { openExpoAppDb, type AppSqlDb } from './db/appDb';
@@ -91,6 +92,8 @@ export interface Parts {
   /** Opens `app.db` (migrated on first use). */
   openAppDb: () => Promise<AppSqlDb>;
   fetch: FetchFn;
+  /** Plain http to any address (debug builds); otherwise only to home addresses (plan 28). */
+  anyHttp?: boolean;
   now?: () => number;
   newId?: () => string;
   scanner?: QrScanner;
@@ -120,6 +123,13 @@ export function createServices(p: Parts): Services {
   const monitor = new ConnectionMonitor(appDb);
   const pairing = new Pairing({
     monitor,
+    // Home or away for every request (plan 28 section 4.3).
+    route: new RoutePicker({
+      localNetwork: () => p.net.localNetwork(),
+      probe: healthProbe(p.fetch),
+      now: p.now,
+    }),
+    anyHttp: p.anyHttp,
     secure: p.secure,
     plain: p.plain,
     fetch: p.fetch,
@@ -311,6 +321,7 @@ export function productionParts(): Parts {
     plain,
     openAppDb: () => openExpoAppDb(),
     fetch: (url, init) => fetch(url, init),
+    anyHttp: __DEV__,
     scanner: CameraQrScanner,
     deviceInfo: {
       make: clean(c.Brand, 'unknown', /[^A-Za-z0-9 ._+-]/g),

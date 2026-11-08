@@ -1,4 +1,5 @@
 import { Linking } from 'react-native';
+import { httpAllowed, isHomeAddress } from '@milewage/shared';
 import { loadNetCheck } from '../../native/net-check';
 
 /** Plan 19 section 3.5: say which step is wrong instead of "Cannot reach the server". */
@@ -9,6 +10,8 @@ export const TAILSCALE = 'com.tailscale.ipn';
 export interface NetPort {
   /** True when this phone's traffic goes through a VPN; null when it cannot tell. */
   vpnActive(): Promise<boolean | null>;
+  /** True on Wi-Fi or Ethernet, false on mobile data alone, null when it cannot tell (plan 28). */
+  localNetwork(): Promise<boolean | null>;
   tailscaleInstalled(): Promise<boolean>;
   /** Opens Tailscale, or its store page when it is not installed. */
   openTailscale(): Promise<void>;
@@ -16,6 +19,7 @@ export interface NetPort {
 
 export const nativeNet = (): NetPort => ({
   vpnActive: async () => loadNetCheck()?.vpnActive() ?? null,
+  localNetwork: async () => loadNetCheck()?.localNetwork() ?? null,
   tailscaleInstalled: async () => loadNetCheck()?.isInstalled(TAILSCALE) ?? false,
   openTailscale: async () => {
     if (loadNetCheck()?.openApp(TAILSCALE)) return;
@@ -35,8 +39,9 @@ export function addressProblem(baseUrl: string, release: boolean): string | null
   if (h === 'localhost' || h.startsWith('127.') || h === '[::1]') {
     return "This code points at the computer that made it, not your server. Make the code from your server's https address.";
   }
-  if (release && /^http:/i.test(baseUrl)) {
-    return 'This code uses an unsecured address (http). Open MileWage in your browser at its https address and make a new code.';
+  // Plain http only on the home network (owner decision 2026-11-08, plan 28).
+  if (release && !httpAllowed(baseUrl)) {
+    return 'This code uses an unsecured address (http) outside your home network. Open MileWage in your browser at its https address, or at its address on your home Wi-Fi, and make a new code.';
   }
   return null;
 }
@@ -52,10 +57,18 @@ const PROBLEMS: Record<string, string> = {
   rate_limited: 'Too many attempts. Wait a few minutes and try again.',
   not_milewage: 'That address answered, but it is not a MileWage server.',
   network: 'Cannot reach the server. Check the address and your connection.',
+  insecure_address:
+    'This address uses plain http outside your home network. Use its https address instead.',
 };
 
 /** When connecting failed. `vpn` is read only for a network failure to a `.ts.net` address. */
 export function explainFailure(code: string, baseUrl: string, vpn: boolean | null): Failure {
+  // At home there is no Tailscale to blame (plan 28): say what a home address needs.
+  if (code === 'network' && isHomeAddress(baseUrl)) {
+    return {
+      text: `Can't reach your server at ${baseUrl}. Check that this phone is on the same Wi-Fi as the server and that the server is on.`,
+    };
+  }
   if (code === 'network' && isTailnetAddress(baseUrl)) {
     if (vpn === false) {
       return {
