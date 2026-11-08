@@ -7,7 +7,8 @@ import { authenticate } from './sessions';
 
 export const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 /** `mwd_` / `mwp_` plus 43 base64url characters (256 random bits), so secret scanners can find one. */
-export const newToken = (prefix: 'mwd_' | 'mwp_') => prefix + randomBytes(32).toString('base64url');
+export const newToken = (prefix: 'mwd_' | 'mwp_' | 'mwl_') =>
+  prefix + randomBytes(32).toString('base64url');
 
 export type DeviceBranch = (tokenHash: string, request: FastifyRequest) => Principal;
 /** Resolves a one-off in-process grant (`mwi_`, plan 26 section 3.3) for this exact request, or undefined. */

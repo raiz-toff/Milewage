@@ -232,6 +232,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/link-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Phones waiting to link, for the web (never their codes). */
+        get: operations["listLinkRequests"];
+        put?: never;
+        /** Plan 28: a phone that found this server on the Wi-Fi asks to link (RFC 8628 shape). It shows user_code; the driver types it on the web. No sign-in. At most 5 waiting phones per client address and 20 in all; requests live 10 minutes, in memory. */
+        post: operations["createLinkRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/link-requests/poll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The phone asks whether the driver typed its code. No sign-in; the device_code is the secret. */
+        post: operations["pollLinkRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/link-requests/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The driver types the code the phone shows. Spaces and dashes are ignored. 10 wrong codes per 15 minutes per driver. */
+        post: operations["approveLinkRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/link-requests/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Not my phone. The phone's next poll gets 410. */
+        delete: operations["denyLinkRequest"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/devices": {
         parameters: {
             query?: never;
@@ -3482,6 +3553,199 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             429: components["responses"]["RateLimited"];
+        };
+    };
+    listLinkRequests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Waiting phones, oldest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id: number;
+                        device_name: string;
+                        /** @enum {unknown} */
+                        platform: "android" | "ios";
+                        /** @description The client address the phone asked from. */
+                        from: string;
+                        created_at: components["schemas"]["EpochMs"];
+                        expires_at: components["schemas"]["EpochMs"];
+                    }[];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    createLinkRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    device_name: string;
+                    /** @enum {unknown} */
+                    platform: "android" | "ios";
+                };
+            };
+        };
+        responses: {
+            /** @description Waiting for the driver. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description The phone's secret for polling; never shown. */
+                        device_code: string;
+                        /** @description Shown on the phone; typed on the web. */
+                        user_code: string;
+                        /** @description Seconds. */
+                        expires_in: number;
+                        /** @description Seconds to wait between polls. */
+                        interval: number;
+                    };
+                };
+            };
+            422: components["responses"]["Unprocessable"];
+            429: components["responses"]["RateLimited"];
+        };
+    };
+    pollLinkRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    device_code: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Linked, once. The same body as POST /pairing/redeem. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        device_id: number;
+                        device_token: string;
+                        settings: components["schemas"]["Settings"];
+                        home_url: string | null;
+                        away_url: string | null;
+                    };
+                };
+            };
+            /** @description Still waiting for the driver. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "pending";
+                    };
+                };
+            };
+            /** @description link_expired. Expired, refused on the web, already used, or unknown. */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["Unprocessable"];
+            /** @description slow_down (polled before interval passed; wait Retry-After) or rate_limited. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    approveLinkRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    user_code: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Approved; the phone links at its next poll. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id: number;
+                        device_name: string;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description invalid_link_code (no waiting phone has this code) or validation_failed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            429: components["responses"]["RateLimited"];
+        };
+    };
+    denyLinkRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dropped (also when it was already gone). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
         };
     };
     listDevices: {

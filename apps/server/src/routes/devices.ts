@@ -7,6 +7,7 @@ import { FailureLimiter } from '../auth/limiter';
 import { createDeviceRepository, type Db, type DeviceRow } from '../db';
 import { ProblemError } from '../errors';
 import { checkPublicUrl, type BaseUrlSource } from '../public-url';
+import { linkRequestRoutes } from './link-requests';
 import { idParams, str, strictObject } from './util';
 
 const redeemSchema = strictObject(
@@ -144,6 +145,19 @@ export function devicesRoutes({
       return { ...main, home: home?.url ?? null, away: away?.url ?? null };
     };
 
+    /** What a phone gets once: its credential, the settings, and both addresses (plan 28). */
+    const redeemed = (req: FastifyRequest, device: DeviceRow, credential: string) => {
+      const { home, away } = address(req);
+      return {
+        device_id: device.id,
+        device_token: credential,
+        settings: settings(device.userId),
+        // Both addresses, so a phone linked at home learns the away one and the other way round.
+        home_url: home,
+        away_url: away,
+      };
+    };
+
     app.post('/pairing-tokens', { bodyLimit: 4096 }, async (req, reply) => {
       const { userId } = auth(req, 'S');
       const asked = (req.body ?? {}) as { base_url?: unknown };
@@ -229,18 +243,11 @@ export function devicesRoutes({
           limiter.fail(req.ip); // unknown, expired and used look the same
           throw new ProblemError('invalid_pairing_token', 'This pairing code is not valid.');
         }
-        const { home, away } = address(req);
-        const body = {
-          device_id: device.id,
-          device_token: credential,
-          settings: settings(device.userId),
-          // Both addresses, so a phone linked at home learns the away one and the other way round.
-          home_url: home,
-          away_url: away,
-        };
-        return reply.status(201).send(body);
+        return reply.status(201).send(redeemed(req, device, credential));
       },
     );
+
+    linkRequestRoutes({ app, now, repo, webUser: (req) => auth(req, 'S').userId, redeemed });
 
     app.get('/devices', async (req) =>
       repo.list(auth(req, 'S').userId).map((d) => view(d, skews.get(d.id))),
