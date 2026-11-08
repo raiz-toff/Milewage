@@ -9,7 +9,7 @@ import type { Schemas } from '../api/client';
 import { formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
-import { toCents } from './ShiftEarnings';
+import { parseMoney } from '../format';
 
 type Goal = Schemas['Goal'];
 const METRICS = [
@@ -20,11 +20,16 @@ const METRICS = [
 ];
 const PERIODS = ['daily', 'weekly', 'monthly', 'yearly'].map((v) => ({ value: v, label: v }));
 
-/** Target typed by the driver to the stored unit: cents, minutes, a count or metres. */
-export function targetOf(metric: string, text: string, unit: 'km' | 'mi'): number {
+/** Target typed by the driver to the stored unit: minor units, minutes, a count or metres. */
+export function targetOf(
+  metric: string,
+  text: string,
+  unit: 'km' | 'mi',
+  currency: string,
+): number {
   const n = Number(text.replace(',', '.'));
   if (!Number.isFinite(n) || n <= 0) return NaN;
-  if (metric === 'earnings') return toCents(text);
+  if (metric === 'earnings') return parseMoney(text, currency);
   if (metric === 'hours') return Math.round(n * 60);
   if (metric === 'active_distance') return Math.round(n * (unit === 'km' ? 1000 : 1609.344));
   return Math.round(n);
@@ -73,7 +78,7 @@ export function GoalBar({ goal }: { goal: Goal }) {
 /** Goals (module `goals`, 18 section 8.1). */
 export function GoalsPage() {
   const { api } = useSession();
-  const { distance_unit: unit } = useSettings();
+  const { distance_unit: unit, currency } = useSettings();
   const [goals, setGoals] = useState<Goal[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ label: '', metric: 'earnings', period: 'weekly', target: '' });
@@ -91,7 +96,7 @@ export function GoalsPage() {
 
   async function add(e: FormEvent) {
     e.preventDefault();
-    const target = targetOf(form.metric, form.target, unit);
+    const target = targetOf(form.metric, form.target, unit, currency);
     if (!Number.isFinite(target)) return setError('Enter a target above zero.');
     setError(null);
     try {

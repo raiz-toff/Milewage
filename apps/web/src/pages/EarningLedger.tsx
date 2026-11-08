@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { Button as UiButton } from '@/components/ui/button';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
-import { formatMoney, toCents } from '../format';
+import { formatMoney, parseMoney } from '../format';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
 import type { PickOption } from '../ui/form';
@@ -70,7 +70,7 @@ export function EarningLedger({
   }
   async function add(e: FormEvent) {
     e.preventDefault();
-    const cents = toCents(form.amount);
+    const cents = parseMoney(form.amount, currency);
     if (!Number.isFinite(cents) || cents <= 0) return setError('Type an amount above zero.');
     const plus = form.type === 'adjustment' ? form.adds === 'yes' : PLUS.includes(form.type);
     const ok = await call(() =>

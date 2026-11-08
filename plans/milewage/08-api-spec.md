@@ -303,13 +303,13 @@ GET /api/v1/sync/changes?after=<cursor>&limit=200
 All errors are RFC 9457 `application/problem+json`:
 
 ```json
-{ "type": "https://milewage.dev/errors/shift_finalized", "title": "Shift is finalized", "status": 409,
+{ "type": "/api/v1/errors/shift_finalized", "title": "Shift is finalized", "status": 409,
   "code": "shift_finalized", "detail": "Points can no longer be added to a finalized shift.",
   "retryable": false, "request_id": "01JF2…",
   "errors": [{ "path": "/points/3/lat_e7", "message": "must be between -900000000 and 900000000" }] }
 ```
 
-`code` is the stable machine-readable string clients switch on (`type` ends with it); `title` and `detail` are for humans and may change. `retryable` tells the phone whether to retry without parsing codes. `errors` appears only on `422`. `request_id` matches the server log line. The API never includes stack traces, SQL or file paths.
+`code` is the stable machine-readable string clients switch on (`type` ends with it). `type` is a relative URI reference, as RFC 9457 allows; `GET /api/v1/errors/{code}` (public) returns `{ code, title, status, description }` for it, so it resolves on every instance; `title` and `detail` are for humans and may change. `retryable` tells the phone whether to retry without parsing codes. `errors` appears only on `422`. `request_id` matches the server log line. The API never includes stack traces, SQL or file paths.
 
 | Status | Codes |
 |---|---|

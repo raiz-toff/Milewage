@@ -35,6 +35,49 @@ const CATALOG = {
 } as const;
 
 export type ErrorCode = keyof typeof CATALOG;
+
+/** Relative URI reference (RFC 9457 section 3.1.1); it resolves on every instance (`GET /api/v1/errors/{code}`). */
+export const errorTypeUri = (code: string) => `/api/v1/errors/${code}`;
+
+const DESCRIPTIONS: Record<ErrorCode, string> = {
+  malformed_request: 'The request could not be parsed, for example because the JSON is broken.',
+  auth_required: 'The request needs a signed-in session or a device token, and none was sent.',
+  session_expired: 'The session has ended. Sign in again.',
+  invalid_credentials: 'The username or the password is wrong.',
+  device_revoked: 'The owner removed this phone. Pair it again to keep uploading.',
+  invalid_pairing_token: 'The pairing code is wrong, already used or out of date.',
+  scope_forbidden: 'This credential is valid but is not allowed to do this.',
+  origin_mismatch: 'The request came from a website the server does not trust.',
+  setup_incomplete: 'First-run setup is not finished. Confirm the recovery key first.',
+  not_found: 'There is nothing at this address, or it belongs to someone else.',
+  shift_not_found: 'There is no such shift.',
+  setup_already_done: 'The owner account already exists.',
+  shift_already_active: 'A shift is already running. End it before starting another.',
+  shift_finalized: 'The shift is finalized and can no longer be changed.',
+  shift_not_ended: 'The shift is still running. End it first.',
+  platform_in_use: 'Shifts or earnings still use this platform, so it cannot be removed.',
+  trip_not_editable: 'This trip cannot be edited in its current state.',
+  capture_active: 'Another capture session is already running for this phone.',
+  not_recomputable: 'The raw points of this shift were archived, so it cannot be recalculated.',
+  upgrade_required: 'This app is too old for the server. Update the app.',
+  cursor_expired: 'The page cursor is too old. Start the list again.',
+  payload_too_large: 'The request body is bigger than the server accepts.',
+  unsupported_media_type: 'The content type of the request is not supported.',
+  validation_failed: 'One or more fields are not valid. The errors list says which.',
+  rate_limited: 'Too many requests in a short time. Wait and try again.',
+  backup_rate_limited: 'Too many backup requests in a short time. Wait and try again.',
+  internal_error: 'Something went wrong on the server. Try again later.',
+  read_only_mode: 'The server is in read-only mode, so changes are refused.',
+  restoring: 'A restore is in progress. Try again in a moment.',
+  insufficient_storage: 'The server is almost out of disk space, so changes are refused.',
+};
+
+/** What `GET /api/v1/errors/{code}` returns, or null for a code that is not in the catalogue. */
+export function describeError(code: string) {
+  if (!Object.hasOwn(CATALOG, code)) return null;
+  const c = code as ErrorCode;
+  return { code: c, title: CATALOG[c][1], status: CATALOG[c][0], description: DESCRIPTIONS[c] };
+}
 export interface FieldError {
   path: string;
   message: string;
@@ -68,7 +111,7 @@ export function newRequestId(now = Date.now()): string {
 export function sendProblem(reply: FastifyReply, request: FastifyRequest, error: ProblemError) {
   (request as { problemCode?: string }).problemCode = error.code; // read by the api.window counters
   const body: Record<string, unknown> = {
-    type: `https://milewage.dev/errors/${error.code}`,
+    type: errorTypeUri(error.code),
     title: error.title,
     status: error.status,
     code: error.code,

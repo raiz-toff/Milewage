@@ -16,7 +16,7 @@ export function GoalStep({ ctx, next }: StepProps) {
   const [amount, setAmount] = useState('');
   const save = async () => {
     if (!amount.trim()) return; // left empty: the same as skipping
-    const target = targetOf('earnings', amount, distance_unit);
+    const target = targetOf('earnings', amount, distance_unit, currency);
     if (!(target > 0)) throw new StepError('Enter an amount above 0, for example 800.');
     await unwrap(
       api.POST('/goals', {

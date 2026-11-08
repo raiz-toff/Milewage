@@ -100,6 +100,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/errors/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What an error code means. This is where the `type` URI of a problem points. Public. */
+        get: operations["getErrorType"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/login": {
         parameters: {
             query?: never;
@@ -1634,6 +1651,10 @@ export interface components {
         /** @description UTC milliseconds since the Unix epoch. */
         EpochMs: number;
         Problem: {
+            /**
+             * @description A relative URI reference (RFC 9457) that ends with `code`. GET it on the same server for a plain description.
+             * @example /api/v1/errors/shift_finalized
+             */
             type: string;
             title: string;
             status: number;
@@ -3192,6 +3213,35 @@ export interface operations {
                     "application/json": components["schemas"]["Country"][];
                 };
             };
+        };
+    };
+    getErrorType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description An error code such as shift_finalized. */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The catalogue entry. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        title: string;
+                        status: number;
+                        description: string;
+                    };
+                };
+            };
+            404: components["responses"]["NotFound"];
         };
     };
     login: {

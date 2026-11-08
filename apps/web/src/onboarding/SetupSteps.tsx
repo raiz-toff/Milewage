@@ -7,6 +7,7 @@ import { slugOf } from '../pages/Platforms';
 import { PlatformBadge } from '../platforms/PlatformBadge';
 import type { PlatformLike } from '../platforms/PlatformBadge';
 import { KINDS, OWNERSHIP } from '../pages/Vehicles';
+import { parseRate, rateInput } from '../format';
 import { useSession } from '../session';
 import { Field, SelectField } from '../ui/form';
 import { useSaveSettings } from './AboutSteps';
@@ -123,7 +124,7 @@ export function VehicleStep({ ctx, next }: StepProps) {
   const [kind, setKind] = useState<Kind>('car');
   const [ownership, setOwnership] = useState<Ownership>('owned');
   const was = settings.own_mileage_rate
-    ? String(settings.own_mileage_rate.cents_per_unit / 100)
+    ? rateInput(settings.own_mileage_rate.cents_per_unit, settings.currency)
     : '';
   const [rate, setRate] = useState(was);
   const ownRate = country?.supports.mileage === false && !NO_RATE.includes(kind);
@@ -137,7 +138,7 @@ export function VehicleStep({ ctx, next }: StepProps) {
         own_mileage_rate:
           rate === ''
             ? null
-            : { cents_per_unit: Math.round(n * 10_000) / 100, unit: settings.distance_unit },
+            : { cents_per_unit: parseRate(rate, settings.currency), unit: settings.distance_unit },
       });
     }
     if (name.trim()) {

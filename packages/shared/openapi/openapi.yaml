@@ -47,7 +47,7 @@ tags:
 x-modules:
   core:
     toggle: never
-    operations: [getHealth, getSetupStatus, listCountries, createOwner, confirmRecoveryKey, login, logout, changePassword, getSettings, updateSettings, listVehicles, createVehicle, updateVehicle, getSystemStatus, getSummary, listShifts, startShift, getShift, updateShift, purgeShift, endShift, finalizeShift, recalculateShift, setShiftOdometer, listOdometerReadings, createYearOdometerReading, deleteOdometerReading, listShiftTrips, putManualTrip, updateTrip, deleteManualTrip]
+    operations: [getHealth, getSetupStatus, listCountries, getErrorType, createOwner, confirmRecoveryKey, login, logout, changePassword, getSettings, updateSettings, listVehicles, createVehicle, updateVehicle, getSystemStatus, getSummary, listShifts, startShift, getShift, updateShift, purgeShift, endShift, finalizeShift, recalculateShift, setShiftOdometer, listOdometerReadings, createYearOdometerReading, deleteOdometerReading, listShiftTrips, putManualTrip, updateTrip, deleteManualTrip]
   devices:
     toggle: modules.devices
     default: true
@@ -279,6 +279,28 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/Country' } }
+  /errors/{code}:
+    get:
+      tags: [system]
+      operationId: getErrorType
+      summary: What an error code means. This is where the `type` URI of a problem points. Public.
+      security: []
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string }, description: 'An error code such as shift_finalized.' }
+      responses:
+        '200':
+          description: The catalogue entry.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, title, status, description]
+                properties:
+                  code: { type: string }
+                  title: { type: string }
+                  status: { type: integer }
+                  description: { type: string }
+        '404': { $ref: '#/components/responses/NotFound' }
   /auth/login:
     post:
       tags: [auth]
@@ -2495,7 +2517,10 @@ components:
       type: object
       required: [type, title, status, code, retryable]
       properties:
-        type: { type: string }
+        type:
+          type: string
+          description: A relative URI reference (RFC 9457) that ends with `code`. GET it on the same server for a plain description.
+          example: /api/v1/errors/shift_finalized
         title: { type: string }
         status: { type: integer }
         code: { type: string }

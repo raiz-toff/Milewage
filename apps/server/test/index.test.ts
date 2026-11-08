@@ -67,7 +67,7 @@ describe('error model (08 section 7.1)', () => {
     expect(res.statusCode).toBe(404);
     expect(res.headers['content-type']).toContain('application/problem+json');
     expect(res.json()).toMatchObject({
-      type: 'https://milewage.dev/errors/not_found',
+      type: '/api/v1/errors/not_found',
       status: 404,
       code: 'not_found',
       retryable: false,

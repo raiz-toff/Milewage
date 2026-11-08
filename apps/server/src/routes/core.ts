@@ -16,7 +16,7 @@ import {
 } from '../db';
 import { COMMA_DEFAULTS, type CommaOptions } from '../comma-options';
 import { countriesRoute } from './countries';
-import { ProblemError } from '../errors';
+import { describeError, ProblemError } from '../errors';
 import { settingsRoutes } from './settings';
 import { statusRoute, type StatusContext } from './status';
 import type { ShiftProcessor } from '../processing/shift-processor';
@@ -171,12 +171,20 @@ export function coreRoutes(
       const state = setupState();
       if (state === 'ready') confirmed = true;
       if (state !== 'needs_confirmation') return;
-      if (!openBeforeConfirm.includes(request.url.split('?')[0]!)) {
+      const path = request.url.split('?')[0]!;
+      if (!openBeforeConfirm.includes(path) && !path.startsWith(`${API_PREFIX}/errors/`)) {
         throw new ProblemError('setup_incomplete', 'Confirm the recovery key to finish setup.');
       }
     });
 
     app.get('/setup/status', async () => ({ state: setupState() }));
+
+    // Public: the `type` URI of every problem points here (RFC 9457).
+    app.get('/errors/:code', async (request) => {
+      const found = describeError((request.params as { code: string }).code);
+      if (!found) throw new ProblemError('not_found', 'There is no error with this code.');
+      return found;
+    });
 
     app.post('/setup', setupBody, async (request, reply) => {
       const b = request.body as SetupBody;

@@ -11,7 +11,7 @@ import { formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError } from '../ui/form';
 import { MoreCard } from './ShiftStates';
-import { toCents } from './ShiftEarnings';
+import { parseMoney } from '../format';
 
 type TaxYear = Schemas['TaxYear'];
 type Jar = Schemas['TaxJar'];
@@ -43,7 +43,8 @@ export function TaxPage() {
 
   const load = useCallback(async () => {
     try {
-      const query = collected.trim() === '' ? {} : { collected_cents: toCents(collected) };
+      const query =
+        collected.trim() === '' ? {} : { collected_cents: parseMoney(collected, currency) };
       const r = await unwrap<TaxYear>(
         api.GET('/tax/{year}', { params: { path: { year }, query } }),
       );
@@ -320,7 +321,7 @@ export function TaxPage() {
                 className="flex items-end gap-2"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  void addJar(toCents(amount));
+                  void addJar(parseMoney(amount, currency));
                   setAmount('');
                 }}
               >
@@ -334,7 +335,10 @@ export function TaxPage() {
                 </div>
                 <Button
                   type="submit"
-                  busy={!Number.isFinite(toCents(amount)) || toCents(amount) === 0}
+                  busy={
+                    !Number.isFinite(parseMoney(amount, currency)) ||
+                    parseMoney(amount, currency) === 0
+                  }
                 >
                   Add to jar
                 </Button>

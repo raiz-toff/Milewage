@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { hasStackedOrders, toCents } from '../src/pages/Stops';
+import { hasStackedOrders, toMinor } from '../src/pages/Stops';
 import { shift, stop, trip } from './support/fixtures';
 import { renderApp, settingsFixture, signedIn, pick } from './support/kit';
 import type { Handler } from './support/kit';
@@ -190,11 +190,15 @@ describe('stops warnings (05 section 3.1a)', () => {
     const roles = (...r: string[]) => r.map((role) => stop(1, { role: role as 'pickup' }));
     expect(hasStackedOrders(roles('pickup', 'pickup'))).toBe(true);
     expect(hasStackedOrders(roles('pickup', 'other', 'dropoff', 'pickup'))).toBe(false);
-    expect(toCents('')).toBe(0);
-    expect(toCents('12.5')).toBe(1250);
-    expect(toCents('0.07')).toBe(7);
-    expect(toCents('1,50')).toBeNull();
-    expect(toCents('-3')).toBeNull();
+    expect(toMinor('', 'USD')).toBe(0);
+    expect(toMinor('12.5', 'USD')).toBe(1250);
+    expect(toMinor('0.07', 'USD')).toBe(7);
+    expect(toMinor('1,50', 'USD')).toBeNull();
+    expect(toMinor('-3', 'USD')).toBeNull();
+    expect(toMinor('1200', 'JPY')).toBe(1200);
+    expect(toMinor('12.5', 'JPY')).toBeNull();
+    expect(toMinor('1.234', 'KWD')).toBe(1234);
+    expect(toMinor('12.345', 'USD')).toBeNull();
   });
 });
 

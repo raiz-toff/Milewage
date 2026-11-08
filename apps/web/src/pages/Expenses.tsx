@@ -19,7 +19,7 @@ import type { Schemas } from '../api/client';
 import { formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
 import { Button, DateField, Field, FormError, SelectField } from '../ui/form';
-import { toCents } from './ShiftEarnings';
+import { moneyInput, parseMoney } from '../format';
 
 type Expense = Schemas['Expense'];
 type Category = Schemas['ExpenseCategory'];
@@ -57,10 +57,10 @@ const blank = (today: string, vehicle = '') => ({
 });
 type Draft = ReturnType<typeof blank>;
 
-const draftOf = (e: Expense): Draft => ({
+const draftOf = (e: Expense, currency: string): Draft => ({
   spent_on: e.spent_on,
   category: e.category,
-  amount: (e.amount_cents / 100).toFixed(2),
+  amount: moneyInput(e.amount_cents, currency),
   merchant: e.merchant,
   deductible: e.deductible,
   business_pct: e.business_pct,
@@ -72,11 +72,11 @@ const draftOf = (e: Expense): Draft => ({
 });
 
 /** Request body from the form: only a recurring row carries a recurrence and a next due date. */
-export function bodyOf(d: Draft): Schemas['ExpenseCreate'] {
+export function bodyOf(d: Draft, currency: string): Schemas['ExpenseCreate'] {
   return {
     spent_on: d.spent_on,
     category: d.category,
-    amount_cents: toCents(d.amount),
+    amount_cents: parseMoney(d.amount, currency),
     merchant: d.merchant.trim(),
     deductible: d.deductible,
     business_pct: d.business_pct,
@@ -198,7 +198,7 @@ export function ExpensesPage() {
   async function save(e: FormEvent) {
     e.preventDefault();
     if (!draft) return;
-    const body = bodyOf(draft);
+    const body = bodyOf(draft, currency);
     if (!Number.isFinite(body.amount_cents) || body.amount_cents < 1) {
       return setError('Enter an amount above zero.');
     }
@@ -610,7 +610,7 @@ export function ExpensesPage() {
                             label: 'Edit',
                             icon: Pencil,
                             onSelect: () => {
-                              setDraft(draftOf(x));
+                              setDraft(draftOf(x, currency));
                               setEditing(x.id);
                               setMore(true);
                             },

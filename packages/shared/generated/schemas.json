@@ -17,7 +17,9 @@
       ],
       "properties": {
         "type": {
-          "type": "string"
+          "type": "string",
+          "description": "A relative URI reference (RFC 9457) that ends with `code`. GET it on the same server for a plain description.",
+          "example": "/api/v1/errors/shift_finalized"
         },
         "title": {
           "type": "string"

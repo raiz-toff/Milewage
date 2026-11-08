@@ -332,8 +332,8 @@ describe('expenses screen (module expenses)', () => {
       recurrence: '',
       next_due: '2023-02-01',
     };
-    expect(bodyOf(base)).toMatchObject({ recurrence: null, next_due: null });
-    expect(bodyOf({ ...base, recurrence: 'monthly' })).toMatchObject({
+    expect(bodyOf(base, 'CAD')).toMatchObject({ recurrence: null, next_due: null });
+    expect(bodyOf({ ...base, recurrence: 'monthly' }, 'CAD')).toMatchObject({
       recurrence: 'monthly',
       next_due: '2023-02-01',
     });

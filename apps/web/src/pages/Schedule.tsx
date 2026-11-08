@@ -6,7 +6,8 @@ import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { useSession, useSettings } from '../session';
-import { Button, Field, FormError } from '../ui/form';
+import { formatClock } from '../format';
+import { Button, Field, FormError, TimeField } from '../ui/form';
 import { localDate } from './Dashboard';
 
 type Sched = Schemas['Schedule'];
@@ -30,7 +31,7 @@ export function monthGrid(year: number, month: number, weekStart: number): (stri
 /** Schedule (module `schedule`, off by default): plan shifts ahead, repeating templates, off days. A plan is not a record. */
 export function SchedulePage() {
   const { api } = useSession();
-  const { timezone, week_start: weekStart } = useSettings();
+  const { timezone, week_start: weekStart, time_format: timeFormat } = useSettings();
   const today = localDate(Date.now(), timezone);
   const [ym, setYm] = useState({ y: Number(today.slice(0, 4)), m: Number(today.slice(5, 7)) });
   const [data, setData] = useState<Sched | null>(null);
@@ -174,7 +175,8 @@ export function SchedulePage() {
                               className="flex items-center justify-between rounded bg-primary px-1.5 py-0.5 text-[11px] font-medium text-primary-foreground"
                             >
                               <span>
-                                {x.start_time}-{x.end_time}
+                                {formatClock(x.start_time, timeFormat)}-
+                                {formatClock(x.end_time, timeFormat)}
                               </span>
                               <button
                                 type="button"
@@ -205,17 +207,17 @@ export function SchedulePage() {
       {day ? (
         <Section title={`Plan ${day}`}>
           <form className="flex flex-wrap items-end gap-3" onSubmit={addEntry}>
-            <Field
+            <TimeField
               label="From"
-              type="time"
+              timeFormat={timeFormat}
               value={times.start}
-              onChange={(e) => setTimes({ ...times, start: e.target.value })}
+              onChange={(v) => setTimes({ ...times, start: v })}
             />
-            <Field
+            <TimeField
               label="To"
-              type="time"
+              timeFormat={timeFormat}
               value={times.end}
-              onChange={(e) => setTimes({ ...times, end: e.target.value })}
+              onChange={(v) => setTimes({ ...times, end: v })}
             />
             <Button type="submit">Plan a shift</Button>
             <UiButton
@@ -249,8 +251,8 @@ export function SchedulePage() {
           {data?.templates.map((t) => (
             <li key={t.id} className="flex items-center gap-3 py-1.5">
               <span>
-                {t.label}: {NAMES.filter((_, i) => t.weekdays & (1 << i)).join(' ')} {t.start_time}-
-                {t.end_time}
+                {t.label}: {NAMES.filter((_, i) => t.weekdays & (1 << i)).join(' ')}{' '}
+                {formatClock(t.start_time, timeFormat)}-{formatClock(t.end_time, timeFormat)}
               </span>
               <UiButton
                 type="button"
@@ -288,17 +290,17 @@ export function SchedulePage() {
               {n}
             </label>
           ))}
-          <Field
+          <TimeField
             label="Template from"
-            type="time"
+            timeFormat={timeFormat}
             value={tpl.start}
-            onChange={(e) => setTpl({ ...tpl, start: e.target.value })}
+            onChange={(v) => setTpl({ ...tpl, start: v })}
           />
-          <Field
+          <TimeField
             label="Template to"
-            type="time"
+            timeFormat={timeFormat}
             value={tpl.end}
-            onChange={(e) => setTpl({ ...tpl, end: e.target.value })}
+            onChange={(v) => setTpl({ ...tpl, end: v })}
           />
           <Button type="submit" busy={tpl.label.trim() === '' || tpl.days === 0}>
             Add repeating shift

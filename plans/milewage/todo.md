@@ -10,13 +10,13 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
       Combobox style, default to the browser's zone
       (`Intl.DateTimeFormat().resolvedOptions().timeZone`), the zones of the chosen country first,
       and the current UTC offset shown next to each name. Server keeps validating the name.
-- [ ] Vehicles page shows a bare error code ("not_found") when the tax-year request fails without
+- [x] (F1) Vehicles page shows a bare error code ("not_found") when the tax-year request fails without
       a message; show a plain sentence instead (found in X3).
-- [ ] Time fields (Schedule) show 12h/24h by the browser's language, not by Settings › Time
+- [x] (F1) Time fields (Schedule) show 12h/24h by the browser's language, not by Settings › Time
       format (W5b).
 - [ ] Badge colour picker for platforms; the API already accepts a colour (PL4b).
 - [ ] Shifts list cannot show platform badges: the shifts API has no platforms per shift (PL2).
-- [ ] Web `formatMoney` still assumes two decimal digits; use the currency's own digits (J9).
+- [x] Web money display and typing use the currency's own minor-unit places (F1; stored values are minor units)
 - [ ] Edit and delete a hand-made trip on the web (W2i).
 - [x] Plan 19 T1–T3: Caddy trusted proxies (T1), `MILEWAGE_PUBLIC_URL` (T2), Change address and
       the Tailscale warning on the web (T3). Done 2026-11-07, `pr-T1`…`pr-T3`.
@@ -28,7 +28,7 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
       on Google Play" button with Google's official badge file (A2).
 - [ ] A public install-guide URL for the phone's "Set up your server" screen (currently hidden;
       PO1/X2).
-- [ ] Error `type` URIs use `https://milewage.dev/errors/…`, a domain the owner does not own
+- [x] Error `type` URIs are relative (`/api/v1/errors/<code>`) and resolve on every instance (F1)
       (`apps/server/src/errors.ts`, plan 08).
 - [ ] Choose a licence for MileWage before taking outside contributions (plan 21 §2.4).
       Usual options for self-hosted apps: AGPL-3.0 (used by Immich and Nextcloud; keeps hosted forks

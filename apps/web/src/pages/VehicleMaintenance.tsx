@@ -8,7 +8,7 @@ import { formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
 import { Button, DateField, Field, FormError, SelectField } from '../ui/form';
 import { localDate } from './Dashboard';
-import { toCents } from './ShiftEarnings';
+import { parseMoney } from '../format';
 
 type Log = Schemas['MaintenanceLog'];
 const KINDS = [
@@ -52,7 +52,7 @@ export function VehicleMaintenance({ vehicleId, name }: { vehicleId: number; nam
 
   async function add(e: FormEvent) {
     e.preventDefault();
-    const cost = toCents(form.cost);
+    const cost = parseMoney(form.cost, currency);
     const odo =
       form.odometer.trim() === ''
         ? null

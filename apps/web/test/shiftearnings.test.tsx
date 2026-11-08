@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { toCents } from '../src/pages/ShiftEarnings';
+import { parseMoney } from '../src/format';
 import { pick, renderApp, settingsFixture, signedIn } from './support/kit';
 
 afterEach(cleanup);
@@ -226,9 +226,8 @@ describe('shift earnings block (module earnings)', () => {
   });
 
   it('converts typed dollars to cents', () => {
-    expect([toCents(''), toCents('12.5'), toCents('12,50'), toCents('0.07')]).toEqual([
-      0, 1250, 1250, 7,
-    ]);
-    expect(Number.isNaN(toCents('abc'))).toBe(true);
+    const cad = (t: string) => parseMoney(t, 'CAD');
+    expect([cad(''), cad('12.5'), cad('12,50'), cad('0.07')]).toEqual([0, 1250, 1250, 7]);
+    expect(Number.isNaN(cad('abc'))).toBe(true);
   });
 });

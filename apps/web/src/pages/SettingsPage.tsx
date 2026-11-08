@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { describe, unwrap } from '../api/client';
 import { levelWord, useCountries } from '../countries';
 import type { Schemas, Settings } from '../api/client';
+import { parseRate, rateInput } from '../format';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
 import { PageHeader } from '../ui/layout';
@@ -59,7 +60,7 @@ const draftOf = (s: Settings): Draft => ({
   region: s.region ?? '',
   week_start: s.week_start === 0 ? '0' : '1',
   time_format: s.time_format,
-  own_rate: s.own_mileage_rate ? String(s.own_mileage_rate.cents_per_unit / 100) : '',
+  own_rate: s.own_mileage_rate ? rateInput(s.own_mileage_rate.cents_per_unit, s.currency) : '',
 });
 
 /** Only the fields that differ from the saved settings, so a save never rewrites the rest. */
@@ -73,7 +74,7 @@ export function changes(saved: Settings, draft: Draft): Patch {
       patch.own_mileage_rate =
         v === ''
           ? null
-          : { cents_per_unit: Math.round(Number(v) * 10_000) / 100, unit: draft.distance_unit };
+          : { cents_per_unit: parseRate(String(v), draft.currency), unit: draft.distance_unit };
       continue;
     }
     patch[key] =

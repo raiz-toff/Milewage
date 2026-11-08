@@ -121,12 +121,12 @@ describe('goals screen (module goals)', () => {
 
   it('unit conversions', () => {
     expect([
-      targetOf('earnings', '12.50', 'km'),
-      targetOf('hours', '1.5', 'km'),
-      targetOf('shifts', '4', 'km'),
+      targetOf('earnings', '12.50', 'km', 'CAD'),
+      targetOf('hours', '1.5', 'km', 'CAD'),
+      targetOf('shifts', '4', 'km', 'CAD'),
     ]).toEqual([1250, 90, 4]);
-    expect(targetOf('active_distance', '2', 'mi')).toBe(3219);
-    expect(Number.isNaN(targetOf('shifts', '0', 'km'))).toBe(true);
+    expect(targetOf('active_distance', '2', 'mi', 'CAD')).toBe(3219);
+    expect(Number.isNaN(targetOf('shifts', '0', 'km', 'CAD'))).toBe(true);
     expect(valueText('hours', 90, 'km', 'CAD')).toBe('1.5 h');
   });
 });

@@ -264,6 +264,21 @@ describe('vehicles page', () => {
     expect(scooter.textContent).not.toContain('Deduct BWS 125');
   });
 
+  it('says in a sentence that the tax year could not be loaded, never a bare error code', async () => {
+    const year = new Date().getFullYear();
+    renderApp(
+      {
+        ...signedIn(settingsFixture({ modules: { tax: true } })),
+        'GET /vehicles': () => ({ body: [car()] }),
+        [`GET /vehicles/1/tax-years/${year}`]: () => ({ status: 404, body: { code: 'not_found' } }),
+      } as never,
+      '/vehicles',
+    );
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toBe('The tax year could not be loaded.');
+    expect(screen.queryByText('not_found')).toBeNull();
+  });
+
   it('shows the server message when a change is refused', async () => {
     renderApp(
       {

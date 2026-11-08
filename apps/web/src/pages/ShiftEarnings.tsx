@@ -4,7 +4,7 @@ import { Button as UiButton } from '@/components/ui/button';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
-import { formatMoney, toCents } from '../format';
+import { formatMoney, parseMoney } from '../format';
 import { EarningLedger } from './EarningLedger';
 import type { EarnedSummary } from './ShiftFacts';
 import { useSession, useSettings } from '../session';
@@ -15,8 +15,6 @@ import { builtinPlatform } from '@milewage/shared';
 
 type Earnings = Schemas['ShiftEarnings'];
 type Platform = Schemas['Platform'];
-
-export { toCents };
 
 /**
  * The driver's own total per platform for one shift (module `earnings`, 18 section 4.3). One
@@ -70,7 +68,9 @@ export function ShiftEarnings({
     const platform = options.some((o) => o.value === form.platform)
       ? form.platform
       : options[0]!.value;
-    const [gross, tips, bonus] = [form.gross, form.tips, form.bonus].map(toCents);
+    const [gross, tips, bonus] = [form.gross, form.tips, form.bonus].map((t) =>
+      parseMoney(t, currency),
+    );
     if ([gross, tips, bonus].some((n) => !Number.isFinite(n) || n! < 0)) {
       return setError('Amounts must be zero or more.');
     }

@@ -189,6 +189,69 @@ export function Picker({
 }
 
 /**
+ * A labelled time of day. `value` is "HH:MM" (24 hours, what the server stores) or ''. The browser's
+ * own time input follows the browser language, so this one shows hours and minutes in the format
+ * of Settings > Time format: 24 hours, or 12 hours with AM and PM.
+ */
+export function TimeField({
+  label,
+  value,
+  onChange,
+  timeFormat,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  timeFormat: '12h' | '24h';
+}) {
+  const [h = 0, m = 0] = (value || '00:00').split(':').map(Number);
+  const two = (n: number) => String(n).padStart(2, '0');
+  const set = (hour: number, minute: number) => onChange(`${two(hour)}:${two(minute)}`);
+  const twelve = timeFormat === '12h';
+  const hours = twelve
+    ? Array.from({ length: 12 }, (_, i) => (i === 0 ? 12 : i))
+    : Array.from({ length: 24 }, (_, i) => i);
+  const shownHour = twelve ? (h % 12 === 0 ? 12 : h % 12) : h;
+  const minutes = [...new Set([...Array.from({ length: 12 }, (_, i) => i * 5), m])].sort(
+    (a, b) => a - b,
+  );
+  return (
+    <div role="group" aria-label={label} className="grid content-start gap-2">
+      <span className="text-sm font-medium">{label}</span>
+      <div className="flex items-center gap-1">
+        <Picker
+          label={`${label} hour`}
+          className="w-auto min-w-16"
+          value={String(shownHour)}
+          onChange={(v) => set(twelve ? (Number(v) % 12) + (h >= 12 ? 12 : 0) : Number(v), m)}
+          options={hours.map((n) => ({ value: String(n), label: twelve ? String(n) : two(n) }))}
+        />
+        <span aria-hidden>:</span>
+        <Picker
+          label={`${label} minute`}
+          className="w-auto min-w-16"
+          value={String(m)}
+          onChange={(v) => set(h, Number(v))}
+          options={minutes.map((n) => ({ value: String(n), label: two(n) }))}
+        />
+        {twelve ? (
+          <Picker
+            label={`${label} AM or PM`}
+            className="w-auto min-w-20"
+            value={h < 12 ? 'am' : 'pm'}
+            onChange={(v) => set((h % 12) + (v === 'pm' ? 12 : 0), m)}
+            options={[
+              { value: 'am', label: 'AM' },
+              { value: 'pm', label: 'PM' },
+            ]}
+          />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
  * A labelled dropdown. The label points at the trigger, so it is the accessible name, unless
  * `name` gives a fuller one (it should start with the label); the hint is its description.
  */

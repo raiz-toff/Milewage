@@ -32,7 +32,7 @@ export function VehicleTaxYear({
   useEffect(() => {
     void unwrap<Row>(api.GET('/vehicles/{id}/tax-years/{year}', { params: { path } }))
       .then(setRow)
-      .catch((e) => setError(describe(e)));
+      .catch(() => setError('The tax year could not be loaded.'));
   }, [api, vehicleId, year]);
 
   async function choose(method: Row['method']) {

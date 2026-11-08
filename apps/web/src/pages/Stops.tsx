@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
-import { formatTime } from '../format';
+import { formatTime, minorDigits, moneyInput, parseMoney } from '../format';
 import { useSession, useSettings } from '../session';
 import { SortTable } from '../ui/SortTable';
 import type { Column } from '../ui/SortTable';
@@ -19,22 +19,24 @@ interface Draft {
   tip: string;
 }
 
-const money = (cents: number) => (cents === 0 ? '' : (cents / 100).toFixed(2));
+const money = (minor: number, currency: string) => (minor === 0 ? '' : moneyInput(minor, currency));
 
-export const draftOf = (s: Stop): Draft => ({
+export const draftOf = (s: Stop, currency: string): Draft => ({
   role: s.label?.role ?? '',
   platform: s.label?.platform ?? '',
   place: s.label?.place ?? '',
-  payout: money(s.label?.payout_cents ?? 0),
-  tip: money(s.label?.tip_cents ?? 0),
+  payout: money(s.label?.payout_cents ?? 0, currency),
+  tip: money(s.label?.tip_cents ?? 0, currency),
 });
 
-/** Typed money to whole cents; blank is zero, anything else that is not an amount is null. */
-export function toCents(text: string): number | null {
+/** Typed money to whole minor units; blank is zero, anything else that is not an amount is null. */
+export function toMinor(text: string, currency: string): number | null {
   const t = text.trim();
   if (t === '') return 0;
-  if (!/^\d+(\.\d{1,2})?$/.test(t)) return null;
-  return Math.round(Number(t) * 100);
+  const places = minorDigits(currency);
+  const shape = places === 0 ? /^\d+$/ : new RegExp(`^\\d+(\\.\\d{1,${places}})?$`);
+  if (!shape.test(t)) return null;
+  return parseMoney(t, currency);
 }
 
 /**
@@ -105,15 +107,15 @@ export function StopsPanel({
 
   function apply(key: string, stop: Stop | null, next: Shift) {
     setStops((old) => (old ?? []).flatMap((s) => (s.stop_key !== key ? [s] : stop ? [stop] : [])));
-    if (stop) setDrafts((d) => ({ ...d, [key]: draftOf(stop) }));
+    if (stop) setDrafts((d) => ({ ...d, [key]: draftOf(stop, currency) }));
     onShift(next);
   }
 
   async function save(s: Stop) {
     const d = drafts[s.stop_key];
     if (!d || d.role === '') return;
-    const payout = toCents(d.payout);
-    const tip = toCents(d.tip);
+    const payout = toMinor(d.payout, currency);
+    const tip = toMinor(d.tip, currency);
     if (payout === null || tip === null) {
       setRowError((e) => ({ ...e, [s.stop_key]: 'Enter an amount such as 12.50.' }));
       return;
@@ -162,10 +164,13 @@ export function StopsPanel({
 
   const columns = ((): Column<Stop>[] => {
     const set = (s: Stop, patch: Partial<Draft>) =>
-      setDrafts((d) => ({ ...d, [s.stop_key]: { ...(d[s.stop_key] ?? draftOf(s)), ...patch } }));
+      setDrafts((d) => ({
+        ...d,
+        [s.stop_key]: { ...(d[s.stop_key] ?? draftOf(s, currency)), ...patch },
+      }));
     const dirty = (s: Stop) => {
-      const a = drafts[s.stop_key] ?? draftOf(s);
-      const b = draftOf(s);
+      const a = drafts[s.stop_key] ?? draftOf(s, currency);
+      const b = draftOf(s, currency);
       return (Object.keys(a) as (keyof Draft)[]).some((k) => a[k] !== b[k]);
     };
     const input = (s: Stop, key: 'platform' | 'place' | 'payout' | 'tip', label: string) => (
@@ -173,7 +178,7 @@ export function StopsPanel({
         aria-label={`${label} at ${formatTime(s.started_at, timezone)}`}
         className={FIELD}
         inputMode={key === 'payout' || key === 'tip' ? 'decimal' : undefined}
-        value={(drafts[s.stop_key] ?? draftOf(s))[key]}
+        value={(drafts[s.stop_key] ?? draftOf(s, currency))[key]}
         onChange={(e) => set(s, { [key]: e.target.value })}
       />
     );
@@ -216,7 +221,7 @@ export function StopsPanel({
             label={`Label at ${formatTime(s.started_at, timezone)}`}
             size="sm"
             className="min-w-32"
-            value={(drafts[s.stop_key] ?? draftOf(s)).role}
+            value={(drafts[s.stop_key] ?? draftOf(s, currency)).role}
             onChange={(v) => set(s, { role: v as Draft['role'] })}
             options={ROLES}
           />
@@ -241,7 +246,7 @@ export function StopsPanel({
         label: `Payout (${currency})`,
         numeric: true,
         sortValue: (s) => s.label?.payout_cents ?? null,
-        text: (s) => money(s.label?.payout_cents ?? 0),
+        text: (s) => money(s.label?.payout_cents ?? 0, currency),
         render: (s) => input(s, 'payout', 'Payout'),
       },
       {
@@ -249,7 +254,7 @@ export function StopsPanel({
         label: `Tip (${currency})`,
         numeric: true,
         sortValue: (s) => s.label?.tip_cents ?? null,
-        text: (s) => money(s.label?.tip_cents ?? 0),
+        text: (s) => money(s.label?.tip_cents ?? 0, currency),
         render: (s) => input(s, 'tip', 'Tip'),
       },
       {
