@@ -57,15 +57,42 @@ export function pick(target: string | HTMLElement, value: string) {
   fireEvent.click(option);
 }
 
-/** Open the calendar of the date field `label` (shadcn Date Picker) and click the day named `day`. */
+/** The date field `label` (shadcn Date Picker): a button named by its label and the day shown. */
+export const dateButton = (label: string) =>
+  screen.getByRole('button', {
+    name: (name) => name.startsWith(`${label} `) && !name.startsWith(`${label} calendar`),
+  });
+
+/** Open the calendar of the date field `label` and click the day named `day`, in the month shown. */
 export function pickDay(label: string, day: RegExp) {
-  fireEvent.click(screen.getByRole('button', { name: `Open calendar: ${label}` }));
+  fireEvent.click(dateButton(label));
+  clickDay(label, day);
+}
+
+function clickDay(label: string, day: RegExp) {
   const dialog = screen.getByRole('dialog', { name: label });
   const button = [...dialog.querySelectorAll<HTMLElement>('button')].find((b) =>
     day.test(b.getAttribute('aria-label') ?? ''),
   );
   if (!button) throw new Error(`No day ${String(day)} in the ${label} calendar`);
   fireEvent.click(button);
+}
+
+/** Pick `iso` (YYYY-MM-DD) in the date field `label`, using the month and year dropdowns. */
+export function pickDate(label: string, iso: string) {
+  const [y, m, d] = iso.split('-').map(Number) as [number, number, number];
+  fireEvent.click(dateButton(label));
+  const dialog = screen.getByRole('dialog', { name: label });
+  const [month, year] = [...dialog.querySelectorAll('select')];
+  if (!month || !year) throw new Error(`No month and year dropdowns in the ${label} calendar`);
+  fireEvent.change(year, { target: { value: String(y) } });
+  fireEvent.change(month, { target: { value: String(m - 1) } });
+  const name = new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' }).format(
+    Date.UTC(y, m - 1, 1),
+  );
+  const teen = d % 100 >= 11 && d % 100 <= 13;
+  const ord = `${d}${(!teen && ['th', 'st', 'nd', 'rd'][d % 10]) || 'th'}`;
+  clickDay(label, new RegExp(`${name} ${ord}, ${y}`));
 }
 
 const actionsFor = (name: string | RegExp) =>

@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { dateToIso, formatDay, isoToDate, parseDay } from '../src/dateText';
-import { renderApp, settingsFixture, signedIn } from './support/kit';
+import { dateButton, pickDate, renderApp, settingsFixture, signedIn } from './support/kit';
 
 describe('typed days (dateText)', () => {
   it('reads ISO, the locale order and month names, and refuses what is not a day', () => {
@@ -26,7 +26,7 @@ describe('typed days (dateText)', () => {
   });
 });
 
-describe('date field (shadcn Calendar in a Popover)', () => {
+describe('date field (shadcn Date Picker: a button and a Calendar in a Popover)', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-11-07T15:00:00Z'));
@@ -54,19 +54,19 @@ describe('date field (shadcn Calendar in a Popover)', () => {
     await screen.findByText('No service entries yet.');
     return s;
   }
-  const field = () => screen.getByLabelText<HTMLInputElement>('Service date');
-  const button = () => screen.getByRole('button', { name: 'Open calendar: Service date' });
+  const button = () => dateButton('Service date');
   async function add(s: Awaited<ReturnType<typeof open>>) {
     fireEvent.click(screen.getByRole('button', { name: 'Add service' }));
     await waitFor(() => expect(s.calls.some((c) => c.method === 'POST')).toBe(true));
     return (s.calls.find((c) => c.method === 'POST')?.body as { serviced_on: string }).serviced_on;
   }
 
-  it('is a text field showing today for the driver, with a calendar button instead of a native date input', async () => {
+  it('is a button named by its label and the day, today for the driver; no date input', async () => {
     await open();
-    expect(field().type).toBe('text');
-    expect(field().value).toBe('Nov 7, 2026');
+    expect(button().getAttribute('aria-label')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Service date Nov 7, 2026' })).toBe(button());
     expect(document.querySelector('input[type="date"]')).toBeNull();
+    expect(screen.queryByRole('textbox', { name: 'Service date' })).toBeNull();
   });
 
   it('opens on click, picks a day, closes and sends YYYY-MM-DD', async () => {
@@ -75,8 +75,24 @@ describe('date field (shadcn Calendar in a Popover)', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Service date' });
     fireEvent.click(within(dialog).getByRole('button', { name: /November 3rd, 2026/ }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(field().value).toBe('Nov 3, 2026');
+    expect(button().textContent).toBe('Nov 3, 2026');
     expect(await add(s)).toBe('2026-11-03');
+  });
+
+  it('has month and year dropdowns (shadcn captionLayout="dropdown") to reach a far day', async () => {
+    const s = await open();
+    fireEvent.click(button());
+    const dialog = await screen.findByRole('dialog');
+    const [month, year] = [...dialog.querySelectorAll('select')];
+    expect(month?.getAttribute('aria-label')).toMatch(/month/i);
+    expect(year?.getAttribute('aria-label')).toMatch(/year/i);
+    const years = [...year!.querySelectorAll('option')].map((o) => Number(o.value));
+    expect([years[0], years.at(-1)]).toEqual([2016, 2031]);
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    pickDate('Service date', '2024-02-29');
+    expect(button().textContent).toBe('Feb 29, 2024');
+    expect(await add(s)).toBe('2024-02-29');
   });
 
   it('starts the week on the driver’s week start', async () => {
@@ -98,23 +114,5 @@ describe('date field (shadcn Calendar in a Popover)', () => {
     fireEvent.keyDown(dialog, { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(button()));
-  });
-
-  it('takes a typed day, in ISO or the way it is shown', async () => {
-    const s = await open();
-    fireEvent.change(field(), { target: { value: 'Oct 15, 2026' } });
-    fireEvent.blur(field());
-    expect(field().value).toBe('Oct 15, 2026');
-    expect(await add(s)).toBe('2026-10-15');
-  });
-
-  it('says so when the typed text is not a day', async () => {
-    await open();
-    fireEvent.change(field(), { target: { value: '2026-02-30' } });
-    act(() => {
-      fireEvent.blur(field());
-    });
-    expect(field().getAttribute('aria-invalid')).toBe('true');
-    expect(screen.getByText('Not a date. Type it like Nov 7, 2026 or 2026-11-07.')).toBeTruthy();
   });
 });

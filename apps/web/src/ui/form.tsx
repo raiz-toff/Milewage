@@ -1,11 +1,11 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useState } from 'react';
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
-import { CalendarIcon } from 'lucide-react';
+import { ChevronDownIcon } from 'lucide-react';
 import { Button as UiButton } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card as UiCard, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { dateLocale, dateToIso, formatDay, isoToDate, parseDay, todayIn } from '../dateText';
+import { dateLocale, dateToIso, formatDay, isoToDate, todayIn } from '../dateText';
 import { useSession } from '../session';
 
 /** A labelled input. The label wraps the control, so it is the accessible name; the hint is its description. */
@@ -40,8 +40,9 @@ export function Field({
 }
 
 /**
- * A labelled day (shadcn Date Picker with input): type it, or pick it on the calendar button.
- * `value` is `YYYY-MM-DD` or '' (none, or what was typed is not a date).
+ * A labelled day: the shadcn Date Picker (a button showing the day, opening a Calendar with month
+ * and year dropdowns), as the owner chose on 2026-11-08. `value` is `YYYY-MM-DD` or '' (none).
+ * The button's name is the label and the day, so a screen reader hears both.
  */
 export function DateField({
   label,
@@ -64,103 +65,45 @@ export function DateField({
   const today = todayIn(s?.timezone ?? 'UTC');
   const id = useId();
   const [open, setOpen] = useState(false);
-  const [text, setText] = useState(() => formatDay(value, locale));
-  const [error, setError] = useState<string | null>(null);
-  const sent = useRef(value);
-  useEffect(() => {
-    // A new value from the form (a reset, a default) replaces the text; our own does not.
-    if (value !== sent.current) {
-      sent.current = value;
-      setText(formatDay(value, locale));
-      setError(null);
-    }
-  }, [value, locale]);
-
-  const send = (v: string) => {
-    sent.current = v;
-    onChange(v);
-  };
-  const outside = (iso: string) => (min && iso < min) || (max && iso > max);
-  const pick = (iso: string) => {
-    send(iso);
-    setText(formatDay(iso, locale));
-    setError(null);
-  };
-  /** When the driver leaves the field: tidy a valid day, explain anything else. */
-  const commit = (): boolean => {
-    const iso = parseDay(text, locale);
-    if (text.trim() === '') send('');
-    else if (iso === null || outside(iso)) {
-      setError(
-        iso === null
-          ? `Not a date. Type it like ${formatDay(today, locale)} or ${today}.`
-          : `Choose a day ${[min && `from ${formatDay(min, locale)}`, max && `to ${formatDay(max, locale)}`].filter(Boolean).join(' ')}.`,
-      );
-      send('');
-      return false;
-    } else pick(iso);
-    return true;
-  };
-
   const selected = isoToDate(value);
+  // The year dropdown runs from ten years back to five ahead, widened to the bounds and the day.
+  const year = Number(today.slice(0, 4));
+  const first = [min ?? `${year - 10}-01-01`, value].filter(Boolean).sort()[0]!;
+  const last = [max ?? `${year + 5}-12-31`, value].filter(Boolean).sort().at(-1)!;
+  const labelId = `${id}-label`;
+  const textId = `${id}-text`;
   const hintId = `${id}-hint`;
-  const errorId = `${id}-error`;
   return (
-    <div className="grid content-start gap-2">
-      <label htmlFor={id} className="text-sm font-medium">
+    <div className="grid min-w-0 content-start gap-2">
+      <label id={labelId} htmlFor={id} className="text-sm font-medium">
         {label}
       </label>
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverAnchor asChild>
-          <div className="relative">
-            <Input
-              id={id}
-              value={text}
-              autoComplete="off"
-              aria-invalid={error ? true : undefined}
-              aria-describedby={
-                [hint && hintId, error && errorId].filter(Boolean).join(' ') || undefined
-              }
-              className="pr-8"
-              onChange={(e) => {
-                setText(e.target.value);
-                setError(null);
-                const iso = parseDay(e.target.value, locale);
-                if (iso !== null && !outside(iso)) send(iso);
-              }}
-              onBlur={commit}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !commit()) e.preventDefault();
-                if (e.key === 'ArrowDown' && e.altKey) {
-                  e.preventDefault();
-                  setOpen(true);
-                }
-              }}
-            />
-            <PopoverTrigger asChild>
-              <UiButton
-                type="button"
-                variant="ghost"
-                size="icon-xs"
-                aria-label={`Open calendar: ${label}`}
-                className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground"
-              >
-                <CalendarIcon />
-              </UiButton>
-            </PopoverTrigger>
-          </div>
-        </PopoverAnchor>
-        <PopoverContent
-          aria-label={label}
-          align="start"
-          className="w-auto overflow-hidden p-0"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
+        <PopoverTrigger asChild>
+          <UiButton
+            id={id}
+            type="button"
+            variant="outline"
+            data-empty={!selected}
+            aria-labelledby={`${labelId} ${textId}`}
+            aria-describedby={hint ? hintId : undefined}
+            className="w-full min-w-0 justify-between font-normal data-[empty=true]:text-muted-foreground"
+          >
+            <span id={textId} className="truncate">
+              {selected ? formatDay(value, locale) : 'Pick a date'}
+            </span>
+            <ChevronDownIcon data-icon="inline-end" className="text-muted-foreground" />
+          </UiButton>
+        </PopoverTrigger>
+        <PopoverContent aria-label={label} align="start" className="w-auto overflow-hidden p-0">
           <Calendar
             mode="single"
+            captionLayout="dropdown"
             autoFocus
             selected={selected}
             defaultMonth={selected ?? isoToDate(today)}
+            startMonth={isoToDate(first)}
+            endMonth={isoToDate(last)}
             today={isoToDate(today)}
             weekStartsOn={s?.week_start ?? 1}
             disabled={[
@@ -168,7 +111,7 @@ export function DateField({
               ...(max ? [{ after: isoToDate(max)! }] : []),
             ]}
             onSelect={(d) => {
-              if (d) pick(dateToIso(d));
+              if (d) onChange(dateToIso(d));
               setOpen(false);
             }}
           />
@@ -177,11 +120,6 @@ export function DateField({
       {hint ? (
         <p id={hintId} className="text-xs text-muted-foreground">
           {hint}
-        </p>
-      ) : null}
-      {error ? (
-        <p id={errorId} className="text-xs text-destructive">
-          {error}
         </p>
       ) : null}
     </div>

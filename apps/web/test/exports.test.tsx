@@ -4,7 +4,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fileNameOf, spanDays } from '../src/pages/Exports';
 import type { Modules } from '../src/api/client';
 import { shift } from './support/fixtures';
-import { renderApp, settingsFixture, signedIn, pick, pickDay, DASHBOARD } from './support/kit';
+import {
+  renderApp,
+  settingsFixture,
+  signedIn,
+  pick,
+  pickDay,
+  dateButton,
+  pickDate,
+  DASHBOARD,
+} from './support/kit';
 import type { Handler } from './support/kit';
 
 const saved: { name: string; blob: Blob }[] = [];
@@ -115,7 +124,7 @@ describe('exports screen', () => {
     expect(document.querySelector('input[type="date"]')).toBeNull();
     pickDay('From', /February 20th, 2026/);
     pickDay('To', /March 9th, 2026/);
-    expect(screen.getByLabelText<HTMLInputElement>('From').value).toBe('Feb 20, 2026');
+    expect(dateButton('From').textContent).toBe('Feb 20, 2026');
     fireEvent.click(screen.getByRole('button', { name: 'Download CSV' }));
     await waitFor(() => expect(seen.length).toBe(1));
     const q = new URLSearchParams(seen[0]);
@@ -141,10 +150,10 @@ describe('exports screen', () => {
   it('refuses a period over 366 days or reversed, without a call', async () => {
     const { calls } = open();
     await screen.findByRole('button', { name: 'Download CSV' });
-    fireEvent.change(screen.getByLabelText('From'), { target: { value: '2025-01-01' } });
+    pickDate('From', '2025-01-01');
     expect(screen.getByRole('alert').textContent).toContain('at most 366 days');
     expect(screen.queryByRole('button', { name: 'Download CSV' })).toBeNull();
-    fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-03-16' } });
+    pickDate('From', '2026-03-16');
     expect(screen.getByRole('alert').textContent).toContain('must not be after');
     expect(calls.some((c) => c.path.startsWith('/exports'))).toBe(false);
   });

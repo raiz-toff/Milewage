@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startOfLocalDay, toMetres } from '../src/pages/Odometer';
-import { renderApp, settingsFixture, signedIn, pick, pickDay } from './support/kit';
+import { renderApp, settingsFixture, signedIn, pick, pickDay, pickDate } from './support/kit';
 import type { Handler } from './support/kit';
 
 beforeEach(() => {
@@ -85,7 +85,7 @@ describe('odometer logbook', () => {
       'POST /odometer': () => ({ status: 201, body: reading(9, 'year_start', 1, 1) }),
     });
     await screen.findByLabelText('Odometer (km)');
-    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-01-01' } });
+    pickDate('Date', '2026-01-01');
     fireEvent.change(screen.getByLabelText('Odometer (km)'), { target: { value: '12,480.5' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add reading' }));
     await waitFor(() => expect(calls.some((c) => c.method === 'POST')).toBe(true));
@@ -137,7 +137,7 @@ describe('odometer logbook', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add reading' }));
     expect(await screen.findByText('Enter the odometer as a number of km.')).toBeTruthy();
     fireEvent.change(screen.getByLabelText('Odometer (km)'), { target: { value: '5' } });
-    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-03-16' } });
+    pickDate('Date', '2026-03-16');
     fireEvent.click(screen.getByRole('button', { name: 'Add reading' }));
     expect(await screen.findByText('The date cannot be in the future.')).toBeTruthy();
     expect(calls.some((c) => c.method === 'POST')).toBe(false);
