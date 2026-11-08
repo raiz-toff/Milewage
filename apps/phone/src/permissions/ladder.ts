@@ -46,6 +46,8 @@ export interface LadderState {
 
 /** Plain-store key: the battery page was opened once (the OS cannot tell). */
 export const BATTERY_VISITED = 'perm.batteryVisited';
+/** Plain-store key: the location disclosure was accepted (the OS cannot tell). */
+export const DISCLOSURE_ACCEPTED = 'perm.disclosureAccepted';
 
 export const initialLadder = (
   snapshot: PermSnapshot = UNKNOWN_SNAPSHOT,
@@ -199,6 +201,28 @@ export async function advance(port: PermissionsPort, state: LadderState): Promis
 export function skip(state: LadderState): LadderState {
   const { next } = describeLadder(state);
   return next ? { ...state, skipped: [...(state.skipped ?? []), next] } : state;
+}
+
+/**
+ * The whole ladder as it stands now: the OS snapshot plus the facts only this app knows, read
+ * from the plain store so a screen that mounts again starts from the truth, not from "missing".
+ * The location prompt is only shown after the disclosure, so a location answer already on record
+ * (granted, denied or blocked) means the disclosure was read, also on installs that never saved it.
+ */
+export async function loadLadder(
+  port: PermissionsPort,
+  plain: { get(key: string): Promise<string | null> },
+): Promise<LadderState> {
+  const [snapshot, battery, disclosure] = await Promise.all([
+    port.snapshot(),
+    plain.get(BATTERY_VISITED),
+    plain.get(DISCLOSURE_ACCEPTED),
+  ]);
+  return {
+    snapshot,
+    disclosureAccepted: disclosure === '1' || snapshot.foregroundLocation !== 'undetermined',
+    batteryVisited: battery === '1',
+  };
 }
 
 /** Re-reads the OS after the driver comes back from system settings. */

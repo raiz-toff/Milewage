@@ -102,5 +102,7 @@ describe('permission steps (plan 24 screens 6 to 9)', () => {
     fireEvent.press(await screen.findByRole('button', { name: 'I understand' }));
     expect(await screen.findByText("You're ready")).toBeTruthy();
     expect(permissions.requests).toEqual([]);
+    // The Permissions screen reads it back, so the disclosure is not asked again there.
+    expect(plain.data.get('perm.disclosureAccepted')).toBe('1');
   });
 });

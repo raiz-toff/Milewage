@@ -8,6 +8,7 @@ import {
   advance,
   BATTERY_VISITED,
   describeLadder,
+  DISCLOSURE_ACCEPTED,
   initialLadder,
   refresh,
   skip,
@@ -93,6 +94,7 @@ export function SetupStepScreen({ navigation }: ScreenProps<'SetupStep'>) {
   const lines = next === 'battery' ? (samsung ? SAMSUNG : OTHER) : (step.lines ?? []);
   const act = async () => {
     try {
+      if (next === 'disclosure') await plain.set(DISCLOSURE_ACCEPTED, '1'); // for Permissions
       if (next === 'battery') {
         tracker.requestBatteryOptimizationSettings();
         await plain.set(BATTERY_VISITED, '1');

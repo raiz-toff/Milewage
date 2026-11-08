@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { AppState, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   Activity,
   AlertTriangle,
@@ -15,8 +16,9 @@ import {
   BATTERY_VISITED,
   canStartShift,
   describeLadder,
+  DISCLOSURE_ACCEPTED,
   initialLadder,
-  refresh,
+  loadLadder,
   type LadderState,
   type StepId,
 } from '../permissions/ladder';
@@ -67,27 +69,49 @@ const ACTIONS: Record<StepId, string> = {
 export function PermissionsScreen({ navigation }: ScreenProps<'Permissions'>) {
   const toast = useToast();
   const { permissions, tracker, plain } = useServices();
-  const [state, setState] = useState<LadderState>(initialLadder());
+  // null until the first read lands: nothing is shown as missing before Android has answered.
+  const [state, setState] = useState<LadderState | null>(null);
+  // Each read or action takes a ticket; a read that resolves after a newer one started is stale.
+  const ticket = useRef(0);
 
   const reread = useCallback(async () => {
-    setState((s) => ({ ...s }));
-    const snap = await permissions.snapshot();
-    setState((s) => ({ ...s, snapshot: snap }));
-  }, [permissions]);
+    const mine = ++ticket.current;
+    const fresh = await loadLadder(permissions, plain);
+    if (mine !== ticket.current) return;
+    setState((s) =>
+      s
+        ? {
+            ...fresh,
+            skipped: s.skipped,
+            disclosureAccepted: s.disclosureAccepted || fresh.disclosureAccepted,
+            batteryVisited: s.batteryVisited || fresh.batteryVisited,
+          }
+        : fresh,
+    );
+  }, [permissions, plain]);
 
-  useEffect(() => {
-    void reread();
-    // Coming back from system settings changes permissions without a prompt.
-    const sub = AppState.addEventListener('change', (next) => {
-      if (next === 'active') void reread();
-    });
-    return () => sub.remove();
-  }, [reread]);
+  // Re-read on every visit, and when the app comes back from system settings, where permissions
+  // change without a prompt. Leaving the screen invalidates any read still in flight.
+  useFocusEffect(
+    useCallback(() => {
+      void reread();
+      const sub = AppState.addEventListener('change', (next) => {
+        if (next === 'active') void reread();
+      });
+      return () => {
+        sub.remove();
+        ticket.current++;
+      };
+    }, [reread]),
+  );
 
-  const view = describeLadder(state);
+  const view = describeLadder(state ?? initialLadder());
 
   const onAction = async () => {
+    if (!state) return;
+    ticket.current++; // a read started before the prompt must not overwrite its answer
     try {
+      if (view.next === 'disclosure') await plain.set(DISCLOSURE_ACCEPTED, '1');
       if (view.next === 'battery') {
         tracker.requestBatteryOptimizationSettings();
         await plain.set(BATTERY_VISITED, '1'); // for the Home checklist
@@ -101,17 +125,19 @@ export function PermissionsScreen({ navigation }: ScreenProps<'Permissions'>) {
       });
     }
   };
-  const ready = canStartShift(state);
+  const ready = state !== null && canStartShift(state);
 
   const C = useColors();
   const status = (step: (typeof view.steps)[number]) =>
-    step.state === 'done'
-      ? ({ label: 'Done', variant: 'secondary' } as const)
-      : step.state === 'blocked'
-        ? ({ label: 'Blocked', variant: 'destructive' } as const)
-        : step.required
-          ? ({ label: 'Required', variant: 'default' } as const)
-          : ({ label: 'Recommended', variant: 'outline' } as const);
+    !state
+      ? ({ label: 'Checking', variant: 'outline' } as const)
+      : step.state === 'done'
+        ? ({ label: 'Done', variant: 'secondary' } as const)
+        : step.state === 'blocked'
+          ? ({ label: 'Blocked', variant: 'destructive' } as const)
+          : step.required
+            ? ({ label: 'Required', variant: 'default' } as const)
+            : ({ label: 'Recommended', variant: 'outline' } as const);
   const done = view.steps.filter((x) => x.state === 'done').length;
 
   return (
@@ -119,7 +145,7 @@ export function PermissionsScreen({ navigation }: ScreenProps<'Permissions'>) {
       title="Permissions"
       description="What MileWage needs to record a shift with the screen off."
     >
-      {!state.disclosureAccepted && (
+      {state && !state.disclosureAccepted && (
         <Card>
           <CardHeader>
             <CardTitle>Location use</CardTitle>
@@ -130,13 +156,16 @@ export function PermissionsScreen({ navigation }: ScreenProps<'Permissions'>) {
       <Card className="pb-0">
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle>Steps</CardTitle>
-          <Text variant="muted" tabular>{`${done} of ${view.steps.length} done`}</Text>
+          <Text variant="muted" tabular>
+            {state ? `${done} of ${view.steps.length} done` : 'Checking…'}
+          </Text>
         </CardHeader>
         <View className="border-t border-border">
           <Rows>
             {view.steps.map((step) => {
               const st = status(step);
-              const Icon = step.state === 'done' ? Check : ICONS[step.id];
+              const ok = !!state && step.state === 'done';
+              const Icon = ok ? Check : ICONS[step.id];
               return (
                 <View
                   key={step.id}
@@ -146,13 +175,10 @@ export function PermissionsScreen({ navigation }: ScreenProps<'Permissions'>) {
                   <View
                     className={cn(
                       'h-9 w-9 items-center justify-center rounded-lg',
-                      step.state === 'done' ? 'bg-primary' : 'bg-muted',
+                      ok ? 'bg-primary' : 'bg-muted',
                     )}
                   >
-                    <Icon
-                      size={18}
-                      color={step.state === 'done' ? C.primaryForeground : C.foreground}
-                    />
+                    <Icon size={18} color={ok ? C.primaryForeground : C.foreground} />
                   </View>
                   <Text variant="label" className="flex-1">
                     {TITLES[step.id]}
@@ -166,7 +192,7 @@ export function PermissionsScreen({ navigation }: ScreenProps<'Permissions'>) {
           </Rows>
         </View>
       </Card>
-      {view.warnings.map((w) => (
+      {(state ? view.warnings : []).map((w) => (
         <Alert key={w} icon={AlertTriangle}>
           <AlertTitle accessibilityRole="alert">{w}</AlertTitle>
         </Alert>
@@ -197,17 +223,17 @@ export function PermissionsScreen({ navigation }: ScreenProps<'Permissions'>) {
         </Card>
       )}
       <CardContent className="px-0">
-        {view.next && (
+        {state && view.next && (
           <Button size="lg" onPress={onAction}>
             <Text>{ACTIONS[view.next]}</Text>
           </Button>
         )}
-        {view.steps.some((x) => x.state === 'blocked') && (
+        {state && view.steps.some((x) => x.state === 'blocked') && (
           <Button variant="outline" onPress={() => void permissions.openAppSettings()}>
             <Text>Open app settings</Text>
           </Button>
         )}
-        <Button variant="ghost" onPress={() => void refresh(permissions, state).then(setState)}>
+        <Button variant="ghost" onPress={() => void reread()}>
           <Text className="text-muted-foreground">Check again</Text>
         </Button>
       </CardContent>
