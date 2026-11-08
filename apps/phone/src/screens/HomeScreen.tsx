@@ -13,7 +13,6 @@ import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Separator } from '../components/ui/separator';
 import { Skeleton } from '../components/ui/skeleton';
 import { Text } from '../components/ui/text';
 import type { ScreenProps } from '../navigation';
@@ -24,12 +23,13 @@ import { BATTERY_VISITED, canStartShift, initialLadder } from '../permissions/la
 import { useServices } from '../services';
 import type { ActiveShift, ServerShift, Vehicle } from '../shift/controller';
 import { useColors } from '../theme/theme';
-import { Field } from '../ui/Field';
 import { useToast } from '../ui/Toast';
 import { Dot } from '../ui/Parts';
 import { Screen } from '../ui/Screen';
 import { SwipeButton } from '../components/ui/swipe-button';
+import { lastOdometerCheck, markOdometerChecked, odometerDue } from '../shift/odometerDue';
 import { HomeSummary } from './HomeSummary';
+import { OdometerPrompt } from './OdometerPrompt';
 import { SetupChecklist } from './SetupChecklist';
 import { SyncBanner } from './SyncBanner';
 
@@ -54,6 +54,8 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
     pairing,
     permissions,
     plain,
+    shifts,
+    edits,
     refreshMs = 5000,
   } = useServices();
   const toast = useToast();
@@ -67,7 +69,8 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   const [zone, setZone] = useState('UTC');
   const [meters, setMeters] = useState(0);
   const [now, setNow] = useState(Date.now());
-  const [odometer, setOdometer] = useState('');
+  /** The shift just ended, while the odometer check after it is open. */
+  const [odoAsk, setOdoAsk] = useState<{ clientId: string; vehicleId: number } | null>(null);
   const [busy, setBusy] = useState<'start' | 'end' | null>(null);
   const [conflict, setConflict] = useState<ServerShift | null>(null);
   const [ready, setReady] = useState(false);
@@ -228,14 +231,11 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
             },
       );
     }
-    const startM = toMeters(odometer);
-    if (Number.isNaN(startM)) return badReading();
     setBusy('start');
     try {
-      const result = await controller.start({ vehicleId: vehicle.id, odometerStartM: startM });
+      const result = await controller.start({ vehicleId: vehicle.id });
       if (result.ok) {
         setShift(result.shift);
-        setOdometer('');
         setNow(Date.now());
       } else if (result.reason === 'server_has_active') {
         setConflict(result.active);
@@ -251,7 +251,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
     } finally {
       setBusy(null);
     }
-  }, [busy, controller, permissions, paired, vehicles, vehicleId, vehicleSource, odometer, unit]);
+  }, [busy, controller, permissions, paired, vehicles, vehicleId, vehicleSource]);
 
   const adopt = async () => {
     if (!conflict) return;
@@ -286,14 +286,19 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
 
   const end = async () => {
     if (busy) return;
-    const endM = toMeters(odometer);
-    if (Number.isNaN(endM)) return badReading();
     const id = shift?.clientId ?? null;
+    const vehicle = shift?.vehicleId ?? null;
     setBusy('end');
     try {
-      const result = await controller.end({ odometerEndM: endM });
-      setOdometer('');
+      const result = await controller.end();
       if (result.ok) {
+        // Comma's cadence: only once in a while, never during the shift (odometerDue.ts).
+        if (id && vehicle !== null) {
+          const last = await lastOdometerCheck(shifts, plain, vehicle);
+          if (odometerDue({ now: Date.now(), zone, lastCheck: last })) {
+            setOdoAsk({ clientId: id, vehicleId: vehicle });
+          }
+        }
         setShift(controller.current);
         setMeters(0);
         toast.show({
@@ -319,22 +324,30 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
     }
   };
 
-  const saveStartOdometer = async () => {
-    const m = toMeters(odometer);
-    if (m === null) return;
-    if (Number.isNaN(m)) return badReading();
-    try {
-      await controller.setOdometerStart(m);
-      setShift(controller.current);
-      setOdometer('');
-      toast.show({ tone: 'success', title: 'Start odometer saved.' });
-    } catch {
+  const closeOdometer = () => {
+    if (odoAsk) void markOdometerChecked(plain, odoAsk.vehicleId, Date.now());
+    setOdoAsk(null);
+  };
+
+  const saveOdometer = async (text: string) => {
+    const m = toMeters(text);
+    if (!odoAsk || m === null) return false;
+    if (Number.isNaN(m)) {
+      badReading();
+      return false;
+    }
+    const saved = await edits.setOdometer(odoAsk.clientId, 'shift_end', m);
+    if (!saved.ok) {
       toast.show({
         tone: 'error',
         title: 'Could not save the reading.',
         description: 'Try again.',
       });
+      return false;
     }
+    closeOdometer();
+    toast.show({ tone: 'success', title: 'Odometer saved.' });
+    return true;
   };
 
   const running = !!shift && shift.endedAt === null;
@@ -484,33 +497,6 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
           </CardHeader>
           <CardContent>
             <Text variant="muted">Approximate; the server calculates the total.</Text>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Odometer</CardTitle>
-            <CardDescription>
-              {shift.odometerStartM === null
-                ? 'No start reading yet.'
-                : `Start: ${(shift.odometerStartM / M_PER_UNIT[unit]).toFixed(1)} ${unit}`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Field
-              accessibilityLabel="Odometer"
-              placeholder={`Reading (${unit})`}
-              keyboardType="decimal-pad"
-              value={odometer}
-              onChangeText={setOdometer}
-              hint="A reading typed here when you end the shift is saved as the end odometer."
-            />
-            <Button
-              variant="outline"
-              disabled={odometer.trim() === ''}
-              onPress={() => void saveStartOdometer()}
-            >
-              <Text>Save start odometer</Text>
-            </Button>
           </CardContent>
         </Card>
         {notices}
@@ -672,19 +658,11 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
                   </Button>
                 </View>
               )}
-              <Separator />
-              <Field
-                label="Odometer at start"
-                accessibilityLabel="Odometer at start"
-                placeholder={`Optional, in ${unit}`}
-                keyboardType="decimal-pad"
-                value={odometer}
-                onChangeText={setOdometer}
-              />
             </CardContent>
           </Card>
         </>
       )}
+      <OdometerPrompt open={!!odoAsk} unit={unit} onSave={saveOdometer} onDismiss={closeOdometer} />
     </Screen>
   );
 }

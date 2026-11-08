@@ -261,6 +261,16 @@ export class ShiftStore {
     );
   }
 
+  /** When this vehicle's odometer was last read, on any shift (the phone's or the server's); or null. */
+  async lastOdometerAt(vehicleId: number): Promise<number | null> {
+    const row = await this.db.getFirstAsync<{ at: number | null }>(
+      `SELECT MAX(o.recorded_at) AS at FROM odometer_readings o
+       JOIN shifts s ON s.client_id = o.shift_client_id WHERE s.vehicle_id = ?`,
+      vehicleId,
+    );
+    return row?.at ?? null;
+  }
+
   async setOdometer(
     clientId: string,
     kind: 'shift_start' | 'shift_end',

@@ -58,16 +58,6 @@ describe('no dead ends', () => {
     expect(await screen.findByText(/What MileWage needs/)).toBeTruthy();
   });
 
-  it('a mistyped odometer is caught before the shift starts', async () => {
-    const { services } = setup(server(), { paired: true, permissions: allowed() });
-    render(<App services={services} />);
-    fireEvent.changeText(await screen.findByLabelText('Odometer at start'), '12a80');
-    fireEvent.press(screen.getByRole('button', { name: 'Start shift' }));
-    expect(await screen.findByText('That odometer reading is not a number.')).toBeTruthy();
-    expect(services.shift.current).toBeNull();
-    expect(screen.queryByText('Shift running')).toBeNull();
-  });
-
   it('a shift that is gone shows why and a way back', async () => {
     const { services } = setup(server({ 'POST /shifts': () => down() }), {
       paired: true,
