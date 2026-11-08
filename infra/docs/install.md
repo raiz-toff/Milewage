@@ -4,6 +4,8 @@ For a home server or Raspberry Pi that runs MileWage in Docker and is reached fr
 
 **Status of this guide.** The script and the commands below were run on a development machine with Docker 29 (see `plans/milewage/progress.md`). They have **not** been followed on a fresh VM or a Pi, on ARM, or with a real tailnet: the roadmap's M10.1 exit ("guide followed on a fresh VM") is still open and belongs to the Human.
 
+Setting it up with an AI coding agent? Give it [`agent-setup.md`](./agent-setup.md): the same steps with checks to run, and the points where it must stop and ask you.
+
 ## 1. What you need
 
 - A host with Docker and the Docker Compose plugin (`docker compose version` works), 1 GB RAM, and a few GB of disk. The stack is capped at 192 MB for the API and 64 MB for Caddy.
