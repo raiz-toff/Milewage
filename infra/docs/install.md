@@ -1,8 +1,8 @@
 # Install guide: home lab with Tailscale
 
-For a home server or Raspberry Pi that runs MileWage in Docker and is reached from the phone through Tailscale. Nothing is opened on your router. Specs behind this guide: `plans/milewage/10-backup-restore-and-ops-spec.md` sections 2, 3, 8, 9.
+For a home server or Raspberry Pi that runs MileWage in Docker and is reached from the phone through Tailscale. Nothing is opened on your router. Specs behind this guide: plan 10 (in the git history) sections 2, 3, 8, 9.
 
-**Status of this guide.** The script and the commands below were run on a development machine with Docker 29 (see `plans/milewage/progress.md`). They have **not** been followed on a fresh VM or a Pi, on ARM, or with a real tailnet: the roadmap's M10.1 exit ("guide followed on a fresh VM") is still open and belongs to the Human.
+**Status of this guide.** The script and the commands below were run on a development machine with Docker 29 (see `PROGRESS.md`). They have **not** been followed on a fresh VM or a Pi, on ARM, or with a real tailnet: the roadmap's M10.1 exit ("guide followed on a fresh VM") is still open and belongs to the Human.
 
 Setting it up with an AI coding agent? Give it [`agent-setup.md`](./agent-setup.md): the same steps with checks to run, and the points where it must stop and ask you.
 

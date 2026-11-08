@@ -50,7 +50,6 @@ export default tseslint.config(
       '**/dist/**',
       'coverage/**', // npm run test:coverage output
       '**/generated/**',
-      'plans/**',
       '.claude/**',
       'apps/phone/*.config.js', // CommonJS configs read by Expo/Metro/Babel
       'apps/phone/android/**',

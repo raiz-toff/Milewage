@@ -1,5 +1,7 @@
 package-lock.json
-plans/
+# The build log and the to-do list are hand-formatted.
+PROGRESS.md
+TODO.md
 packages/shared/generated/
 packages/shared/openapi/
 .claude/

@@ -7,7 +7,7 @@
 
 # MileWage
 
-Self-hosted mileage tracking for gig riders and drivers. All planning documents are in [`plans/milewage/`](plans/milewage/README.md); the build order is [`17-gate4-execution-roadmap.md`](plans/milewage/17-gate4-execution-roadmap.md).
+Self-hosted mileage tracking for gig riders and drivers. The build log is [`PROGRESS.md`](PROGRESS.md) and the owner's open items are [`TODO.md`](TODO.md). The planning documents left the repository on 2026-11-08 and stay in the git history (`git show 25e3d6d:plans/milewage/README.md`).
 
 Requires Node 22.22.x (see `.nvmrc`). Run `npm install`, then `npm run verify` (typecheck + lint + tests).
 

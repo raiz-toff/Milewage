@@ -2,7 +2,7 @@
 
 Ported from the throwaway rig in `milewage-spikes/B` (roadmap `17` M3.6). They drive the **shipped compose stack** (`infra/docker/docker-compose.yml`, plus the small override `docker-compose.vm.yml`) through the **real API**: first-run setup, sign-in, pairing, `POST /telemetry/batch`, `POST /backups`, `POST /setup/restore`, `GET /system/status`. There are no test hooks in the product. Anything the API cannot show is read with a read-only SQLite connection inside the `api` container (allowed next to the single write connection).
 
-**Nothing here is a result.** The numbers that count come from the 1 vCPU / 1 GB Proxmox VM. Run them by hand and write `plans/milewage/spikes/B-results.md` from `artifacts/`.
+**Nothing here is a result.** The numbers that count come from the 1 vCPU / 1 GB Proxmox VM. Run them by hand and write `B-results.md` next to this README from `artifacts/` (the plans folder, where spike results used to live, left the repository on 2026-11-08).
 
 ## What differs from the spike rig (and why)
 

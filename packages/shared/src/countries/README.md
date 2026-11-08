@@ -2,7 +2,7 @@
 
 This folder holds every rule that differs by place: mileage rates, tax estimates, sales tax,
 pension, platforms and the odometer note. The server, the web (through `GET /countries`) and the
-phone all read it. The design is in `plans/milewage/21-jurisdictions-plan.md`.
+phone all read it. The design is in plan 21 (in the git history; `git show 25e3d6d:plans/milewage/21-jurisdictions-plan.md`).
 
 In short: **data flows down the tree (country → region → city), each country owns its own
 calculation, and screens only show generic output.** No code outside this folder may check a

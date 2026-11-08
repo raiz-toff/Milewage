@@ -3,7 +3,7 @@ import { defineConfig } from 'vitest/config';
 
 // Two projects so the web pages get longer timeouts than the server, engine and scripts.
 // Kept at vitest's defaults, on purpose, after measuring full runs on 8 cores at load 17 to 25
-// (plans/milewage/progress.md, PR T1): the `forks` pool (threads: 101 s against 75 to 94 s),
+// (PROGRESS.md, PR T1): the `forks` pool (threads: 101 s against 75 to 94 s),
 // all cores but one as workers (half the cores: 100 to 110 s, and no fewer failures once the waits
 // below were right), `isolate: true` (without it vi.mock('maplibre-gl') and module state would
 // leak from one file into the next) and CSS, which vitest already replaces with empty modules.

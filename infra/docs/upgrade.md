@@ -1,6 +1,6 @@
 # Upgrade and rollback
 
-Specs: `plans/milewage/10-backup-restore-and-ops-spec.md` sections 10 and 3.1. The drill that proves the failure path is test **b09** of `infra/vm-tests` (see its README); it has been run on a development machine with a forced failure and a 300,000-row database, not yet on the target VM.
+Specs: plan 10 (in the git history) sections 10 and 3.1. The drill that proves the failure path is test **b09** of `infra/vm-tests` (see its README); it has been run on a development machine with a forced failure and a 300,000-row database, not yet on the target VM.
 
 ## Upgrade
 

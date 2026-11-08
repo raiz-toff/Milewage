@@ -21,6 +21,11 @@ All notable changes to MileWage are listed here. The format follows
 - The phone records a battery and timing summary of each shift in its diagnostics (no coordinates).
 - Every server setting is described in `infra/docs/configuration.md`.
 
+### Removed
+
+- The planning documents (`plans/`). They stay in the git history. The build log and the owner's
+  to-do list moved to `PROGRESS.md` and `TODO.md` at the root.
+
 ### Fixed
 
 - The dev data folder committed by mistake is removed from git. It stays in the history.

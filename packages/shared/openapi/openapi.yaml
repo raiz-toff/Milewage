@@ -7,7 +7,7 @@ info:
     Contract between the MileWage server, the Android app and the web client.
     Units: timestamps are UTC epoch milliseconds, distances are integer metres,
     money is integer cents, coordinates are integer degrees x 10^7.
-    Errors are RFC 9457 problem+json. See plans/milewage/08-api-spec.md for the rules
+    Errors are RFC 9457 problem+json. See plan 08, the API spec kept in the git history, for the rules
     that OpenAPI cannot express (offline upload contract, WebSocket protocol, scopes).
 servers:
   - url: /api/v1

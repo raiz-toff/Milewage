@@ -20,7 +20,7 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
       installed), or put `~/.local/node22/bin` first on `PATH` in the shell profile.
 - [ ] **Run spikes A, B and D, or record that the field test replaces them** (owner, 2026-11-08).
       Only S0 has run; E is optional. Status table in
-      [`12`](./12-gate3-spike-plan.md) section 2, "Spike status (2026-11-08)".
+      plan 12 section 2, "Spike status (2026-11-08)".
 - [ ] **Time zone picker with every time zone** (owner, 2026-11-07). Setup and Settings show a
       plain text field ("America/Toronto"). Make it a searchable list of all IANA time zones
       (`Intl.supportedValuesOf('timeZone')`, the standard list browsers and Node ship), shadcn
