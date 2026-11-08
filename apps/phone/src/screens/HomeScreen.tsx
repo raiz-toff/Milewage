@@ -23,7 +23,6 @@ import { useServices } from '../services';
 import type { ActiveShift, ServerShift, Vehicle } from '../shift/controller';
 import { useColors } from '../theme/theme';
 import { useToast } from '../ui/Toast';
-import { Dot } from '../ui/Parts';
 import { Logo } from '../ui/Logo';
 import { Screen } from '../ui/Screen';
 import { lastOdometerCheck, markOdometerChecked, odometerDue } from '../shift/odometerDue';
