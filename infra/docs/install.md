@@ -114,6 +114,8 @@ Backups run nightly and after a shift ends; the Backups page lists them and show
 | `config`                     | `secrets.json` (the public key only), optional `settings.json`, optional `milewage.apk` |
 | `caddy_data`, `caddy_config` | Caddy state                                                                             |
 
+Every setting you can put in `.env` or `settings.json`, with its default: [`configuration.md`](./configuration.md).
+
 Never copy `milewage.db` by hand while the API runs. Logs rotate (3 files of 10 MB per container): `docker compose -f infra/docker/docker-compose.yml logs api`.
 
 ## 6. Check that it works

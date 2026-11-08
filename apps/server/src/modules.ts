@@ -61,6 +61,7 @@ import { stopsRoutes } from './routes/stops';
 import { trackingRoutes } from './routes/tracking';
 import { mcpTokenRoutes } from './mcp/tokens';
 import { mcpEndpoint } from './mcp/endpoint';
+import { createAuditPrune } from './mcp/audit';
 
 export const coreModule = defineModule({ name: 'core', dependsOn: [], toggleable: false });
 export const devicesModule = defineModule({ name: 'devices', dependsOn: ['core'] });
@@ -165,6 +166,8 @@ export interface ServerContext extends CoreContext {
   diagnosticsSampleMs?: number;
   /** Interval of the retention job (a day unless a test shortens it). */
   diagnosticsHousekeepingMs?: number;
+  /** Interval of the one-year `mcp_audit` retention job (a day unless a test shortens it). */
+  mcpHousekeepingMs?: number;
   /** The `backups` volume (`MILEWAGE_BACKUP_DIR`). Nothing is written there until a backup runs. */
   backupDir?: string;
   /** The `config` volume (`MILEWAGE_CONFIG_DIR`), where `secrets.json` lives. */
@@ -548,6 +551,7 @@ export function createServerModules(ctx: ServerContext) {
         mcpTokenRoutes({ ...ctx, authn })(host);
         mcpEndpoint({ ...ctx, authn })(host);
       },
+      jobs: [createAuditPrune(ctx.db, ctx.now, ctx.mcpHousekeepingMs, ctx.log).job],
     }),
     defineModule({
       ...backupModule,

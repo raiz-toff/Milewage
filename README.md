@@ -11,7 +11,7 @@ Self-hosted mileage tracking for gig riders and drivers. All planning documents 
 
 Requires Node 22.22.x (see `.nvmrc`). Run `npm install`, then `npm run verify` (typecheck + lint + tests).
 
-Running it: [`infra/docs/install.md`](infra/docs/install.md) (home lab with Tailscale, `infra/install.sh`) and [`infra/docs/upgrade.md`](infra/docs/upgrade.md) (upgrade, failure and rollback).
+Running it: [`infra/docs/install.md`](infra/docs/install.md) (home lab with Tailscale, `infra/install.sh`), [`infra/docs/upgrade.md`](infra/docs/upgrade.md) (upgrade, failure and rollback) and [`infra/docs/configuration.md`](infra/docs/configuration.md) (every server setting and its default).
 
 Documentation: [guides for drivers](docs/README.md), [`CHANGELOG.md`](CHANGELOG.md), [`SECURITY.md`](SECURITY.md) and the index of owner decisions, [`DECISIONS.md`](DECISIONS.md).
 

@@ -39,6 +39,7 @@ export function harness(
     exporters?: ExporterRegistry;
     comma?: Partial<CommaOptions>;
     diagnosticsHousekeepingMs?: number;
+    mcpHousekeepingMs?: number;
     enabledExportFormats?: () => readonly string[];
     publicUrl?: string | null;
     homeUrl?: string | null;
@@ -79,6 +80,7 @@ export function harness(
     exporters: extra.exporters,
     comma: extra.comma,
     diagnosticsHousekeepingMs: extra.diagnosticsHousekeepingMs,
+    mcpHousekeepingMs: extra.mcpHousekeepingMs,
     enabledExportFormats: extra.enabledExportFormats,
     db,
     now: () => clock.t,
