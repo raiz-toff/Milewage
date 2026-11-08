@@ -66,12 +66,25 @@ describe('.gitlab-ci.yml', () => {
     const job = ci['phone-apk'];
     expect(job.stage).toBe('build');
     expect(job.tags).toEqual(['android']);
-    expect(job.script).toEqual(['scripts/phone-release-build.sh']);
+    expect(job.script[0]).toBe('scripts/phone-release-build.sh');
     expect(job.rules).toEqual([{ if: TAG, when: 'manual', allow_failure: true }]);
     expect(job.artifacts.paths).toEqual([
       'apps/phone/android/app/build/outputs/apk/release/app-release.apk',
     ]);
     expect(job.variables.MILEWAGE_VERSION_CODE).toBe('$CI_PIPELINE_IID');
+  });
+
+  test('phone-apk checks the merged release manifest after the build and fails without one', () => {
+    // `verify` runs before any build, so the merged-manifest tests skip there; here they must run.
+    expect(ci['phone-apk'].script).toEqual([
+      'scripts/phone-release-build.sh',
+      'MILEWAGE_REQUIRE_MERGED_MANIFEST=1 npm test -w apps/phone -- test/manifest.test.ts',
+    ]);
+    const test = readFileSync(
+      new URL('../apps/phone/test/manifest.test.ts', import.meta.url),
+      'utf8',
+    );
+    expect(test).toContain("process.env.MILEWAGE_REQUIRE_MERGED_MANIFEST === '1'");
   });
 
   test('the tag rule matches release tags only', () => {

@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import type { ModuleSettings } from '@milewage/shared';
 import { loadCommaOptions, type CommaOptions } from './comma-options';
 import { checkHomeUrl, checkPublicUrl } from './public-url';
@@ -13,7 +13,7 @@ export interface ServerConfig {
   port: number;
   dataDir: string;
   configDir: string;
-  /** `MILEWAGE_BACKUP_DIR`: the `backups` volume. */
+  /** `MILEWAGE_BACKUP_DIR`: the `backups` volume; by default `backups` next to the data folder. */
   backupDir: string;
   logLevel: string;
   /** `MILEWAGE_TRUST_PROXY`: comma-separated proxy addresses or CIDRs, or `true`. Empty means no proxy is trusted. */
@@ -69,13 +69,16 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): S
   const configDir = env.MILEWAGE_CONFIG_DIR ?? 'config';
   const settings = readSettingsFile(join(configDir, 'settings.json'));
   const httpAddressAllowed = env.NODE_ENV !== 'production';
+  const dataDir = env.MILEWAGE_DATA_DIR ?? 'data';
   const file = (settings as { backup?: { on_shift_end?: unknown; download?: unknown } }).backup;
   return {
     host: env.MILEWAGE_HOST ?? '0.0.0.0',
     port,
-    dataDir: env.MILEWAGE_DATA_DIR ?? 'data',
+    dataDir,
     configDir,
-    backupDir: env.MILEWAGE_BACKUP_DIR ?? 'backups',
+    // Beside the data folder (`/app/data` and `/app/backups` in the image), so a server given only
+    // MILEWAGE_DATA_DIR never writes backups into whatever folder it was started from.
+    backupDir: env.MILEWAGE_BACKUP_DIR ?? join(dirname(dataDir), 'backups'),
     logLevel: env.MILEWAGE_LOG_LEVEL ?? 'info',
     trustProxy: parseTrustProxy(env.MILEWAGE_TRUST_PROXY),
     settings,

@@ -90,11 +90,14 @@ describe('manifest lint (09 section 5.3)', () => {
     root,
     'android/app/build/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml',
   );
+  // Gradle's own output (`build/`) and cache (`.gradle/`) are not sources.
+  const generated = (dir: string) =>
+    [`${sep}build${sep}`, `${sep}.gradle${sep}`].some((d) => `${dir}${sep}`.includes(d));
   const newest = (dir: string): number =>
     Math.max(
       0,
       ...readdirSync(dir, { withFileTypes: true, recursive: true })
-        .filter((e) => e.isFile() && !e.parentPath.includes(`${sep}build${sep}`))
+        .filter((e) => e.isFile() && !generated(e.parentPath))
         .map((e) => statSync(join(e.parentPath, e.name)).mtimeMs),
     );
   const mergedIsFresh =
@@ -106,6 +109,16 @@ describe('manifest lint (09 section 5.3)', () => {
         newest(join(root, 'plugins')),
         newest(join(root, 'native')),
       );
+  // CI's phone-apk job sets MILEWAGE_REQUIRE_MERGED_MANIFEST=1 after the build: there a missing or
+  // stale merged manifest fails instead of quietly skipping the checks below.
+  const mergedRequired = process.env.MILEWAGE_REQUIRE_MERGED_MANIFEST === '1';
+  (mergedRequired ? it : it.skip)('a fresh merged release manifest exists after the build', () => {
+    expect({ merged, exists: existsSync(merged), fresh: mergedIsFresh }).toEqual({
+      merged,
+      exists: true,
+      fresh: true,
+    });
+  });
   (mergedIsFresh ? it : it.skip)('the merged release manifest has no forbidden permission', () => {
     expect(forbiddenIn(read(merged))).toEqual([]);
     // Plan 28: http is allowed at the platform (gated in ApiClient); no local network permission.

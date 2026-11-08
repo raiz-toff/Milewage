@@ -75,7 +75,10 @@ images:
 # SDK (ANDROID_HOME), like the `coder` machine. Signing: set MILEWAGE_KEYSTORE_ENV as a protected
 # File variable holding keystore.env (scripts/phone-keystore.sh) with MILEWAGE_KEYSTORE_PATH pointing
 # at the keystore on that runner; without it the APK carries the debug key. versionCode is the
-# pipeline's project-wide number, which only grows.
+# pipeline's project-wide number, which only grows. After the build the manifest tests check the
+# merged release manifest (no forbidden permission, no ML Kit, sees Tailscale, only known
+# permissions); `verify` runs before any build, where those checks skip. With
+# MILEWAGE_REQUIRE_MERGED_MANIFEST=1 a missing or stale merged manifest fails the job too.
 phone-apk:
   stage: build
   needs: [verify]
@@ -84,6 +87,7 @@ phone-apk:
     MILEWAGE_VERSION_CODE: $CI_PIPELINE_IID
   script:
     - scripts/phone-release-build.sh
+    - MILEWAGE_REQUIRE_MERGED_MANIFEST=1 npm test -w apps/phone -- test/manifest.test.ts
   artifacts:
     name: milewage-$CI_COMMIT_TAG-apk
     paths:

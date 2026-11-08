@@ -18,6 +18,7 @@ apps/phone/native/**/android/.gradle/
 infra/vm-tests/artifacts/
 # Local dev data for `npm run dev` (scripts/dev.mjs)
 .dev/
+.dev.before-integrate-*/
 # Signing keys never go in git (scripts/phone-keystore.sh writes them to ~/.milewage)
 *.keystore
 *.jks
