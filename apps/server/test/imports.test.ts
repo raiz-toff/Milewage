@@ -86,7 +86,26 @@ describe('expenses', () => {
       'error',
     ]);
     expect(p.rows[3].message).toMatch(/date/);
+    expect(p.problems).toEqual([
+      { row: 4, message: expect.stringMatching(/date/) },
+      { row: 5, message: expect.stringMatching(/amount/) },
+    ]);
     expect(h.db.prepare('SELECT count(*) FROM expenses').pluck().get()).toBe(0);
+  });
+
+  test('preview lists every problem row, past the first 200 rows, up to 1000', async () => {
+    const good = (i: number) => `2026-03-01,fuel,Shop ${i},5`;
+    const lines = ['Date,Category,Vendor,Amount'];
+    for (let i = 1; i <= 300; i++) lines.push(i === 250 ? 'not a date,fuel,X,5' : good(i));
+    const late = (await post('/imports/expenses/preview', lines.join('\n'))).json();
+    expect(late.rows).toHaveLength(200);
+    expect(late.problems).toEqual([{ row: 250, message: expect.stringMatching(/date/) }]);
+
+    const bad = ['Date,Category,Vendor,Amount', ...Array(1200).fill('x,fuel,X,5')].join('\n');
+    const many = (await post('/imports/expenses/preview', bad)).json();
+    expect(many.summary.error).toBe(1200);
+    expect(many.problems).toHaveLength(1000);
+    expect(many.problems.at(-1).row).toBe(1000);
   });
 
   test('commit writes the ok rows once; the same file again imports nothing', async () => {

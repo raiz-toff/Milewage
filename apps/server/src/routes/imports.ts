@@ -27,6 +27,11 @@ import { platformKnown } from './platforms';
 import { strictObject } from './util';
 
 const MAX_BYTES = 5 * 1024 * 1024;
+/**
+ * The most problem rows a preview lists. A 5 MB file can hold about 100 000 rows; when every one
+ * has a problem the mapping is wrong, and a list that long helps no one. 1000 rows is about 60 KB.
+ */
+const MAX_PROBLEMS = 1000;
 const params = strictObject({ kind: { enum: ['expenses', 'shifts'] } }, ['kind']);
 const query = strictObject({ mapping: { type: 'string', maxLength: 4000 } }, []);
 
@@ -289,6 +294,10 @@ export function importsRoutes({
           rows: planned
             .slice(0, 200)
             .map(({ row, status, message }) => ({ row, status, message: message ?? null })),
+          problems: planned
+            .filter((p) => p.status === 'error')
+            .slice(0, MAX_PROBLEMS)
+            .map(({ row, message }) => ({ row, message: message ?? null })),
         };
       },
     );

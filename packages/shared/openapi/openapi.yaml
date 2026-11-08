@@ -3336,7 +3336,7 @@ components:
 
     ImportPreview:
       type: object
-      required: [kind, columns, fields, mapping, row_count, summary, rows]
+      required: [kind, columns, fields, mapping, row_count, summary, rows, problems]
       properties:
         kind: { enum: [expenses, shifts] }
         columns: { type: array, items: { type: string } }
@@ -3353,6 +3353,11 @@ components:
               row: { type: integer }
               status: { enum: [ok, duplicate, error] }
               message: { type: [string, 'null'] }
+        problems:
+          type: array
+          description: Every row with a problem, in file order, up to 1000; summary.error is the full count.
+          maxItems: 1000
+          items: { type: object, required: [row, message], properties: { row: { type: integer }, message: { type: [string, 'null'] } } }
     ImportResult:
       type: object
       required: [kind, imported, duplicates, errors, error_rows]

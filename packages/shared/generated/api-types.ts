@@ -2451,6 +2451,11 @@ export interface components {
                 status?: "ok" | "duplicate" | "error";
                 message?: string | null;
             }[];
+            /** @description Every row with a problem, in file order, up to 1000; summary.error is the full count. */
+            problems: {
+                row: number;
+                message: string | null;
+            }[];
         };
         ImportResult: {
             /** @enum {unknown} */

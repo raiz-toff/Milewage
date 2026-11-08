@@ -9,6 +9,9 @@ type Preview = Schemas['ImportPreview'];
 type Result = Schemas['ImportResult'];
 type Kind = 'expenses' | 'shifts';
 
+/** Problem rows listed before "Show all problems". */
+const FIRST = 10;
+
 /** Settings card of the `import` module (18 section 12): preview first, then confirm; nothing is written by surprise. */
 export function ImportCard() {
   const { api } = useSession();
@@ -19,6 +22,7 @@ export function ImportCard() {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [mapping, setMapping] = useState<Record<string, string | null>>({});
   const [result, setResult] = useState<Result | null>(null);
+  const [allProblems, setAllProblems] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const send = <T,>(
@@ -56,6 +60,7 @@ export function ImportCard() {
       const p = await send<Preview>('/imports/{kind}/preview', map);
       setPreview(p);
       setMapping(p.mapping);
+      setAllProblems(false);
     } catch (e) {
       setError(describe(e));
     }
@@ -71,6 +76,8 @@ export function ImportCard() {
     }
   }
 
+  // A preview lists at most 1000 problem rows; the count covers them all.
+  const unlisted = preview ? (preview.summary.error ?? 0) - preview.problems.length : 0;
   const kinds = [
     ...(modules.expenses ? [{ value: 'expenses', label: 'Expenses' }] : []),
     { value: 'shifts', label: 'Shifts (distance typed, not tracked)' },
@@ -128,16 +135,31 @@ export function ImportCard() {
               Import {preview.summary.ok} rows
             </Button>
           </div>
-          <ul className="text-sm text-muted-foreground">
-            {preview.rows
-              .filter((r) => r.status === 'error')
-              .slice(0, 10)
-              .map((r) => (
-                <li key={r.row}>
-                  Row {r.row}: {r.message}
-                </li>
-              ))}
+          <ul id="import-problems" className="text-sm text-muted-foreground">
+            {(allProblems ? preview.problems : preview.problems.slice(0, FIRST)).map((r) => (
+              <li key={r.row}>
+                Row {r.row}: {r.message}
+              </li>
+            ))}
           </ul>
+          {preview.problems.length > FIRST ? (
+            <UiButton
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-auto px-0"
+              aria-expanded={allProblems}
+              aria-controls="import-problems"
+              onClick={() => setAllProblems(!allProblems)}
+            >
+              {allProblems ? 'Show fewer' : 'Show all problems'}
+            </UiButton>
+          ) : null}
+          {unlisted > 0 && (allProblems || preview.problems.length <= FIRST) ? (
+            <p className="text-sm text-muted-foreground">
+              And {unlisted} more rows with problems, not listed. Fix these first, then check again.
+            </p>
+          ) : null}
         </div>
       ) : null}
       {result ? (

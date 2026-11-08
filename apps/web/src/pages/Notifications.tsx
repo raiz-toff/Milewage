@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { EmptyState, PageHeader } from '../ui/layout';
 import { Mail, MailOpen, X } from 'lucide-react';
 import { RowMenu } from '../ui/RowMenu';
+import { ShowMore } from '../ui/ShowMore';
 import { describe, unwrap } from '../api/client';
+import { usePagedList } from '../api/paged';
 import { useApiQuery, useInvalidate, useSetApiData } from '../api/query';
 import type { Schemas } from '../api/client';
 import { Switch } from '@/components/ui/switch';
@@ -55,8 +57,16 @@ export function useUnread(enabled: boolean): number {
 export function NotificationsPage() {
   const { api } = useSession();
   const { timezone } = useSettings();
-  const asked = useApiQuery('/notifications');
-  const items = asked.data?.items ?? null;
+  // Read 50 at a time, newest first.
+  const asked = usePagedList(['/notifications', {}], ({ limit, cursor }, signal) =>
+    unwrap(
+      api.GET('/notifications', {
+        params: { query: { limit, ...(cursor ? { cursor } : {}) } },
+        signal,
+      }),
+    ),
+  );
+  const items = asked.items;
   const invalidate = useInvalidate();
   // The unread count in the header is read again with the list.
   const load = () => invalidate('/notifications');
@@ -133,6 +143,7 @@ export function NotificationsPage() {
           ))}
         </ul>
       )}
+      <ShowMore more={asked.more} busy={asked.loadingMore} onClick={asked.showMore} />
     </section>
   );
 }

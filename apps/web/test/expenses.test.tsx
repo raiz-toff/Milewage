@@ -11,7 +11,22 @@ import {
   pick,
   pickDay,
   DASHBOARD,
+  type Handler,
 } from './support/kit';
+
+/** GET /expenses over `rows`, paged like the server: `limit` rows after the `cursor`, filtered by category. */
+const pager =
+  (rows: { category: string }[]): Handler =>
+  ({ url }) => {
+    const category = url.searchParams.get('category');
+    const all = rows.filter((r) => !category || r.category === category);
+    const from = Number(url.searchParams.get('cursor') ?? 0);
+    const to = from + Number(url.searchParams.get('limit') ?? 50);
+    return {
+      body: { items: all.slice(from, to), next_cursor: to < all.length ? String(to) : null },
+    };
+  };
+const shownRows = () => document.querySelectorAll('tbody tr').length;
 
 afterEach(() => {
   cleanup();
@@ -73,7 +88,7 @@ function open(
   due: object[] = [],
   enabled = true,
   receipts = true,
-  more: { vehicle?: number; shifts?: object[] } = {},
+  more: { vehicle?: number; shifts?: object[]; list?: Handler } = {},
 ) {
   return renderApp(
     {
@@ -83,7 +98,7 @@ function open(
           default_vehicle_id: more.vehicle ?? null,
         }),
       ),
-      'GET /expenses': () => ({ body: { items: rows, next_cursor: null } }),
+      'GET /expenses': more.list ?? (() => ({ body: { items: rows, next_cursor: null } })),
       'GET /expenses/totals': () => ({ body: totals }),
       'GET /expenses/due': () => ({ body: due }),
       'GET /expenses/categories': () => ({ body: CATS }),
@@ -309,6 +324,56 @@ describe('expenses screen (module expenses)', () => {
     await screen.findByText('Shell');
     expect(screen.queryByRole('columnheader', { name: 'Receipt' })).toBeNull();
     expect(screen.queryByLabelText(/Attach receipt/)).toBeNull();
+  });
+
+  it('shows 50 at a time: Show more adds the next page, keeps the filter and goes at the end', async () => {
+    const rows = Array.from({ length: 120 }, (_, i) =>
+      expense({ id: i + 1, merchant: `Shop ${i + 1}`, category: i % 2 ? 'parking' : 'fuel' }),
+    );
+    const s = open([], [], true, true, { list: pager(rows) });
+    await screen.findByText('Shop 1');
+    expect(shownRows()).toBe(50);
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    await waitFor(() => expect(shownRows()).toBe(100));
+    expect(screen.getByText('Shop 1')).toBeTruthy();
+    expect(screen.getByText('Shop 100')).toBeTruthy();
+
+    // A filter starts again at one page, and Show more keeps it.
+    pick('Show category', 'fuel');
+    await waitFor(() => expect(screen.queryByText('Shop 2')).toBeNull());
+    expect(shownRows()).toBe(50);
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    await waitFor(() => expect(shownRows()).toBe(60));
+    expect(screen.getByText('Shop 119')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+    const asked = s.calls.filter((c) => c.method === 'GET' && c.path === '/expenses');
+    expect(asked.at(-1)?.query).toMatch(/category=fuel/);
+    expect(asked.every((c) => /limit=\d+/.test(c.query))).toBe(true);
+  });
+
+  it('has no Show more when every expense fits on one page', async () => {
+    open([], [], true, true, { list: pager([expense()]) });
+    await screen.findByText('Shell');
+    expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+  });
+
+  it('counts the most used categories over every page shown', async () => {
+    const rows = [
+      ...Array.from({ length: 50 }, (_, i) => expense({ id: i + 1, category: 'fuel' })),
+      ...Array.from({ length: 10 }, (_, i) => expense({ id: 51 + i, category: 'meals' })),
+      ...Array.from({ length: 5 }, (_, i) => expense({ id: 61 + i, category: 'accounting' })),
+    ];
+    open([], [], true, true, { list: pager(rows) });
+    await waitFor(() => expect(shownRows()).toBe(50));
+    const chips = () =>
+      [
+        ...screen.getByRole('group', { name: 'Category' }).querySelectorAll('button[aria-pressed]'),
+      ].map((b) => b.textContent);
+    fireEvent.click(screen.getByRole('button', { name: 'Add expense' }));
+    expect(chips()).toEqual(['Fuel', 'Parking', 'Tolls', 'Phone', 'Car wash']);
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    await waitFor(() => expect(shownRows()).toBe(65));
+    expect(chips()).toEqual(['Fuel', 'Parking', 'Tolls', 'Meals', 'Accounting and tax help']);
   });
 
   it('is absent when the module is off: no navigation entry, and the URL leads elsewhere', async () => {

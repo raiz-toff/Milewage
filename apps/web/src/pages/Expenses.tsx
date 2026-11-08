@@ -3,6 +3,7 @@ import { keepPreviousData } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { ChevronDown, FileX, Pencil, Plus, Trash2 } from 'lucide-react';
 import { RowMenu } from '../ui/RowMenu';
+import { ShowMore } from '../ui/ShowMore';
 import { EmptyState, PageHeader, Section, StatCard, TableBox, tableClass } from '../ui/layout';
 import { Button as UiButton } from '@/components/ui/button';
 import {
@@ -16,6 +17,7 @@ import {
 } from '@/components/ui/select';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
+import { usePagedList } from '../api/paged';
 import { useApiQuery, useInvalidate } from '../api/query';
 import type { Schemas } from '../api/client';
 import { formatMoney } from '../format';
@@ -100,16 +102,19 @@ export function ExpensesPage() {
   // Vehicle costs go on the driver's default vehicle unless they choose another.
   const auto = default_vehicle_id === null ? '' : String(default_vehicle_id);
   const [filter, setFilter] = useState({ category: '', deductible: '' });
-  const query: Record<string, string | boolean> = {};
+  const query: { category?: string; deductible?: boolean } = {};
   if (filter.category) query.category = filter.category;
   if (filter.deductible) query.deductible = filter.deductible === 'yes';
-  // The list shown stays while a new filter is read.
-  const list = useApiQuery(
-    '/expenses',
-    { params: { query: query as never } },
-    { placeholderData: keepPreviousData },
+  // Read 50 at a time; the list shown stays while a new filter or the next page is read.
+  const list = usePagedList(['/expenses', { query }], ({ limit, cursor }, signal) =>
+    unwrap(
+      api.GET('/expenses', {
+        params: { query: { ...query, limit, ...(cursor ? { cursor } : {}) } },
+        signal,
+      }),
+    ),
   );
-  const items = list.data?.items ?? null;
+  const items = list.items;
   const totalsQuery = useApiQuery('/expenses/totals');
   const totals = totalsQuery.data ?? null;
   const dueQuery = useApiQuery('/expenses/due');
@@ -637,6 +642,7 @@ export function ExpensesPage() {
             </table>
           </TableBox>
         )}
+        <ShowMore more={list.more} busy={list.loadingMore} onClick={list.showMore} />
       </Section>
     </section>
   );

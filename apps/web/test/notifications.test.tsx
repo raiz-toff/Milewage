@@ -70,6 +70,38 @@ describe('notifications (module notifications)', () => {
     expect(await screen.findByText('Nothing new.')).toBeTruthy();
   });
 
+  it('shows 50 at a time: Show more adds the older ones and goes at the end', async () => {
+    const rows = Array.from({ length: 70 }, (_, i) =>
+      item({ id: 70 - i, ref: `2027-01-${String((i % 28) + 1).padStart(2, '0')}`, read_at: 5 }),
+    );
+    const s = renderApp(
+      {
+        ...signedIn(settingsFixture({ modules: { notifications: true } })),
+        'GET /notifications': ({ url }) => {
+          if (url.searchParams.get('unread'))
+            return { body: { items: [], next_cursor: null, unread_count: 0 } };
+          const from = Number(url.searchParams.get('cursor') ?? 0);
+          const to = from + Number(url.searchParams.get('limit') ?? 50);
+          return {
+            body: {
+              items: rows.slice(from, to),
+              next_cursor: to < rows.length ? String(to) : null,
+              unread_count: 0,
+            },
+          };
+        },
+      },
+      '/notifications',
+    );
+    const shown = () => screen.queryAllByText(/A tax date is coming up/).length;
+    await waitFor(() => expect(shown()).toBe(50));
+    fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    await waitFor(() => expect(shown()).toBe(70));
+    expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+    const asked = s.calls.filter((c) => c.path === '/notifications' && !/unread/.test(c.query));
+    expect(asked.map((c) => c.query)).toEqual(['?limit=50', '?limit=100']);
+  });
+
   it('the Alerts card on Settings flips a toggle', async () => {
     const s = open('/settings/alerts');
     fireEvent.click(await screen.findByLabelText('Tax dates'));

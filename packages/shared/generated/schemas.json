@@ -2547,7 +2547,8 @@
         "mapping",
         "row_count",
         "summary",
-        "rows"
+        "rows",
+        "problems"
       ],
       "properties": {
         "kind": {
@@ -2609,6 +2610,29 @@
                   "duplicate",
                   "error"
                 ]
+              },
+              "message": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "problems": {
+          "type": "array",
+          "description": "Every row with a problem, in file order, up to 1000; summary.error is the full count.",
+          "maxItems": 1000,
+          "items": {
+            "type": "object",
+            "required": [
+              "row",
+              "message"
+            ],
+            "properties": {
+              "row": {
+                "type": "integer"
               },
               "message": {
                 "type": [

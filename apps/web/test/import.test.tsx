@@ -13,13 +13,25 @@ const preview = (ok = 2) => ({
   row_count: 3,
   summary: { ok, duplicate: 0, error: 3 - ok },
   rows: [{ row: 3, status: 'error', message: 'amount is not a positive amount' }],
+  problems: [{ row: 3, message: 'amount is not a positive amount' }],
+});
+/** A preview of `rows` rows where `errors` have a problem and the server lists `listed` of them. */
+const many = (rows: number, errors: number, listed = errors) => ({
+  ...preview(),
+  row_count: rows,
+  summary: { ok: rows - errors, duplicate: 0, error: errors },
+  rows: [],
+  problems: Array.from({ length: listed }, (_, i) => ({
+    row: 201 + i,
+    message: 'date is not YYYY-MM-DD',
+  })),
 });
 
-function open(modules: object = {}) {
+function open(modules: object = {}, body: object = preview()) {
   return renderApp(
     {
       ...signedIn(settingsFixture({ modules: { import: true, ...modules } })),
-      'POST /imports/expenses/preview': () => ({ body: preview() }),
+      'POST /imports/expenses/preview': () => ({ body }),
       'POST /imports/expenses': () => ({
         body: { kind: 'expenses', imported: 2, duplicates: 0, errors: 1, error_rows: [] },
       }),
@@ -51,6 +63,44 @@ describe('import card (module import)', () => {
     expect(screen.getByRole('status').textContent).toMatch(/Imported 2 rows/);
     const commit = s.calls.find((c) => c.method === 'POST' && c.path === '/imports/expenses');
     expect(commit?.body).toContain('Date,Vendor,Amount');
+  });
+
+  it('lists the first 10 problems and every one on Show all problems, even past row 200', async () => {
+    open({}, many(400, 15));
+    await choose();
+    fireEvent.click(await screen.findByRole('button', { name: /Preview x\.csv/ }));
+    expect(
+      await screen.findByText(/400 rows: 385 ready, 0 already there, 15 with problems/),
+    ).toBeTruthy();
+    const listed = () => screen.queryAllByText(/^Row \d+: date/).length;
+    expect(listed()).toBe(10);
+    const toggle = screen.getByRole('button', { name: 'Show all problems' });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(toggle);
+    expect(listed()).toBe(15);
+    expect(screen.getByText('Row 215: date is not YYYY-MM-DD')).toBeTruthy();
+    expect(screen.queryByText(/not listed/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Show fewer' }));
+    expect(listed()).toBe(10);
+  });
+
+  it('says how many problems the server did not list', async () => {
+    open({}, many(5000, 1200, 1000));
+    await choose();
+    fireEvent.click(await screen.findByRole('button', { name: /Preview x\.csv/ }));
+    await screen.findByText(/1200 with problems/);
+    expect(screen.queryByText(/not listed/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Show all problems' }));
+    expect(screen.queryAllByText(/^Row \d+: date/)).toHaveLength(1000);
+    expect(screen.getByText(/And 200 more rows with problems, not listed/)).toBeTruthy();
+  });
+
+  it('has no toggle when every problem is shown', async () => {
+    open();
+    await choose();
+    fireEvent.click(await screen.findByRole('button', { name: /Preview x\.csv/ }));
+    await screen.findByText('Row 3: amount is not a positive amount');
+    expect(screen.queryByRole('button', { name: 'Show all problems' })).toBeNull();
   });
 
   it('shows the server message when the file is refused', async () => {
