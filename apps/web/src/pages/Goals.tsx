@@ -128,7 +128,8 @@ export function GoalsPage() {
       <Section title="Add a goal">
         <form
           className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
-          onSubmit={(e) => void add(e)}>
+          onSubmit={(e) => void add(e)}
+        >
           <Field
             label="Name"
             maxLength={60}

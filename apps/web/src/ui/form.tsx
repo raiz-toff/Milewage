@@ -225,7 +225,12 @@ export function Picker({
       onValueChange={(v) => onChange(v === EMPTY ? '' : v)}
       disabled={disabled}
     >
-      <SelectTrigger id={id} aria-label={label} size={size} className={cn('w-full min-w-0', className)}>
+      <SelectTrigger
+        id={id}
+        aria-label={label}
+        size={size}
+        className={cn('w-full min-w-0', className)}
+      >
         <SelectValue />
       </SelectTrigger>
       <SelectContent position="popper" align="start">
