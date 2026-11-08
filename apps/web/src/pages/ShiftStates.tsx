@@ -100,9 +100,17 @@ export interface MoreRow {
  * The quieter tools of a shift with little in it (odometer, notes, export), each folded under
  * its name so the page is not a column of empty cards (progressive disclosure).
  */
-export function MoreCard({ rows }: { rows: MoreRow[] }) {
+export function MoreCard({
+  rows,
+  label = 'More',
+  title = 'More for this shift',
+}: {
+  rows: MoreRow[];
+  label?: string;
+  title?: string;
+}) {
   return (
-    <Section label="More" title="More for this shift">
+    <Section label={label} title={title}>
       <div className="-mt-2 divide-y">
         {rows.map((r) => (
           <details key={r.key} open={r.open} className="group">

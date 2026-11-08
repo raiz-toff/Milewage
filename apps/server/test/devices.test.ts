@@ -250,3 +250,38 @@ test('the store link and the configured address are offered when set', async () 
   });
   await s.close();
 });
+
+test('re-pairing makes a new device row, so a restarted seq never meets the old points', async () => {
+  await web('POST', '/vehicles', { name: 'Civic', kind: 'car' });
+  const SHIFT = '0b1c8a52-8f0d-4c52-9d5b-5c8a0f3d1e11';
+  const t0 = h.clock.t;
+  const first = await pair();
+  await h.call('POST', '/shifts', { client_id: SHIFT, vehicle_id: 1, started_at: t0 }, first.auth);
+  const send = (auth: { authorization: string }, seq: number) =>
+    h.app.inject({
+      method: 'POST',
+      url: '/api/v1/telemetry/batch',
+      headers: auth,
+      payload: {
+        shift_client_id: SHIFT,
+        points: [{ seq, recorded_at: t0 + 1000, lat_e7: 1, lon_e7: 1, accuracy_m: 5 }],
+      },
+    });
+  expect((await send(first.auth, 1)).json().inserted).toBe(1);
+  expect((await send(first.auth, 1)).json().duplicates).toBe(1); // same device, same seq
+
+  // Pairing again (a new phone, or one with its data cleared): a new id, never the old one.
+  const second = await pair();
+  expect(second.id).not.toBe(first.id);
+  expect((await send(second.auth, 1)).json()).toMatchObject({ inserted: 1, duplicates: 0 });
+  const ids = h.db.prepare('SELECT device_id FROM telemetry_points ORDER BY id').pluck().all();
+  expect(ids).toEqual([first.id, second.id]);
+
+  // Re-pairing does not revoke the old row by itself; the owner revokes it (DELETE /devices/:id).
+  const settings = (auth: { authorization: string }) =>
+    h.app.inject({ url: '/api/v1/settings', headers: auth });
+  expect((await settings(first.auth)).statusCode).toBe(200);
+  await web('DELETE', `/devices/${first.id}`);
+  expect((await settings(first.auth)).json().code).toBe('device_revoked');
+  expect((await settings(second.auth)).statusCode).toBe(200);
+});
