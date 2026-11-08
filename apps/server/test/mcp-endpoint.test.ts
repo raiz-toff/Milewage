@@ -86,7 +86,7 @@ test('read tools answer what the REST API answers, with the units', async () => 
   h = m.h;
   const client = await connect(h, m.read.token);
   const tools = (await client.listTools()).tools;
-  expect(tools.map((t) => t.name)).toEqual(['get_profile', 'get_summary']);
+  expect(tools.map((t) => t.name).slice(0, 2)).toEqual(['get_profile', 'get_summary']);
   expect(
     tools.every((t) => t.annotations?.readOnlyHint && t.annotations.openWorldHint === false),
   ).toBe(true);

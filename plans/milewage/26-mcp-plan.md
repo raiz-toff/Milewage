@@ -208,7 +208,7 @@ A tool whose module is off (for example `get_tax_estimate` without `tax`) is not
 | `list_shifts` | `from?`, `to?`, `status?`, `vehicle_id?`, `limit?` (≤ 50), `cursor?` | `GET /shifts` | newest first, with `next_cursor` |
 | `get_shift` | `shift` (id) | `GET /shifts/{ref}`, `/trips`, `/earnings` | one shift with trips and earnings by platform |
 | `list_expenses` | `from?`, `to?`, `category?`, `deductible?`, `vehicle_id?`, `limit?`, `cursor?` | `GET /expenses` | |
-| `get_expense_totals` | `from`, `to` | `GET /expenses/totals` | by category, deductible part |
+| `get_expense_totals` | `year?` | `GET /expenses/totals` | by category for a calendar year, deductible part |
 | `list_goals` | none | `GET /goals` | progress at read time |
 | `get_tax_estimate` | `year` | `GET /tax/{year}` | an estimate, never a filing (module `tax`) |
 | `list_odometer_readings` | `vehicle_id?`, `kind?`, `from?`, `to?` | `GET /odometer` | |

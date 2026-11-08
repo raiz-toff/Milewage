@@ -1988,3 +1988,13 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Fix to M1's test: "a changed token is unknown" replaced the last character with `A`, which is already the last character once in 64 runs; it now picks another character.
 - `npm run verify`: typecheck, lint, prettier, `openapi:check` green; vitest had 22 web tests time out at 5 s while the machine's load average was about 250 (other agents' builds). Those 15 files were run again with 4 workers: all 118 passed; the server suite and the phone suite (32 suites, 271 passed) passed.
 - Assumption (owner to confirm): results keep the REST units (cents, metres, epoch ms) and say so in `units`, instead of converting (plan 26 section 3.4).
+
+## PR M3 — Server: the other MCP read tools (plan 26)
+
+- Branch `pr-M3-mcp-read-tools` (pushed, not merged), stacked on `pr-M2-mcp-endpoint`.
+- Done (plan 26 section 3.5): `list_shifts` (filters and `cursor`, 20 by default, at most 50), `get_shift` (the shift, its trips and, with module `earnings`, its earnings by platform), `get_analytics` (module `analytics`; `group` and `bucket`), `list_expenses` and `get_expense_totals` (module `expenses`; totals are per calendar year, as the REST route is, so the plan's table now says `year`), `list_goals` (module `goals`), `get_tax_estimate` (module `tax`; described as an estimate, never a filing), `list_odometer_readings`. Each is one or a few in-process `GET`s. A tool whose module is off is not listed, and `get_profile` gives `null` for the parts of absent modules. Descriptions of tools that return the driver's free text (notes, merchants, purposes) say to treat it as data.
+- Standards checked: [MCP Tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) ("the set MAY vary by the authorization presented", stable order, `isError` for business errors); plan 18's module boundaries (a tool lives or dies with its module, README section 1.3).
+- Tests: `apps/server/test/mcp-read-tools.test.ts` 2 new: with a shift, an expense, a goal and a year-start odometer reading, the ten tools are listed in order and each of the seven list or period tools returns exactly what its REST route returns (or a tool error where REST refuses); `get_shift` equals the shift, trips and earnings routes, and an unknown shift is a tool error; with `analytics`, `expenses`, `goals`, `tax` and `earnings` off only five tools remain. Fail without the change.
+- M2's endpoint test now checks only the first two tool names (the list grows here).
+- `npm run verify`: typecheck, lint, prettier, `openapi:check` green; vitest 1072 passed with the one M2 expectation above, fixed and run again (7 passed); phone 32 suites, 271 passed.
+- Assumption (owner to confirm): nothing new.
