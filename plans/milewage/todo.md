@@ -64,3 +64,7 @@ Added 2026-11-08 by the integration pass (details in `progress.md` under each PR
   APKs need a higher `MILEWAGE_VERSION_CODE`; the `images` job needs a privileged runner; Renovate
   groups Expo and React Native minors with everything else.
 - N1 phone: the unsynced-data reminder has no on/off switch yet (plan 15 section 13 names one).
+- X5 tailnet name: branch `pr-X5-no-real-tailnet` (one commit, cc39c6b) replaces the owner's real
+  Tailscale machine and tailnet name in `apps/web/test/pairing-address.test.ts` with
+  `https://mybox.tail1234.ts.net`. It is the only branch kept after the 2026-11-08 cleanup; merge
+  it or delete it. Older commits keep the real name either way, since history is not rewritten.
