@@ -120,6 +120,15 @@ export interface Credential {
   instanceId: string | null;
 }
 
+export interface LinkStart {
+  deviceCode: string;
+  /** Six digits, shown on the phone and typed on the web. */
+  userCode: string;
+  expiresAt: number;
+  /** How long to wait between polls (RFC 8628 `interval`). */
+  intervalMs: number;
+}
+
 /** What `POST /pairing/redeem` (and a link, plan 28) answers. */
 interface Redeemed {
   device_id: number;
@@ -292,6 +301,63 @@ export class Pairing {
     this.d.onSettings?.(settings);
     this.changed();
     return { credential, settings };
+  }
+
+  /**
+   * Linking with a code (plan 28 section 4.4): asks the server found on the Wi-Fi; the phone shows
+   * `userCode` and the driver types it on the web. `deviceCode` is the phone's secret for polling.
+   */
+  async startLink(baseUrl: string): Promise<LinkStart> {
+    const client = new ApiClient({
+      baseUrl,
+      anyHttp: this.d.anyHttp,
+      fetch: this.d.fetch,
+      now: this.d.now,
+    });
+    const res = await client.request<{
+      device_code?: unknown;
+      user_code?: unknown;
+      expires_in?: unknown;
+      interval?: unknown;
+    }>('POST', '/link-requests', {
+      device_name: this.d.deviceName ?? 'Android phone',
+      platform: 'android',
+    });
+    const d = res.data;
+    if (
+      typeof d.device_code !== 'string' ||
+      typeof d.user_code !== 'string' ||
+      !/^\d{6}$/.test(d.user_code)
+    ) {
+      throw new ApiError(res.status, 'bad_response', false);
+    }
+    const seconds = (v: unknown, fallback: number) =>
+      typeof v === 'number' && v > 0 && v < 3600 ? v : fallback;
+    return {
+      deviceCode: d.device_code,
+      userCode: d.user_code,
+      expiresAt: (this.d.now ?? Date.now)() + seconds(d.expires_in, 600) * 1000,
+      intervalMs: Math.max(1000, seconds(d.interval, 5) * 1000),
+    };
+  }
+
+  /**
+   * One poll: null while the driver has not typed the code; the new connection once they have.
+   * Throws `link_expired` (expired, refused or used) and `slow_down` like any refusal.
+   */
+  async pollLink(baseUrl: string, deviceCode: string): Promise<PairedState | null> {
+    const first = (await this.status()) !== 'paired';
+    const client = new ApiClient({
+      baseUrl,
+      anyHttp: this.d.anyHttp,
+      fetch: this.d.fetch,
+      now: this.d.now,
+    });
+    const res = await client.request<Redeemed>('POST', '/link-requests/poll', {
+      device_code: deviceCode,
+    });
+    if (res.status === 202) return null;
+    return this.keep(baseUrl, null, res.data, res.status, res.headers, first);
   }
 
   /** Settings that arrived through the change feed replace the cached copy (and drive the flags). */

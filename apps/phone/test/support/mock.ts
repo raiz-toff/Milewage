@@ -1,3 +1,4 @@
+import type { FoundServer } from '../../src/connect/discover';
 import { gunzipSync, strFromU8 } from 'fflate';
 import { MemoryStore, type CachedSettings } from '../../src/pairing/pairing';
 import { FakePermissions } from '../../src/permissions/fake';
@@ -28,7 +29,9 @@ export function fakeNet(vpn: boolean | null = true, installed = true) {
     vpn,
     installed,
     local: true as boolean | null,
+    found: [] as FoundServer[],
     opened: 0,
+    discover: async () => n.found,
     vpnActive: async () => n.vpn,
     localNetwork: async () => n.local,
     tailscaleInstalled: async () => n.installed,

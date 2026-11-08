@@ -1,6 +1,7 @@
 import { Linking } from 'react-native';
 import { httpAllowed, isHomeAddress } from '@milewage/shared';
 import { loadNetCheck } from '../../native/net-check';
+import { BROWSE_MS, serversFrom, SERVICE_TYPE, type FoundServer } from './discover';
 
 /** Plan 19 section 3.5: say which step is wrong instead of "Cannot reach the server". */
 
@@ -12,6 +13,8 @@ export interface NetPort {
   vpnActive(): Promise<boolean | null>;
   /** True on Wi-Fi or Ethernet, false on mobile data alone, null when it cannot tell (plan 28). */
   localNetwork(): Promise<boolean | null>;
+  /** MileWage servers announced on this Wi-Fi (plan 28); empty when none or not built in. */
+  discover(): Promise<FoundServer[]>;
   tailscaleInstalled(): Promise<boolean>;
   /** Opens Tailscale, or its store page when it is not installed. */
   openTailscale(): Promise<void>;
@@ -20,6 +23,10 @@ export interface NetPort {
 export const nativeNet = (): NetPort => ({
   vpnActive: async () => loadNetCheck()?.vpnActive() ?? null,
   localNetwork: async () => loadNetCheck()?.localNetwork() ?? null,
+  discover: async () => {
+    const m = loadNetCheck();
+    return m ? serversFrom(await m.discover(SERVICE_TYPE, BROWSE_MS).catch(() => [])) : [];
+  },
   tailscaleInstalled: async () => loadNetCheck()?.isInstalled(TAILSCALE) ?? false,
   openTailscale: async () => {
     if (loadNetCheck()?.openApp(TAILSCALE)) return;
