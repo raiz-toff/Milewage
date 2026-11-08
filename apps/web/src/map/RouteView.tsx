@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { Slider } from '@/components/ui/slider';
+import { ElasticSlider } from '@/components/elastic-slider';
 import { Section } from '../ui/layout';
 import { ApiError, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
@@ -123,26 +123,22 @@ export function RouteView({
           onPickStop={(key) => onPick?.({ kind: 'stop', key })}
         />
       </Suspense>
-      <div className="flex items-center gap-4">
-        <Slider
-          aria-label="Replay position"
-          valueText={cursor ? formatTime(cursor.t, tz) : undefined}
-          className="flex-1 py-2"
-          min={0}
-          max={STEPS}
-          value={[step]}
-          onValueChange={([v]) => setStep(v ?? 0)}
-        />
-        {cursor ? (
-          <output className="shrink-0 rounded-md bg-muted px-2 py-1 text-sm tabular-nums">
-            {formatTime(cursor.t, tz)}
-            <span className="text-muted-foreground">
-              {' · '}
-              {speedIn(cursor.speed, settings.distance_unit)}
-            </span>
-          </output>
-        ) : null}
-      </div>
+      {/* chanhdai's Elastic Slider (owner's pick, 2026-11-08): the label and the time sit inside
+          the track; it stretches when dragged past an end. */}
+      <ElasticSlider
+        label="Replay"
+        aria-label="Replay position"
+        min={0}
+        max={STEPS}
+        step={1}
+        value={step}
+        onValueChange={setStep}
+        formatValue={() =>
+          cursor
+            ? `${formatTime(cursor.t, tz)} · ${speedIn(cursor.speed, settings.distance_unit)}`
+            : ''
+        }
+      />
       {cursor ? (
         <p className="tabular-nums text-xs text-muted-foreground">
           {cursor.lat.toFixed(5)}, {cursor.lon.toFixed(5)}
