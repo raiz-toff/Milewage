@@ -235,6 +235,35 @@ describe('vehicles page', () => {
     expect(await within(corolla).findByText('No service entries yet.')).toBeTruthy();
   });
 
+  it("labels this year's deduction on each card and says what it means for the type", async () => {
+    const year = new Date().getFullYear();
+    renderApp(
+      {
+        ...signedIn(settingsFixture({ modules: { tax: true } })),
+        'GET /vehicles': () => ({
+          body: [car(), car({ id: 2, name: 'BWS 125', kind: 'scooter' })],
+        }),
+        ...Object.fromEntries(
+          [1, 2].map((id) => [
+            `GET /vehicles/${id}/tax-years/${year}`,
+            () => ({ body: { vehicle_id: id, method: 'standard_mileage', source: 'default' } }),
+          ]),
+        ),
+      } as never,
+      '/vehicles',
+    );
+    const corolla = await screen.findByRole('listitem', { name: 'Corolla' });
+    expect(within(corolla).getByText(`${year} deduction`)).toBeTruthy();
+    const picker = within(corolla).getByRole('combobox', {
+      name: `${year} deduction for Corolla`,
+    });
+    const why = document.getElementById(picker.getAttribute('aria-describedby') ?? '');
+    expect(why?.textContent).toMatch(/Mileage rate: a set amount for each business km/);
+    const scooter = screen.getByRole('listitem', { name: 'BWS 125' });
+    expect(scooter.textContent).toContain('No mileage rate applies to this type');
+    expect(scooter.textContent).not.toContain('Deduct BWS 125');
+  });
+
   it('shows the server message when a change is refused', async () => {
     renderApp(
       {

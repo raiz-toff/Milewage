@@ -265,7 +265,9 @@ function VehicleCard({ vehicle, onChanged }: { vehicle: Vehicle; onChanged: () =
           </form>
         ) : showTax || showService ? (
           <div className="flex flex-wrap items-start justify-between gap-3 border-t px-(--card-spacing) pt-(--card-spacing)">
-            {showTax ? <VehicleTaxYear vehicleId={vehicle.id} name={vehicle.name} /> : null}
+            {showTax ? (
+              <VehicleTaxYear vehicleId={vehicle.id} name={vehicle.name} kind={vehicle.kind} />
+            ) : null}
             {showService ? (
               <UiButton
                 type="button"

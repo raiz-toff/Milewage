@@ -234,13 +234,13 @@ describe('vehicle tax-year panel', () => {
         '/vehicles',
       );
     const on = mk(true);
-    pick(await screen.findByLabelText(/Deduct Corolla in/), 'actual_expenses');
+    pick(await screen.findByLabelText(/deduction for Corolla/), 'actual_expenses');
     await waitFor(() => expect(on.calls.some((c) => c.method === 'PUT')).toBe(true));
     expect(on.calls.find((c) => c.method === 'PUT')?.body).toEqual({ method: 'actual_expenses' });
     cleanup();
     const off = mk(false);
     await screen.findByText('Corolla');
-    expect(screen.queryByLabelText(/Deduct Corolla in/)).toBeNull();
+    expect(screen.queryByLabelText(/deduction for Corolla/)).toBeNull();
     expect(off.calls.some((c) => c.path.includes('tax-years'))).toBe(false);
   });
 });
