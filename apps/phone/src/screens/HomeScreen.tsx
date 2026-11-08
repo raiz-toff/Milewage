@@ -27,6 +27,7 @@ import { useColors } from '../theme/theme';
 import { Field } from '../ui/Field';
 import { useToast } from '../ui/Toast';
 import { Dot } from '../ui/Parts';
+import { Logo } from '../ui/Logo';
 import { Screen } from '../ui/Screen';
 import { SwipeButton } from '../components/ui/swipe-button';
 import { HomeSummary } from './HomeSummary';
@@ -522,11 +523,14 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
       title="MileWage"
       header={
         <View className="flex-row items-center justify-between px-4 pt-2">
-          <View className="gap-0.5">
-            <Text variant="h3" accessibilityRole="header">
-              MileWage
-            </Text>
-            <Text variant="muted">{today}</Text>
+          <View className="flex-row items-center gap-3">
+            <Logo size={36} />
+            <View className="gap-0.5">
+              <Text variant="h3" accessibilityRole="header">
+                MileWage
+              </Text>
+              <Text variant="muted">{today}</Text>
+            </View>
           </View>
           {nav}
         </View>

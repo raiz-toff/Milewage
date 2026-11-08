@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
+import { LogoMark } from '@/components/logo';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card as UiCard, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -133,7 +134,8 @@ export function Card({ title, children }: { title: string; children: ReactNode }
   return (
     <div className="flex min-h-svh items-center justify-center p-6">
       <UiCard className="w-full max-w-sm">
-        <CardHeader>
+        <CardHeader className="gap-3">
+          <LogoMark size={40} />
           <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
         </CardHeader>
         <CardContent className="space-y-4">{children}</CardContent>

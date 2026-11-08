@@ -6,7 +6,6 @@ import {
   LogOut,
   Monitor,
   Moon,
-  Route as RouteIcon,
   Settings as SettingsIcon,
   Sun,
   User,
@@ -48,6 +47,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { LogoMark } from '@/components/logo';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { navGroups, visibleScreens } from './screens';
 import type { Screen } from './screens';
@@ -153,9 +153,7 @@ function AppSidebar({ list, name }: { list: Screen[]; name: string | null }) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link to="/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <RouteIcon className="size-4" />
-                </div>
+                <LogoMark size={32} className="shrink-0" />
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">MileWage</span>
                   <span className="truncate text-xs text-muted-foreground">
