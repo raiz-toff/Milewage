@@ -24,7 +24,8 @@ export function handleBlock(path: string): string {
   const named = [...caddyfile.matchAll(/^\s*@(\w+) path (.+)$/gm)].find((m) =>
     m[2]!.trim().split(/\s+/).includes(path),
   )?.[1];
-  const head = named ? `@${named}` : path.replace(/\./g, '\\.');
+  // Every regex metacharacter, not only the dot: a path is data, not a pattern.
+  const head = named ? `@${named}` : path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp(`handle ${head} \\{([\\s\\S]*?)\\n\\t\\}`).exec(caddyfile)?.[1] ?? '';
 }
 

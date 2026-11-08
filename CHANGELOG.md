@@ -36,6 +36,10 @@ All notable changes to MileWage are listed here. The format follows
 
 ### Fixed
 
+- Dependencies: vitest 4.1.12 (its worker pool had two critical advisories, development
+  only) and fflate 0.8.3 (the phone's gzip library, a malformed-archive loop).
+- Two CodeQL findings in tooling: the Caddy test helper escapes every regex character in a path,
+  and the subdivision generator keeps only tokens shaped like CLDR codes.
 - The dev data folder committed by mistake is removed from git. It stays in the history.
 - MCP audit rows older than the retention period are removed.
 - The release APK job in CI runs the manifest checks.
