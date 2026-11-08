@@ -31,6 +31,14 @@
 		}
 		reverse_proxy api:3000
 	}
+	# The browser-tab and home-screen icons (apps/web/public): fixed names, revalidated daily.
+	# Anything not listed here or under /assets is a 404, so a new public file needs a line here.
+	@icons path /favicon.ico /apple-touch-icon.png
+	handle @icons {
+		root * /srv/web
+		header Cache-Control "public, max-age=86400"
+		file_server
+	}
 	# The web client (apps/web, built into /srv/web by the caddy image target). Only its own
 	# screens fall back to index.html, so any other unknown path is still a 404.
 	# Keep this list in step with apps/web/src/screens.tsx.
