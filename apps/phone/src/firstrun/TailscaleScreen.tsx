@@ -5,20 +5,10 @@ import { Alert, AlertTitle } from '../components/ui/alert';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Text } from '../components/ui/text';
-import type { NetPort } from '../connect/reach';
 import type { ScreenProps } from '../navigation';
 import { useServices } from '../services';
 import { Rows } from '../ui/Parts';
 import { Screen } from '../ui/Screen';
-
-/**
- * Where "I have a server" goes (24 section 4.2): straight to Connect, or first to the Tailscale
- * screen when the phone can tell Tailscale is missing or off. Unknown VPN state does not stop it.
- */
-export async function connectRoute(net: NetPort): Promise<'Connect' | 'Tailscale'> {
-  if (!(await net.tailscaleInstalled())) return 'Tailscale';
-  return (await net.vpnActive()) === false ? 'Tailscale' : 'Connect';
-}
 
 const STEPS = [
   { title: 'Install Tailscale', detail: 'The free app from the Play Store.' },
@@ -26,7 +16,11 @@ const STEPS = [
   { title: 'Turn it on', detail: 'Connect in Tailscale, then come back here.' },
 ];
 
-/** Get Tailscale on this phone (24 section 4.2, screen 3). Skippable: other https routes work. */
+/**
+ * Get Tailscale on this phone (24 section 4.2, screen 3). Since plan 28 it is no longer on the way
+ * to Connect: at home the phone connects without it. Connect offers it when the phone is off
+ * Wi-Fi, and the failure messages open Tailscale itself. Skippable: other https routes work.
+ */
 export function TailscaleScreen({ navigation }: ScreenProps<'Tailscale'>) {
   const { net } = useServices();
   const [state, setState] = useState<{ installed: boolean; on: boolean | null } | null>(null);

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
-import { View } from 'react-native';
-import { Link2, XCircle } from 'lucide-react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
+import { Link2, Server, Wifi, XCircle } from 'lucide-react-native';
+import type { FoundServer } from '../connect/discover';
 import { ApiError } from '../api/client';
 import { addressProblem, explainFailure, type Failure } from '../connect/reach';
 import { Alert, AlertTitle } from '../components/ui/alert';
@@ -91,8 +92,12 @@ export function ConnectScreen({ navigation, route }: ScreenProps<'Connect'>) {
   return (
     <Screen
       title="Connect to your server"
-      description="On your computer, open MileWage, then Devices and Pair a phone."
+      description="On your home Wi-Fi the phone finds your server by itself. Or scan the code from MileWage on your computer (Devices, Pair a phone)."
     >
+      <NearbyServers
+        onPick={(found) => navigation.navigate('Link', { url: found.url, name: found.name })}
+        onTailscale={() => navigation.navigate('Tailscale')}
+      />
       {Scanner && (
         <Card>
           <CardHeader>
@@ -155,5 +160,99 @@ export function ConnectScreen({ navigation, route }: ScreenProps<'Connect'>) {
         </CardContent>
       </Card>
     </Screen>
+  );
+}
+
+type Nearby =
+  | { kind: 'looking' }
+  | { kind: 'found'; list: FoundServer[] }
+  | { kind: 'off-wifi'; tailscaleOff: boolean };
+
+/**
+ * "On this Wi-Fi" (plan 28 section 4.5): MileWage servers announced on the home network, each a
+ * button that starts linking with a code. Off Wi-Fi it says so; Tailscale is offered there only.
+ */
+function NearbyServers({
+  onPick,
+  onTailscale,
+}: {
+  onPick: (s: FoundServer) => void;
+  onTailscale: () => void;
+}) {
+  const C = useColors();
+  const { net } = useServices();
+  const [state, setState] = useState<Nearby>({ kind: 'looking' });
+  const live = useRef(true);
+
+  const look = useCallback(async () => {
+    setState({ kind: 'looking' });
+    if ((await net.localNetwork()) === false) {
+      const tailscaleOff = !(await net.tailscaleInstalled()) || (await net.vpnActive()) === false;
+      if (live.current) setState({ kind: 'off-wifi', tailscaleOff });
+      return;
+    }
+    const list = await net.discover().catch(() => []);
+    if (live.current) setState({ kind: 'found', list });
+  }, [net]);
+  useEffect(() => {
+    live.current = true;
+    void look();
+    return () => void (live.current = false);
+  }, [look]);
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-start gap-3">
+        <Wifi size={18} color={C.foreground} />
+        <View className="flex-1 gap-1">
+          <CardTitle>On this Wi-Fi</CardTitle>
+          <CardDescription>
+            {state.kind === 'off-wifi'
+              ? 'Connect this phone to your home Wi-Fi to find your server, or scan the code.'
+              : 'Tap your server, then type the code it shows on your computer.'}
+          </CardDescription>
+        </View>
+      </CardHeader>
+      <CardContent className="gap-2">
+        {state.kind === 'looking' && (
+          <View className="flex-row items-center gap-2">
+            <ActivityIndicator color={C.mutedForeground} />
+            <Text className="text-muted-foreground">Looking for your server…</Text>
+          </View>
+        )}
+        {state.kind === 'found' &&
+          state.list.map((s) => (
+            <Button
+              key={s.url}
+              variant="outline"
+              className="h-auto justify-start py-3"
+              accessibilityLabel={`${s.name}, ${s.url}`}
+              onPress={() => onPick(s)}
+            >
+              <Server size={18} color={C.foreground} />
+              <View className="flex-1">
+                <Text className="font-medium">{s.name}</Text>
+                <Text className="text-sm text-muted-foreground">{s.url}</Text>
+              </View>
+            </Button>
+          ))}
+        {state.kind === 'found' && state.list.length === 0 && (
+          <Text className="text-muted-foreground">
+            No MileWage server found on this Wi-Fi. Is home network access on for your server
+            (install guide, section 2a)? Otherwise scan the code.
+          </Text>
+        )}
+        {state.kind === 'off-wifi' && state.tailscaleOff && (
+          <Button variant="outline" size="sm" onPress={onTailscale}>
+            <Text>Away from home? Set up Tailscale</Text>
+          </Button>
+        )}
+        {state.kind !== 'looking' && (
+          <Button variant="ghost" size="sm" onPress={() => void look()}>
+            <Text>Look again</Text>
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   );
 }

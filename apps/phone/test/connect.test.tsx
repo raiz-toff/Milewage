@@ -69,7 +69,7 @@ describe('Connect screen messages', () => {
     render(<App services={makeServices(fetch, { net }).services} />);
     fireEvent.press(await screen.findByRole('button', { name: 'I have a server' }));
     fireEvent.changeText(await screen.findByLabelText('Pairing code'), code(TAILNET));
-    net.vpn = false; // turned off after the Tailscale check
+    net.vpn = false;
     fireEvent.press(screen.getByRole('button', { name: 'Connect' }));
     expect(await screen.findByText(/Tailscale is off on this phone/)).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: 'Open Tailscale' }));
@@ -86,25 +86,27 @@ describe('Connect screen messages', () => {
 });
 
 describe('Tailscale on this phone (plan 24 screen 3)', () => {
-  it('missing: the Tailscale screen comes first, installs, and can be skipped', async () => {
+  it('I have a server goes straight to Connect, even with Tailscale missing or off (plan 28)', async () => {
+    for (const net of [fakeNet(null, false), fakeNet(false, true)]) {
+      const view = render(<App services={makeServices(jest.fn(), { net }).services} />);
+      fireEvent.press(await screen.findByRole('button', { name: 'I have a server' }));
+      expect(await screen.findByText('Connect to your server')).toBeTruthy();
+      expect(screen.queryByText('Get Tailscale on this phone')).toBeNull();
+      view.unmount();
+    }
+  });
+
+  it('off Wi-Fi, Connect offers Tailscale; its screen installs and can be skipped', async () => {
     const net = fakeNet(null, false);
+    net.local = false;
     render(<App services={makeServices(jest.fn(), { net }).services} />);
     fireEvent.press(await screen.findByRole('button', { name: 'I have a server' }));
+    expect(await screen.findByText(/Connect this phone to your home Wi-Fi/)).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: 'Away from home? Set up Tailscale' }));
     expect(await screen.findByText('Get Tailscale on this phone')).toBeTruthy();
     fireEvent.press(await screen.findByRole('button', { name: 'Install Tailscale' }));
     expect(net.opened).toBe(1);
     fireEvent.press(screen.getByRole('button', { name: 'Continue without Tailscale' }));
-    expect(await screen.findByText('Connect to your server')).toBeTruthy();
-  });
-
-  it('installed but off: offers to open it; on: goes straight to Connect', async () => {
-    const net = fakeNet(false, true);
-    const view = render(<App services={makeServices(jest.fn(), { net }).services} />);
-    fireEvent.press(await screen.findByRole('button', { name: 'I have a server' }));
-    expect(await screen.findByRole('button', { name: 'Open Tailscale' })).toBeTruthy();
-    view.unmount();
-    render(<App services={makeServices(jest.fn(), { net: fakeNet(true) }).services} />);
-    fireEvent.press(await screen.findByRole('button', { name: 'I have a server' }));
     expect(await screen.findByText('Connect to your server')).toBeTruthy();
   });
 

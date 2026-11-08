@@ -5,22 +5,19 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Text } from '../components/ui/text';
 import type { ScreenProps } from '../navigation';
-import { useServices } from '../services';
 import { useColors } from '../theme/theme';
 import { Screen } from '../ui/Screen';
-import { connectRoute } from './TailscaleScreen';
 
 /** The first screen of a phone that is not connected (24 section 4.2, screen 1). */
 export function WelcomeScreen({ navigation, route }: ScreenProps<'Welcome'>) {
   const C = useColors();
-  const { net } = useServices();
   return (
     <Screen
       title="Welcome to MileWage"
       description="MileWage records your shifts and sends them to your own MileWage server."
       footer={
         <View className="gap-3">
-          <Button size="lg" onPress={async () => navigation.navigate(await connectRoute(net))}>
+          <Button size="lg" onPress={() => navigation.navigate('Connect')}>
             <Text>I have a server</Text>
           </Button>
           <Button size="lg" variant="outline" onPress={() => navigation.navigate('ServerSetup')}>

@@ -4,6 +4,7 @@ import {
 } from '@react-navigation/native-stack';
 import { ConnectedScreen } from './firstrun/ConnectedScreen';
 import { ConnectScreen } from './firstrun/ConnectScreen';
+import { LinkScreen } from './firstrun/LinkScreen';
 import type { Gate } from './firstrun/gate';
 import { ReadyScreen } from './firstrun/ReadyScreen';
 import { SetupStepScreen } from './firstrun/SetupStepScreen';
@@ -27,6 +28,8 @@ export type RootStackParamList = {
   Ready: undefined;
   /** `pairLink`: a `milewage://pair` link that opened the app, to pair from after asking. */
   Connect: { pairLink?: string } | undefined;
+  /** Linking with a code to a server found on the Wi-Fi (plan 28). */
+  Link: { url: string; name: string };
   Home: undefined;
   Settings: undefined;
   Shifts: undefined;
@@ -78,6 +81,7 @@ export function RootNavigator({ gate }: { gate: Gate }) {
       {/* In both sets. Connect also takes a pairing link that arrives when already connected. */}
       <Stack.Group navigationKey={key}>
         <Stack.Screen name="Connect" component={ConnectScreen} />
+        <Stack.Screen name="Link" component={LinkScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="Permissions" component={PermissionsScreen} />
         <Stack.Screen name="Conformance" component={ConformanceScreen} />
