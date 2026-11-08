@@ -87,14 +87,32 @@ describe('vehicles page', () => {
     expect(screen.getByText('active')).toBeTruthy();
   });
 
-  it('shows an empty state', async () => {
+  it('shows an empty state that opens the add form', async () => {
     server([]);
     expect(await screen.findByText(/No vehicles yet/)).toBeTruthy();
+    expect(screen.queryByLabelText('Name')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Add vehicle' }));
+    expect(screen.getByLabelText('Name')).toBeTruthy();
+  });
+
+  it('explains Type and Ownership next to the choices, and Cancel closes the form', async () => {
+    server();
+    await screen.findByText('Corolla');
+    fireEvent.click(screen.getByRole('button', { name: 'Add vehicle' }));
+    const hint = (label: string) =>
+      document.getElementById(screen.getByLabelText(label).getAttribute('aria-describedby') ?? '')
+        ?.textContent;
+    expect(hint('Type')).toMatch(/Sets which mileage rate applies/);
+    expect(hint('Ownership')).toMatch(/depends on your country/);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByLabelText('Name')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Add vehicle' })).toBeTruthy();
   });
 
   it('adds a vehicle with the chosen type', async () => {
     const s = server();
     await screen.findByText('Corolla');
+    fireEvent.click(screen.getByRole('button', { name: 'Add vehicle' }));
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Cargo bike' } });
     pick(screen.getByLabelText('Type'), 'bicycle');
     fireEvent.click(screen.getByRole('button', { name: 'Add vehicle' }));
@@ -136,6 +154,7 @@ describe('vehicles page', () => {
   it('records who owns a new vehicle and shows it when it is not owned', async () => {
     const s = server();
     await screen.findByText('Corolla');
+    fireEvent.click(screen.getByRole('button', { name: 'Add vehicle' }));
     expect(optionsOf('Ownership')).toEqual(['owned', 'financed', 'leased', 'rented']);
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Yulu' } });
     pick(screen.getByLabelText('Type'), 'scooter');
@@ -166,6 +185,7 @@ describe('vehicles page', () => {
   it('offers the e-bike, scooter and on-foot types', async () => {
     server();
     await screen.findByText('Corolla');
+    fireEvent.click(screen.getByRole('button', { name: 'Add vehicle' }));
     expect(optionsOf('Type')).toEqual([
       'car',
       'van',

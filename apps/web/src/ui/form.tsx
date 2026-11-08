@@ -147,6 +147,7 @@ export function Picker({
   size,
   className,
   disabled,
+  describedBy,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -157,6 +158,8 @@ export function Picker({
   size?: 'sm' | 'default';
   className?: string;
   disabled?: boolean;
+  /** Id of a hint that describes the choice. */
+  describedBy?: string;
 }) {
   return (
     <Select
@@ -167,6 +170,7 @@ export function Picker({
       <SelectTrigger
         id={id}
         aria-label={label}
+        aria-describedby={describedBy}
         size={size}
         className={cn('w-full min-w-0', className)}
       >
@@ -184,21 +188,29 @@ export function Picker({
   );
 }
 
-/** A labelled dropdown. The label points at the trigger, so it is the accessible name. */
+/**
+ * A labelled dropdown. The label points at the trigger, so it is the accessible name, unless
+ * `name` gives a fuller one (it should start with the label); the hint is its description.
+ */
 export function SelectField({
   label,
+  name,
+  hint,
   value,
   onChange,
   options,
   disabled,
 }: {
   label: string;
+  name?: string;
+  hint?: string;
   value: string;
   onChange: (value: string) => void;
   options: PickOption[];
   disabled?: boolean;
 }) {
   const id = useId();
+  const hintId = `${id}-hint`;
   // min-w-0 lets the field shrink inside a grid column, so a long choice is cut off with an
   // ellipsis instead of spilling over the next field.
   return (
@@ -206,7 +218,20 @@ export function SelectField({
       <label htmlFor={id} className="text-sm font-medium">
         {label}
       </label>
-      <Picker id={id} value={value} onChange={onChange} options={options} disabled={disabled} />
+      <Picker
+        id={id}
+        label={name}
+        describedBy={hint ? hintId : undefined}
+        value={value}
+        onChange={onChange}
+        options={options}
+        disabled={disabled}
+      />
+      {hint ? (
+        <p id={hintId} className="text-xs text-muted-foreground">
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }

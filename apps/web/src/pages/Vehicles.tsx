@@ -9,7 +9,7 @@ import { formatDateTime } from '../format';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError, Picker, SelectField } from '../ui/form';
 import { RowMenu } from '../ui/RowMenu';
-import { Archive, ArchiveRestore, Pencil, Star } from 'lucide-react';
+import { Archive, ArchiveRestore, Pencil, Plus, Star } from 'lucide-react';
 import { VehicleMaintenance } from './VehicleMaintenance';
 import { VehicleTaxYear } from './VehicleTaxYear';
 
@@ -35,6 +35,12 @@ export const OWNERSHIP: { value: Ownership; label: string }[] = [
   { value: 'leased', label: 'Leased' },
   { value: 'rented', label: 'Rented' },
 ];
+/** Hints that sit under the Type and Ownership choices, where the question is asked. */
+const TYPE_HINT =
+  'Sets which mileage rate applies. Bicycles, e-bikes, scooters and walking get none.';
+const OWNERSHIP_HINT =
+  'For your records. Whether rent or finance payments count for tax depends on your country.';
+
 /** Shown in the list only when the vehicle is not owned outright. */
 const ownershipNote = (o: Ownership) =>
   o === 'owned' ? '' : (OWNERSHIP.find((x) => x.value === o)?.label ?? '');
@@ -243,13 +249,14 @@ function VehicleRow({ vehicle, onChanged }: { vehicle: Vehicle; onChanged: () =>
 /**
  * Vehicles (07 section 2.2): the driver's vehicles. Vehicles are archived, never deleted, because
  * a shift in the tax record points at one. An archived vehicle stays in history and drops out of
- * the pickers.
+ * the pickers. Add vehicle opens the form, as Add expense does.
  */
 export function VehiclesPage() {
   const { api } = useSession();
   const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
   const [kind, setKind] = useState<Kind>('car');
   const [ownership, setOwnership] = useState<Ownership>('owned');
@@ -270,14 +277,19 @@ export function VehiclesPage() {
     void load();
   }, [load]);
 
+  function open() {
+    setName('');
+    setKind('car');
+    setOwnership('owned');
+    setAdding(true);
+  }
   async function add(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
       await unwrap(api.POST('/vehicles', { body: { name: name.trim(), kind, ownership } }));
-      setName('');
-      setOwnership('owned');
+      setAdding(false);
       await load();
     } catch (err) {
       setError(describe(err));
@@ -286,83 +298,98 @@ export function VehiclesPage() {
     }
   }
 
+  const addButton = (
+    <UiButton type="button" onClick={open}>
+      <Plus />
+      Add vehicle
+    </UiButton>
+  );
+  const empty = vehicles !== null && vehicles.length === 0;
+
   return (
-    <section className="space-y-6">
+    <section className="max-w-3xl space-y-6">
       <PageHeader
         title="Vehicles"
-        description="The type decides which mileage rate applies. Ownership is for your own records: whether rent or finance payments count for tax depends on your country. Vehicles are archived rather than deleted so past shifts keep their vehicle."
-      />
-      <Section title="Add a vehicle">
-        <form
-          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_180px_240px_auto]"
-          onSubmit={(e) => void add(e)}
-        >
-          <Field
-            label="Name"
-            maxLength={64}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <SelectField
-            label="Type"
-            value={kind}
-            onChange={(v) => setKind(v as Kind)}
-            options={KINDS}
-          />
-          <SelectField
-            label="Ownership"
-            value={ownership}
-            onChange={(v) => setOwnership(v as Ownership)}
-            options={OWNERSHIP}
-          />
-          <div className="flex items-end">
-            <Button type="submit" busy={busy || name.trim() === ''}>
-              Add vehicle
-            </Button>
-          </div>
-        </form>
-      </Section>
-      <Section
-        title="Your vehicles"
-        action={
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <input
-              type="checkbox"
-              className="size-4 accent-primary"
-              checked={showArchived}
-              onChange={(e) => setShowArchived(e.target.checked)}
-            />
-            Show archived vehicles
-          </label>
-        }
+        description="What you work with. Archive a vehicle you no longer use; past shifts keep it."
       >
-        <FormError message={error} />
-        {vehicles === null ? (
-          <p className="text-sm text-muted-foreground">Loading</p>
-        ) : vehicles.length === 0 ? (
-          <EmptyState>No vehicles yet. Add the one you drive for work.</EmptyState>
-        ) : (
-          <TableBox>
-            <table className={tableClass}>
-              <caption className="sr-only">Vehicles</caption>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Type</th>
-                  <th>Added</th>
-                  <th>State</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {vehicles.map((v) => (
-                  <VehicleRow key={v.id} vehicle={v} onChanged={() => void load()} />
-                ))}
-              </tbody>
-            </table>
-          </TableBox>
-        )}
-      </Section>
+        {adding || empty ? null : addButton}
+      </PageHeader>
+      {adding ? (
+        <Section title="New vehicle">
+          <form className="grid gap-4 sm:grid-cols-2" onSubmit={(e) => void add(e)}>
+            <div className="sm:col-span-2">
+              <Field
+                label="Name"
+                placeholder="e.g. Corolla"
+                autoFocus
+                maxLength={64}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <SelectField
+              label="Type"
+              hint={TYPE_HINT}
+              value={kind}
+              onChange={(v) => setKind(v as Kind)}
+              options={KINDS}
+            />
+            <SelectField
+              label="Ownership"
+              hint={OWNERSHIP_HINT}
+              value={ownership}
+              onChange={(v) => setOwnership(v as Ownership)}
+              options={OWNERSHIP}
+            />
+            <div className="flex gap-2 sm:col-span-2">
+              <Button type="submit" busy={busy || name.trim() === ''}>
+                Add vehicle
+              </Button>
+              <UiButton type="button" variant="ghost" onClick={() => setAdding(false)}>
+                Cancel
+              </UiButton>
+            </div>
+          </form>
+        </Section>
+      ) : null}
+      <FormError message={error} />
+      {vehicles === null ? (
+        <p className="text-sm text-muted-foreground">Loading</p>
+      ) : empty ? (
+        <EmptyState className="space-y-3">
+          <p>No vehicles yet. Add the one you drive for work: its type sets the mileage rate.</p>
+          {adding ? null : addButton}
+        </EmptyState>
+      ) : (
+        <TableBox>
+          <table className={tableClass}>
+            <caption className="sr-only">Vehicles</caption>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Added</th>
+                <th>State</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {vehicles.map((v) => (
+                <VehicleRow key={v.id} vehicle={v} onChanged={() => void load()} />
+              ))}
+            </tbody>
+          </table>
+        </TableBox>
+      )}
+      <label className="flex w-fit items-center gap-2 text-xs text-muted-foreground">
+        <input
+          type="checkbox"
+          className="size-3.5 accent-primary"
+          checked={showArchived}
+          onChange={(e) => setShowArchived(e.target.checked)}
+        />
+        Show archived vehicles
+      </label>
     </section>
   );
 }
