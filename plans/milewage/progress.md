@@ -2456,3 +2456,9 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Standards checked: plan 28 section 3.1 (reachability over the Wi-Fi name); RFC 6763 TXT records for the instance id; GOV.UK [confirmation pages](https://design-system.service.gov.uk/patterns/confirmation-pages/) (say what happens next) for the Connected note.
 - Tests: `test/awayhints.test.tsx` 8 new (a silent home address on Wi-Fi looks for the same server once per 10 minutes and keeps the new address; never on mobile data; only a home address is kept; at home with Tailscale off no hint; away with Tailscale off the hint and Open Tailscale; home-only and off Wi-Fi the away sentence and no Tailscale hint; Settings shows At home (using now) and Away not set up; Connected's home-only note); `test/app.test.tsx` and `test/pairing.screen.test.tsx` read the Away line instead of "Paired to". They fail without the change.
 - Assumption (owner to confirm): 10 minutes between looks for a moved server.
+
+## PR X5 — Tests: no real tailnet name in the code
+
+- Branch `pr-X5-no-real-tailnet`, on `main`. Merged 2026-11-08; the branch was then deleted with the rest.
+- `apps/web/test/pairing-address.test.ts` used the owner's real Tailscale machine and tailnet name as a sample address; it is now `https://mybox.tail1234.ts.net`. A search of `main` finds no other host names, tailnet names or addresses of the owner's in code (the planning documents still name the development VM's LAN address; `plans/` is not in the Docker image, see `.dockerignore`). Earlier commits still hold the old sample; history is not rewritten.
+- Tests: the same test, unchanged in what it checks.
