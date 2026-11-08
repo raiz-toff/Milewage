@@ -125,9 +125,11 @@ export function goalsRoutes({
       const { userId } = authn.authenticate(req, 'S');
       const id = (req.params as { id: number }).id;
       mine(userId, id);
-      const { active, ...rest } = req.body as Partial<GoalRow> & { active?: boolean };
+      const { active, label, ...rest } = req.body as Partial<GoalRow> & { active?: boolean };
       const g = repo.update(userId, id, {
         ...rest,
+        // trimmed as on create
+        ...(label === undefined ? {} : { label: label.trim() }),
         ...(active === undefined ? {} : { active: active ? 1 : 0 }),
       })!;
       bus.emit('goals.changed', { userId: String(userId) });

@@ -86,6 +86,24 @@ describe('CRUD', () => {
     });
     const p = await send('PATCH', '/goals/1', { target: 8, active: false });
     expect(p.json()).toMatchObject({ target: 8, active: false });
+    // An edit may change every number of the goal at once; the name is trimmed as on create.
+    const e = await send('PATCH', '/goals/1', {
+      label: ' Monthly hours ',
+      metric: 'hours',
+      period: 'monthly',
+      target: 6000,
+    });
+    expect(e.json()).toMatchObject({
+      label: 'Monthly hours',
+      metric: 'hours',
+      period: 'monthly',
+      target: 6000,
+      active: false,
+    });
+    expect((await send('GET', '/goals')).json()[0]).toMatchObject({
+      target: 6000,
+      metric: 'hours',
+    });
     for (const bad of [
       { target: 0 },
       { metric: 'miles' },

@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Skeleton } from '@/components/ui/skeleton';
 import { dateLocale, dateToIso, isoToDate } from '../dateText';
 import { EmptyState, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
+import { HourBars } from '../ui/HourBars';
 import { describe, unwrap } from '../api/client';
 import { apiKey } from '../api/query';
 import { formatMoney } from '../format';
@@ -68,7 +69,13 @@ const GROUPS = [
 /** Analytics (module `analytics`, 18 section 10.1): a period navigator and the groups the server returns. */
 export function AnalyticsPage() {
   const { api } = useSession();
-  const { timezone, currency, country, week_start: weekStart } = useSettings();
+  const {
+    timezone,
+    currency,
+    country,
+    week_start: weekStart,
+    time_format: timeFormat,
+  } = useSettings();
   const platformOf = usePlatformOf();
   const [mode, setMode] = useState<Mode>('week');
   const [offset, setOffset] = useState(0);
@@ -345,6 +352,22 @@ export function AnalyticsPage() {
               </p>
             </Section>
           </div>
+          <Section
+            label="Shift start times"
+            title="Shift start times"
+            description="How many shifts started in each hour of the day, in this period."
+          >
+            <HourBars
+              label="Shifts by start hour"
+              unit={['shift', 'shifts']}
+              bars={(data.rhythm.by_start_hour as Data[]).map((h) => ({
+                hour: h.hour as number,
+                value: h.shifts as number,
+              }))}
+              timeFormat={timeFormat}
+              emptyText="No shifts started in this period."
+            />
+          </Section>
         </>
       )}
     </section>

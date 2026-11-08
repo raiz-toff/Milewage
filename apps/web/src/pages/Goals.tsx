@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState, PageHeader, Section } from '../ui/layout';
-import { Pause, Play, Trash2 } from 'lucide-react';
+import { Pause, Pencil, Play, Trash2 } from 'lucide-react';
 import { RowMenu } from '../ui/RowMenu';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
 import { useApiQuery, useInvalidate } from '../api/query';
 import type { Schemas } from '../api/client';
-import { formatMoney } from '../format';
+import { Button as UiButton } from '@/components/ui/button';
+import { formatMoney, moneyInput, parseMoney } from '../format';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
-import { parseMoney } from '../format';
 
 type Goal = Schemas['Goal'];
 const METRICS = [
@@ -20,6 +20,7 @@ const METRICS = [
   { value: 'active_distance', label: 'Active distance (estimated)' },
 ];
 const PERIODS = ['daily', 'weekly', 'monthly', 'yearly'].map((v) => ({ value: v, label: v }));
+const EMPTY = { label: '', metric: 'earnings', period: 'weekly', target: '' };
 
 /** Target typed by the driver to the stored unit: minor units, minutes, a count or metres. */
 export function targetOf(
@@ -34,6 +35,20 @@ export function targetOf(
   if (metric === 'hours') return Math.round(n * 60);
   if (metric === 'active_distance') return Math.round(n * (unit === 'km' ? 1000 : 1609.344));
   return Math.round(n);
+}
+
+/** A stored target as the number the form field shows: the inverse of `targetOf`. */
+export function targetInput(
+  metric: string,
+  v: number,
+  unit: 'km' | 'mi',
+  currency: string,
+): string {
+  if (metric === 'earnings') return moneyInput(v, currency);
+  if (metric === 'hours') return String(Math.round((v / 60) * 100) / 100);
+  if (metric === 'active_distance')
+    return String(Math.round((v / (unit === 'km' ? 1000 : 1609.344)) * 1000) / 1000);
+  return String(v);
 }
 
 /** Shows a value in the unit the driver typed it in. */
@@ -87,25 +102,46 @@ export function GoalsPage() {
   const load = () => invalidate('/goals', '/progress');
   const [failed, setError] = useState<string | null>(null);
   const error = failed ?? (asked.error ? describe(asked.error) : null);
-  const [form, setForm] = useState({ label: '', metric: 'earnings', period: 'weekly', target: '' });
+  const [form, setForm] = useState(EMPTY);
+  // The id of the goal the form edits; null while it adds one. The same form serves both.
+  const [editing, setEditing] = useState<number | null>(null);
 
-  async function add(e: FormEvent) {
+  function edit(g: Goal) {
+    setError(null);
+    setEditing(g.id);
+    setForm({
+      label: g.label,
+      metric: g.metric,
+      period: g.period,
+      target: targetInput(g.metric, g.target, unit, currency),
+    });
+  }
+  // Leaving an edit empties the form back to the add defaults, not the edited goal's choices.
+  function cancel() {
+    setEditing(null);
+    setForm(EMPTY);
+  }
+
+  async function save(e: FormEvent) {
     e.preventDefault();
     const target = targetOf(form.metric, form.target, unit, currency);
     if (!Number.isFinite(target)) return setError('Enter a target above zero.');
     setError(null);
+    const body = {
+      ...form,
+      label: form.label.trim(),
+      target,
+      metric: form.metric as Goal['metric'],
+      period: form.period as Goal['period'],
+    };
     try {
-      await unwrap(
-        api.POST('/goals', {
-          body: {
-            ...form,
-            target,
-            metric: form.metric as Goal['metric'],
-            period: form.period as Goal['period'],
-          },
-        }),
-      );
-      setForm({ ...form, label: '', target: '' });
+      if (editing === null) {
+        await unwrap(api.POST('/goals', { body }));
+        setForm({ ...form, label: '', target: '' });
+      } else {
+        await unwrap(api.PATCH('/goals/{id}', { params: { path: { id: editing } }, body }));
+        cancel();
+      }
       await load();
     } catch (err) {
       setError(describe(err));
@@ -125,10 +161,10 @@ export function GoalsPage() {
     <section className="space-y-6">
       <PageHeader title="Goals" description="A goal is a number you choose; none is set for you." />
       <FormError message={error} />
-      <Section title="Add a goal">
+      <Section title={editing === null ? 'Add a goal' : 'Edit goal'}>
         <form
           className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
-          onSubmit={(e) => void add(e)}
+          onSubmit={(e) => void save(e)}
         >
           <Field
             label="Name"
@@ -154,10 +190,15 @@ export function GoalsPage() {
             value={form.target}
             onChange={(e) => setForm({ ...form, target: e.target.value })}
           />
-          <div className="flex items-end">
+          <div className="flex items-end gap-2">
             <Button type="submit" busy={form.label.trim() === ''}>
-              Add goal
+              {editing === null ? 'Add goal' : 'Save changes'}
             </Button>
+            {editing === null ? null : (
+              <UiButton type="button" variant="ghost" onClick={cancel}>
+                Cancel
+              </UiButton>
+            )}
           </div>
         </form>
       </Section>
@@ -177,6 +218,7 @@ export function GoalsPage() {
                 <RowMenu
                   name={g.label}
                   actions={[
+                    { label: 'Edit', icon: Pencil, onSelect: () => edit(g) },
                     {
                       label: g.active ? 'Pause' : 'Resume',
                       icon: g.active ? Pause : Play,
@@ -194,10 +236,13 @@ export function GoalsPage() {
                       label: 'Delete',
                       icon: Trash2,
                       destructive: true,
-                      onSelect: () =>
+                      onSelect: () => {
+                        // The form must not go on editing a goal that is gone.
+                        if (editing === g.id) cancel();
                         void act(() =>
                           unwrap(api.DELETE('/goals/{id}', { params: { path: { id: g.id } } })),
-                        ),
+                        );
+                      },
                     },
                   ]}
                 />

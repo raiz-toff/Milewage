@@ -84,7 +84,8 @@
   --earned: #0f9f6e;
   --spent: #d93f33;
   --signal: #2f6fe0;
-  --chart-1: #ffc21f;
+  /* The brand yellow is 1.6:1 on a white card; chart marks need 3:1, so light mode uses this darker amber (3.3:1). Dark mode keeps #ffc21f. */
+  --chart-1: #b88600;
   --chart-2: #0f9f6e;
   --chart-3: #2f6fe0;
   --chart-4: #d93f33;

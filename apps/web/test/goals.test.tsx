@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { targetOf, valueText } from '../src/pages/Goals';
+import { targetInput, targetOf, valueText } from '../src/pages/Goals';
 import { renderApp, settingsFixture, signedIn, pick, menu, DASHBOARD } from './support/kit';
 
 afterEach(cleanup);
@@ -28,12 +28,19 @@ const goal = (over: object = {}, progress: object = {}) => ({
 });
 
 function open(list: object[] = [goal()], enabled = true) {
+  // A PATCH changes the list the next GET returns, as the server would.
+  let shown = list;
   return renderApp(
     {
       ...signedIn(settingsFixture({ modules: { goals: enabled } })),
-      'GET /goals': () => ({ body: list }),
+      'GET /goals': () => ({ body: shown }),
       'POST /goals': () => ({ status: 201, body: goal({ id: 2 }) }),
-      'PATCH /goals/1': () => ({ body: goal({ active: false }) }),
+      'PATCH /goals/1': ({ body }) => {
+        const b = body as Record<string, unknown>;
+        const target = typeof b.target === 'number' ? b.target : 50_000;
+        shown = [goal({ ...b, target }, { target })];
+        return { body: shown[0] };
+      },
       'DELETE /goals/1': () => ({ status: 204 }),
     },
     '/goals',
@@ -93,6 +100,50 @@ describe('goals screen (module goals)', () => {
     await waitFor(() => expect(s.calls.some((c) => c.method === 'DELETE')).toBe(true));
   });
 
+  it('edits a goal in the add form, pre-filled, and saves the target in the stored unit', async () => {
+    const s = open();
+    await screen.findByText('$250.00 of $500.00');
+    menu('Weekly pay', 'Edit');
+    expect(screen.getByRole('heading', { name: 'Edit goal' })).toBeTruthy();
+    expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('Weekly pay');
+    expect((screen.getByLabelText('Target') as HTMLInputElement).value).toBe('500.00');
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: ' Monthly pay ' } });
+    pick(screen.getByLabelText('Per'), 'monthly');
+    fireEvent.change(screen.getByLabelText('Target'), { target: { value: '600' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(s.calls.some((c) => c.method === 'PATCH')).toBe(true));
+    expect(s.calls.find((c) => c.method === 'PATCH')?.body).toEqual({
+      label: 'Monthly pay',
+      metric: 'earnings',
+      period: 'monthly',
+      target: 60_000,
+    });
+    expect(await screen.findByText('$250.00 of $600.00')).toBeTruthy();
+    expect(screen.getByText('Monthly pay')).toBeTruthy();
+    // The form is the add form again, empty and back on the defaults.
+    expect(screen.getByRole('heading', { name: 'Add a goal' })).toBeTruthy();
+    expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('');
+    expect(screen.getByLabelText('Per').textContent).toMatch(/weekly/);
+    expect(s.calls.some((c) => c.method === 'POST')).toBe(false);
+  });
+
+  it('cancel leaves the goal as it was and empties the form; deleting the edited goal ends the edit', async () => {
+    const s = open([goal({ metric: 'hours', target: 90 }, { value: 30, target: 90 })]);
+    await screen.findByText('Weekly pay');
+    menu('Weekly pay', 'Edit');
+    expect((screen.getByLabelText('Target') as HTMLInputElement).value).toBe('1.5');
+    expect(screen.getByLabelText('Measure').textContent).toMatch(/Hours worked/);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('heading', { name: 'Add a goal' })).toBeTruthy();
+    expect((screen.getByLabelText('Target') as HTMLInputElement).value).toBe('');
+    expect(screen.getByLabelText('Measure').textContent).toMatch(/Earnings/);
+    menu('Weekly pay', 'Edit');
+    menu('Weekly pay', 'Delete');
+    expect(screen.getByRole('heading', { name: 'Add a goal' })).toBeTruthy();
+    await waitFor(() => expect(s.calls.some((c) => c.method === 'DELETE')).toBe(true));
+    expect(s.calls.some((c) => c.method === 'PATCH')).toBe(false);
+  });
+
   it('dropdowns can shrink in the form grid, so a long measure does not spill over Per', async () => {
     open();
     await screen.findByText('Weekly pay');
@@ -128,5 +179,13 @@ describe('goals screen (module goals)', () => {
     expect(targetOf('active_distance', '2', 'mi', 'CAD')).toBe(3219);
     expect(Number.isNaN(targetOf('shifts', '0', 'km', 'CAD'))).toBe(true);
     expect(valueText('hours', 90, 'km', 'CAD')).toBe('1.5 h');
+    // The form shows a stored target as it was typed.
+    expect([
+      targetInput('earnings', 1250, 'km', 'CAD'),
+      targetInput('hours', 90, 'km', 'CAD'),
+      targetInput('shifts', 4, 'km', 'CAD'),
+      targetInput('active_distance', 3219, 'mi', 'CAD'),
+      targetInput('active_distance', 100_000, 'km', 'CAD'),
+    ]).toEqual(['12.50', '1.5', '4', '2', '100']);
   });
 });

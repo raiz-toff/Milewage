@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { offsetOf, rangeOf, rangeText } from '../src/pages/Analytics';
+import { hourLabel } from '../src/ui/HourBars';
 import { renderApp, settingsFixture, signedIn, DASHBOARD } from './support/kit';
 
 afterEach(cleanup);
@@ -55,11 +56,19 @@ const groups = (over: Record<string, unknown> = {}): Record<string, unknown> => 
   ...over,
 });
 
-function open(over: Record<string, unknown> = {}, enabled = true) {
+/** The API's 24 hours, with shifts starting at the given ones. */
+const byHour = (shifts: Record<number, number>) =>
+  Array.from({ length: 24 }, (_, hour) => ({ hour, shifts: shifts[hour] ?? 0 }));
+
+function open(
+  over: Record<string, unknown> = {},
+  enabled = true,
+  timeFormat: '12h' | '24h' = '24h',
+) {
   const g = groups(over);
   return renderApp(
     {
-      ...signedIn(settingsFixture({ modules: { analytics: enabled } })),
+      ...signedIn(settingsFixture({ modules: { analytics: enabled }, time_format: timeFormat })),
       'GET /analytics': ({ url }) => ({
         body: {
           from: url.searchParams.get('from'),
@@ -144,6 +153,86 @@ describe('analytics screen (module analytics)', () => {
       (screen.getByRole('button', { name: 'Next period' }) as HTMLButtonElement).disabled,
     ).toBe(false);
     expect(s.calls.filter((c) => c.path === '/analytics').length).toBeGreaterThan(1);
+  });
+
+  it('draws a column per hour of the day for shift start times, with the numbers in a table', async () => {
+    open({
+      rhythm: {
+        by_weekday: [{ weekday: 2, shifts: 2, hours: 4 }],
+        by_start_hour: byHour({ 9: 2, 17: 3 }),
+        average_shift_minutes: 120,
+      },
+    });
+    const region = await screen.findByRole('region', { name: 'Shift start times' });
+    expect(region.querySelector('h2')!.textContent).toBe('Shift start times');
+    expect(region.textContent).toMatch(/How many shifts started in each hour of the day/);
+    const columns = region.querySelectorAll<HTMLElement>('[data-hour]');
+    expect(columns).toHaveLength(24);
+    // The columns are drawn to scale with the chart token, and hidden from a screen reader.
+    const bar = (h: number) => columns[h]!.querySelector<HTMLElement>('.bg-chart-1')!;
+    expect([bar(17).style.height, bar(9).style.height, bar(0).style.height]).toEqual([
+      '100%',
+      `${(2 / 3) * 100}%`,
+      '0%',
+    ]);
+    expect(columns[0]!.closest('[aria-hidden]')).not.toBeNull();
+    // Only the busiest hour is labelled on the chart; a tick every six hours.
+    const chart = columns[0]!.parentElement!;
+    expect([...chart.querySelectorAll('.absolute')].map((n) => n.textContent)).toEqual([
+      '00:00',
+      '06:00',
+      '12:00',
+      '3',
+      '18:00',
+    ]);
+    // Hovering a column says its value and hour; leaving the chart clears it.
+    fireEvent.pointerEnter(columns[9]!);
+    expect(region.textContent).toMatch(/2 shifts at 09:00/);
+    fireEvent.pointerLeave(chart);
+    expect(region.textContent).not.toMatch(/2 shifts at 09:00/);
+    // Every hour and its count are in the table a screen reader gets; the button shows it to all.
+    const table = within(region).getByRole('table', { name: 'Shifts by start hour' });
+    const rows = within(table).getAllByRole('row');
+    expect(rows).toHaveLength(25);
+    expect(rows[18]!.textContent).toBe('17:003');
+    expect(table.parentElement!.className).toBe('sr-only');
+    const show = within(region).getByRole('button', { name: 'Show as a table' });
+    expect(show.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(show);
+    expect(table.parentElement!.className).not.toMatch(/sr-only/);
+    expect(
+      within(region).getByRole('button', { name: 'Hide table' }).getAttribute('aria-expanded'),
+    ).toBe('true');
+  });
+
+  it('start times: hours follow the time format setting, and no shifts is words, not bars', async () => {
+    open(
+      { rhythm: { by_weekday: [], by_start_hour: byHour({ 17: 1 }), average_shift_minutes: 60 } },
+      true,
+      '12h',
+    );
+    const region = await screen.findByRole('region', { name: 'Shift start times' });
+    expect([...region.querySelectorAll('[data-hour] .absolute')].map((n) => n.textContent)).toEqual(
+      ['12 AM', '6 AM', '12 PM', '1', '6 PM'],
+    );
+    fireEvent.pointerEnter(region.querySelectorAll('[data-hour]')[17]!);
+    expect(region.textContent).toMatch(/1 shift at 5 PM/);
+    cleanup();
+    open(); // the fixture's by_start_hour is empty
+    const empty = await screen.findByRole('region', { name: 'Shift start times' });
+    expect(empty.textContent).toMatch(/No shifts started in this period/);
+    expect(empty.querySelectorAll('[data-hour]')).toHaveLength(0);
+    expect(within(empty).queryByRole('table')).toBeNull();
+    cleanup();
+    open({ rhythm: { by_weekday: [], by_start_hour: byHour({}), average_shift_minutes: null } });
+    expect((await screen.findByRole('region', { name: 'Shift start times' })).textContent).toMatch(
+      /No shifts started in this period/,
+    );
+    expect([hourLabel(0, '12h'), hourLabel(12, '12h'), hourLabel(23, '24h')]).toEqual([
+      '12 AM',
+      '12 PM',
+      '23:00',
+    ]);
   });
 
   it('offsetOf and rangeText: the period of a day, and a short range in the local order', () => {
