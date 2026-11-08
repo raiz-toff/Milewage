@@ -11,6 +11,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
+import process from 'node:process';
 import { join } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 import { afterEach, beforeAll, beforeEach, expect, test } from 'vitest';
@@ -205,4 +206,40 @@ test('--yes-tailscale answers for the driver; a failing serve exits 1 with the c
   expect(r.status).toBe(1);
   expect(r.stderr).toContain(`sudo tailscale serve --bg ${hostPort}`);
   expect(envText()).not.toContain('MILEWAGE_PUBLIC_URL');
+});
+
+test('--lan: Caddy on the LAN, the home address, and the announcer; --no-lan turns it off', () => {
+  const lan = (...args) =>
+    spawnSync('bash', [script, '--no-start', '--env-file', join(dir, 'sub', '.env'), ...args], {
+      encoding: 'utf8',
+      env: { ...process.env, MILEWAGE_LAN_IP: '192.168.1.20' },
+    });
+  const r = lan('--port', '18570', '--lan');
+  expect(r.status).toBe(0);
+  expect(r.stdout).toContain('http://192.168.1.20:18570');
+  expect(envText()).toContain('MILEWAGE_BIND_ADDRESS=0.0.0.0\n');
+  expect(envText()).toContain('MILEWAGE_HOME_URL=http://192.168.1.20:18570\n');
+  expect(envText()).toContain('COMPOSE_PROFILES=lan\n');
+  // Run again on the kept .env: the lines are replaced, not added twice.
+  expect(lan('--no-lan').status).toBe(0);
+  expect(envText()).toContain('MILEWAGE_BIND_ADDRESS=127.0.0.1\n');
+  expect(envText()).toContain('MILEWAGE_HOME_URL=\n');
+  expect(envText()).toContain('COMPOSE_PROFILES=\n');
+  expect(envText().match(/MILEWAGE_BIND_ADDRESS=/g)).toHaveLength(1);
+});
+
+test('--lan without a private address of this host leaves LAN access off', () => {
+  const r = spawnSync(
+    'bash',
+    [script, '--no-start', '--env-file', join(dir, 'sub', '.env'), '--lan'],
+    { encoding: 'utf8', env: { PATH: '/usr/bin:/bin', MILEWAGE_LAN_IP: '8.8.8.8' } },
+  );
+  expect(r.status).toBe(0);
+  expect(r.stderr).toContain('LAN access stays off');
+  expect(envText()).not.toContain('MILEWAGE_BIND_ADDRESS');
+});
+
+test('without --lan and without a terminal nothing about the LAN is written', () => {
+  expect(run().status).toBe(0);
+  expect(envText()).not.toMatch(/MILEWAGE_BIND_ADDRESS|MILEWAGE_HOME_URL|COMPOSE_PROFILES/);
 });

@@ -39,6 +39,8 @@ ENV NODE_ENV=production \
 COPY --from=native /rt/node_modules ./node_modules
 COPY --from=build /src/dist/server.mjs ./server.mjs
 COPY --from=build /src/dist/cli.mjs ./cli.mjs
+# The home-network announcer, run by the lan-discovery service (plan 28 section 4.6).
+COPY --from=build /src/dist/advertise.mjs ./advertise.mjs
 COPY --from=build /src/dist/migrations ./migrations
 COPY --from=build /src/dist/diagnostics-migrations ./diagnostics-migrations
 # `docker compose exec api milewage-cli ...` (10 section 7, 14 section 11)

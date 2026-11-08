@@ -19,11 +19,35 @@ git clone <your MileWage repository> milewage && cd milewage
 infra/install.sh
 ```
 
-The script checks Docker, writes `infra/docker/.env` with the host port (default 8080, the next free port if 8080 is busy) and the proxy subnet, builds and starts the two containers, waits until they are healthy, and checks `/healthz`. It never overwrites an existing `.env`. `infra/install.sh --no-start` only writes the file. Options: `--port N`, `--subnet CIDR`, `--yes-tailscale`, `--no-tailscale`.
+The script checks Docker, writes `infra/docker/.env` with the host port (default 8080, the next free port if 8080 is busy) and the proxy subnet, builds and starts the two containers, waits until they are healthy, and checks `/healthz`. It never overwrites an existing `.env`. `infra/install.sh --no-start` only writes the file. Options: `--port N`, `--subnet CIDR`, `--lan`, `--no-lan`, `--yes-tailscale`, `--no-tailscale`.
+
+Run in a terminal, it first asks `Let phones on your home Wi-Fi connect without Tailscale (plain http, this network only)? [Y/n]` (section 2a). `--lan` answers yes, `--no-lan` no.
 
 Then it does the Tailscale step of section 3 for you when it can: if Tailscale is installed and this host is signed in and has HTTPS certificates on, it shows the machine name that will become public (read the privacy note in section 3), asks `Turn on https for <name>? [y/N]`, runs `tailscale serve --bg <port>`, writes `MILEWAGE_PUBLIC_URL=https://<name>` to `.env`, restarts the API and checks the address. Otherwise it says which step is missing (install Tailscale, `sudo tailscale up`, or turn on HTTPS certificates in the admin console) and stops without changing anything. It never installs Tailscale and never runs `tailscale funnel`. `--yes-tailscale` answers yes; `--no-tailscale` skips the step.
 
-The web client is now at `http://127.0.0.1:8080` on the host. The port is published on loopback only.
+The web client is now at `http://127.0.0.1:8080` on the host. Without LAN access the port is published on loopback only.
+
+### 2a. Home network access (optional, recommended for a home server)
+
+With LAN access on, the phone connects to the server directly on your home Wi-Fi, over plain `http://`, without Tailscale; away from home it uses the Tailscale address of section 3 (plan 28). The phone also **finds the server by itself** on the Wi-Fi: open the app, tap your server, and type the code it shows on the web's Devices page (or the setup step Pair your phone).
+
+`install.sh --lan` writes three lines to `infra/docker/.env` (or set them by hand, then `docker compose --env-file infra/docker/.env -f infra/docker/docker-compose.yml up -d`):
+
+```
+MILEWAGE_BIND_ADDRESS=0.0.0.0                  # Caddy on every interface of the host, not only loopback
+MILEWAGE_HOME_URL=http://192.168.1.20:8080     # this host's address on your network and the port
+COMPOSE_PROFILES=lan                           # starts the small lan-discovery service
+```
+
+The `lan-discovery` service announces `_milewage._tcp` on the Wi-Fi (mDNS, UDP 5353). Multicast does not cross Docker's bridge network, so it uses the host's network (`network_mode: host`, Linux only); it opens no other port. Hosts that already run Avahi may instead leave the profile off and put a service file in `/etc/avahi/services/` (see `avahi.service(5)`): type `_milewage._tcp`, the port, and TXT `v=1` and `path=/`.
+
+Give the host a fixed address on your router (a DHCP reservation), so the home address stays right. If it changes, run `infra/install.sh --lan` again.
+
+**What to know:**
+
+- Plain http is **not encrypted on your home network**. The phone's access token, your shifts and the web sign-in cookie travel in clear on the Wi-Fi; anyone who can watch your home network traffic, or a compromised device on it, could read them. The phone uses http **only** to private addresses (`10.x`, `172.16–31.x`, `192.168.x`, link-local, IPv6 `fd…`, and `.local`, `.lan`, `.home.arpa` names) and https everywhere else. Do not turn LAN access on for a shared or public network.
+- Docker's published ports **bypass the host firewall** (ufw, firewalld): with `MILEWAGE_BIND_ADDRESS=0.0.0.0` the port is open to your whole network whatever the firewall says. To limit it to one interface, set `MILEWAGE_BIND_ADDRESS` to the host's LAN address instead.
+- **Rootless Docker, or Docker with `"iptables": false`, is not supported for LAN access.** There the published port can go through Docker's userland proxy, so every client may appear to come from the Docker gateway, which Caddy trusts for the Tailscale headers (section 3); a device on the LAN could then claim to be https or hide its address. With Docker's normal setup a LAN client keeps its own address and is not trusted.
 
 **First run in the browser.** Create the owner account (username, password of at least 10 characters, country, distance unit, currency, time zone). The next screen shows a **recovery key**. Write it on paper or save it in a password manager. It decrypts your backups and is not stored anywhere else: the server keeps only its public half and cannot show it again. Type its last 6 characters to finish setup. Until you do, every other page answers "setup incomplete".
 

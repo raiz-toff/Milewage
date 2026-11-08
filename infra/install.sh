@@ -2,12 +2,15 @@
 # MileWage first-run script for a home-lab host (10 section 8, install guide: infra/docs/install.md).
 # Writes infra/docker/.env (never overwrites one), builds and starts the stack, waits until it is healthy.
 #
-# Then the Tailscale step (plan 19 section 3.4): asks, runs `tailscale serve`, writes MILEWAGE_PUBLIC_URL.
+# LAN access (plan 28): phones on the home Wi-Fi connect over plain http and find the server by
+# themselves. Then the Tailscale step (plan 19 section 3.4): asks, runs `tailscale serve`, writes
+# MILEWAGE_PUBLIC_URL, so phones also connect away from home.
 #
 # Usage: infra/install.sh [--port N] [--subnet CIDR] [--env-file PATH] [--no-start]
-#                         [--yes-tailscale | --no-tailscale]
+#                         [--lan | --no-lan] [--yes-tailscale | --no-tailscale]
 #   --env-file PATH  where to write the .env (default: infra/docker/.env); used by the tests
 #   --no-start       write the .env and stop (the "dry run")
+#   --lan            let phones on the home network connect (asked when run in a terminal); --no-lan: loopback only
 #   --yes-tailscale  turn on https through Tailscale without asking; --no-tailscale skips that step
 set -euo pipefail
 
@@ -17,6 +20,7 @@ subnet="172.29.88.0/24"
 env_file="$here/docker/.env"
 start=1
 tailscale_answer=""
+lan_answer=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -26,7 +30,9 @@ while [ $# -gt 0 ]; do
     --no-start) start=0; shift ;;
     --yes-tailscale) tailscale_answer=y; shift ;;
     --no-tailscale) tailscale_answer=n; shift ;;
-    -h | --help) sed -n '2,12p' "$0"; exit 0 ;;
+    --lan) lan_answer=y; shift ;;
+    --no-lan) lan_answer=n; shift ;;
+    -h | --help) sed -n '2,15p' "$0"; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
 done
@@ -66,6 +72,50 @@ EOF
   echo "Wrote $env_file (port $port, proxy subnet $subnet)."
 fi
 
+set_env() {
+  if grep -q "^$1=" "$env_file"; then
+    sed -i "s|^$1=.*|$1=$2|" "$env_file"
+  else
+    echo "$1=$2" >>"$env_file"
+  fi
+}
+# This host's address on the home network: the source address of its default route (MILEWAGE_LAN_IP
+# overrides it). Only a private IPv4 address is used.
+lan_ip() {
+  local ip="${MILEWAGE_LAN_IP:-}"
+  if [ -z "$ip" ] && command -v ip >/dev/null 2>&1; then
+    ip="$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p' | head -n 1)"
+  fi
+  case "$ip" in
+    10.* | 192.168.* | 172.1[6-9].* | 172.2[0-9].* | 172.3[01].*) echo "$ip" ;;
+  esac
+}
+
+# LAN access (plan 28 section 4.6). Asked only in a terminal; the answer is kept in the .env.
+if [ -z "$lan_answer" ] && [ -t 0 ] && ! grep -q '^MILEWAGE_BIND_ADDRESS=' "$env_file"; then
+  printf 'Let phones on your home Wi-Fi connect without Tailscale (plain http, this network only)? [Y/n] '
+  read -r lan_answer || lan_answer=n
+  case "$lan_answer" in '' | y | Y | yes | Yes) lan_answer=y ;; *) lan_answer=n ;; esac
+fi
+if [ "$lan_answer" = y ]; then
+  addr="$(lan_ip)"
+  if [ -z "$addr" ]; then
+    echo "Could not find this host's home network address, so LAN access stays off." >&2
+    echo "Run again with MILEWAGE_LAN_IP=<this host's address, e.g. 192.168.1.20> and --lan." >&2
+  else
+    lan_port="$(sed -n 's/^MILEWAGE_HOST_PORT=//p' "$env_file")"
+    set_env MILEWAGE_BIND_ADDRESS 0.0.0.0
+    set_env MILEWAGE_HOME_URL "http://$addr:${lan_port:-8080}"
+    set_env COMPOSE_PROFILES lan
+    echo "LAN access on: phones on your Wi-Fi use http://$addr:${lan_port:-8080} and find it by themselves."
+    echo "Traffic on your home network is not encrypted; see infra/docs/install.md section 2a."
+  fi
+elif [ "$lan_answer" = n ]; then
+  set_env MILEWAGE_BIND_ADDRESS 127.0.0.1
+  set_env MILEWAGE_HOME_URL ''
+  set_env COMPOSE_PROFILES ''
+fi
+
 if [ "$start" = 0 ]; then
   exit 0
 fi
@@ -85,7 +135,11 @@ url="http://127.0.0.1:${MILEWAGE_HOST_PORT}"
 curl -fsS "$url/healthz" >/dev/null || { echo "The stack is up but $url/healthz does not answer." >&2; exit 1; }
 
 echo
-echo "MileWage is running at $url (loopback only)."
+if [ -n "${MILEWAGE_HOME_URL:-}" ]; then
+  echo "MileWage is running at $url, and at ${MILEWAGE_HOME_URL} on your home network."
+else
+  echo "MileWage is running at $url (loopback only)."
+fi
 
 compose=(docker compose --env-file "$env_file" -f "$here/docker/docker-compose.yml")
 manual() {
