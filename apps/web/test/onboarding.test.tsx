@@ -255,6 +255,9 @@ describe('onboarding wizard (plan 23)', () => {
       }),
     });
     expect(await heading('Pair your phone — Step 6 of 7')).toBeTruthy();
+    // First the phone that finds the server on the Wi-Fi (plan 28), then the code to scan.
+    expect(screen.getByRole('region', { name: 'Link a phone on your Wi-Fi' })).toBeTruthy();
+    expect(screen.getByText('Or scan a code')).toBeTruthy();
     expect(await screen.findByRole('img', { name: 'Pairing code' })).toBeTruthy();
     expect(await screen.findByRole('link', { name: 'Get the app' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Pair later' })).toBeTruthy();

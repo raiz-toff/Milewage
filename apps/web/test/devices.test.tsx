@@ -15,20 +15,56 @@ const phone = (over: object = {}) => ({
   ...over,
 });
 
-const code = (base = 'https://host', source = 'request') => ({
-  token: 'mwp_x',
-  expires_at: 1_700_000_600_000,
-  qr_payload: `milewage://pair?v=1&u=${encodeURIComponent(base)}&t=mwp_x`,
-  pair_url: `${base}/pair#v=1&t=mwp_x`,
-  base_url: base,
-  base_url_source: source,
-});
+// As the server answers (plan 28): a home address is home_url, an https one elsewhere away_url.
+const code = (base = 'https://host', source = 'request', away: string | null = null) => {
+  const home = /\/\/(192\.168\.|10\.)/.test(base) ? base : null;
+  return {
+    token: 'mwp_x',
+    expires_at: 1_700_000_600_000,
+    qr_payload: `milewage://pair?v=1&u=${encodeURIComponent(base)}&t=mwp_x`,
+    pair_url: `${base}/pair#v=1&t=mwp_x`,
+    base_url: base,
+    base_url_source: source,
+    home_url: home,
+    away_url: away ?? (!home && base.startsWith('https:') ? base : null),
+  };
+};
 
-function server(initial = [phone()], apk = false, base = 'https://host') {
+const galaxy = {
+  id: 7,
+  device_name: 'Galaxy S24',
+  platform: 'android',
+  from: '192.168.1.42',
+  created_at: 1_700_000_000_000,
+  expires_at: 1_700_000_600_000,
+};
+
+function server(initial = [phone()], apk = false, base = 'https://host', waiting: object[] = []) {
   let devices = initial;
+  let asking = waiting;
   const table = {
     ...signedIn(),
     'GET /devices': () => ({ body: devices }),
+    'GET /link-requests': () => ({ body: asking }),
+    'POST /link-requests/approve': ({ body }: { body: { user_code: string } }) => {
+      if (body.user_code.replace(/\s/g, '') !== '482913') {
+        return {
+          status: 422,
+          body: {
+            code: 'invalid_link_code',
+            detail:
+              'That code does not match a phone waiting to link. Check the code on the phone.',
+          },
+        };
+      }
+      asking = [];
+      devices = [...devices, phone({ id: 2, name: 'Galaxy S24' })];
+      return { body: { id: 7, device_name: 'Galaxy S24' } };
+    },
+    'DELETE /link-requests/7': () => {
+      asking = [];
+      return { status: 204 };
+    },
     'POST /pairing-tokens': ({ body }: { body?: { base_url?: string } }) =>
       body?.base_url === 'https://nope'
         ? {
@@ -98,8 +134,8 @@ describe('devices page', () => {
     const { calls } = server([phone()], false, 'https://box.tail1234.ts.net');
     await screen.findByText('Pixel');
     fireEvent.click(screen.getByRole('button', { name: 'Pair a phone' }));
-    expect((await screen.findByText(/Your phone will connect to/)).textContent).toBe(
-      'Your phone will connect to https://box.tail1234.ts.net (the address this page is open at)',
+    expect((await screen.findByText(/^Away:/)).parentElement!.textContent).toBe(
+      'Away: https://box.tail1234.ts.net (the address this page is open at), used everywhere else.',
     );
     expect(screen.queryByRole('note')).toBeNull(); // a Tailscale address needs no warning
     expect(screen.getByText('Show code text')).toBeTruthy();
@@ -122,10 +158,51 @@ describe('devices page', () => {
     ]);
   });
 
+  it('a home address needs no warning; it is explained with the missing away address', async () => {
+    server([phone()], false, 'http://192.168.1.20:8080');
+    await screen.findByText('Pixel');
+    fireEvent.click(screen.getByRole('button', { name: 'Pair a phone' }));
+    const home = (await screen.findByText(/^At home:/)).parentElement!;
+    expect(home.textContent).toBe(
+      'At home: http://192.168.1.20:8080 (the address this page is open at), used when the phone is on your Wi-Fi.Plain http: not encrypted on your home network.',
+    );
+    expect(screen.getByText(/^Away:/).parentElement!.textContent).toMatch(
+      /^Away: not set up\. The phone sends shifts when it is back on your Wi-Fi\./,
+    );
+    expect(screen.queryByRole('note')).toBeNull();
+    expect(screen.getByRole('img', { name: 'Pairing code' })).toBeTruthy();
+  });
+
+  it('links a phone found on the Wi-Fi: the driver types the code the phone shows', async () => {
+    const { calls } = server([phone()], false, 'https://host', [galaxy]);
+    const ask = await screen.findByRole('listitem', { name: 'Galaxy S24 wants to link' });
+    expect(ask.textContent).toContain('Galaxy S24 wants to link (from 192.168.1.42)');
+    const field = within(ask).getByLabelText('Code shown on the phone');
+    fireEvent.change(field, { target: { value: '111111' } });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Link' }));
+    expect(
+      await screen.findByText(/That code does not match a phone waiting to link/),
+    ).toBeTruthy();
+    fireEvent.change(field, { target: { value: '482 913' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    expect(await screen.findByText('Galaxy S24 is linked.')).toBeTruthy();
+    expect(await screen.findByText('Galaxy S24')).toBeTruthy(); // in the list of phones
+    const approvals = calls.filter((c) => c.path === '/link-requests/approve').map((c) => c.body);
+    expect(approvals).toEqual([{ user_code: '111111' }, { user_code: '482 913' }]);
+  });
+
+  it('Not my phone drops the request; with none waiting it says so', async () => {
+    const { calls } = server([phone()], false, 'https://host', [galaxy]);
+    const ask = await screen.findByRole('listitem', { name: 'Galaxy S24 wants to link' });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Not my phone' }));
+    expect(await screen.findByText('No phone is waiting to link yet.')).toBeTruthy();
+    expect(calls.some((c) => c.method === 'DELETE' && c.path === '/link-requests/7')).toBe(true);
+  });
+
   it.each([
-    ['http://192.168.1.20:8080', 'Phones only connect over https', true],
+    ['http://box.example.com:8080', 'Phones use plain http only on your home network', true],
     ['http://localhost:5173', 'This address only works on this computer', false],
-    ['https://192.168.1.20', 'This address only works on this network', true],
+    ['https://8.8.8.8', 'The app needs an https name for this address', true],
   ])('warns before the code when the address is %s', async (base, title, qr) => {
     server([phone()], false, base);
     await screen.findByText('Pixel');

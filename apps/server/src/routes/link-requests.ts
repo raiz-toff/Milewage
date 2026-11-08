@@ -168,8 +168,7 @@ export function linkRequestRoutes({ app, now, repo, webUser, redeemed }: LinkDep
         wrongCodes.fail(key);
         throw new ProblemError(
           'invalid_link_code',
-          'That code does not match a phone waiting to link.',
-          [{ path: '/user_code', message: 'does not match a waiting phone' }],
+          'That code does not match a phone waiting to link. Check the code on the phone.',
         );
       }
       const token = newToken('mwp_');

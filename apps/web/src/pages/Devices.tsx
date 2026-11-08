@@ -13,6 +13,7 @@ import { AppButtons, useAppAvailable } from '../pairing/GetTheApp';
 import { Qr } from '../ui/Qr';
 import { Button, Field, FormError } from '../ui/form';
 import { AddressWarning, addressProblem } from '../pairing/address';
+import { LinkAPhone } from '../pairing/LinkAPhone';
 
 type Device = Schemas['Device'];
 export type Pairing =
@@ -78,11 +79,7 @@ export function PairingCode({
             </p>
           )}
           <AppButtons link={pairing.qr_payload} available={available} />
-          <p className="text-sm">
-            Your phone will connect to{' '}
-            <span className="font-medium break-all">{pairing.base_url}</span>{' '}
-            <span className="text-muted-foreground">({SOURCE[pairing.base_url_source]})</span>
-          </p>
+          <Addresses pairing={pairing} />
           {address === null ? (
             <UiButton
               type="button"
@@ -97,7 +94,7 @@ export function PairingCode({
             <div role="group" aria-label="Change address" className="space-y-2">
               <Field
                 label="Server address"
-                hint="The https address your phone reaches this server at, for example https://milewage-box.tail1234.ts.net"
+                hint="Your Tailscale address, for example https://milewage-box.tail1234.ts.net, or the server's address on your home network, for example http://192.168.1.20:8080"
                 inputMode="url"
                 autoComplete="off"
                 value={address}
@@ -131,6 +128,53 @@ export function PairingCode({
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Where the phone connects (plan 28 section 4.2), said plainly: the home address on the Wi-Fi,
+ * the away address everywhere else, and what happens when there is no away address.
+ */
+function Addresses({ pairing }: { pairing: Pairing }) {
+  const { home_url: home, away_url: away, base_url: base, base_url_source: source } = pairing;
+  const from = (url: string) =>
+    url === base ? <span className="text-muted-foreground"> ({SOURCE[source]})</span> : null;
+  if (!home && !away) {
+    return (
+      <p className="text-sm">
+        Your phone will connect to <span className="font-medium break-all">{base}</span>
+        {from(base)}
+      </p>
+    );
+  }
+  return (
+    <ul className="space-y-1 text-sm">
+      {home ? (
+        <li>
+          <span className="font-medium">At home:</span> <span className="break-all">{home}</span>
+          {from(home)}, used when the phone is on your Wi-Fi.
+          {home.startsWith('http:') ? (
+            <span className="block text-xs text-muted-foreground">
+              Plain http: not encrypted on your home network.
+            </span>
+          ) : null}
+        </li>
+      ) : null}
+      <li>
+        <span className="font-medium">Away:</span>{' '}
+        {away ? (
+          <>
+            <span className="break-all">{away}</span>
+            {from(away)}, used everywhere else.
+          </>
+        ) : (
+          <>
+            not set up. The phone sends shifts when it is back on your Wi-Fi. To send them from
+            anywhere, set up Tailscale (the install guide, section 3).
+          </>
+        )}
+      </li>
+    </ul>
   );
 }
 
@@ -273,13 +317,17 @@ export function Devices() {
         title="Devices"
         description="Phones that record shifts for this server. Revoke one you lost or replaced."
       >
+        {/* The QR: for a phone that is not on the same Wi-Fi, or did not find the server. */}
         <Button type="button" onClick={() => void pair()}>
           <Smartphone />
           Pair a phone
         </Button>
       </PageHeader>
+      <Section title="Link a phone on your Wi-Fi">
+        <LinkAPhone onLinked={() => void load()} />
+      </Section>
       {pairing || error ? (
-        <Section title="Pair a phone">
+        <Section title="Pair a phone with a code">
           {pairing ? <PairingCode pairing={pairing} remake={remake} /> : null}
           <FormError message={error} />
         </Section>

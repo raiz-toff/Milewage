@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { describe, unwrap } from '../api/client';
 import { formatMoney } from '../format';
+import { LinkAPhone } from '../pairing/LinkAPhone';
 import { PairingCode } from '../pages/Devices';
 import type { Pairing } from '../pages/Devices';
 import { targetOf } from '../pages/Goals';
@@ -90,6 +91,8 @@ export function PairStep({ ctx, next }: StepProps) {
           <p className="text-sm text-muted-foreground">
             Pair your phone with this server. The phone records your shifts and sends them here.
           </p>
+          <LinkAPhone onLinked={() => void reload()} />
+          <p className="text-sm font-medium">Or scan a code</p>
           {pairing ? (
             <PairingCode
               pairing={pairing}
