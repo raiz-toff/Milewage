@@ -18,3 +18,5 @@ Documentation: [guides for drivers](docs/README.md), [`CHANGELOG.md`](CHANGELOG.
 Releases: the phone app is signed with an upload key made once by `scripts/phone-keystore.sh` (kept in `~/.milewage`, never in git; back it up). CI (`.gitlab-ci.yml`) verifies every merge request and, on a `v*` tag, builds the server and Caddy images for amd64 and arm64 (`infra/docker/docker-compose.release.yml` runs them). It needs a GitLab runner, which is not registered yet.
 
 Dependency updates: `renovate.json` asks for one weekly pull request with the minor and patch updates and for Docker images pinned by digest. It runs only when a Renovate bot (self-hosted, or the Mend Renovate app) is pointed at the project; nothing happens until then.
+
+Licence: MileWage is free software under the GNU Affero General Public License, version 3 ([`LICENSE`](LICENSE)). Copyright (C) 2026 rajkumar. If you run a changed MileWage for others, the AGPL asks you to offer them your changes.

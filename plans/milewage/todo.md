@@ -47,7 +47,8 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
       PO1/X2).
 - [x] Error `type` URIs are relative (`/api/v1/errors/<code>`) and resolve on every instance (F1)
       (`apps/server/src/errors.ts`, plan 08).
-- [ ] Choose a licence for MileWage before taking outside contributions (plan 21 §2.4).
+- [x] Choose a licence for MileWage before taking outside contributions (plan 21 §2.4). Done
+      2026-11-08: AGPL-3.0-only, `LICENSE` at the root, `license` in every package.json (pr-Z11).
       Usual options for self-hosted apps: AGPL-3.0 (used by Immich and Nextcloud; keeps hosted forks
       open), or Apache-2.0 or MIT (allow wider reuse). The choice must come before any outside
       contribution. No LICENSE file is added until it is made.

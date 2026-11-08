@@ -86,8 +86,8 @@ the gap.** What was found, and what this plan takes from it:
 
 Not verified by these searches, to check before relying on them: how OpenFisca ends a parameter
 (a `null` value), the exact libaddressinput city-level key name, and the licence of PolicyEngine's
-data files (the engine is AGPL). MileWage itself has no `LICENSE` file yet, which matters before
-copying anything from another project.
+data files (the engine is AGPL). MileWage itself had no `LICENSE` file when this was written (AGPL-3.0-only was chosen on
+2026-11-08, `LICENSE` at the root), which matters before copying anything from another project.
 
 ### 2.5 How gig work differs around the world (web search, 2026-11-07)
 

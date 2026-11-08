@@ -8,6 +8,8 @@ All notable changes to MileWage are listed here. The format follows
 
 ### Added
 
+- A licence: MileWage is free software under the GNU Affero General Public License, version 3
+  (`LICENSE`).
 - Backups page: make a new recovery key after setup. A backup under the new key is made right
   away.
 - Show more on the Expenses and Notifications lists.
