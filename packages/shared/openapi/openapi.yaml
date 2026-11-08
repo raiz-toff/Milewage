@@ -41,6 +41,7 @@ tags:
   - { name: notifications }
   - { name: schedule }
   - { name: progress }
+  - { name: mcp }
   - { name: system }
 
 x-modules:
@@ -154,6 +155,11 @@ x-modules:
     default: false
     dependsOn: [goals, earnings]
     operations: [getProgress]
+  mcp:
+    toggle: modules.mcp
+    default: false
+    dependsOn: [core]
+    operations: [listMcpTokens, createMcpToken, revokeMcpToken]
 
 paths:
   /healthz:
@@ -477,6 +483,59 @@ paths:
       security: [{ sessionCookie: [] }]
       responses:
         '204': { description: Revoked (idempotent). }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /mcp/tokens:
+    get:
+      tags: [mcp]
+      operationId: listMcpTokens
+      summary: The assistant access tokens, newest first (plan 26). The token itself is never listed.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Tokens, revoked and expired ones included.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/McpToken' } }
+    post:
+      tags: [mcp]
+      operationId: createMcpToken
+      summary: Make an assistant access token. The token is in this response only; the server keeps its SHA-256 hash.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, scope]
+              additionalProperties: false
+              properties:
+                name: { type: string, minLength: 1, maxLength: 64 }
+                scope: { enum: [read, write], description: 'write includes read.' }
+                expires_in_days: { enum: [30, 90, 365, null], description: 'Default 90; null never expires.' }
+      responses:
+        '201':
+          description: Made. Show `token` once.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/McpToken' }
+                  - type: object
+                    required: [token]
+                    properties: { token: { type: string, pattern: '^mwa_[A-Za-z0-9_-]{43}$' } }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /mcp/tokens/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    delete:
+      tags: [mcp]
+      operationId: revokeMcpToken
+      summary: Revoke a token at once (idempotent).
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Revoked. }
         '404': { $ref: '#/components/responses/NotFound' }
 
   /settings:
@@ -2479,7 +2538,7 @@ components:
     Modules:
       type: object
       description: Read-only module flags so clients can hide screens and buttons of absent modules.
-      required: [progress, schedule, notifications, import, maintenance, analytics, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, stops, sync, diagnostics, capture, backup_download, exporters, countries]
+      required: [progress, schedule, notifications, import, maintenance, analytics, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, stops, sync, diagnostics, capture, mcp, backup_download, exporters, countries]
       properties:
         platforms: { type: boolean, description: 'Platforms module registered (18 section 4.2).' }
         earnings: { type: boolean, description: 'Earnings module registered (18 section 4.3): the driver can type a total per shift and platform.' }
@@ -2501,6 +2560,7 @@ components:
         stops: { type: boolean, description: 'Effective flag: the stops module is registered AND settings.stops_enabled is true. When false the phone and the web hide every stop and estimated-split element.' }
         diagnostics: { type: boolean, description: 'Diagnostics module registered (16). When false the phone behaves as level off and the web hides the Diagnostics screens.' }
         capture: { type: boolean, description: 'Capture module registered (16 section 8); false by default.' }
+        mcp: { type: boolean, description: 'MCP module registered (plan 26): the AI assistant endpoint and its tokens; off by default.' }
         backup_download: { type: boolean }
         exporters: { type: array, items: { enum: [csv, pdf, gpx, geojson, expenses, tax_summary] } }
         countries: { type: array, items: { type: string, minLength: 2, maxLength: 2 } }
@@ -2580,6 +2640,18 @@ components:
         revoked_at: { type: [integer, 'null'] }
         online: { type: boolean }
         clock_skew_ms: { type: [integer, 'null'], description: Last observed phone-minus-server clock difference; in memory only. }
+
+    McpToken:
+      type: object
+      required: [id, name, scope, created_at, expires_at, last_used_at, revoked_at]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        scope: { enum: [read, write] }
+        created_at: { $ref: '#/components/schemas/EpochMs' }
+        expires_at: { type: [integer, 'null'] }
+        last_used_at: { type: [integer, 'null'], description: Updated at most once a minute. }
+        revoked_at: { type: [integer, 'null'] }
 
     VehicleKind: { enum: [car, motorcycle, van, bicycle, ebike, scooter, walking], description: 'bicycle, ebike, scooter and walking are not automobiles: no mileage allowance rate applies (18 section 4.1).' }
     VehiclePower: { enum: [gas, hybrid, ev, other] }

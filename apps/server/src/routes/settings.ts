@@ -78,7 +78,7 @@ export function moduleFlags(
   const on = (name: string) => reg.isEnabled(name);
   const flag = (names: string[]) => Object.fromEntries(names.map((n) => [n, on(n)]));
   return {
-    ...flag(['sync', 'devices', 'tracking', 'replay', 'diagnostics', 'capture']),
+    ...flag(['sync', 'devices', 'tracking', 'replay', 'diagnostics', 'capture', 'mcp']),
     ...flag(COMMA_MODULES),
     stops: on('stops') && stopsEnabled,
     // The engine is always on; this flag is the `backup.download` toggle and its routes.

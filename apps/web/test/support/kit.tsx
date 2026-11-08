@@ -150,6 +150,7 @@ export const ALL_ON: Modules = {
   stops: true,
   diagnostics: true,
   capture: false,
+  mcp: false,
   platforms: true,
   earnings: true,
   expenses: true,

@@ -59,6 +59,7 @@ import { expensesRoutes } from './routes/expenses';
 import { platformsRoutes, platformKnown } from './routes/platforms';
 import { stopsRoutes } from './routes/stops';
 import { trackingRoutes } from './routes/tracking';
+import { mcpTokenRoutes } from './mcp/tokens';
 
 export const coreModule = defineModule({ name: 'core', dependsOn: [], toggleable: false });
 export const devicesModule = defineModule({ name: 'devices', dependsOn: ['core'] });
@@ -114,6 +115,8 @@ export const progressModule = defineModule({
 });
 /** The Tax Center: an estimate, never a filing (18 section 7). CA only until other packs are verified. */
 export const taxModule = defineModule({ name: 'tax', dependsOn: ['core'] });
+/** The MCP endpoint for the driver's AI assistant and its access tokens; **off by default** (plan 26). */
+export const mcpModule = defineModule({ name: 'mcp', dependsOn: ['core'], defaultEnabled: false });
 /** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */
 export const backupModule = defineModule({
   name: 'backup',
@@ -143,6 +146,7 @@ export const serverModules = [
   notificationsModule,
   scheduleModule,
   progressModule,
+  mcpModule,
   backupModule,
 ] as const;
 
@@ -535,6 +539,7 @@ export function createServerModules(ctx: ServerContext) {
       routes: capture.routes,
       jobs: [capture.job],
     }),
+    defineModule({ ...mcpModule, routes: mcpTokenRoutes({ ...ctx, authn }) }),
     defineModule({
       ...backupModule,
       routes: (host) => {

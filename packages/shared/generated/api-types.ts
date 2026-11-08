@@ -250,6 +250,43 @@ export interface paths {
         patch: operations["renameDevice"];
         trace?: never;
     };
+    "/mcp/tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The assistant access tokens, newest first (plan 26). The token itself is never listed. */
+        get: operations["listMcpTokens"];
+        put?: never;
+        /** Make an assistant access token. The token is in this response only; the server keeps its SHA-256 hash. */
+        post: operations["createMcpToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mcp/tokens/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke a token at once (idempotent). */
+        delete: operations["revokeMcpToken"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/settings": {
         parameters: {
             query?: never;
@@ -1684,6 +1721,8 @@ export interface components {
             diagnostics: boolean;
             /** @description Capture module registered (16 section 8); false by default. */
             capture: boolean;
+            /** @description MCP module registered (plan 26): the AI assistant endpoint and its tokens; off by default. */
+            mcp: boolean;
             backup_download: boolean;
             exporters: ("csv" | "pdf" | "gpx" | "geojson" | "expenses" | "tax_summary")[];
             countries: string[];
@@ -1782,6 +1821,17 @@ export interface components {
             online?: boolean;
             /** @description Last observed phone-minus-server clock difference; in memory only. */
             clock_skew_ms?: number | null;
+        };
+        McpToken: {
+            id: number;
+            name: string;
+            /** @enum {unknown} */
+            scope: "read" | "write";
+            created_at: components["schemas"]["EpochMs"];
+            expires_at: number | null;
+            /** @description Updated at most once a minute. */
+            last_used_at: number | null;
+            revoked_at: number | null;
         };
         /**
          * @description bicycle, ebike, scooter and walking are not automobiles: no mileage allowance rate applies (18 section 4.1).
@@ -3425,6 +3475,86 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Device"];
                 };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listMcpTokens: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tokens, revoked and expired ones included. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpToken"][];
+                };
+            };
+        };
+    };
+    createMcpToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /**
+                     * @description write includes read.
+                     * @enum {unknown}
+                     */
+                    scope: "read" | "write";
+                    /**
+                     * @description Default 90; null never expires.
+                     * @enum {unknown}
+                     */
+                    expires_in_days?: 30 | 90 | 365 | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Made. Show `token` once. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpToken"] & {
+                        token: string;
+                    };
+                };
+            };
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    revokeMcpToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             404: components["responses"]["NotFound"];
         };
