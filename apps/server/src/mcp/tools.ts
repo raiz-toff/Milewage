@@ -27,10 +27,23 @@ export interface ToolSpec {
   module?: string;
   input: z.ZodObject;
   run: (args: Record<string, unknown>, ctx: ToolContext) => Promise<unknown>;
+  /** Write tools: the MCP hints beyond `readOnlyHint` (plan 26 section 3.5). */
+  annotations?: { destructiveHint: boolean; idempotentHint: boolean };
+  /** Write tools: the record touched, for the audit log (`expense:42`). */
+  target?: (result: unknown, args: Record<string, unknown>) => string | null;
+  /** Write tools: one sentence saying what was stored, money in the driver's currency. */
+  say?: (result: unknown, ctx: ToolContext, args: Record<string, unknown>) => Promise<string>;
 }
 
 /** A REST problem, turned into a tool result with `isError: true` that the model can act on. */
-export class ToolProblem extends Error {}
+export class ToolProblem extends Error {
+  constructor(
+    message: string,
+    readonly title = 'Refused',
+  ) {
+    super(message);
+  }
+}
 
 /** The REST answer, or a ToolProblem with the problem's title, detail and field errors. */
 export async function ok(res: Promise<{ status: number; body: unknown }>) {
@@ -44,6 +57,7 @@ export async function ok(res: Promise<{ status: number; body: unknown }>) {
   const fields = (p.errors ?? []).map((e) => `${e.path} ${e.message}`);
   throw new ToolProblem(
     [`${p.title ?? `HTTP ${status}`}: ${p.detail ?? ''}`.trim(), ...fields].join('\n'),
+    p.title ?? `HTTP ${status}`,
   );
 }
 
