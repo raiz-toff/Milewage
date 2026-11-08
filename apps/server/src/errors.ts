@@ -49,6 +49,7 @@ const DESCRIPTIONS: Record<ErrorCode, string> = {
   invalid_credentials: 'The username or the password is wrong.',
   device_revoked: 'The owner removed this phone. Pair it again to keep uploading.',
   invalid_pairing_token: 'The pairing code is wrong, already used or out of date.',
+  link_expired: 'This link request is too old. Start linking again on the phone.',
   scope_forbidden: 'This credential is valid but is not allowed to do this.',
   origin_mismatch: 'The request came from a website the server does not trust.',
   setup_incomplete: 'First-run setup is not finished. Confirm the recovery key first.',
@@ -67,7 +68,10 @@ const DESCRIPTIONS: Record<ErrorCode, string> = {
   payload_too_large: 'The request body is bigger than the server accepts.',
   unsupported_media_type: 'The content type of the request is not supported.',
   validation_failed: 'One or more fields are not valid. The errors list says which.',
+  invalid_link_code:
+    'The code does not match the phone. Check the code on the phone and try again.',
   rate_limited: 'Too many requests in a short time. Wait and try again.',
+  slow_down: 'The phone asked for the link result too often. It should wait longer between checks.',
   backup_rate_limited: 'Too many backup requests in a short time. Wait and try again.',
   internal_error: 'Something went wrong on the server. Try again later.',
   read_only_mode: 'The server is in read-only mode, so changes are refused.',
