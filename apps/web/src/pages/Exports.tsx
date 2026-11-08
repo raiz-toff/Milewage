@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Download } from 'lucide-react';
 import { Button as UiButton } from '@/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { PageHeader, Section } from '../ui/layout';
 import { ApiError, describe, unwrap } from '../api/client';
 import type { Modules, Schemas } from '../api/client';
 import { useSession, useSettings } from '../session';
-import { DateField, FormError, SelectField } from '../ui/form';
+import { DateField, FormError, Picker, SelectField } from '../ui/form';
+import { dateLocale, formatDay } from '../dateText';
 import { localDate } from './Dashboard';
 
 type Format = Modules['exporters'][number];
@@ -18,15 +20,6 @@ const LABEL: Record<Format, string> = {
   geojson: 'GeoJSON',
   expenses: 'Expenses CSV',
   tax_summary: 'Tax summary',
-};
-const HINT: Record<Format, string> = {
-  csv: 'Trips or shifts as a spreadsheet file.',
-  pdf: 'A summary page and the trip log.',
-  gpx: 'The recorded route. No payouts, labels or notes.',
-  geojson: 'Routes and detected stops. No payouts, labels or notes.',
-  expenses: 'Your expenses in the period for your accountant. No receipt files.',
-  tax_summary:
-    'The estimate of the period\u2019s year with its working: an estimate, not tax advice.',
 };
 
 /** Hands a downloaded file to the browser's save dialog. */
@@ -53,24 +46,13 @@ export const spanDays = (from: string, to: string) => (Date.parse(to) - Date.par
 export type Selection = { from: string; to: string } | { shift_id: number };
 
 /**
- * One button per registered exporter (`modules.exporters`). The file is fetched, so a refusal
- * (rate limit, a range over 366 days) is shown here and not as a raw error page.
+ * Fetches one export and saves it, so a refusal (rate limit, a range over 366 days) is shown on
+ * the page and not as a raw error page. `error.format` is the file that was refused.
  */
-export function ExportButtons({
-  selection,
-  vehicleId,
-  level,
-}: {
-  selection: Selection;
-  vehicleId?: number;
-  level?: 'trip' | 'shift';
-}) {
+function useExport(selection: Selection, vehicleId?: number, level?: 'trip' | 'shift') {
   const { api } = useSession();
-  const { modules } = useSettings();
   const [busy, setBusy] = useState<Format | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  if (modules.exporters.length === 0) return null;
+  const [error, setError] = useState<{ format: Format; message: string } | null>(null);
 
   async function run(format: Format) {
     setBusy(format);
@@ -95,11 +77,21 @@ export function ExportButtons({
         fileNameOf(r.response.headers.get('Content-Disposition'), `milewage-${stem}.${format}`),
       );
     } catch (e) {
-      setError(describe(e));
+      setError({ format, message: describe(e) });
     } finally {
       setBusy(null);
     }
   }
+
+  return { busy, error, run };
+}
+
+/** One button per registered exporter (`modules.exporters`), on a shift's detail page. */
+export function ExportButtons({ selection }: { selection: Selection }) {
+  const { modules } = useSettings();
+  const { busy, error, run } = useExport(selection);
+
+  if (modules.exporters.length === 0) return null;
 
   return (
     <div className="space-y-2">
@@ -117,26 +109,90 @@ export function ExportButtons({
           </UiButton>
         ))}
       </div>
-      <FormError message={error} />
+      <FormError message={error?.message ?? null} />
     </div>
   );
 }
 
-/** Exports screen (module `exporters`): choose a period, optionally a vehicle, then a format. */
+/** On the Exports screen a file is named by what it is for; the format is in its line. */
+const NAME: Record<Format, string> = {
+  csv: 'Mileage log',
+  pdf: 'Mileage report',
+  expenses: 'Expenses',
+  tax_summary: 'Tax summary',
+  gpx: 'GPX',
+  geojson: 'GeoJSON',
+};
+const HINT: Record<Format, string> = {
+  csv: 'Your trips or shifts in the period, as a spreadsheet (CSV).',
+  pdf: 'A summary page and the trip log (PDF).',
+  expenses: 'Your expenses in the period, as a spreadsheet (CSV). No receipt files.',
+  tax_summary: 'The estimate for {year} with its working (CSV): an estimate, not tax advice.',
+  gpx: 'The recorded routes, for map and GPS apps. No payouts, labels or notes.',
+  geojson: 'Routes and detected stops, for mapping tools. No payouts, labels or notes.',
+};
+const GROUPS: { title: string; description?: string; formats: Format[] }[] = [
+  {
+    title: 'For your accountant',
+    description: 'MileWage makes no claim that a file meets a tax office’s record-keeping rules.',
+    formats: ['csv', 'expenses', 'tax_summary', 'pdf'],
+  },
+  { title: 'Routes for map apps', formats: ['gpx', 'geojson'] },
+];
+
+/** Ready-made periods, each within the 366-day limit; "Custom" shows the two date pickers. */
+const PRESETS: { id: string; label: string; range?: (today: string) => [string, string] }[] = [
+  { id: 'month', label: 'This month', range: (t) => [`${t.slice(0, 7)}-01`, t] },
+  {
+    id: 'last-month',
+    label: 'Last month',
+    range: (t) => {
+      const end = new Date(Date.parse(`${t.slice(0, 7)}-01`) - DAY).toISOString().slice(0, 10);
+      return [`${end.slice(0, 7)}-01`, end];
+    },
+  },
+  { id: 'year', label: 'This year', range: (t) => [`${t.slice(0, 4)}-01-01`, t] },
+  {
+    id: 'last-year',
+    label: 'Last year',
+    range: (t) => [`${Number(t.slice(0, 4)) - 1}-01-01`, `${Number(t.slice(0, 4)) - 1}-12-31`],
+  },
+  { id: 'custom', label: 'Custom' },
+];
+
+/**
+ * Exports screen (module `exporters`): a period (presets; the date pickers only for "Custom"),
+ * then each file under what it is for, with its own Download button.
+ */
 export function ExportsPage() {
   const { api } = useSession();
-  const { timezone, modules } = useSettings();
-  const [from, setFrom] = useState(() => localDate(Date.now() - 29 * DAY, timezone));
-  const [to, setTo] = useState(() => localDate(Date.now(), timezone));
+  const { timezone, country, modules } = useSettings();
+  const today = localDate(Date.now(), timezone);
+  const [preset, setPreset] = useState('year');
+  const [custom, setCustom] = useState<[string, string]>([today, today]);
   const [vehicles, setVehicles] = useState<Schemas['Vehicle'][]>([]);
   const [vehicle, setVehicle] = useState('');
   const [level, setLevel] = useState<'trip' | 'shift'>('trip');
+  const periodId = useId();
 
   useEffect(() => {
     void unwrap(api.GET('/vehicles', { params: { query: {} } }))
       .then(setVehicles)
       .catch(() => setVehicles([]));
   }, [api]);
+
+  const [from, to] = PRESETS.find((p) => p.id === preset)?.range?.(today) ?? custom;
+  const { busy, error, run } = useExport(
+    { from, to },
+    vehicle ? Number(vehicle) : undefined,
+    level,
+  );
+
+  function choose(id: string) {
+    // Custom starts from the period on screen, so the pickers usually need a small change only.
+    if (id === 'custom') setCustom([from, to]);
+    setPreset(id);
+  }
 
   const days = spanDays(from, to);
   const problem = Number.isNaN(days)
@@ -146,65 +202,108 @@ export function ExportsPage() {
       : days > 366
         ? 'A period can be at most 366 days.'
         : null;
+  const locale = dateLocale(country);
+
+  const row = (f: Format) => (
+    <li
+      key={f}
+      className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div className="min-w-0 space-y-1">
+        <p className="font-medium">{NAME[f]}</p>
+        <p className="text-sm text-muted-foreground">
+          {HINT[f].replace('{year}', from.slice(0, 4))}
+        </p>
+      </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        {f === 'csv' ? (
+          <Picker
+            label="CSV rows"
+            size="sm"
+            className="w-auto"
+            value={level}
+            onChange={(v) => setLevel(v as 'trip' | 'shift')}
+            options={[
+              { value: 'trip', label: 'One row per trip' },
+              { value: 'shift', label: 'One row per shift' },
+            ]}
+          />
+        ) : null}
+        <UiButton
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-label={`Download ${NAME[f]}`}
+          disabled={busy !== null || problem !== null}
+          onClick={() => void run(f)}
+        >
+          <Download />
+          Download
+        </UiButton>
+      </div>
+    </li>
+  );
 
   return (
     <section className="space-y-6">
-      <PageHeader
-        title="Exports"
-        description="Files are produced from the stored shifts and trips. MileWage makes no claim that a file meets a tax office's record-keeping rules."
-      />
-      <Section title="Choose a period">
-        <div className="grid gap-3 sm:grid-cols-4">
-          <DateField label="From" value={from} onChange={setFrom} />
-          <DateField label="To" value={to} onChange={setTo} />
-          {vehicles.length > 1 ? (
-            <SelectField
-              label="Vehicle"
-              value={vehicle}
-              onChange={setVehicle}
-              options={[
-                { value: '', label: 'All vehicles' },
-                ...vehicles.map((v) => ({ value: String(v.id), label: v.name })),
-              ]}
-            />
-          ) : null}
-          {modules.exporters.includes('csv') ? (
-            <SelectField
-              label="CSV rows"
-              value={level}
-              onChange={(v) => setLevel(v as 'trip' | 'shift')}
-              options={[
-                { value: 'trip', label: 'One row per trip' },
-                { value: 'shift', label: 'One row per shift' },
-              ]}
-            />
+      <PageHeader title="Exports" description="Files made from your shifts, trips and expenses." />
+      <Section title={<span id={periodId}>Period</span>}>
+        <div className="space-y-2">
+          <RadioGroup
+            aria-labelledby={periodId}
+            value={preset}
+            onValueChange={choose}
+            className="flex flex-wrap gap-x-5 gap-y-3"
+          >
+            {PRESETS.map((p) => (
+              <label key={p.id} className="flex items-center gap-2 text-sm">
+                <RadioGroupItem value={p.id} />
+                {p.label}
+              </label>
+            ))}
+          </RadioGroup>
+          {preset !== 'custom' ? (
+            <p className="text-sm text-muted-foreground tabular-nums">
+              {`${formatDay(from, locale)} – ${formatDay(to, locale)}`}
+            </p>
           ) : null}
         </div>
+        {preset === 'custom' || vehicles.length > 1 ? (
+          <div className="grid gap-3 sm:grid-cols-3">
+            {preset === 'custom' ? (
+              <>
+                <DateField label="From" value={from} onChange={(v) => setCustom([v, to])} />
+                <DateField label="To" value={to} onChange={(v) => setCustom([from, v])} />
+              </>
+            ) : null}
+            {vehicles.length > 1 ? (
+              <SelectField
+                label="Vehicle"
+                value={vehicle}
+                onChange={setVehicle}
+                options={[
+                  { value: '', label: 'All vehicles' },
+                  ...vehicles.map((v) => ({ value: String(v.id), label: v.name })),
+                ]}
+              />
+            ) : null}
+          </div>
+        ) : null}
         {problem ? (
           <p role="alert" className="text-sm text-destructive">
             {problem}
           </p>
-        ) : (
-          <ExportButtons
-            selection={{ from, to }}
-            level={level}
-            {...(vehicle ? { vehicleId: Number(vehicle) } : {})}
-          />
-        )}
+        ) : null}
       </Section>
-      <Section title="Formats">
-        <ul className="divide-y text-sm">
-          {modules.exporters.map((f) => (
-            <li
-              key={f}
-              className="flex flex-col gap-0.5 py-2.5 first:pt-0 last:pb-0 sm:flex-row sm:gap-4"
-            >
-              <span className="w-32 shrink-0 font-medium">{LABEL[f]}</span>
-              <span className="text-muted-foreground">{HINT[f]}</span>
-            </li>
-          ))}
-        </ul>
-      </Section>
+      {GROUPS.map((g) => {
+        const formats = g.formats.filter((f) => modules.exporters.includes(f));
+        return formats.length === 0 ? null : (
+          <Section key={g.title} title={g.title} description={g.description} label={g.title}>
+            <ul className="divide-y">{formats.map(row)}</ul>
+            <FormError message={error && formats.includes(error.format) ? error.message : null} />
+          </Section>
+        );
+      })}
     </section>
   );
 }
