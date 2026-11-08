@@ -1729,6 +1729,8 @@ export interface components {
             work_kinds: components["schemas"]["WorkKind"][];
             /** @description When the driver finished the web onboarding (plan 23); null while it is not finished, so the web opens it. */
             onboarded_at: components["schemas"]["EpochMs"] | null;
+            /** @description Dashboard "Finish setting up" steps the driver finished or skipped. A listed step stays done even if, say, the goal is deleted later. */
+            setup_done: components["schemas"]["SetupStep"][];
             diagnostics: components["schemas"]["DiagnosticsSettings"];
         };
         SettingsPatch: {
@@ -1756,9 +1758,13 @@ export interface components {
             own_mileage_rate?: components["schemas"]["OwnMileageRate"] | null;
             /** @description Only kinds the country offers (422 otherwise); a new country drops the kinds it does not offer. */
             work_kinds?: components["schemas"]["WorkKind"][];
-            /** @description true: onboarding finished (sets onboarded_at, keeping an earlier time); false: run it again (clears onboarded_at). */
+            /** @description true: onboarding finished (sets onboarded_at, keeping an earlier time); false: run it again (clears onboarded_at and setup_done). */
             onboarded?: boolean;
+            /** @description Steps to add to setup_done; steps already listed are kept (it never removes one). */
+            setup_done?: components["schemas"]["SetupStep"][];
         };
+        /** @enum {unknown} */
+        SetupStep: "vehicle" | "goal" | "phone" | "backup";
         OwnMileageRate: {
             /** @description Minor units of the currency per km or mile; hundredths are kept (30.5). */
             cents_per_unit: number;

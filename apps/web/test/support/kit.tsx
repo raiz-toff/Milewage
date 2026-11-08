@@ -159,6 +159,7 @@ export function settingsFixture(
     time_format: '24h',
     default_vehicle_id: null,
     work_kinds: ['delivery'],
+    setup_done: [],
     // Onboarded, so screens open as before the wizard (plan 23); wizard tests set null.
     onboarded_at: 1,
     engine_version: 3,

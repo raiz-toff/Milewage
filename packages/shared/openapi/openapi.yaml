@@ -2506,7 +2506,7 @@ components:
         countries: { type: array, items: { type: string, minLength: 2, maxLength: 2 } }
     Settings:
       type: object
-      required: [country, distance_unit, currency, timezone, raw_retention_days, stops_enabled, display_name, region, logbook, own_mileage_rate, mileage_rate, week_start, time_format, default_vehicle_id, work_kinds, onboarded_at, engine_version, diagnostics, modules]
+      required: [country, distance_unit, currency, timezone, raw_retention_days, stops_enabled, display_name, region, logbook, own_mileage_rate, mileage_rate, week_start, time_format, default_vehicle_id, work_kinds, onboarded_at, setup_done, engine_version, diagnostics, modules]
       properties:
         modules: { $ref: '#/components/schemas/Modules' }
         engine_version: { type: integer, description: The server's track-engine algorithmVersion (14 section 11). A phone with a lower number still shows its own result until sync. }
@@ -2534,6 +2534,7 @@ components:
         default_vehicle_id: { type: [integer, 'null'], description: Preselected when a shift starts; always an active vehicle. }
         work_kinds: { type: array, items: { $ref: '#/components/schemas/WorkKind' }, description: 'The work the driver does, among what the country offers. When none is chosen and the country offers one kind, that kind (plan 23 rule 1).' }
         onboarded_at: { oneOf: [{ $ref: '#/components/schemas/EpochMs' }, { type: 'null' }], description: 'When the driver finished the web onboarding (plan 23); null while it is not finished, so the web opens it.' }
+        setup_done: { type: array, items: { $ref: '#/components/schemas/SetupStep' }, description: 'Dashboard "Finish setting up" steps the driver finished or skipped. A listed step stays done even if, say, the goal is deleted later.' }
         diagnostics: { $ref: '#/components/schemas/DiagnosticsSettings' }
     SettingsPatch:
       type: object
@@ -2556,7 +2557,10 @@ components:
           oneOf: [{ $ref: '#/components/schemas/OwnMileageRate' }, { type: 'null' }]
           description: Stored even where the country has official rates, but used only where it has none.
         work_kinds: { type: array, uniqueItems: true, items: { $ref: '#/components/schemas/WorkKind' }, description: 'Only kinds the country offers (422 otherwise); a new country drops the kinds it does not offer.' }
-        onboarded: { type: boolean, description: 'true: onboarding finished (sets onboarded_at, keeping an earlier time); false: run it again (clears onboarded_at).' }
+        onboarded: { type: boolean, description: 'true: onboarding finished (sets onboarded_at, keeping an earlier time); false: run it again (clears onboarded_at and setup_done).' }
+        setup_done: { type: array, uniqueItems: true, items: { $ref: '#/components/schemas/SetupStep' }, description: 'Steps to add to setup_done; steps already listed are kept (it never removes one).' }
+    SetupStep:
+      enum: [vehicle, goal, phone, backup]
     OwnMileageRate:
       type: object
       additionalProperties: false

@@ -3,6 +3,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PERIODS } from '../src/pages/Dashboard';
 import { renderApp, settingsFixture, signedIn, DASHBOARD } from './support/kit';
+import type { Schemas } from '../src/api/client';
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
@@ -69,12 +70,19 @@ function open(
     shifts?: object[];
     notifications?: object[];
     streak?: number;
+    kept?: Schemas['SetupStep'][];
   },
   modules: object = {},
 ) {
+  let kept = world.kept ?? [];
   return renderApp(
     {
-      ...signedIn(settingsFixture({ modules })),
+      ...signedIn(settingsFixture({ modules, setup_done: kept })),
+      'PATCH /settings': (req) => {
+        const add = (req.body as { setup_done?: Schemas['SetupStep'][] }).setup_done ?? [];
+        kept = [...kept, ...add.filter((x) => !kept.includes(x))];
+        return { body: settingsFixture({ modules, setup_done: kept }) };
+      },
       'GET /summary': () => ({ body: summary }),
       'GET /vehicles': () => ({ body: world.vehicles ?? [] }),
       'GET /goals': () => ({ body: world.goals ?? [] }),
@@ -204,6 +212,33 @@ describe('dashboard checklist and goal ring (18 section 13)', () => {
     fireEvent.click(fold);
     expect(fold.getAttribute('aria-expanded')).toBe('true');
     expect(card.textContent).toMatch(/Add your real vehicle \(done\)/);
+  });
+
+  it('keeps a step done once seen done, so deleting the goal later does not reopen it (W8)', async () => {
+    const s = open({ vehicles: [vehicle] });
+    await waitFor(() =>
+      expect(s.calls.find((c) => c.method === 'PATCH')?.body).toEqual({ setup_done: ['vehicle'] }),
+    );
+    cleanup();
+    // The goal was set (and kept) earlier, then deleted: it still counts as done.
+    open({ vehicles: [vehicle], kept: ['vehicle', 'goal'] });
+    const card = await screen.findByRole('group', { name: 'Finish setting up' });
+    expect(within(card).getByText('2 of 4 done')).toBeTruthy();
+    expect(within(card).queryByRole('link', { name: /Set a weekly goal/ })).toBeNull();
+  });
+
+  it('skips an optional step for good; required steps have no Skip', async () => {
+    const s = open({ vehicles: [vehicle] });
+    const card = await screen.findByRole('group', { name: 'Finish setting up' });
+    expect(within(card).queryByRole('button', { name: /Skip: Pair your phone/ })).toBeNull();
+    fireEvent.click(within(card).getByRole('button', { name: 'Skip: Set a weekly goal' }));
+    await waitFor(() =>
+      expect(within(card).queryByRole('link', { name: /Set a weekly goal/ })).toBeNull(),
+    );
+    expect(s.calls.filter((c) => c.method === 'PATCH').map((c) => c.body)).toContainEqual({
+      setup_done: ['goal'],
+    });
+    expect(within(card).getByText('2 of 4 done')).toBeTruthy();
   });
 
   it('Hide for now is kept in this browser and can be undone', async () => {

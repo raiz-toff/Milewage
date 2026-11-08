@@ -106,9 +106,12 @@ interface Item {
   /** Where it is done. */
   to: string;
   visible: boolean;
+  /** Can be skipped: a goal or a backup is the driver's choice, not needed to record shifts. */
+  optional?: boolean;
   done: () => Promise<boolean>;
 }
-type Step = Pick<Item, 'id' | 'text' | 'why' | 'to'> & { done: boolean };
+type Step = Pick<Item, 'id' | 'text' | 'why' | 'to' | 'optional'> & { done: boolean };
+type SetupStep = Schemas['SetupStep'];
 
 const linkClass = 'font-medium underline underline-offset-4';
 
@@ -136,12 +139,16 @@ function storeHidden(hidden: boolean) {
  * practice: progress shown, the next step first and marked, every step a link to where it is
  * done with why it matters, finished steps folded away, and "Hide for now" that can be undone.
  * If any answer cannot be read the card stays hidden rather than guess. Apps are chosen in the
- * setup wizard, so turning platforms on is not a step here (W4c).
+ * setup wizard, so turning platforms on is not a step here (W4c). A step seen done, or skipped,
+ * is kept on the server (`setup_done`) and stays done: deleting the goal later does not bring
+ * the card back (W8).
  */
 export function SetupChecklist() {
-  const { api } = useSession();
-  const { modules } = useSettings();
-  const [state, setState] = useState<Step[] | null>(null);
+  const { api, setSettings } = useSession();
+  const { modules, setup_done: kept } = useSettings();
+  const [live, setState] = useState<Step[] | null>(null);
+  const state =
+    live && live.map((i) => ({ ...i, done: i.done || kept.includes(i.id as SetupStep) }));
   const [hidden, setHidden] = useState(storedHidden);
   const [showDone, setShowDone] = useState(false);
 
@@ -161,6 +168,7 @@ export function SetupChecklist() {
         why: 'See how far along the week you are.',
         to: '/goals',
         visible: modules.goals,
+        optional: true,
         done: async () =>
           (await unwrap<Schemas['Goal'][]>(api.GET('/goals'))).some((g) => g.period === 'weekly'),
       },
@@ -181,6 +189,7 @@ export function SetupChecklist() {
         why: 'A copy of your data you can restore.',
         to: '/backups',
         visible: true,
+        optional: true,
         done: async () => (await unwrap<Schemas['Backup'][]>(api.GET('/backups'))).length > 0,
       },
     ].filter((i) => i.visible);
@@ -191,6 +200,7 @@ export function SetupChecklist() {
         text: i.text,
         why: i.why,
         to: i.to,
+        optional: i.optional,
         done: await i.done(),
       })),
     )
@@ -200,6 +210,17 @@ export function SetupChecklist() {
       live = false;
     };
   }, [api, modules.goals, modules.devices]);
+
+  const keep = (ids: SetupStep[]) =>
+    unwrap(api.PATCH('/settings', { body: { setup_done: ids } })).then(setSettings);
+  // Steps done now but not yet kept are kept, so they stay done whatever happens later.
+  const fresh = (live ?? [])
+    .filter((i) => i.done && !kept.includes(i.id as SetupStep))
+    .map((i) => i.id as SetupStep);
+  const freshKey = fresh.join();
+  useEffect(() => {
+    if (freshKey) keep(freshKey.split(',') as SetupStep[]).catch(() => undefined);
+  }, [freshKey]);
 
   if (!state || state.every((i) => i.done)) return null;
   const open = state.filter((i) => !i.done);
@@ -252,10 +273,13 @@ export function SetupChecklist() {
         </div>
         <ul className="-mx-2 space-y-1">
           {open.map((i, n) => (
-            <li key={i.id}>
+            <li
+              key={i.id}
+              className={`flex items-center gap-1 rounded-lg border ${n === 0 ? 'border-primary/50 bg-primary/10' : 'border-transparent'}`}
+            >
               <Link
                 to={i.to}
-                className={`flex items-center gap-3 rounded-lg border px-2 py-2 transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none ${n === 0 ? 'border-primary/50 bg-primary/10' : 'border-transparent'}`}
+                className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
               >
                 <Circle aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
                 <span className="min-w-0 flex-1">
@@ -270,6 +294,18 @@ export function SetupChecklist() {
                   className="size-4 shrink-0 text-muted-foreground"
                 />
               </Link>
+              {i.optional ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="mr-1 text-muted-foreground"
+                  aria-label={`Skip: ${i.text}`}
+                  onClick={() => void keep([i.id as SetupStep]).catch(() => undefined)}
+                >
+                  Skip
+                </Button>
+              ) : null}
             </li>
           ))}
         </ul>

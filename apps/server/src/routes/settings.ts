@@ -18,6 +18,9 @@ import { ProblemError } from '../errors';
 import type { EventEmit } from '../events';
 import { str, strictObject, type AuthFn } from './util';
 
+/** The dashboard's "Finish setting up" steps; a listed step stays done (finished or skipped). */
+export const SETUP_STEPS = ['vehicle', 'goal', 'phone', 'backup'] as const;
+
 /** Driver admin modules (18): each is a flag in `modules` so the web can hide its screen. */
 export const COMMA_MODULES = [
   'platforms',
@@ -110,6 +113,7 @@ const patchSchema = strictObject(
     },
     work_kinds: { type: 'array', items: { enum: [...WORK_KINDS] }, uniqueItems: true },
     onboarded: { type: 'boolean' },
+    setup_done: { type: 'array', items: { enum: [...SETUP_STEPS] }, uniqueItems: true },
   },
   [],
   { minProperties: 1 },
@@ -190,6 +194,7 @@ export function settingsReader(ctx: ReaderContext) {
       default_vehicle_id: row.defaultVehicleId,
       work_kinds: workKindsOf(row.country, row.workKinds),
       onboarded_at: row.onboardedAt,
+      setup_done: row.setupDone ?? [],
       diagnostics: {
         level: expired ? 'basic' : row.diagnosticsLevel,
         verbose_until: verbose && !expired ? row.diagnosticsVerboseUntil : null,
@@ -282,6 +287,14 @@ export function settingsRoutes(
     if (b.onboarded !== undefined) {
       // Finishing keeps the first time; "Run setup again" clears it so the wizard opens.
       patch.onboardedAt = b.onboarded ? (prefs?.onboardedAt ?? now) : null;
+      // Running setup again starts the dashboard checklist over too.
+      if (!b.onboarded) patch.setupDone = null;
+    }
+    if (b.setup_done !== undefined) {
+      // Added to what is stored, never taken away: two tabs cannot undo each other's steps.
+      const stored = b.onboarded === false ? [] : (prefs?.setupDone ?? []);
+      const added = (b.setup_done as string[]).filter((s) => !stored.includes(s));
+      patch.setupDone = [...stored, ...added];
     }
     if (b.country) patch.country = b.country.toUpperCase();
     if (b.currency) patch.currency = b.currency.toUpperCase();

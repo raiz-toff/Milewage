@@ -387,6 +387,7 @@
         "default_vehicle_id",
         "work_kinds",
         "onboarded_at",
+        "setup_done",
         "engine_version",
         "diagnostics",
         "modules"
@@ -517,6 +518,13 @@
           ],
           "description": "When the driver finished the web onboarding (plan 23); null while it is not finished, so the web opens it."
         },
+        "setup_done": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SetupStep"
+          },
+          "description": "Dashboard \"Finish setting up\" steps the driver finished or skipped. A listed step stays done even if, say, the goal is deleted later."
+        },
         "diagnostics": {
           "$ref": "#/$defs/DiagnosticsSettings"
         }
@@ -617,9 +625,25 @@
         },
         "onboarded": {
           "type": "boolean",
-          "description": "true: onboarding finished (sets onboarded_at, keeping an earlier time); false: run it again (clears onboarded_at)."
+          "description": "true: onboarding finished (sets onboarded_at, keeping an earlier time); false: run it again (clears onboarded_at and setup_done)."
+        },
+        "setup_done": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/SetupStep"
+          },
+          "description": "Steps to add to setup_done; steps already listed are kept (it never removes one)."
         }
       }
+    },
+    "SetupStep": {
+      "enum": [
+        "vehicle",
+        "goal",
+        "phone",
+        "backup"
+      ]
     },
     "OwnMileageRate": {
       "type": "object",

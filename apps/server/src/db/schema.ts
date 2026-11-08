@@ -35,6 +35,7 @@ export const settings = sqliteTable('settings', {
   ownRateUnit: text('own_rate_unit', { enum: ['km', 'mi'] }),
   onboardedAt: integer('onboarded_at'),
   workKinds: text('work_kinds', { mode: 'json' }).$type<string[]>(),
+  setupDone: text('setup_done', { mode: 'json' }).$type<string[]>(),
   updatedAt: integer('updated_at').notNull(),
 });
 
