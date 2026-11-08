@@ -6,12 +6,14 @@ import { App } from './App';
 import { AppPage } from './pages/AppPage';
 import { PairPage } from './pages/PairPage';
 import { UpdatePrompt } from './pwa/UpdatePrompt';
+import { captureInstallPrompt } from './pwa/install';
 import { startUpdates } from './pwa/update';
 import { SessionProvider } from './session';
 import { applyTheme } from './theme';
 import './index.css';
 
 applyTheme();
+captureInstallPrompt();
 startUpdates(registerSW);
 
 createRoot(document.getElementById('root')!).render(

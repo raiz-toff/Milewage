@@ -50,6 +50,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { InstallCard } from './pwa/Install';
 import { navGroups, visibleScreens } from './screens';
 import type { Screen } from './screens';
 import { Onboarding } from './onboarding/Wizard';
@@ -224,6 +225,7 @@ function AppSidebar({ list, name }: { list: Screen[]; name: string | null }) {
             ))}
         </SidebarContent>
         <SidebarFooter>
+          <InstallCard />
           <SidebarMenu>
             {system.map((s) => (
               <NavItem key={s.path} screen={s} pathname={pathname} />

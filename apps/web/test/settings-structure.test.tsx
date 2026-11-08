@@ -25,6 +25,7 @@ describe('settings structure', () => {
       'Profile and region',
       'Units and format',
       'Alerts',
+      'App on this device',
       'Platforms',
       'Tracking and privacy',
       'Your data',
@@ -57,6 +58,7 @@ describe('settings structure', () => {
     expect(await links()).toEqual([
       'Profile and region',
       'Units and format',
+      'App on this device',
       'Tracking and privacy',
       'Your data',
       'Account and security',

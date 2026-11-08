@@ -26,6 +26,7 @@ import { Account } from './Account';
 import { ImportCard } from './Import';
 import { AlertsCard } from './Notifications';
 import { PlatformsCard } from './Platforms';
+import { InstallSection } from '../pwa/Install';
 
 type Patch = Schemas['SettingsPatch'];
 
@@ -132,7 +133,15 @@ function ModuleFlags({ modules }: { modules: Settings['modules'] }) {
 }
 
 type SectionId =
-  'profile' | 'units' | 'alerts' | 'platforms' | 'tracking' | 'data' | 'account' | 'modules';
+  | 'profile'
+  | 'units'
+  | 'alerts'
+  | 'app'
+  | 'platforms'
+  | 'tracking'
+  | 'data'
+  | 'account'
+  | 'modules';
 
 /** How a section keeps its changes; said under its heading so nobody wonders. */
 const SAVES = {
@@ -174,6 +183,11 @@ const GROUPS: { label: string; sections: Section[] }[] = [
         description: 'What MileWage tells you about, here and on the phone.',
         saves: 'instant',
         module: 'notifications',
+      },
+      {
+        id: 'app',
+        label: 'App on this device',
+        description: 'Install MileWage so it opens in its own window, like an app.',
       },
     ],
   },
@@ -681,6 +695,11 @@ export function SettingsPage() {
     alerts: (
       <SettingsCard>
         <AlertsCard />
+      </SettingsCard>
+    ),
+    app: (
+      <SettingsCard>
+        <InstallSection />
       </SettingsCard>
     ),
     platforms: (
