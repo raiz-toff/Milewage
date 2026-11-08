@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { renderApp, settingsFixture, signedIn, pick, DASHBOARD } from './support/kit';
+import { formatDay } from '../src/dateText';
 
 afterEach(cleanup);
 
@@ -15,7 +16,10 @@ const report = (over: object = {}) => ({
   set_aside_bp: 2500,
   sales_tax_registered: false,
   sales_tax_name: 'HST',
-  notices: ['Estimates to bring to an accountant, not tax advice. Nothing here is filed.'],
+  notices: [
+    'Unverified rates: these figures have not been checked against the CRA publications.',
+    'Estimates to bring to an accountant, not tax advice. Nothing here is filed.',
+  ],
   income: {
     gross_cents: 700_000,
     tips_cents: 0,
@@ -51,7 +55,12 @@ const report = (over: object = {}) => ({
     instalment_cents: 39_375,
     sales_tax: null,
   },
-  deadlines: [{ date: `${YEAR}-03-15`, kind: 'instalment', label: 'Instalment 1' }],
+  // Out of order on purpose; one past, the next is an instalment, then the balance.
+  deadlines: [
+    { date: `${YEAR + 1}-04-30`, kind: 'balance', label: 'Balance due' },
+    { date: `${YEAR - 1}-12-15`, kind: 'instalment', label: 'Instalment 4' },
+    { date: `${YEAR + 1}-03-15`, kind: 'instalment', label: 'Instalment 1' },
+  ],
   slip_alerts: [
     { platform: 'doordash', total_cents: 700_000, threshold_cents: 50_000, slip: 'T4A' },
   ],
@@ -71,6 +80,8 @@ function open(r = report(), enabled = true) {
     {
       ...signedIn(settingsFixture({ modules: { tax: enabled } })),
       [`GET /tax/${YEAR}`]: () => ({ body: r }),
+      [`GET /tax/${YEAR - 1}`]: () => ({ body: { ...r, year: YEAR - 1 } }),
+      [`GET /tax/${YEAR - 1}/jar`]: () => ({ body: { ...jar(), year: YEAR - 1 } }),
       [`PUT /tax/${YEAR}`]: () => ({ body: r }),
       [`GET /tax/${YEAR}/jar`]: () => ({ body: jar(entries) }),
       [`POST /tax/${YEAR}/jar`]: () => {
@@ -87,15 +98,47 @@ function open(r = report(), enabled = true) {
 }
 
 describe('tax screen (module tax)', () => {
-  it('shows the working, the unverified-rates notice, deadlines and slip alerts', async () => {
+  it('leads with what to set aside and the next date, under one notice', async () => {
     open();
-    expect(await screen.findByRole('heading', { name: `Estimate for ${YEAR}` })).toBeTruthy();
-    expect(screen.getByRole('alert').textContent).toMatch(/Unverified rates/);
-    expect(screen.getAllByText(/not tax advice/).length).toBeGreaterThan(0);
+    const hero = await screen.findByRole('region', { name: 'Estimate' });
+    expect(screen.getByRole('heading', { name: `Set aside for ${YEAR}` })).toBeTruthy();
+    expect(hero.textContent).toContain('$1,575.00');
+    // The next date in the driver's locale (en-CA), with the quarter's amount.
+    const day = formatDay(`${YEAR + 1}-03-15`, 'en-CA');
+    expect(hero.textContent).toContain(`Next: Instalment 1, ${day}, $393.75`);
+    // One note with the server's notices; no banner of its own, and nothing repeated.
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getAllByRole('note')).toHaveLength(1);
+    expect(screen.getAllByText(/Unverified rates/)).toHaveLength(1);
+    expect(screen.getByRole('note').textContent).toMatch(/CRA publications\. .*not tax advice/);
+    // Deadlines in date order: the past one muted and marked, the next one badged.
+    const items = within(screen.getByRole('region', { name: 'Deadlines' })).getAllByRole(
+      'listitem',
+    );
+    expect(items.map((i) => i.textContent)).toEqual([
+      `${formatDay(`${YEAR - 1}-12-15`, 'en-CA')}Instalment 4 (past)`,
+      `${day}Instalment 1Next`,
+      `${formatDay(`${YEAR + 1}-04-30`, 'en-CA')}Balance due`,
+    ]);
+    expect(items[0]!.className).toMatch(/text-muted-foreground/);
+    expect(screen.getByText(/expect a T4A/)).toBeTruthy();
+  });
+
+  it('steps between tax years with arrows, not a free text field', async () => {
+    const s = open();
+    await screen.findByRole('heading', { name: `Set aside for ${YEAR}` });
+    expect(screen.queryByLabelText('Tax year')?.tagName).not.toBe('INPUT');
+    fireEvent.click(screen.getByRole('button', { name: 'Previous tax year' }));
+    expect(await screen.findByRole('heading', { name: `Set aside for ${YEAR - 1}` })).toBeTruthy();
+    expect(s.calls.some((c) => c.path === `/tax/${YEAR - 1}`)).toBe(true);
+  });
+
+  it('shows the working line by line', async () => {
+    open();
+    await screen.findByRole('heading', { name: `Set aside for ${YEAR}` });
     expect(screen.getByText(/Mileage deduction \(a deduction, not cash\)/)).toBeTruthy();
     expect(screen.getByRole('row', { name: /Taxable income.*\$6,300\.00/ })).toBeTruthy();
-    expect(screen.getByText('Instalment 1')).toBeTruthy();
-    expect(screen.getByText(/expect a T4A/)).toBeTruthy();
+    expect(screen.getByRole('row', { name: /Quarterly instalment.*\$393\.75/ })).toBeTruthy();
   });
 
   it("shows the country's lines as they come, with the note of a line not estimated", async () => {
@@ -125,7 +168,7 @@ describe('tax screen (module tax)', () => {
 
   it('shows platform fees and withheld tax only when there are some (plan 22)', async () => {
     open();
-    await screen.findByRole('heading', { name: `Estimate for ${YEAR}` });
+    await screen.findByRole('heading', { name: `Set aside for ${YEAR}` });
     expect(screen.queryByText(/Platform fees|Tax withheld/)).toBeNull();
     cleanup();
     const base = report();
@@ -154,7 +197,8 @@ describe('tax screen (module tax)', () => {
     );
     expect(await screen.findByText(/No tax estimate is available for US/)).toBeTruthy();
     expect(screen.queryByRole('region', { name: 'Estimate' })).toBeNull();
-    expect(screen.queryByRole('alert')).toBeNull(); // the "unverified" banner is for an estimate that is shown
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByLabelText('Set-aside rate (%)')).toBeNull();
   });
 
   it('saves the set-aside rate as basis points and the registration flag', async () => {
@@ -172,10 +216,14 @@ describe('tax screen (module tax)', () => {
     });
   });
 
-  it('quick-adds to the jar in cents and deletes an entry', async () => {
+  it('adds to the jar in cents and deletes an entry', async () => {
     const s = open();
-    fireEvent.click(await screen.findByRole('button', { name: '+ $50.00' }));
-    await screen.findByText(/Set aside \$50\.00 of \$1,750\.00 target/);
+    fireEvent.change(await screen.findByLabelText('Amount'), { target: { value: '50' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add to jar' }));
+    await screen.findByText('$50.00 of $1,750.00');
+    expect(screen.getByRole('progressbar', { name: 'Tax jar' }).getAttribute('aria-valuenow')).toBe(
+      '3',
+    );
     expect(s.calls.find((c) => c.method === 'POST')?.body).toEqual({ amount_cents: 5000 });
     fireEvent.click(screen.getByRole('button', { name: /Delete jar entry/ }));
     await waitFor(() => expect(s.calls.some((c) => c.method === 'DELETE')).toBe(true));
