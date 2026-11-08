@@ -1,10 +1,11 @@
-import { useEffect, useId, useState } from 'react';
+import { useId, useState } from 'react';
 import { Download } from 'lucide-react';
 import { Button as UiButton } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { PageHeader, Section } from '../ui/layout';
-import { ApiError, describe, unwrap } from '../api/client';
-import type { Modules, Schemas } from '../api/client';
+import { ApiError, describe } from '../api/client';
+import { useApiQuery } from '../api/query';
+import type { Modules } from '../api/client';
 import { useSession, useSettings } from '../session';
 import { DateField, FormError, Picker, SelectField } from '../ui/form';
 import { dateLocale, formatDay } from '../dateText';
@@ -165,21 +166,15 @@ const PRESETS: { id: string; label: string; range?: (today: string) => [string, 
  * then each file under what it is for, with its own Download button.
  */
 export function ExportsPage() {
-  const { api } = useSession();
   const { timezone, country, modules } = useSettings();
   const today = localDate(Date.now(), timezone);
   const [preset, setPreset] = useState('year');
   const [custom, setCustom] = useState<[string, string]>([today, today]);
-  const [vehicles, setVehicles] = useState<Schemas['Vehicle'][]>([]);
+  // The vehicle filter is offered only when the list could be read.
+  const vehicles = useApiQuery('/vehicles').data ?? [];
   const [vehicle, setVehicle] = useState('');
   const [level, setLevel] = useState<'trip' | 'shift'>('trip');
   const periodId = useId();
-
-  useEffect(() => {
-    void unwrap(api.GET('/vehicles', { params: { query: {} } }))
-      .then(setVehicles)
-      .catch(() => setVehicles([]));
-  }, [api]);
 
   const [from, to] = PRESETS.find((p) => p.id === preset)?.range?.(today) ?? custom;
   const { busy, error, run } = useExport(

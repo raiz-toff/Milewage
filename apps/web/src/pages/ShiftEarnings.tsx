@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Section } from '../ui/layout';
 import { Button as UiButton } from '@/components/ui/button';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
+import { useApiQuery, useInvalidate, useSetApiData } from '../api/query';
 import { formatMoney, parseMoney } from '../format';
 import { EarningLedger } from './EarningLedger';
 import type { EarnedSummary } from './ShiftFacts';
@@ -14,7 +15,6 @@ import type { PlatformLike } from '../platforms/PlatformBadge';
 import { builtinPlatform } from '@milewage/shared';
 
 type Earnings = Schemas['ShiftEarnings'];
-type Platform = Schemas['Platform'];
 
 /**
  * The driver's own total per platform for one shift (module `earnings`, 18 section 4.3). One
@@ -31,9 +31,19 @@ export function ShiftEarnings({
 }) {
   const { api } = useSession();
   const { currency, modules } = useSettings();
-  const [data, setData] = useState<Earnings | null>(null);
-  const [platforms, setPlatforms] = useState<Platform[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const path = { ref: String(shift.id) };
+  const earnings = useApiQuery('/shifts/{ref}/earnings', { params: { path } });
+  const data = earnings.data ?? null;
+  const platforms = useApiQuery('/platforms', undefined, { enabled: modules.platforms }).data ?? [];
+  const [failed, setError] = useState<string | null>(null);
+  const error = failed ?? (earnings.error ? describe(earnings.error) : null);
+  const setApiData = useSetApiData();
+  const invalidate = useInvalidate();
+  /** A save answers with the shift's earnings: show them; totals elsewhere are read again. */
+  const setData = (next: Earnings) => {
+    setApiData('/shifts/{ref}/earnings', { path }, next);
+    void invalidate('/summary', '/analytics');
+  };
   const [ledger, setLedger] = useState(false);
   const [form, setForm] = useState({
     platform: 'other',
@@ -42,19 +52,6 @@ export function ShiftEarnings({
     bonus: '',
     orders: '',
   });
-  const path = { ref: String(shift.id) };
-
-  const load = useCallback(async () => {
-    try {
-      setData(await unwrap<Earnings>(api.GET('/shifts/{ref}/earnings', { params: { path } })));
-      if (modules.platforms) setPlatforms(await unwrap<Platform[]>(api.GET('/platforms')));
-    } catch (e) {
-      setError(describe(e));
-    }
-  }, [api, shift.id, modules.platforms]);
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   const known: PlatformLike[] =
     platforms.length > 0 ? platforms : [{ slug: 'other', label: 'Other' }];

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Button as UiButton } from '@/components/ui/button';
 import { describe, unwrap } from '../api/client';
+import { useApiQuery, useInvalidate } from '../api/query';
 import type { Schemas } from '../api/client';
 import type { paths } from '@milewage/shared/generated/api-types';
 import { formatDateTime } from '../format';
@@ -135,29 +136,27 @@ function TokenRow({ t, onChanged }: { t: Token; onChanged: () => void }) {
 }
 
 /** Settings › AI assistants: tokens for the MCP endpoint and what assistants changed (plan 26). */
+const NO_CHANGES: Change[] = [];
+
 export function AssistantsCard() {
   const { api } = useSession();
   const { timezone } = useSettings();
-  const [tokens, setTokens] = useState<Token[] | null>(null);
-  const [changes, setChanges] = useState<Change[]>([]);
+  const tokenList = useApiQuery('/mcp/tokens');
+  const audit = useApiQuery('/mcp/audit');
+  // Both or neither, as one answer.
+  const both = tokenList.data && audit.data;
+  const tokens = both ? tokenList.data! : null;
+  const changes = both ? audit.data! : NO_CHANGES;
+  const invalidate = useInvalidate();
+  const load = () => invalidate('/mcp');
   const [made, setMade] = useState<Made | null>(null);
   const [name, setName] = useState('');
   const [scope, setScope] = useState('read');
   const [expiry, setExpiry] = useState('90');
-  const [error, setError] = useState<string | null>(null);
+  const [failed, setError] = useState<string | null>(null);
+  const loadError = tokenList.error ?? audit.error;
+  const error = failed ?? (loadError ? describe(loadError) : null);
   const [busy, setBusy] = useState(false);
-
-  const load = useCallback(async () => {
-    const [t, c] = await Promise.all([
-      unwrap(api.GET('/mcp/tokens')),
-      unwrap(api.GET('/mcp/audit')),
-    ]);
-    setTokens(t);
-    setChanges(c);
-  }, [api]);
-  useEffect(() => {
-    load().catch((e: unknown) => setError(describe(e)));
-  }, [load]);
 
   async function make(e: FormEvent) {
     e.preventDefault();

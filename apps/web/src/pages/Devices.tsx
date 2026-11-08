@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Ban, Pencil, Smartphone } from 'lucide-react';
 import { RowMenu } from '../ui/RowMenu';
 import { EmptyState, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
 import { Button as UiButton } from '@/components/ui/button';
 import { describe, unwrap } from '../api/client';
+import { useApiQuery, useInvalidate } from '../api/query';
 import type { Schemas } from '../api/client';
 import type { paths } from '@milewage/shared/generated/api-types';
 import { formatDateTime, formatTime } from '../format';
@@ -247,20 +248,13 @@ function DeviceRow({ device, onChanged }: { device: Device; onChanged: () => voi
 /** Module `devices`: pair a phone with a one-time QR code, rename, revoke. */
 export function Devices() {
   const { api } = useSession();
-  const [devices, setDevices] = useState<Device[] | null>(null);
+  const asked = useApiQuery('/devices');
+  const devices = asked.data ?? null;
+  const invalidate = useInvalidate();
+  const load = () => invalidate('/devices');
   const [pairing, setPairing] = useState<Pairing | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      setDevices(await unwrap(api.GET('/devices')));
-    } catch (e) {
-      setError(describe(e));
-    }
-  }, [api]);
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const [failed, setError] = useState<string | null>(null);
+  const error = failed ?? (asked.error ? describe(asked.error) : null);
 
   async function pair() {
     setError(null);

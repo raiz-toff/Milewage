@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQueries } from '@tanstack/react-query';
 import { EmptyState, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
 import { Button as UiButton } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { describe, unwrap } from '../api/client';
+import { apiKey, useApiQuery, useInvalidate } from '../api/query';
 import type { Schemas } from '../api/client';
 import { formatDateTime, formatDistance } from '../format';
 import { useSession, useSettings } from '../session';
@@ -10,7 +12,6 @@ import { Button, DateField, Field, FormError, SelectField } from '../ui/form';
 import { localDate } from './Dashboard';
 
 type Reading = Schemas['OdometerReading'];
-type Vehicle = Schemas['Vehicle'];
 type Kind = 'year_start' | 'year_end';
 
 const M_PER_MILE = 1609.344;
@@ -60,42 +61,33 @@ const KIND_TEXT: Record<Reading['kind'], string> = {
 export function OdometerPage() {
   const { api } = useSession();
   const { distance_unit: unit, timezone, logbook } = useSettings();
-  const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
-  const [vehicleId, setVehicleId] = useState('');
-  const [readings, setReadings] = useState<Reading[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const vehiclesQuery = useApiQuery('/vehicles');
+  const vehicles = vehiclesQuery.data ?? null;
+  const [chosen, setVehicleId] = useState('');
+  // The first vehicle until the driver picks another.
+  const vehicleId = chosen || (vehicles?.[0] ? String(vehicles[0].id) : '');
+  const kinds = (['year_start', 'year_end', 'shift_start', 'shift_end'] as const).map((k) => {
+    const params = { query: { vehicle_id: Number(vehicleId), kind: k } };
+    return {
+      queryKey: apiKey('/odometer', params),
+      queryFn: ({ signal }: { signal: AbortSignal }) =>
+        unwrap<Reading[]>(api.GET('/odometer', { params, signal })),
+      enabled: !!vehicleId,
+    };
+  });
+  const lists = useQueries({ queries: kinds });
+  const readings = lists.every((q) => q.data)
+    ? lists.flatMap((q) => q.data!).sort((x, y) => y.recorded_at - x.recorded_at)
+    : null;
+  const invalidate = useInvalidate();
+  const load = () => invalidate('/odometer');
+  const [failed, setError] = useState<string | null>(null);
+  const loadError = vehiclesQuery.error ?? lists.find((q) => q.error)?.error;
+  const error = failed ?? (loadError ? describe(loadError) : null);
   const [kind, setKind] = useState<Kind>('year_start');
   const [date, setDate] = useState(() => localDate(Date.now(), timezone));
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    void unwrap(api.GET('/vehicles', { params: { query: {} } }))
-      .then((v) => {
-        setVehicles(v);
-        setVehicleId(v[0] ? String(v[0].id) : '');
-      })
-      .catch((e) => setError(describe(e)));
-  }, [api]);
-
-  const load = useCallback(async () => {
-    if (!vehicleId) return;
-    try {
-      const query = { vehicle_id: Number(vehicleId) };
-      const lists: Reading[][] = await Promise.all(
-        (['year_start', 'year_end', 'shift_start', 'shift_end'] as const).map((k) =>
-          unwrap<Reading[]>(api.GET('/odometer', { params: { query: { ...query, kind: k } } })),
-        ),
-      );
-      setReadings(lists.flat().sort((x, y) => y.recorded_at - x.recorded_at));
-    } catch (e) {
-      setError(describe(e));
-    }
-  }, [api, vehicleId]);
-  useEffect(() => {
-    setReadings(null);
-    void load();
-  }, [load]);
 
   async function add() {
     const metres = toMetres(value, unit);

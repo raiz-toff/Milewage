@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { ApiError, createApi, unwrap } from './api/client';
 import type { Api, Settings } from './api/client';
 
@@ -39,6 +40,7 @@ export function useSettings(): Settings {
 export function SessionProvider({ api, children }: { api?: Api; children: ReactNode }) {
   const client = useMemo(() => api ?? createApi(), [api]);
   const [state, setState] = useState<SessionState>({ status: 'loading' });
+  const queries = useQueryClient();
 
   const refresh = useCallback(async () => {
     try {
@@ -66,10 +68,12 @@ export function SessionProvider({ api, children }: { api?: Api; children: ReactN
       setSettings: (settings) => setState({ status: 'ready', settings }),
       signOut: async () => {
         await client.POST('/auth/logout');
+        // Nothing of this account stays in the cache for whoever signs in next.
+        queries.clear();
         setState({ status: 'signed_out' });
       },
     }),
-    [client, state, refresh],
+    [client, state, refresh, queries],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

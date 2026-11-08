@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useId, useState } from 'react';
+import { keepPreviousData } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { ChevronDown, FileX, Pencil, Plus, Trash2 } from 'lucide-react';
 import { RowMenu } from '../ui/RowMenu';
@@ -15,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
+import { useApiQuery, useInvalidate } from '../api/query';
 import type { Schemas } from '../api/client';
 import { formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
@@ -97,14 +99,27 @@ export function ExpensesPage() {
   const { currency, modules, default_vehicle_id } = useSettings();
   // Vehicle costs go on the driver's default vehicle unless they choose another.
   const auto = default_vehicle_id === null ? '' : String(default_vehicle_id);
-  const [items, setItems] = useState<Expense[] | null>(null);
-  const [totals, setTotals] = useState<Schemas['ExpenseTotals'] | null>(null);
-  const [due, setDue] = useState<Expense[]>([]);
-  const [cats, setCats] = useState<Category[]>([]);
-  const [vehicles, setVehicles] = useState<Schemas['Vehicle'][]>([]);
-  const [shifts, setShifts] = useState<Schemas['Shift'][]>([]);
   const [filter, setFilter] = useState({ category: '', deductible: '' });
-  const [merchants, setMerchants] = useState<string[]>([]);
+  const query: Record<string, string | boolean> = {};
+  if (filter.category) query.category = filter.category;
+  if (filter.deductible) query.deductible = filter.deductible === 'yes';
+  // The list shown stays while a new filter is read.
+  const list = useApiQuery(
+    '/expenses',
+    { params: { query: query as never } },
+    { placeholderData: keepPreviousData },
+  );
+  const items = list.data?.items ?? null;
+  const totalsQuery = useApiQuery('/expenses/totals');
+  const totals = totalsQuery.data ?? null;
+  const dueQuery = useApiQuery('/expenses/due');
+  const due = dueQuery.data ?? [];
+  const catsQuery = useApiQuery('/expenses/categories');
+  const cats = catsQuery.data ?? [];
+  const vehiclesQuery = useApiQuery('/vehicles');
+  const vehicles = vehiclesQuery.data ?? [];
+  const invalidate = useInvalidate();
+  const load = () => invalidate('/expenses');
   // `?new` (the dashboard's Add expense) opens the form at once.
   const [params] = useSearchParams();
   const [draft, setDraft] = useState<Draft | null>(() =>
@@ -114,59 +129,29 @@ export function ExpensesPage() {
   const [more, setMore] = useState(false);
   const ids = useId();
   const [editing, setEditing] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      const query: Record<string, string | boolean> = {};
-      if (filter.category) query.category = filter.category;
-      if (filter.deductible) query.deductible = filter.deductible === 'yes';
-      const [page, t, d] = await Promise.all([
-        unwrap<Schemas['ExpensePage']>(api.GET('/expenses', { params: { query: query as never } })),
-        unwrap<Schemas['ExpenseTotals']>(api.GET('/expenses/totals')),
-        unwrap<Expense[]>(api.GET('/expenses/due')),
-      ]);
-      setItems(page.items);
-      setTotals(t);
-      setDue(d);
-    } catch (e) {
-      setError(describe(e));
-    }
-  }, [api, filter]);
-  useEffect(() => {
-    void load();
-  }, [load]);
-  useEffect(() => {
-    void (async () => {
-      try {
-        setCats(await unwrap<Category[]>(api.GET('/expenses/categories')));
-        setVehicles(await unwrap<Schemas['Vehicle'][]>(api.GET('/vehicles')));
-      } catch (e) {
-        setError(describe(e));
-      }
-    })();
-  }, [api]);
+  const [failed, setError] = useState<string | null>(null);
+  const loadError = [list, totalsQuery, dueQuery, catsQuery, vehiclesQuery].find((q) => q.error);
+  const error = failed ?? (loadError ? describe(loadError.error) : null);
 
   // Shifts within 7 days of the expense date are offered as a link (Comma behaviour).
   const date = draft?.spent_on;
-  useEffect(() => {
-    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return setShifts([]);
-    const t = Date.parse(`${date}T00:00:00Z`);
-    const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
-    void unwrap<Schemas['ShiftPage']>(
-      api.GET('/shifts', { params: { query: { from: day(t - 7 * DAY), to: day(t + 7 * DAY) } } }),
-    )
-      .then((p) => setShifts(p.items))
-      .catch(() => setShifts([]));
-  }, [api, date]);
+  const dated = !!date && /^\d{4}-\d{2}-\d{2}$/.test(date);
+  const t = dated ? Date.parse(`${date}T00:00:00Z`) : 0;
+  const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+  const near = useApiQuery(
+    '/shifts',
+    { params: { query: { from: day(t - 7 * DAY), to: day(t + 7 * DAY) } } },
+    { enabled: dated },
+  ).data;
+  const shifts = (dated && near?.items) || [];
 
   const typed = draft?.merchant;
-  useEffect(() => {
-    if (typed === undefined) return;
-    void unwrap<string[]>(api.GET('/expenses/merchants', { params: { query: { q: typed } } }))
-      .then(setMerchants)
-      .catch(() => setMerchants([]));
-  }, [api, typed]);
+  const merchants =
+    useApiQuery(
+      '/expenses/merchants',
+      { params: { query: { q: typed ?? '' } } },
+      { enabled: typed !== undefined, placeholderData: keepPreviousData },
+    ).data ?? [];
 
   const cat = (slug: string) => cats.find((c) => c.slug === slug);
   const quick = quickCategories(cats, items ?? []);

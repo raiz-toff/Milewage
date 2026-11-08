@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { DatabaseBackup } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState, PageHeader, Section, StatCard, TableBox, tableClass } from '../ui/layout';
 import { describe, unwrap } from '../api/client';
+import { useApiQuery, useInvalidate, useSetApiData } from '../api/query';
 import type { Schemas } from '../api/client';
 import { formatDateTime } from '../format';
 import { useSession, useSettings } from '../session';
@@ -38,28 +39,21 @@ const mb = (n: number) => `${(n / 1_000_000).toFixed(1)} MB`;
 export function Backups() {
   const { api } = useSession();
   const { timezone, modules } = useSettings();
-  const [backups, setBackups] = useState<Backup[] | null>(null);
-  const [status, setStatus] = useState<Status | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const list = useApiQuery('/backups');
+  const system = useApiQuery('/system/status');
+  // Both or neither, so the warnings and the list appear together.
+  const both = list.data && system.data;
+  const backups = both ? list.data! : null;
+  const status = both ? system.data! : null;
+  const setData = useSetApiData();
+  const invalidate = useInvalidate();
+  const load = () => invalidate('/backups', '/system/status');
+  const [failed, setError] = useState<string | null>(null);
+  const loadError = list.error ?? system.error;
+  const error = failed ?? (loadError ? describe(loadError) : null);
   const [busy, setBusy] = useState(false);
   // The server resets the reminder when a file is handed out; show that without a reload.
   const [downloaded, setDownloaded] = useState(false);
-
-  const load = useCallback(async () => {
-    try {
-      const [b, s] = await Promise.all([
-        unwrap(api.GET('/backups')),
-        unwrap(api.GET('/system/status')),
-      ]);
-      setBackups(b);
-      setStatus(s);
-    } catch (e) {
-      setError(describe(e));
-    }
-  }, [api]);
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   async function run() {
     setBusy(true);
@@ -80,7 +74,7 @@ export function Backups() {
       const offsite = await unwrap(
         api.PUT('/backups/offsite-ack', { body: { synced_elsewhere: synced } }),
       );
-      setStatus((old) => (old ? { ...old, offsite } : old));
+      if (system.data) setData('/system/status', undefined, { ...system.data, offsite });
       setDownloaded(false);
     } catch (e) {
       setError(describe(e));

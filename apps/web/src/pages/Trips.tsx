@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
-import { describe, unwrap } from '../api/client';
+import { describe } from '../api/client';
 import type { Schemas } from '../api/client';
-import { useSession } from '../session';
+import { useApiQuery } from '../api/query';
 
 type Trip = Schemas['Trip'];
 
@@ -16,21 +15,12 @@ export function kindOf(trip: Trip, split: boolean): { text: string; estimated: b
   return { text: trip.kind, estimated: trip.source === 'auto' };
 }
 
-/** Trips of one shift, time ordered; read again when `reloadKey` changes (a recompute). */
-export function useShiftTrips(shiftId: number, reloadKey: number) {
-  const { api } = useSession();
-  const [trips, setTrips] = useState<Trip[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!shiftId) return;
-    let live = true;
-    void unwrap(api.GET('/shifts/{ref}/trips', { params: { path: { ref: String(shiftId) } } }))
-      .then((t) => live && setTrips(t))
-      .catch((e) => live && setError(describe(e)));
-    return () => {
-      live = false;
-    };
-  }, [api, shiftId, reloadKey]);
-  return { trips, error };
+/** Trips of one shift, time ordered; a recompute of the shift has them read again. */
+export function useShiftTrips(shiftId: number) {
+  const q = useApiQuery(
+    '/shifts/{ref}/trips',
+    { params: { path: { ref: String(shiftId) } } },
+    { enabled: !!shiftId },
+  );
+  return { trips: q.data ?? null, error: q.error ? describe(q.error) : null };
 }

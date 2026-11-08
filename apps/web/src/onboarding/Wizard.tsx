@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { unwrap } from '../api/client';
@@ -31,6 +32,10 @@ export function Onboarding() {
   const heading = useRef<HTMLHeadingElement>(null);
   const [data, setData] = useState<WizardData | null>(null);
   const { platforms: withPlatforms, goals: withGoals, devices: withDevices } = settings.modules;
+  // The wizard saves vehicles, goals, apps and devices itself, so on leaving it every cached
+  // answer is out of date: the screens read them again.
+  const queries = useQueryClient();
+  useEffect(() => () => void queries.invalidateQueries(), [queries]);
 
   // What the steps decide from; read again after each saved answer (a region can change the apps).
   const reload = useCallback(async () => {

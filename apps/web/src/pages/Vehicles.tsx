@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useId, useState } from 'react';
+import { keepPreviousData } from '@tanstack/react-query';
 import { EmptyState, PageHeader, Section } from '../ui/layout';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { cn } from '@/lib/utils';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
+import { useApiMutation, useApiQuery, useInvalidate } from '../api/query';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
 import { RowMenu } from '../ui/RowMenu';
@@ -307,30 +309,26 @@ function VehicleCard({ vehicle, onChanged }: { vehicle: Vehicle; onChanged: () =
  * and drops out of the pickers. Add vehicle opens the form, as Add expense does.
  */
 export function VehiclesPage() {
-  const { api } = useSession();
-  const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
   const [showArchived, setShowArchived] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // The list shown stays while the other one (with or without archived) is read.
+  const list = useApiQuery(
+    '/vehicles',
+    { params: { query: { include_archived: showArchived } } },
+    { placeholderData: keepPreviousData },
+  );
+  const vehicles = list.data ?? null;
+  const invalidate = useInvalidate();
+  const create = useApiMutation(
+    (api, body: Schemas['VehicleCreate']) => unwrap(api.POST('/vehicles', { body })),
+    { invalidates: ['/vehicles'] },
+  );
+  const [failed, setError] = useState<string | null>(null);
+  const error = failed ?? (list.error ? describe(list.error) : null);
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
   const [kind, setKind] = useState<Kind>('car');
   const [ownership, setOwnership] = useState<Ownership>('owned');
-  const [busy, setBusy] = useState(false);
-
-  const load = useCallback(async () => {
-    try {
-      setVehicles(
-        await unwrap<Vehicle[]>(
-          api.GET('/vehicles', { params: { query: { include_archived: showArchived } } }),
-        ),
-      );
-    } catch (e) {
-      setError(describe(e));
-    }
-  }, [api, showArchived]);
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const busy = create.isPending;
 
   function open() {
     setName('');
@@ -340,16 +338,12 @@ export function VehiclesPage() {
   }
   async function add(e: FormEvent) {
     e.preventDefault();
-    setBusy(true);
     setError(null);
     try {
-      await unwrap(api.POST('/vehicles', { body: { name: name.trim(), kind, ownership } }));
+      await create.mutateAsync({ name: name.trim(), kind, ownership });
       setAdding(false);
-      await load();
     } catch (err) {
       setError(describe(err));
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -418,7 +412,7 @@ export function VehiclesPage() {
       ) : (
         <ul aria-label="Vehicles" className="grid gap-3">
           {vehicles.map((v) => (
-            <VehicleCard key={v.id} vehicle={v} onChanged={() => void load()} />
+            <VehicleCard key={v.id} vehicle={v} onChanged={() => void invalidate('/vehicles')} />
           ))}
         </ul>
       )}

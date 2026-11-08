@@ -3,25 +3,19 @@ import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { describe, unwrap } from '../api/client';
+import { describe } from '../api/client';
 import type { Schemas } from '../api/client';
+import { useApiQuery } from '../api/query';
 import { formatDistance, formatMoney, formatTime } from '../format';
 import { RouteSketch } from '../map/RouteSketch';
-import type { RouteData } from '../map/route';
 import { PlatformBadge } from '../platforms/PlatformBadge';
 import type { PlatformLike } from '../platforms/PlatformBadge';
 import { usePlatformOf } from '../platforms/usePlatforms';
-import { useSession, useSettings } from '../session';
+import { useSettings } from '../session';
 import { EmptyState, Section } from '../ui/layout';
 import { dateWords } from './Shifts';
 
 type Shift = Schemas['Shift'];
-interface Extra {
-  /** Effective earnings after app fees; null when nothing was entered or labelled. */
-  cents: number | null;
-  /** Platform slugs, in the order the server gives them. */
-  platforms: string[];
-}
 
 /** True once the element has come near the screen (always, where IntersectionObserver is missing). */
 function useSeen<T extends Element>() {
@@ -53,29 +47,23 @@ function ShiftRow({
   shift: Shift;
   platformOf: (slug: string) => PlatformLike;
 }) {
-  const { api } = useSession();
   const settings = useSettings();
   const { modules, currency, timezone: tz } = settings;
   const [ref, seen] = useSeen<HTMLAnchorElement>();
-  const [extra, setExtra] = useState<Extra | null>(null);
-  const [route, setRoute] = useState<RouteData | null>(null);
-  useEffect(() => {
-    if (!seen) return;
-    const path = { params: { path: { ref: String(shift.id) } } };
-    if (modules.earnings)
-      void unwrap(api.GET('/shifts/{ref}/earnings', path))
-        .then((e) =>
-          setExtra({
-            cents: e.effective.length ? e.effective.reduce((t, r) => t + r.total_cents, 0) : null,
-            platforms: e.effective.map((r) => r.platform),
-          }),
-        )
-        .catch(() => setExtra(null));
-    if (modules.replay)
-      void unwrap(api.GET('/shifts/{ref}/route', path))
-        .then(setRoute)
-        .catch(() => setRoute(null));
-  }, [api, seen, shift.id, modules.earnings, modules.replay]);
+  const path = { params: { path: { ref: String(shift.id) } } };
+  const earnings = useApiQuery('/shifts/{ref}/earnings', path, {
+    enabled: seen && modules.earnings,
+  }).data;
+  const route = useApiQuery('/shifts/{ref}/route', path, { enabled: seen && modules.replay }).data;
+  /** Effective earnings after app fees (null when nothing was entered) and the platform slugs. */
+  const extra = earnings
+    ? {
+        cents: earnings.effective.length
+          ? earnings.effective.reduce((t, r) => t + r.total_cents, 0)
+          : null,
+        platforms: earnings.effective.map((r) => r.platform),
+      }
+    : null;
 
   const hours = shift.ended_at ? (shift.ended_at - shift.started_at) / 3_600_000 : null;
   const review = shift.flags?.filter((f) => f.severity === 'review').length ?? 0;
@@ -151,22 +139,11 @@ function ShiftRow({
 
 /** The latest five shifts (Comma's "Recent sessions"), with "View all". */
 export function RecentShifts() {
-  const { api } = useSession();
   const { modules } = useSettings();
   const platformOf = usePlatformOf();
-  const [rows, setRows] = useState<Shift[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    let live = true;
-    setError(null);
-    void unwrap(api.GET('/shifts', { params: { query: { limit: 5 } } }))
-      .then((p) => live && setRows(p.items))
-      .catch((e) => live && setError(describe(e)));
-    return () => {
-      live = false;
-    };
-  }, [api, attempt]);
+  const recent = useApiQuery('/shifts', { params: { query: { limit: 5 } } });
+  const rows = recent.data?.items ?? null;
+  const error = recent.error ? describe(recent.error) : null;
   return (
     <Section
       title="Recent shifts"
@@ -180,12 +157,7 @@ export function RecentShifts() {
       {error ? (
         <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
           <span className="text-destructive">{error}</span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setAttempt((n) => n + 1)}
-          >
+          <Button type="button" variant="outline" size="sm" onClick={() => void recent.refetch()}>
             Try again
           </Button>
         </div>

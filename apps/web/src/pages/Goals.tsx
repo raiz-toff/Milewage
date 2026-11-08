@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState, PageHeader, Section } from '../ui/layout';
 import { Pause, Play, Trash2 } from 'lucide-react';
 import { RowMenu } from '../ui/RowMenu';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
+import { useApiQuery, useInvalidate } from '../api/query';
 import type { Schemas } from '../api/client';
 import { formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
@@ -79,20 +80,14 @@ export function GoalBar({ goal }: { goal: Goal }) {
 export function GoalsPage() {
   const { api } = useSession();
   const { distance_unit: unit, currency } = useSettings();
-  const [goals, setGoals] = useState<Goal[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const asked = useApiQuery('/goals');
+  const goals = asked.data ?? null;
+  const invalidate = useInvalidate();
+  // The dashboard's goal ring and the progress page read goals too.
+  const load = () => invalidate('/goals', '/progress');
+  const [failed, setError] = useState<string | null>(null);
+  const error = failed ?? (asked.error ? describe(asked.error) : null);
   const [form, setForm] = useState({ label: '', metric: 'earnings', period: 'weekly', target: '' });
-
-  const load = useCallback(async () => {
-    try {
-      setGoals(await unwrap<Goal[]>(api.GET('/goals')));
-    } catch (e) {
-      setError(describe(e));
-    }
-  }, [api]);
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   async function add(e: FormEvent) {
     e.preventDefault();

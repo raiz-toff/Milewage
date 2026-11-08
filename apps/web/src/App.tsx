@@ -60,6 +60,7 @@ import { RecoveryKey } from './pages/RecoveryKey';
 import { Restore } from './pages/Restore';
 import { Setup } from './pages/Setup';
 import { useUnread } from './pages/Notifications';
+import { PageErrorBoundary } from './ui/ErrorBoundary';
 import { useSession } from './session';
 import { useTheme } from './theme';
 import type { ThemeChoice } from './theme';
@@ -321,15 +322,17 @@ function Shell({ settings }: { settings: Settings }) {
           </header>
           <main className="flex-1 p-4 md:p-6">
             <div className="mx-auto w-full max-w-6xl">
-              <Routes>
-                {list.map((s) => (
-                  <Route key={s.path} path={s.path} element={s.element} />
-                ))}
-                <Route
-                  path="*"
-                  element={<Navigate to={list[0] ? routeOf(list[0]) : '/'} replace />}
-                />
-              </Routes>
+              <PageErrorBoundary resetKey={pathname}>
+                <Routes>
+                  {list.map((s) => (
+                    <Route key={s.path} path={s.path} element={s.element} />
+                  ))}
+                  <Route
+                    path="*"
+                    element={<Navigate to={list[0] ? routeOf(list[0]) : '/'} replace />}
+                  />
+                </Routes>
+              </PageErrorBoundary>
             </div>
           </main>
         </SidebarInset>

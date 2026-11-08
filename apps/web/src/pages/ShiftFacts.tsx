@@ -1,11 +1,9 @@
-import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { unwrap } from '../api/client';
+import { useApiQuery } from '../api/query';
 import type { Schemas, Settings } from '../api/client';
 import { deductionWord, formatDistance, formatDuration, formatMoney } from '../format';
 import type { PlatformLike } from '../platforms/PlatformBadge';
-import { useSession } from '../session';
 import { Section, StatCard } from '../ui/layout';
 
 type Shift = Schemas['Shift'];
@@ -60,21 +58,13 @@ const RECON_WORDS: Record<NonNullable<Shift['recon_status']>, string> = {
 
 /** The name of the shift's vehicle, or null while unknown. */
 export function useVehicleName(id: number): string | null {
-  const { api } = useSession();
-  const [name, setName] = useState<string | null>(null);
-  useEffect(() => {
-    if (!id) return;
-    let live = true;
-    void unwrap<Schemas['Vehicle'][]>(
-      api.GET('/vehicles', { params: { query: { include_archived: true } } }),
-    )
-      .then((list) => live && setName(list.find((v) => v.id === id)?.name ?? null))
-      .catch(() => {}); // the name is a nicety; the page works without it
-    return () => {
-      live = false;
-    };
-  }, [api, id]);
-  return name;
+  // The name is a nicety; the page works without it, so a failed request just leaves it out.
+  const list = useApiQuery(
+    '/vehicles',
+    { params: { query: { include_archived: true } } },
+    { enabled: !!id },
+  ).data;
+  return (id && list?.find((v) => v.id === id)?.name) || null;
 }
 
 /** What the earnings block reports up for the figures and the header. */

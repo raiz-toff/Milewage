@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { keepPreviousData } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { PageHeader, Section } from '../ui/layout';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { describe, unwrap } from '../api/client';
-import type { Schemas } from '../api/client';
+import { useApiQuery, useInvalidate } from '../api/query';
 import { dateLocale, formatDay, todayIn } from '../dateText';
 import { formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
@@ -13,8 +14,6 @@ import { Button, Field, FormError } from '../ui/form';
 import { MoreCard } from './ShiftStates';
 import { parseMoney } from '../format';
 
-type TaxYear = Schemas['TaxYear'];
-type Jar = Schemas['TaxJar'];
 /** A line of the working: label, figure, and whether it is muted ($0.00 or not estimated). */
 type Line = [string, string, boolean];
 const line = (label: string, value: string, quiet = false): Line => [label, value, quiet];
@@ -32,32 +31,33 @@ export function TaxPage() {
   const today = todayIn(timezone);
   const thisYear = Number(today.slice(0, 4));
   const [year, setYear] = useState(thisYear);
-  const [report, setReport] = useState<TaxYear | null>(null);
-  const [jar, setJar] = useState<Jar | null>(null);
   const [collected, setCollected] = useState('');
   const [rate, setRate] = useState('');
   const [amount, setAmount] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  // The figures shown stay while another year or another collected amount is read.
+  const query = collected.trim() === '' ? {} : { collected_cents: parseMoney(collected, currency) };
+  const asked = useApiQuery(
+    '/tax/{year}',
+    { params: { path: { year }, query } },
+    { placeholderData: keepPreviousData },
+  );
+  const report = asked.data ?? null;
+  const jarQuery = useApiQuery(
+    '/tax/{year}/jar',
+    { params: { path: { year } } },
+    { placeholderData: keepPreviousData },
+  );
+  const jar = jarQuery.data ?? null;
+  useEffect(() => {
+    if (report) setRate(String(report.set_aside_bp / 100));
+  }, [report]);
+  const invalidate = useInvalidate();
+  const load = () => invalidate('/tax');
+  const [failed, setError] = useState<string | null>(null);
+  const loadError = asked.error ?? jarQuery.error;
+  const error = failed ?? (loadError ? describe(loadError) : null);
   const money = (c: number | null | undefined) => (c == null ? '—' : formatMoney(c, currency));
   const day = (iso: string | undefined) => formatDay(iso ?? '', dateLocale(country));
-
-  const load = useCallback(async () => {
-    try {
-      const query =
-        collected.trim() === '' ? {} : { collected_cents: parseMoney(collected, currency) };
-      const r = await unwrap<TaxYear>(
-        api.GET('/tax/{year}', { params: { path: { year }, query } }),
-      );
-      setReport(r);
-      setRate(String(r.set_aside_bp / 100));
-      setJar(await unwrap<Jar>(api.GET('/tax/{year}/jar', { params: { path: { year } } })));
-    } catch (e) {
-      setError(describe(e));
-    }
-  }, [api, year, collected]);
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   async function act(run: () => Promise<unknown>) {
     setError(null);

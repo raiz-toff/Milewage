@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { EmptyState, PageHeader } from '../ui/layout';
 import { Mail, MailOpen, X } from 'lucide-react';
 import { RowMenu } from '../ui/RowMenu';
 import { describe, unwrap } from '../api/client';
+import { useApiQuery, useInvalidate, useSetApiData } from '../api/query';
 import type { Schemas } from '../api/client';
 import { Switch } from '@/components/ui/switch';
 import { formatDateTime } from '../format';
@@ -41,41 +42,26 @@ export function messageOf(n: Pick<Item, 'kind' | 'body_key' | 'ref'>): string {
 }
 
 /** The unread count for the navigation; a failure is silent because the count is a convenience. */
-export function useUnread(enabled: boolean, refreshKey = 0): number {
-  const { api } = useSession();
-  const [n, setN] = useState(0);
-  useEffect(() => {
-    if (!enabled) return;
-    let live = true;
-    void unwrap<Schemas['NotificationPage']>(
-      api.GET('/notifications', { params: { query: { unread: true, limit: 1 } } }),
-    )
-      .then((p) => live && setN(p.unread_count))
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, [api, enabled, refreshKey]);
-  return n;
+export function useUnread(enabled: boolean): number {
+  const page = useApiQuery(
+    '/notifications',
+    { params: { query: { unread: true, limit: 1 } } },
+    { enabled },
+  ).data;
+  return (enabled && page?.unread_count) || 0;
 }
 
 /** Notifications (module `notifications`, 18 section 11): the in-app inbox. */
 export function NotificationsPage() {
   const { api } = useSession();
   const { timezone } = useSettings();
-  const [items, setItems] = useState<Item[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      setItems((await unwrap<Schemas['NotificationPage']>(api.GET('/notifications'))).items);
-    } catch (e) {
-      setError(describe(e));
-    }
-  }, [api]);
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const asked = useApiQuery('/notifications');
+  const items = asked.data?.items ?? null;
+  const invalidate = useInvalidate();
+  // The unread count in the header is read again with the list.
+  const load = () => invalidate('/notifications');
+  const [failed, setError] = useState<string | null>(null);
+  const error = failed ?? (asked.error ? describe(asked.error) : null);
 
   async function act(run: () => Promise<unknown>) {
     setError(null);
@@ -163,13 +149,12 @@ const LABELS: [keyof Prefs, string][] = [
 /** Settings card with the toggles of the module. */
 export function AlertsCard() {
   const { api } = useSession();
-  const [prefs, setPrefs] = useState<Prefs | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    void unwrap<Prefs>(api.GET('/notifications/prefs'))
-      .then(setPrefs)
-      .catch((e) => setError(describe(e)));
-  }, [api]);
+  const asked = useApiQuery('/notifications/prefs');
+  const prefs = asked.data ?? null;
+  const setData = useSetApiData();
+  const setPrefs = (next: Prefs) => setData('/notifications/prefs', undefined, next);
+  const [failed, setError] = useState<string | null>(null);
+  const error = failed ?? (asked.error ? describe(asked.error) : null);
   async function toggle(key: keyof Prefs, value: boolean) {
     setError(null);
     try {

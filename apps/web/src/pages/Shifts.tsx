@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader, Section, StatCard } from '../ui/layout';
 import { Link, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -9,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { describe, unwrap } from '../api/client';
 import type { Schemas, Settings } from '../api/client';
+import { underPath, useApiQuery, useInvalidate, useSetApiData } from '../api/query';
 import { deductionWord, formatDistance, formatDuration, formatMoney, formatTime } from '../format';
 import { RouteView, useShiftRoute } from '../map/RouteView';
 import { PlatformName } from '../platforms/PlatformBadge';
@@ -88,44 +90,40 @@ function useWeek(from: string, to: string) {
   const { api } = useSession();
   const settings = useSettings();
   const analyticsOn = settings.modules.analytics;
-  const [data, setData] = useState<WeekData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    let live = true;
-    setData(null);
-    setError(null);
-    async function allShifts() {
+  // Every page of the week, so its own key: one page of /shifts is a different answer.
+  const shifts = useQuery({
+    queryKey: ['/shifts', { query: { from, to } }, 'all pages'],
+    queryFn: async ({ signal }) => {
       const out: Shift[] = [];
       let cursor: string | undefined;
       do {
         const page = await unwrap(
           api.GET('/shifts', {
             params: { query: { from, to, limit: 200, ...(cursor ? { cursor } : {}) } },
+            signal,
           }),
         );
         out.push(...page.items);
         cursor = page.next_cursor ?? undefined;
       } while (cursor);
       return out;
-    }
-    Promise.all([
-      allShifts(),
-      unwrap(api.GET('/summary', { params: { query: { from, to } } })),
-      analyticsOn
-        ? unwrap(
-            api.GET('/analytics', {
-              params: { query: { from, to, group: 'trends', bucket: 'day' } },
-            }),
-          ).then((r) => (r.data as { buckets?: DayBucket[] } | null)?.buckets ?? [])
-        : Promise.resolve(null),
-    ])
-      .then(([shifts, summary, buckets]) => live && setData({ shifts, summary, buckets }))
-      .catch((e) => live && setError(describe(e)));
-    return () => {
-      live = false;
-    };
-  }, [api, from, to, analyticsOn]);
-  return { data, error };
+    },
+  });
+  const summary = useApiQuery('/summary', { params: { query: { from, to } } });
+  const analytics = useApiQuery(
+    '/analytics',
+    { params: { query: { from, to, group: 'trends', bucket: 'day' } } },
+    { enabled: analyticsOn },
+  );
+  const buckets = analyticsOn
+    ? analytics.data && ((analytics.data.data as { buckets?: DayBucket[] } | null)?.buckets ?? [])
+    : null;
+  const failed = [shifts, summary, ...(analyticsOn ? [analytics] : [])].find((q) => q.error);
+  const data: WeekData | null =
+    shifts.data && summary.data && buckets !== undefined
+      ? { shifts: shifts.data, summary: summary.data, buckets }
+      : null;
+  return { data, error: failed ? describe(failed.error) : null };
 }
 
 /** Earnings are "not entered" when nobody typed or labelled them, never zero (05 section 3.1a). */
@@ -407,31 +405,39 @@ export function ShiftList() {
 
 export function ShiftDetail() {
   const { ref } = useParams();
-  const { api } = useSession();
   const settings = useSettings();
-  const [shift, setShift] = useState<Shift | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const queries = useQueryClient();
+  const invalidate = useInvalidate();
+  const setData = useSetApiData();
+  const asked = { path: { ref: ref ?? '' } };
+  const shiftQuery = useApiQuery('/shifts/{ref}', { params: asked });
+  const shift = shiftQuery.data ?? null;
+  const error = shiftQuery.error ? describe(shiftQuery.error) : null;
+  /** A save answered with the new shift: show it, and have every other view of it read again. */
+  const setShift = (next: Shift) => {
+    const recomputed = next.calculated_at !== shift?.calculated_at;
+    setData('/shifts/{ref}', asked, next);
+    // The week, the dashboard and the totals are read again when they are next shown.
+    void queries.invalidateQueries({
+      predicate: (q) =>
+        q.queryKey[0] === '/shifts' ||
+        ['/summary', '/analytics'].some((p) => underPath(p)(q.queryKey)),
+      refetchType: 'none',
+    });
+    // A recompute rebuilds the trips; the stops panel updates its own row in place.
+    if (recomputed) void invalidate('/shifts/{ref}/trips');
+  };
   const [earned, setEarned] = useState<EarnedSummary | null>(null);
   const vehicle = useVehicleName(shift?.vehicle_id ?? 0);
   const [picked, setPicked] = useState<Picked>(null);
   const [adding, setAdding] = useState(false);
-  const { trips, error: tripsError } = useShiftTrips(shift?.id ?? 0, shift?.calculated_at ?? 0);
+  const { trips, error: tripsError } = useShiftTrips(shift?.id ?? 0);
   const stopsData = useShiftStops(shift?.id ?? 0, !!shift && settings.modules.stops);
   // A running shift has no route yet (worked out when it ends), so it is not asked for.
   const route = useShiftRoute(
     shift?.id ?? 0,
     !!shift && shift.status !== 'active' && settings.modules.replay,
   );
-
-  useEffect(() => {
-    let live = true;
-    void unwrap(api.GET('/shifts/{ref}', { params: { path: { ref: ref ?? '' } } }))
-      .then((s) => live && setShift(s))
-      .catch((e) => live && setError(describe(e)));
-    return () => {
-      live = false;
-    };
-  }, [api, ref]);
 
   if (error && !shift)
     return (

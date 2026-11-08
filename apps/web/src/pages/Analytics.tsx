@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQueries } from '@tanstack/react-query';
 import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button as UiButton } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -7,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { dateLocale, dateToIso, isoToDate } from '../dateText';
 import { EmptyState, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
 import { describe, unwrap } from '../api/client';
+import { apiKey } from '../api/query';
 import { formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
 import { FormError } from '../ui/form';
@@ -70,8 +72,6 @@ export function AnalyticsPage() {
   const platformOf = usePlatformOf();
   const [mode, setMode] = useState<Mode>('week');
   const [offset, setOffset] = useState(0);
-  const [data, setData] = useState<Data | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const today = localDate(Date.now(), timezone);
   const range = rangeOf(mode, offset, today, weekStart);
   const [picking, setPicking] = useState(false);
@@ -79,32 +79,31 @@ export function AnalyticsPage() {
   const money = (c: number | null | undefined) =>
     c == null ? 'not available' : formatMoney(c, currency);
 
-  useEffect(() => {
-    let live = true;
-    setData(null);
-    void Promise.all(
-      GROUPS.map(async (group) => {
-        const r = await unwrap<{ data: unknown }>(
-          api.GET('/analytics', {
-            params: {
-              query: {
-                from: range.from,
-                to: range.to,
-                group,
-                ...(group === 'trends' ? { bucket: mode === 'year' ? 'month' : 'day' } : {}),
-              },
-            },
-          }),
-        );
-        return [group, r.data] as const;
-      }),
-    )
-      .then((pairs) => live && setData(Object.fromEntries(pairs)))
-      .catch((e) => live && setError(describe(e)));
-    return () => {
-      live = false;
-    };
-  }, [api, range.from, range.to, mode]);
+  // One request per group, all for the period shown; the page waits for every one.
+  const groups = useQueries({
+    queries: GROUPS.map((group) => {
+      const params = {
+        query: {
+          from: range.from,
+          to: range.to,
+          group,
+          ...(group === 'trends'
+            ? { bucket: mode === 'year' ? ('month' as const) : ('day' as const) }
+            : {}),
+        },
+      };
+      return {
+        queryKey: apiKey('/analytics', params),
+        queryFn: ({ signal }: { signal: AbortSignal }) =>
+          unwrap(api.GET('/analytics', { params, signal })).then((r) => r.data as unknown),
+      };
+    }),
+  });
+  const data: Data | null = groups.every((q) => q.isSuccess)
+    ? Object.fromEntries(GROUPS.map((group, i) => [group, groups[i]!.data]))
+    : null;
+  const failed = groups.find((q) => q.error)?.error;
+  const error = failed ? describe(failed) : null;
 
   const cards = data?.cards as Data | undefined;
   const tiles: [string, string | null][] = cards

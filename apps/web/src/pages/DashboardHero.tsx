@@ -1,14 +1,14 @@
-import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { describe, unwrap } from '../api/client';
+import { describe } from '../api/client';
 import type { Schemas, Settings } from '../api/client';
+import { useApiQuery } from '../api/query';
 import { formatDistance, formatMoney } from '../format';
-import { useSession, useSettings } from '../session';
+import { useSettings } from '../session';
 import { PERIODS } from './Dashboard';
 import { Est, dateWords, weekWords } from './Shifts';
 
@@ -16,33 +16,20 @@ type Summary = Schemas['Summary'];
 type Range = { from: string; to: string };
 
 /** The selected period's summary, plus today and this week for the line under the figure. */
-function useSummaries(ranges: Range[]) {
-  const { api } = useSession();
-  const [data, setData] = useState<Map<string, Summary> | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
-  const keys = [...new Set(ranges.map((r) => `${r.from}/${r.to}`))];
-  const key = keys.join(',');
-  useEffect(() => {
-    let live = true;
-    setData(null);
-    setError(null);
-    void Promise.all(
-      key.split(',').map(async (k) => {
-        const [from, to] = k.split('/') as [string, string];
-        return [k, await unwrap(api.GET('/summary', { params: { query: { from, to } } }))] as const;
-      }),
-    )
-      .then((rows) => live && setData(new Map(rows)))
-      .catch((e) => live && setError(describe(e)));
-    return () => {
-      live = false;
-    };
-  }, [api, key, attempt]);
-  const get = (r: Range) => data?.get(`${r.from}/${r.to}`) ?? null;
-  // Right after a tab change the old answers are still held; wait for the new period's.
-  const ready = data !== null && keys.every((k) => data.has(k));
-  return { get, ready, error, retry: () => setAttempt((n) => n + 1) };
+function useSummaries(chosen: Range, today: Range, week: Range) {
+  const asked = [
+    useApiQuery('/summary', { params: { query: chosen } }),
+    useApiQuery('/summary', { params: { query: today } }),
+    useApiQuery('/summary', { params: { query: week } }),
+  ];
+  const [summary, ofToday, ofWeek] = asked.map((q) => q.data);
+  const failed = asked.find((q) => q.error);
+  // Right after a tab change the new period has no answer yet; wait for it.
+  return {
+    data: summary && ofToday && ofWeek ? { summary, today: ofToday, week: ofWeek } : null,
+    error: failed ? describe(failed.error) : null,
+    retry: () => asked.forEach((q) => q.isError && void q.refetch()),
+  };
 }
 
 /** Comma's Today and Week first, then the longer periods the dashboard had before. */
@@ -187,7 +174,7 @@ export function DashboardHero({
   const chosen = rangeOf(period);
   const today = rangeOf('today');
   const week = rangeOf('week');
-  const { get, ready, error, retry } = useSummaries([chosen, today, week]);
+  const { data, error, retry } = useSummaries(chosen, today, week);
   const words =
     chosen.from === chosen.to
       ? dateWords(chosen.from, { weekday: 'long', month: 'short', day: 'numeric' })
@@ -213,7 +200,7 @@ export function DashboardHero({
               Try again
             </Button>
           </div>
-        ) : !ready ? (
+        ) : !data ? (
           <div className="grid grid-cols-3 gap-3" aria-busy="true">
             <Skeleton className="col-span-3 h-36 rounded-xl" />
             {[1, 2, 3].map((i) => (
@@ -222,9 +209,9 @@ export function DashboardHero({
           </div>
         ) : (
           <PeriodFigures
-            summary={get(chosen)!}
-            today={get(today)!}
-            week={get(week)!}
+            summary={data.summary}
+            today={data.today}
+            week={data.week}
             periodId={period}
           />
         )}

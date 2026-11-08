@@ -1,7 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { App } from '../../src/App';
 import { createApi } from '../../src/api/client';
+import { createQueryClient } from '../../src/api/query';
 import type { Modules, Settings } from '../../src/api/client';
 import { SessionProvider } from '../../src/session';
 import { countriesFixture } from './fixtures';
@@ -252,17 +254,26 @@ function problem(
   });
 }
 
-/** The whole app against a fake server, starting at `url`. */
-export function renderApp(table: Record<string, Handler>, url = '/') {
+/** A cache of its own for each test: nothing carries over, and a failed request is not retried. */
+export const testQueryClient = () => createQueryClient({ retry: false, gcTime: 0 });
+
+/** The whole app against a fake server, starting at `url`; a test can bring its own cache. */
+export function renderApp(
+  table: Record<string, Handler>,
+  url = '/',
+  queryClient = testQueryClient(),
+) {
   const server = fakeServer(table);
   const view = render(
-    <MemoryRouter initialEntries={[url]}>
-      <SessionProvider api={server.api}>
-        <App />
-      </SessionProvider>
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[url]}>
+        <SessionProvider api={server.api}>
+          <App />
+        </SessionProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
-  return { ...server, ...view };
+  return { ...server, ...view, queryClient };
 }
 
 export const signedIn = (settings: Settings = settingsFixture()): Record<string, Handler> => ({

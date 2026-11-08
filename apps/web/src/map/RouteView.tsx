@@ -1,10 +1,11 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { ElasticSlider } from '@/components/elastic-slider';
 import { Section } from '../ui/layout';
-import { ApiError, unwrap } from '../api/client';
+import { ApiError } from '../api/client';
+import { useApiQuery } from '../api/query';
 import type { Schemas } from '../api/client';
 import { formatTime } from '../format';
-import { useSession, useSettings } from '../session';
+import { useSettings } from '../session';
 import { positionAt, speedIn, timeAt, toPoints } from './route';
 import type { RoutePoint } from './route';
 import type { MapPick, MapStop } from './MapView';
@@ -25,30 +26,24 @@ export interface ShiftRoute {
 
 /** Reads the route once per shift; asks nothing while `on` is false (module off, still running). */
 export function useShiftRoute(shiftId: number, on: boolean): ShiftRoute {
-  const { api } = useSession();
-  const [route, setRoute] = useState<ShiftRoute>({ points: null, source: 'raw', note: null });
-  useEffect(() => {
-    if (!on) return;
-    let live = true;
-    void unwrap(api.GET('/shifts/{ref}/route', { params: { path: { ref: String(shiftId) } } }))
-      .then((r) => live && setRoute({ points: toPoints(r), source: r.source, note: null }))
-      .catch((e) => {
-        if (!live) return;
-        // 404 is the normal "no route" answer: replay off on the server, or nothing recorded.
-        setRoute({
-          points: [],
-          source: 'raw',
-          note:
-            e instanceof ApiError && e.status === 404
-              ? 'No route is available for this shift.'
-              : 'The route could not be loaded.',
-        });
-      });
-    return () => {
-      live = false;
+  const { data, error } = useApiQuery(
+    '/shifts/{ref}/route',
+    { params: { path: { ref: String(shiftId) } } },
+    { enabled: on },
+  );
+  return useMemo<ShiftRoute>(() => {
+    if (data) return { points: toPoints(data), source: data.source, note: null };
+    if (!error) return { points: null, source: 'raw', note: null };
+    // 404 is the normal "no route" answer: replay off on the server, or nothing recorded.
+    return {
+      points: [],
+      source: 'raw',
+      note:
+        error instanceof ApiError && error.status === 404
+          ? 'No route is available for this shift.'
+          : 'The route could not be loaded.',
     };
-  }, [api, shiftId, on]);
-  return route;
+  }, [data, error]);
 }
 
 /**

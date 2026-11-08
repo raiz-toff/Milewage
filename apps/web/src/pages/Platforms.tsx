@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
+import { useApiQuery, useInvalidate } from '../api/query';
 import type { Schemas } from '../api/client';
 import { ImageMinus, ImageUp, Trash2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
@@ -27,26 +28,16 @@ export const slugOf = (name: string) =>
 /** Settings card of the `platforms` module (18 section 4.2): switch platforms on or off, add your own. */
 export function PlatformsCard() {
   const { api } = useSession();
-  const [list, setList] = useState<Platform[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const asked = useApiQuery('/platforms', { params: { query: { include_inactive: true } } });
+  const list = asked.data ?? null;
+  const invalidate = useInvalidate();
+  // Every platform list (pickers, badges, the dashboard) is read again after a change.
+  const load = () => invalidate('/platforms');
+  const [failed, setError] = useState<string | null>(null);
+  const error = failed ?? (asked.error ? describe(asked.error) : null);
   const [name, setName] = useState('');
   const picker = useRef<HTMLInputElement>(null);
   const logoFor = useRef<string | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      setList(
-        await unwrap<Platform[]>(
-          api.GET('/platforms', { params: { query: { include_inactive: true } } }),
-        ),
-      );
-    } catch (e) {
-      setError(describe(e));
-    }
-  }, [api]);
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   async function put(slug: string, body: Schemas['PlatformPut']) {
     setError(null);

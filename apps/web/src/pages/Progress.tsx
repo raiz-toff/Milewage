@@ -1,24 +1,16 @@
-import { useEffect, useState } from 'react';
 import { PageHeader, Section } from '../ui/layout';
-import { describe, unwrap } from '../api/client';
-import type { Schemas } from '../api/client';
+import { describe } from '../api/client';
+import { useApiQuery } from '../api/query';
 import { formatDateTime, formatMoney } from '../format';
-import { useSession, useSettings } from '../session';
+import { useSettings } from '../session';
 import { FormError } from '../ui/form';
-
-type P = Schemas['Progress'];
 
 /** Progress (module `progress`, off by default): level, streak, weekly challenges, badges. Derived, never typed in. */
 export function ProgressPage() {
-  const { api } = useSession();
   const { currency, timezone } = useSettings();
-  const [p, setP] = useState<P | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    void unwrap<P>(api.GET('/progress'))
-      .then(setP)
-      .catch((e) => setError(describe(e)));
-  }, [api]);
+  const asked = useApiQuery('/progress');
+  const p = asked.data;
+  const error = asked.error ? describe(asked.error) : null;
   if (!p) return <FormError message={error} />;
   const show = (id: string, v: number) => (id === 'earn' ? formatMoney(v, currency) : String(v));
   return (

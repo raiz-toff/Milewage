@@ -1,16 +1,16 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { keepPreviousData } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { PageHeader, Section } from '../ui/layout';
 import { Button as UiButton } from '@/components/ui/button';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
-import type { Schemas } from '../api/client';
+import { useApiQuery, useInvalidate } from '../api/query';
 import { useSession, useSettings } from '../session';
 import { formatClock } from '../format';
 import { Button, Field, FormError, TimeField } from '../ui/form';
 import { localDate } from './Dashboard';
 
-type Sched = Schemas['Schedule'];
 const NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; // bit 0 is Monday (18 section 9)
 const DAY = 86_400_000;
 const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
@@ -34,8 +34,6 @@ export function SchedulePage() {
   const { timezone, week_start: weekStart, time_format: timeFormat } = useSettings();
   const today = localDate(Date.now(), timezone);
   const [ym, setYm] = useState({ y: Number(today.slice(0, 4)), m: Number(today.slice(5, 7)) });
-  const [data, setData] = useState<Sched | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [day, setDay] = useState<string | null>(null);
   const [times, setTimes] = useState({ start: '17:00', end: '22:00' });
   const [tpl, setTpl] = useState({ label: '', days: 0, ...{ start: '17:00', end: '22:00' } });
@@ -43,16 +41,17 @@ export function SchedulePage() {
   const from = `${ym.y}-${String(ym.m).padStart(2, '0')}-01`;
   const to = iso(Date.UTC(ym.y, ym.m, 0));
 
-  const load = useCallback(async () => {
-    try {
-      setData(await unwrap<Sched>(api.GET('/schedule', { params: { query: { from, to } } })));
-    } catch (e) {
-      setError(describe(e));
-    }
-  }, [api, from, to]);
-  useEffect(() => {
-    void load();
-  }, [load]);
+  // The month shown stays while the next one is read.
+  const asked = useApiQuery(
+    '/schedule',
+    { params: { query: { from, to } } },
+    { placeholderData: keepPreviousData },
+  );
+  const data = asked.data ?? null;
+  const invalidate = useInvalidate();
+  const load = () => invalidate('/schedule');
+  const [failed, setError] = useState<string | null>(null);
+  const error = failed ?? (asked.error ? describe(asked.error) : null);
 
   async function act(run: () => Promise<unknown>) {
     setError(null);

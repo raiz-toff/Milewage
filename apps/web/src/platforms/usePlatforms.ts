@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { builtinPlatform } from '@milewage/shared';
-import { unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
-import { useSession, useSettings } from '../session';
+import { useApiQuery } from '../api/query';
+import { useSettings } from '../session';
 import type { PlatformLike } from './PlatformBadge';
 
 /**
@@ -10,24 +10,18 @@ import type { PlatformLike } from './PlatformBadge';
  * figures), else the built-in name, else the slug itself.
  */
 export function usePlatformOf(): (slug: string) => PlatformLike {
-  const { api } = useSession();
   const { modules } = useSettings();
-  const [list, setList] = useState<Schemas['Platform'][]>([]);
-  useEffect(() => {
-    if (!modules.platforms) return;
-    let live = true;
-    void unwrap<Schemas['Platform'][]>(
-      api.GET('/platforms', { params: { query: { include_inactive: true } } }),
-    )
-      .then((l) => live && setList(l))
-      .catch(() => {}); // names and colours are a nicety; the slug still shows
-    return () => {
-      live = false;
-    };
-  }, [api, modules.platforms]);
+  // Names and colours are a nicety: on a failure the slug still shows.
+  const list =
+    useApiQuery(
+      '/platforms',
+      { params: { query: { include_inactive: true } } },
+      { enabled: modules.platforms },
+    ).data ?? NONE;
   return useCallback(
     (slug: string) =>
       list.find((p) => p.slug === slug) ?? { slug, label: builtinPlatform(slug)?.label ?? slug },
     [list],
   );
 }
+const NONE: Schemas['Platform'][] = [];

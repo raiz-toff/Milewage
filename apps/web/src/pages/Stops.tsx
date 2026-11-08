@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
+import { apiKey, useApiQuery } from '../api/query';
 import { formatTime, minorDigits, moneyInput, parseMoney } from '../format';
 import { useSession, useSettings } from '../session';
 import { SortTable } from '../ui/SortTable';
@@ -67,22 +69,16 @@ const ROLES = [
 const FIELD =
   'w-full min-w-24 h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30';
 
-/** The detected stops of a shift, read once per shift; label saves update the list in place. */
+/** The detected stops of a shift; label saves update the list in place. */
 export function useShiftStops(shiftId: number, on: boolean) {
-  const { api } = useSession();
-  const [stops, setStops] = useState<Stop[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    if (!on) return;
-    let live = true;
-    void unwrap(api.GET('/shifts/{ref}/stops', { params: { path: { ref: String(shiftId) } } }))
-      .then((list) => live && setStops(list))
-      .catch((e) => live && setError(describe(e)));
-    return () => {
-      live = false;
-    };
-  }, [api, shiftId, on]);
-  return { stops, setStops, error };
+  const queries = useQueryClient();
+  const params = { path: { ref: String(shiftId) } };
+  const q = useApiQuery('/shifts/{ref}/stops', { params }, { enabled: on });
+  const setStops = (change: (old: Stop[] | null) => Stop[]) =>
+    queries.setQueryData<Stop[]>(apiKey('/shifts/{ref}/stops', params), (old) =>
+      change(old ?? null),
+    );
+  return { stops: q.data ?? null, setStops, error: q.error ? describe(q.error) : null };
 }
 
 /**

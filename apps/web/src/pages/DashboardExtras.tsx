@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
+import { useApiQuery } from '../api/query';
 import { levelWord, useCountries } from '../countries';
 import { useSession, useSettings } from '../session';
 import { valueText } from './Goals';
@@ -34,19 +35,10 @@ const PERIOD_WORD: Record<string, string> = {
  * Nothing appears without a goal; the checklist offers to set one. A failed request hides it.
  */
 export function GoalRing() {
-  const { api } = useSession();
   const { modules, distance_unit: unit, currency } = useSettings();
-  const [goal, setGoal] = useState<Schemas['Goal'] | null>(null);
-  const [streak, setStreak] = useState(0);
-  useEffect(() => {
-    void unwrap<Schemas['Goal'][]>(api.GET('/goals'))
-      .then((list) => setGoal(list.find((g) => g.active) ?? null))
-      .catch(() => setGoal(null));
-    if (modules.progress)
-      void unwrap(api.GET('/progress'))
-        .then((p) => setStreak(p.streak.days))
-        .catch(() => setStreak(0));
-  }, [api, modules.progress]);
+  const goal = useApiQuery('/goals').data?.find((g) => g.active) ?? null;
+  const progress = useApiQuery('/progress', undefined, { enabled: modules.progress }).data;
+  const streak = modules.progress ? (progress?.streak.days ?? 0) : 0;
   if (!goal) return null;
   const p = goal.progress;
   const pct = p.ratio === null ? null : Math.round(p.ratio * 100);
@@ -108,7 +100,8 @@ interface Item {
   visible: boolean;
   /** Can be skipped: a goal or a backup is the driver's choice, not needed to record shifts. */
   optional?: boolean;
-  done: () => Promise<boolean>;
+  /** Undefined while the answer is not in (or could not be read). */
+  done: boolean | undefined;
 }
 type Step = Pick<Item, 'id' | 'text' | 'why' | 'to' | 'optional'> & { done: boolean };
 type SetupStep = Schemas['SetupStep'];
@@ -146,70 +139,60 @@ function storeHidden(hidden: boolean) {
 export function SetupChecklist() {
   const { api, setSettings } = useSession();
   const { modules, setup_done: kept } = useSettings();
-  const [live, setState] = useState<Step[] | null>(null);
+  const vehicles = useApiQuery('/vehicles').data;
+  const goals = useApiQuery('/goals', undefined, { enabled: modules.goals }).data;
+  const devices = useApiQuery('/devices', undefined, { enabled: modules.devices }).data;
+  const backups = useApiQuery('/backups').data;
+  const items: Item[] = [
+    {
+      id: 'vehicle',
+      text: 'Add your real vehicle',
+      why: 'So your logbook and deduction use the right vehicle.',
+      to: '/vehicles',
+      visible: true,
+      done: vehicles && vehicles.length > 0,
+    },
+    {
+      id: 'goal',
+      text: 'Set a weekly goal',
+      why: 'See how far along the week you are.',
+      to: '/goals',
+      visible: modules.goals,
+      optional: true,
+      done: goals?.some((g) => g.period === 'weekly'),
+    },
+    {
+      id: 'phone',
+      text: 'Pair your phone',
+      why: 'The phone records your shifts.',
+      to: '/devices',
+      visible: modules.devices,
+      done: devices?.some((d) => d.revoked_at === null),
+    },
+    {
+      id: 'backup',
+      text: 'Run a backup',
+      why: 'A copy of your data you can restore.',
+      to: '/backups',
+      visible: true,
+      optional: true,
+      done: backups && backups.length > 0,
+    },
+  ].filter((i) => i.visible);
+  const live: Step[] | null = items.some((i) => i.done === undefined)
+    ? null
+    : items.map(({ id, text, why, to, optional, done }) => ({
+        id,
+        text,
+        why,
+        to,
+        optional,
+        done: !!done,
+      }));
   const state =
     live && live.map((i) => ({ ...i, done: i.done || kept.includes(i.id as SetupStep) }));
   const [hidden, setHidden] = useState(storedHidden);
   const [showDone, setShowDone] = useState(false);
-
-  useEffect(() => {
-    const items: Item[] = [
-      {
-        id: 'vehicle',
-        text: 'Add your real vehicle',
-        why: 'So your logbook and deduction use the right vehicle.',
-        to: '/vehicles',
-        visible: true,
-        done: async () => (await unwrap<Schemas['Vehicle'][]>(api.GET('/vehicles'))).length > 0,
-      },
-      {
-        id: 'goal',
-        text: 'Set a weekly goal',
-        why: 'See how far along the week you are.',
-        to: '/goals',
-        visible: modules.goals,
-        optional: true,
-        done: async () =>
-          (await unwrap<Schemas['Goal'][]>(api.GET('/goals'))).some((g) => g.period === 'weekly'),
-      },
-      {
-        id: 'phone',
-        text: 'Pair your phone',
-        why: 'The phone records your shifts.',
-        to: '/devices',
-        visible: modules.devices,
-        done: async () =>
-          (await unwrap<Schemas['Device'][]>(api.GET('/devices'))).some(
-            (d) => d.revoked_at === null,
-          ),
-      },
-      {
-        id: 'backup',
-        text: 'Run a backup',
-        why: 'A copy of your data you can restore.',
-        to: '/backups',
-        visible: true,
-        optional: true,
-        done: async () => (await unwrap<Schemas['Backup'][]>(api.GET('/backups'))).length > 0,
-      },
-    ].filter((i) => i.visible);
-    let live = true;
-    void Promise.all(
-      items.map(async (i) => ({
-        id: i.id,
-        text: i.text,
-        why: i.why,
-        to: i.to,
-        optional: i.optional,
-        done: await i.done(),
-      })),
-    )
-      .then((r) => live && setState(r))
-      .catch(() => live && setState(null));
-    return () => {
-      live = false;
-    };
-  }, [api, modules.goals, modules.devices]);
 
   const keep = (ids: SetupStep[]) =>
     unwrap(api.PATCH('/settings', { body: { setup_done: ids } })).then(setSettings);
@@ -359,28 +342,23 @@ function Notice({ icon, children }: { icon: ReactNode; children: ReactNode }) {
  * failed or overdue backup from the notifications module. Unreadable answers show nothing.
  */
 export function Notices({ today }: { today: string }) {
-  const { api } = useSession();
   const { country, region, modules } = useSettings();
   const c = useCountries().find((x) => x.code === country);
-  const [review, setReview] = useState(0);
-  const [backup, setBackup] = useState<string | null>(null);
-  useEffect(() => {
-    const from = new Date(Date.parse(`${today}T00:00:00Z`) - 29 * 86_400_000)
-      .toISOString()
-      .slice(0, 10);
-    void unwrap(api.GET('/shifts', { params: { query: { from, to: today, limit: 200 } } }))
-      .then((p) =>
-        setReview(p.items.filter((s) => s.flags?.some((f) => f.severity === 'review')).length),
-      )
-      .catch(() => setReview(0));
-    if (modules.notifications)
-      void unwrap(api.GET('/notifications', { params: { query: { unread: true, limit: 50 } } }))
-        .then((p) => {
-          const n = p.items.find((i) => i.kind === 'backup_failed' || i.kind === 'backup_overdue');
-          setBackup(n ? messageOf(n) : null);
-        })
-        .catch(() => setBackup(null));
-  }, [api, today, modules.notifications]);
+  const from = new Date(Date.parse(`${today}T00:00:00Z`) - 29 * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  const shifts = useApiQuery('/shifts', { params: { query: { from, to: today, limit: 200 } } });
+  const review =
+    shifts.data?.items.filter((s) => s.flags?.some((f) => f.severity === 'review')).length ?? 0;
+  const unread = useApiQuery(
+    '/notifications',
+    { params: { query: { unread: true, limit: 50 } } },
+    { enabled: modules.notifications },
+  ).data;
+  const failed = modules.notifications
+    ? unread?.items.find((i) => i.kind === 'backup_failed' || i.kind === 'backup_overdue')
+    : undefined;
+  const backup = failed ? messageOf(failed) : null;
   const word = c?.regional_rules && !region ? levelWord(c).toLowerCase() : null;
   return (
     <>

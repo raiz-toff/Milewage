@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Section } from '../ui/layout';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
+import { useApiQuery, useInvalidate } from '../api/query';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError } from '../ui/form';
 import { localDate } from './Dashboard';
 import { toMetres } from './Odometer';
 
-type Reading = Schemas['OdometerReading'];
 type Kind = 'shift_start' | 'shift_end';
 
 const M_PER_MILE = 1609.344;
@@ -25,43 +25,36 @@ export function ShiftOdometer({ shift, bare }: { shift: Schemas['Shift']; bare?:
   const { distance_unit: unit, timezone } = useSettings();
   // A shift that runs past midnight can have its end reading on the next local day.
   const lastDay = shift.ended_at ? localDate(shift.ended_at, timezone) : shift.local_date;
-  const [values, setValues] = useState<Record<Kind, string> | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [edits, setValues] = useState<Record<Kind, string> | null>(null);
+  const [failed, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<Kind | null>(null);
+  const invalidate = useInvalidate();
   const locked = shift.status === 'finalized';
-
-  useEffect(() => {
-    let live = true;
-    void Promise.all(
-      KINDS.map(({ kind }) =>
-        unwrap<Reading[]>(
-          api.GET('/odometer', {
-            params: {
-              query: {
-                vehicle_id: shift.vehicle_id,
-                kind,
-                from: shift.local_date,
-                to: lastDay > shift.local_date ? lastDay : shift.local_date,
-              },
-            },
-          }),
-        ),
-      ),
-    )
-      .then((lists) => {
-        if (!live) return;
-        const mine = (i: number) => lists[i]!.find((r) => r.shift_id === shift.id);
-        const [a, b] = [mine(0), mine(1)];
-        setValues({
+  const readings = (kind: Kind) => ({
+    params: {
+      query: {
+        vehicle_id: shift.vehicle_id,
+        kind,
+        from: shift.local_date,
+        to: lastDay > shift.local_date ? lastDay : shift.local_date,
+      },
+    },
+  });
+  const starts = useApiQuery('/odometer', readings('shift_start'));
+  const ends = useApiQuery('/odometer', readings('shift_end'));
+  const mine = (list: Schemas['OdometerReading'][]) => list.find((r) => r.shift_id === shift.id);
+  const [a, b] = [starts.data && mine(starts.data), ends.data && mine(ends.data)];
+  // What the driver typed, else what the server holds.
+  const values: Record<Kind, string> | null =
+    edits ??
+    (starts.data && ends.data
+      ? {
           shift_start: a ? inUnit(a.reading_m, unit) : '',
           shift_end: b ? inUnit(b.reading_m, unit) : '',
-        });
-      })
-      .catch((e) => live && setError(describe(e)));
-    return () => {
-      live = false;
-    };
-  }, [api, shift.id, shift.vehicle_id, shift.local_date, lastDay, unit]);
+        }
+      : null);
+  const loadError = starts.error ?? ends.error;
+  const error = failed ?? (loadError ? describe(loadError) : null);
 
   async function save(kind: Kind) {
     const metres = toMetres(values?.[kind] ?? '', unit);
@@ -76,6 +69,7 @@ export function ShiftOdometer({ shift, bare }: { shift: Schemas['Shift']; bare?:
         }),
       );
       setSaved(kind);
+      void invalidate('/odometer');
     } catch (e) {
       setError(describe(e));
     }

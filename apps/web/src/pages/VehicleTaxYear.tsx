@@ -1,7 +1,8 @@
-import { useEffect, useId, useState } from 'react';
+import { useId, useState } from 'react';
 import { notAutomobile } from '@milewage/shared';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
+import { useApiQuery, useInvalidate, useSetApiData } from '../api/query';
 import { useSession, useSettings } from '../session';
 import { localDate } from './Dashboard';
 import { Picker } from '../ui/form';
@@ -25,15 +26,18 @@ export function VehicleTaxYear({
   const { timezone, distance_unit: unit } = useSettings();
   const id = useId();
   const year = Number(localDate(Date.now(), timezone).slice(0, 4));
-  const [row, setRow] = useState<Row | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const path = { id: vehicleId, year };
-
-  useEffect(() => {
-    void unwrap<Row>(api.GET('/vehicles/{id}/tax-years/{year}', { params: { path } }))
-      .then(setRow)
-      .catch(() => setError('The tax year could not be loaded.'));
-  }, [api, vehicleId, year]);
+  const asked = useApiQuery('/vehicles/{id}/tax-years/{year}', { params: { path } });
+  const row = asked.data ?? null;
+  const setData = useSetApiData();
+  const invalidate = useInvalidate();
+  const setRow = (next: Row) => {
+    setData('/vehicles/{id}/tax-years/{year}', { path }, next);
+    // The method changes the deduction, so the totals are read again.
+    void invalidate('/summary', '/tax');
+  };
+  const [failed, setError] = useState<string | null>(null);
+  const error = failed ?? (asked.error ? 'The tax year could not be loaded.' : null);
 
   async function choose(method: Row['method']) {
     setError(null);

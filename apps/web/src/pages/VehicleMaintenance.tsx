@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button as UiButton } from '@/components/ui/button';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
 import { dateLocale, formatDay } from '../dateText';
 import type { Schemas } from '../api/client';
+import { useApiQuery, useInvalidate } from '../api/query';
 import { formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
 import { Button, DateField, Field, FormError, SelectField } from '../ui/form';
@@ -25,8 +26,12 @@ export function VehicleMaintenance({ vehicleId, name }: { vehicleId: number; nam
   const { currency, distance_unit: unit, timezone, modules, country } = useSettings();
   // The day as other dates are written ("Oct 1, 2026", or "1 Oct 2026" in GB).
   const day = (iso: string) => formatDay(iso, dateLocale(country)) || iso;
-  const [logs, setLogs] = useState<Log[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const list = useApiQuery('/vehicles/{id}/maintenance', { params: { path: { id: vehicleId } } });
+  const logs = list.data ?? null;
+  const invalidate = useInvalidate();
+  const load = () => invalidate('/vehicles/{id}/maintenance');
+  const [failed, setError] = useState<string | null>(null);
+  const error = failed ?? (list.error ? describe(list.error) : null);
   const [form, setForm] = useState({
     kind: 'oil_change',
     date: localDate(Date.now(), timezone),
@@ -34,21 +39,6 @@ export function VehicleMaintenance({ vehicleId, name }: { vehicleId: number; nam
     odometer: '',
     notes: '',
   });
-
-  const load = useCallback(async () => {
-    try {
-      setLogs(
-        await unwrap<Log[]>(
-          api.GET('/vehicles/{id}/maintenance', { params: { path: { id: vehicleId } } }),
-        ),
-      );
-    } catch (e) {
-      setError(describe(e));
-    }
-  }, [api, vehicleId]);
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   async function add(e: FormEvent) {
     e.preventDefault();
