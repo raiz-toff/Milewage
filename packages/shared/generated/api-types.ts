@@ -268,6 +268,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/mcp/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The last 50 changes made by assistants, newest first (plan 26 section 3.7). Arguments are kept on the server only. */
+        get: operations["listMcpAudit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mcp/tokens/{id}": {
         parameters: {
             query?: never;
@@ -3536,6 +3553,37 @@ export interface operations {
                 };
             };
             422: components["responses"]["Unprocessable"];
+        };
+    };
+    listMcpAudit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Audit rows. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id: number;
+                        at: components["schemas"]["EpochMs"];
+                        /** @description The MCP tool, e.g. add_expense. */
+                        tool: string;
+                        /** @description `ok`, or `error: ` and the problem title. */
+                        outcome: string;
+                        /** @description The record touched, e.g. `expense:42` or `shift:17`. */
+                        target: string | null;
+                        token_id: number;
+                        token_name: string;
+                    }[];
+                };
+            };
         };
     };
     revokeMcpToken: {

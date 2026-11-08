@@ -1,6 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { ENTRY_TYPES } from '../db';
-import { ok, type ToolContext, type ToolSpec } from './tools';
+import { ok, ToolProblem, type ToolContext, type ToolSpec } from './tools';
 
 const day = z
   .string()
@@ -9,6 +10,41 @@ const day = z
 const id = z.number().int().min(1);
 const cents = (what: string) =>
   z.number().int().describe(`${what} in integer cents of the driver’s currency: 12.50 is 1250.`);
+
+const localTime = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)
+  .describe('Local time in the driver’s time zone, YYYY-MM-DDTHH:mm.');
+/** Metres in one of the driver's units (1 mi = 1609.344 m, the international mile). */
+export const metresPer = (unit: string) => (unit === 'mi' ? 1609.344 : 1000);
+
+/** The instant a local wall-clock time `YYYY-MM-DDTHH:mm` names in an IANA zone. */
+export function epochOf(local: string, timeZone: string): number {
+  const [y, mo, d, h, mi] = local.split(/[-T:]/).map(Number) as [
+    number,
+    number,
+    number,
+    number,
+    number,
+  ];
+  const wall = Date.UTC(y, mo - 1, d, h, mi);
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+  });
+  let at = wall;
+  // Twice: the zone's offset at the first guess may differ from the offset at the answer (DST).
+  for (let i = 0; i < 2; i++) {
+    const p = Object.fromEntries(fmt.formatToParts(at).map((x) => [x.type, Number(x.value)]));
+    at += wall - Date.UTC(p.year!, p.month! - 1, p.day!, p.hour!, p.minute!);
+  }
+  return at;
+}
 
 /** `CA$54.20`: the amount as the driver reads it, for the confirmation text. */
 export async function money(ctx: ToolContext, amountCents: number) {
@@ -120,5 +156,97 @@ export const writeTools: ToolSpec[] = [
     target: (_r, a) => `shift:${Number(a.shift)}`,
     say: async (_r, ctx, a) =>
       `Added ${String(a.type)} ${await money(ctx, Number(a.amount_cents))} for ${String(a.platform)} to shift #${Number(a.shift)}. ${UNDO}`,
+  },
+  {
+    name: 'update_shift',
+    title: 'Change a shift’s notes or vehicle',
+    description:
+      'Change the notes or the vehicle of a shift (id from list_shifts). The old values are kept in MileWage’s change history. Answers the shift before and after.',
+    scope: 'write',
+    annotations: { destructiveHint: true, idempotentHint: true },
+    input: z.object({
+      shift: id.describe('The shift id (from list_shifts).'),
+      notes: z.string().max(2000).nullable().optional(),
+      vehicle_id: id.optional(),
+    }),
+    async run(a, ctx) {
+      const ref = `/shifts/${Number(a.shift)}`;
+      const before = await ok(ctx.api('GET', ref));
+      const body = Object.fromEntries(
+        ['notes', 'vehicle_id'].filter((k) => a[k] !== undefined).map((k) => [k, a[k]]),
+      );
+      return { before, after: await ok(ctx.api('PATCH', ref, body)) };
+    },
+    target: (_r, a) => `shift:${Number(a.shift)}`,
+    say: async (_r, _ctx, a) =>
+      `Changed shift #${Number(a.shift)}: ${['notes', 'vehicle_id'].filter((k) => a[k] !== undefined).join(' and ')}. The old values are in the shift’s change history.`,
+  },
+  {
+    name: 'record_odometer',
+    title: 'Record an odometer reading',
+    description:
+      'Record what the odometer showed, in the driver’s distance unit (km or mi, from get_profile): at the start or end of a shift (give `shift`), or at the start or end of the year for the tax logbook (give `vehicle_id`). A newer reading of the same kind for that shift replaces the older one.',
+    scope: 'write',
+    annotations: { destructiveHint: true, idempotentHint: true },
+    input: z.object({
+      kind: z.enum(['shift_start', 'shift_end', 'year_start', 'year_end']),
+      reading: z.number().min(0).max(10_000_000).describe('The odometer, in the driver’s unit.'),
+      at: localTime.describe('When it was read, local time YYYY-MM-DDTHH:mm.'),
+      shift: id.optional().describe('For shift_start and shift_end.'),
+      vehicle_id: id.optional().describe('For year_start and year_end.'),
+    }),
+    async run(a, ctx) {
+      const s = await ctx.settings();
+      const body = {
+        reading_m: Math.round(Number(a.reading) * metresPer(String(s.distance_unit))),
+        recorded_at: epochOf(String(a.at), String(s.timezone)),
+      };
+      const kind = String(a.kind);
+      if (kind.startsWith('shift_')) {
+        if (a.shift === undefined) throw new ToolProblem('Give `shift` for a shift reading.');
+        return ok(ctx.api('PUT', `/shifts/${Number(a.shift)}/odometer/${kind}`, body));
+      }
+      if (a.vehicle_id === undefined)
+        throw new ToolProblem('Give `vehicle_id` for a year reading.');
+      return ok(ctx.api('POST', '/odometer', { ...body, kind, vehicle_id: a.vehicle_id }));
+    },
+    target: (r) => `odometer:${(r as { id: number }).id}`,
+    say: async (_r, ctx, a) =>
+      `Recorded ${String(a.kind).replace('_', ' ')} odometer ${Number(a.reading)} ${String((await ctx.settings()).distance_unit)} at ${String(a.at)}.`,
+  },
+  {
+    name: 'add_trip',
+    title: 'Add a trip by hand',
+    description:
+      'Add a trip the phone did not record to a shift that is not finalized: `active` (with an order), `deadhead` (driving to the next order) or `personal`. Times are local, YYYY-MM-DDTHH:mm; distance is in the driver’s unit.',
+    scope: 'write',
+    annotations: { destructiveHint: false, idempotentHint: false },
+    input: z.object({
+      shift: id.describe('The shift id (from list_shifts).'),
+      kind: z.enum(['active', 'deadhead', 'personal']),
+      started_at: localTime,
+      ended_at: localTime,
+      distance: z.number().positive().max(10_000).describe('In the driver’s unit (km or mi).'),
+      purpose: z.string().min(1).max(200).describe('What the trip was for, e.g. "DoorDash order".'),
+    }),
+    async run(a, ctx) {
+      const s = await ctx.settings();
+      const tz = String(s.timezone);
+      const body = {
+        kind: a.kind,
+        started_at: epochOf(String(a.started_at), tz),
+        ended_at: epochOf(String(a.ended_at), tz),
+        distance_m: Math.max(
+          1,
+          Math.round(Number(a.distance) * metresPer(String(s.distance_unit))),
+        ),
+        purpose: a.purpose,
+        edited_at: ctx.now(),
+      };
+      return ok(ctx.api('PUT', `/shifts/${Number(a.shift)}/trips/${randomUUID()}`, body));
+    },
+    target: (_r, a) => `shift:${Number(a.shift)}`,
+    say: async (_r, ctx, a) =>
+      `Added a ${String(a.kind)} trip of ${Number(a.distance)} ${String((await ctx.settings()).distance_unit)} to shift #${Number(a.shift)}, ${String(a.started_at)} to ${String(a.ended_at)}. ${UNDO}`,
   },
 ];

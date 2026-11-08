@@ -159,7 +159,7 @@ x-modules:
     toggle: modules.mcp
     default: false
     dependsOn: [core]
-    operations: [listMcpTokens, createMcpToken, revokeMcpToken]
+    operations: [listMcpTokens, createMcpToken, revokeMcpToken, listMcpAudit]
 
 paths:
   /healthz:
@@ -526,6 +526,30 @@ paths:
                     required: [token]
                     properties: { token: { type: string, pattern: '^mwa_[A-Za-z0-9_-]{43}$' } }
         '422': { $ref: '#/components/responses/Unprocessable' }
+  /mcp/audit:
+    get:
+      tags: [mcp]
+      operationId: listMcpAudit
+      summary: The last 50 changes made by assistants, newest first (plan 26 section 3.7). Arguments are kept on the server only.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Audit rows.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, at, tool, outcome, target, token_id, token_name]
+                  properties:
+                    id: { type: integer }
+                    at: { $ref: '#/components/schemas/EpochMs' }
+                    tool: { type: string, description: 'The MCP tool, e.g. add_expense.' }
+                    outcome: { type: string, description: '`ok`, or `error: ` and the problem title.' }
+                    target: { type: [string, 'null'], description: 'The record touched, e.g. `expense:42` or `shift:17`.' }
+                    token_id: { type: integer }
+                    token_name: { type: string }
   /mcp/tokens/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: integer } }

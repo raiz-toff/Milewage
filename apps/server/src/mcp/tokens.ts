@@ -137,6 +137,12 @@ export function mcpTokenRoutes({
       return reply.status(201).send({ ...tokenView(row), token });
     });
 
+    // What assistants changed, newest first (plan 26 section 3.9); the arguments stay on the server.
+    const audit = db.prepare(
+      'SELECT a.id, a.at, a.tool, a.outcome, a.target, a.token_id, t.name AS token_name FROM mcp_audit a JOIN mcp_tokens t ON t.id = a.token_id WHERE a.user_id = ? ORDER BY a.id DESC LIMIT 50',
+    );
+    app.get('/mcp/audit', async (req) => audit.all(authn.authenticate(req, 'S').userId));
+
     app.delete('/mcp/tokens/:id', { schema: { params: idParams } }, async (req, reply) => {
       const { userId } = authn.authenticate(req, 'S');
       const { id } = req.params as { id: number };
