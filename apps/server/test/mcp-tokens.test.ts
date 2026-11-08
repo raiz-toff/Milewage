@@ -85,7 +85,8 @@ test('revoking is instant and idempotent; the repository refuses a wrong token',
   const { id, token } = (await web('POST', '/mcp/tokens', { name: 'x', scope: 'read' })).json();
   const repo = createMcpTokenRepository(h.db);
   expect(repo.byToken(token)?.id).toBe(id);
-  expect(repo.byToken(`${token.slice(0, -1)}A`)).toBeUndefined();
+  const other = token.endsWith('A') ? 'B' : 'A';
+  expect(repo.byToken(`${token.slice(0, -1)}${other}`)).toBeUndefined();
 
   expect((await web('DELETE', `/mcp/tokens/${id}`)).statusCode).toBe(204);
   expect(repo.byToken(token)?.revokedAt).toBe(h.clock.t);

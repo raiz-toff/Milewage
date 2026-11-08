@@ -60,6 +60,7 @@ import { platformsRoutes, platformKnown } from './routes/platforms';
 import { stopsRoutes } from './routes/stops';
 import { trackingRoutes } from './routes/tracking';
 import { mcpTokenRoutes } from './mcp/tokens';
+import { mcpEndpoint } from './mcp/endpoint';
 
 export const coreModule = defineModule({ name: 'core', dependsOn: [], toggleable: false });
 export const devicesModule = defineModule({ name: 'devices', dependsOn: ['core'] });
@@ -539,7 +540,13 @@ export function createServerModules(ctx: ServerContext) {
       routes: capture.routes,
       jobs: [capture.job],
     }),
-    defineModule({ ...mcpModule, routes: mcpTokenRoutes({ ...ctx, authn }) }),
+    defineModule({
+      ...mcpModule,
+      routes: (host) => {
+        mcpTokenRoutes({ ...ctx, authn })(host);
+        mcpEndpoint({ ...ctx, authn })(host);
+      },
+    }),
     defineModule({
       ...backupModule,
       routes: (host) => {

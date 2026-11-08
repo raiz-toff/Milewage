@@ -344,8 +344,8 @@ tool adds a file there. No other module imports MCP code.
 |---|---|---|
 | **M0** | `pr-M0-mcp-plan` | This plan. |
 | **M1** | `pr-M1-mcp-tokens` | Server: module `mcp` (off), migration `mcp/0001`, `GET/POST /mcp/tokens`, `DELETE /mcp/tokens/{id}`, `modules.mcp` in Settings, OpenAPI, tests. |
-| **M2** | `pr-M2-mcp-endpoint` | Server: `POST /api/v1/mcp` with the SDK, token check, `Origin` check, 401/403 answers, the internal grant, read-only-mode pass-through; read tools `get_profile`, `get_summary`, `list_shifts`, `get_shift`. Tests with the official v2 client over `inject`. |
-| **M3** | `pr-M3-mcp-read-tools` | Server: `get_analytics`, `list_expenses`, `get_expense_totals`, `list_goals`, `get_tax_estimate`, `list_odometer_readings`; module-gated listing. |
+| **M2** | `pr-M2-mcp-endpoint` | Server: `POST /api/v1/mcp` with the SDK, token check, `Origin` check, 401/403 answers, the internal grant, read-only-mode pass-through; read tools `get_profile`, `get_summary`. Tests with the official v2 client over `inject`. |
+| **M3** | `pr-M3-mcp-read-tools` | Server: `list_shifts`, `get_shift`, `get_analytics`, `list_expenses`, `get_expense_totals`, `list_goals`, `get_tax_estimate`, `list_odometer_readings`; module-gated listing. |
 | **M4** | `pr-M4-mcp-write-tools` | Server: write scope, `add_expense`, `update_expense`, `add_earning_entry`, `mcp_audit` rows, the 30-a-minute write bucket. |
 | **M5** | `pr-M5-mcp-write-more` | Server: `record_odometer`, `update_shift`, `add_trip` (local time and unit conversion), `GET /mcp/audit`. |
 | **M6** | `pr-M6-mcp-web` | Web: Settings › AI assistants (make, show once, copy, connect commands, revoke, recent changes). |
