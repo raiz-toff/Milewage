@@ -21,6 +21,19 @@ function applyThemeColor(choice: ThemeChoice): void {
   }
 }
 
+/** The tab icon for a theme: the dark coin on light pages, the yellow coin on dark ones (branding). */
+export const FAVICONS = {
+  system: '/favicon.svg',
+  light: '/favicon-light.svg',
+  dark: '/favicon-dark.svg',
+} as const;
+
+/** "system" keeps the SVG that follows the OS; a picked theme gets its own icon. */
+function applyFavicon(choice: ThemeChoice): void {
+  const link = document.querySelector<HTMLLinkElement>('link[rel="icon"][type="image/svg+xml"]');
+  if (link) link.href = FAVICONS[choice];
+}
+
 function stored(): ThemeChoice {
   try {
     const v = localStorage.getItem(KEY);
@@ -35,6 +48,7 @@ export function applyTheme(choice: ThemeChoice = stored()): void {
   const dark = choice === 'dark' || (choice === 'system' && darkQuery().matches);
   document.documentElement.classList.toggle('dark', dark);
   applyThemeColor(choice);
+  applyFavicon(choice);
 }
 
 export function useTheme(): [ThemeChoice, (choice: ThemeChoice) => void] {

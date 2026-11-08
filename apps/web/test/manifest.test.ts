@@ -75,6 +75,7 @@ describe('index.html head', () => {
   it('links the manifest, the favicon and the iOS home screen icon', () => {
     expect(html).toContain('<link rel="manifest" href="/manifest.webmanifest" />');
     expect(html).toContain('<link rel="icon" href="/favicon.ico" sizes="48x48" />');
+    expect(html).toContain('<link rel="icon" href="/favicon.svg" type="image/svg+xml" />');
     expect(html).toContain('<link rel="apple-touch-icon" href="/apple-touch-icon.png" />');
     expect(pngSize(join(pub, 'apple-touch-icon.png'))).toBe('180x180');
     const ico = readFileSync(join(pub, 'favicon.ico'));

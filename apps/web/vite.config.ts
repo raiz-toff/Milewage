@@ -55,7 +55,7 @@ export const pwaOptions: Partial<VitePWAOptions> = {
   manifest: false, // public/manifest.webmanifest
   devOptions: { enabled: false },
   workbox: {
-    globPatterns: ['**/*.{js,css,html,woff2,png,ico,webmanifest}'],
+    globPatterns: ['**/*.{js,css,html,woff2,png,ico,svg,webmanifest}'],
     navigateFallback: '/index.html',
     navigateFallbackDenylist: [/^\/api\//, /^\/healthz$/],
     cleanupOutdatedCaches: true,

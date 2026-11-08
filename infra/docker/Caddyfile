@@ -54,7 +54,7 @@
 		header Cache-Control "no-cache"
 		file_server
 	}
-	@icons path /favicon.ico /apple-touch-icon.png /icons/*
+	@icons path /favicon.ico /favicon.svg /favicon-light.svg /favicon-dark.svg /apple-touch-icon.png /icons/*
 	handle @icons {
 		root * /srv/web
 		header Cache-Control "public, max-age=86400"

@@ -10,8 +10,10 @@
     />
     <!-- Installable web app (plan 27). apps/web/icons/generate.py writes every icon. -->
     <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- The tab icon follows the theme: favicon.svg follows the OS; theme.ts swaps it for the
+         theme picked in the app. The .ico is for browsers without SVG icons (Safari). -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
-    <link rel="icon" href="/icons/icon-192.png" type="image/png" sizes="192x192" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <!-- Window and status bar colour: each theme's page background. theme.ts keeps both in step
          with the theme chosen in the app. -->
