@@ -13,7 +13,7 @@ Requires Node 22.22.x (see `.nvmrc`). Run `npm install`, then `npm run verify` (
 
 Running it: [`infra/docs/install.md`](infra/docs/install.md) (home lab with Tailscale, `infra/install.sh`), [`infra/docs/upgrade.md`](infra/docs/upgrade.md) (upgrade, failure and rollback) and [`infra/docs/configuration.md`](infra/docs/configuration.md) (every server setting and its default).
 
-Documentation: [guides for drivers](docs/README.md), [`CHANGELOG.md`](CHANGELOG.md), [`SECURITY.md`](SECURITY.md) and the index of owner decisions, [`DECISIONS.md`](DECISIONS.md).
+Documentation: [guides for drivers](docs/README.md), [`CHANGELOG.md`](CHANGELOG.md), [`SECURITY.md`](SECURITY.md) and the index of owner decisions, [`DECISIONS.md`](DECISIONS.md). The design system (palette, type, components, voice) is the project skill [`.claude/skills/milewage-design/`](.claude/skills/milewage-design/SKILL.md); Claude Code loads it before UI work, and it reads as a guide for people too.
 
 Releases: the phone app is signed with an upload key made once by `scripts/phone-keystore.sh` (kept in `~/.milewage`, never in git; back it up). CI (`.github/workflows/verify.yml`, GitHub Actions) runs `npm run verify` and a dependency audit on every pull request and on `main`. Release builds of the images and the APK are not set up on GitHub yet (`TODO.md`).
 
