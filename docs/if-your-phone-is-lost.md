@@ -28,6 +28,20 @@ A restore can leave the server behind what the phone has already sent. The phone
 
 - It marks the shifts it holds as "on phone only", since the server may not have them any more.
 - It stops deleting its own copies of points, so nothing it still holds is thrown away.
-- It tells you the server was restored.
+- It tells you the server was restored: "MileWage is re-sending the last 14 days from your phone."
+- It sends its shifts again by itself, oldest first, on the next sync. You do not need to do anything. "Sync now" starts it at once.
 
-It does not yet send the points again by itself. That part is not built in this version. Your shifts stay on the phone, marked "on phone only". Do not clear the app's data until you have checked your server.
+Each shift goes the same way as the first time: the shift, then all its points still on the phone, then its odometer readings, its end and your trip edits. A shift the server still has is not doubled. The server answers what it already has, and only what is missing is added.
+
+Each shift is marked "on server" again once the server has accepted its end. When all of them are back, the message goes away and the phone may delete old points again.
+
+Some things to know:
+
+- If the connection drops, the phone carries on from the last batch the server accepted. Closing the app does not lose its place.
+- If a shift is running, the older shifts wait until you end it. The server allows one running shift at a time.
+- If the server is restored again while this runs, the phone starts over. Nothing is lost.
+- Points are kept on the phone for 14 days after the server first confirmed them. Older points cannot be sent again. Their shifts are still sent, with odometer readings and trip edits, but the server may then show a lower distance for them. Such a shift is marked as differing, and the phone keeps its own numbers so you can compare.
+- Shifts the phone only knows from the server (recorded on another phone, or before the app was reinstalled) are not sent. The phone never held their points.
+- A shift older than 14 days that the server still has is left as it is. The phone cannot reach it any more, and it is already on the server.
+
+Do not clear the app's data until the banner says everything is on the server.

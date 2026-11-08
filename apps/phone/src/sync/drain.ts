@@ -4,6 +4,7 @@ import type { ShiftController } from '../shift/controller';
 import type { ShiftStore } from '../store/shiftStore';
 import { BACKLOG_BATCH, type UploadWorker } from '../upload/worker';
 import { shiftOf, type Outbox } from './outbox';
+import type { RestoreResend } from './resend';
 import type { OutboxRunner } from './runner';
 
 export interface Progress {
@@ -33,6 +34,8 @@ export interface DrainDeps {
   pull?: (force: boolean) => Promise<unknown>;
   /** `GET /settings` first: it reveals a wrong server before any data is sent (15 section 6.2 step 1). */
   handshake?: () => Promise<unknown>;
+  /** Sends again what a server restored from a backup lost (15 section 9.3), before the backlog. */
+  resend?: RestoreResend;
   now?: () => number;
 }
 
@@ -114,6 +117,11 @@ export class SyncDrain {
   private async run(): Promise<DrainSummary> {
     const { store, runner } = this.d;
     await this.d.handshake?.();
+    const again = await this.resendAfterRestore();
+    if (again && again.state !== 'idle') {
+      this.set({ phase: again.state === 'offline' ? 'waiting' : again.state });
+      return { state: again.state, retryInMs: again.retryInMs };
+    }
     await this.serveRunning();
     const todo = await this.unsynced();
     const pending = this.d.feed.readPending(PUMP_LIMIT);
@@ -128,8 +136,8 @@ export class SyncDrain {
       phase: 'running',
       pointsSent: 0,
       pointsTotal: total,
-      shiftsDone: 0,
-      shiftsTotal: todo.length,
+      shiftsDone: again?.shifts ?? 0,
+      shiftsTotal: todo.length + (again?.shifts ?? 0),
       startedAt: this.now(),
     });
 
@@ -166,6 +174,7 @@ export class SyncDrain {
       this.set({ phase: 'halted' });
       return { state: 'halted', retryInMs: null };
     }
+    await this.d.resend?.settle();
     this.set({ phase: 'done' });
     await this.d.pull?.(this.state.pointsSent > 0 || this.state.shiftsDone > 0);
     return { state: 'idle', retryInMs: null };
@@ -179,11 +188,26 @@ export class SyncDrain {
     for (const p of feed.readPending(PUMP_LIMIT)) ids.add(p.shiftClientId);
     for (const i of await outbox.pending()) ids.add(shiftOf(i.entityKey));
     for (const i of await outbox.parked()) ids.delete(shiftOf(i.entityKey));
+    for (const id of (await this.d.resend?.held()) ?? []) ids.delete(id);
     if (live) ids.delete(live);
     const rows = await Promise.all([...ids].map(async (id) => [id, await store.get(id)] as const));
     return rows
       .sort((a, b) => (a[1]?.started_at ?? Infinity) - (b[1]?.started_at ?? Infinity))
       .map(([id]) => id);
+  }
+
+  /**
+   * After a restore: the shifts the server once had, sent again before anything else. A shift
+   * created again may have had its points set aside by the upload worker meanwhile (404), so the
+   * worker starts clean.
+   */
+  private async resendAfterRestore() {
+    const { resend, controller, uploader } = this.d;
+    if (!resend) return null;
+    const live = controller.current?.endedAt === null ? controller.current.clientId : null;
+    const r = await resend.run({ live, shouldStop: this.stopped });
+    if (r.recreated) uploader.resume();
+    return r;
   }
 
   /** The running shift: its create and odometer, then its points (batches of at most 100). */

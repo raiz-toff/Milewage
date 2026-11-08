@@ -88,6 +88,7 @@ export interface StatusInput {
   parkedItems: number;
   oldestQueuedAt: number | null;
   wrongServer: boolean;
+  /** The server was restored from a backup and shifts are still being sent again. */
   restored: boolean;
   /** `repair` (revoked) or `auth_problem` from the last upload or outbox run. */
   halted: 'repair' | 'auth_problem' | null;
@@ -120,8 +121,9 @@ export function buildStatus(i: StatusInput): SyncStatus {
   } else if (i.halted === 'auth_problem') {
     message = 'Sign-in problem. Re-pair this phone.';
   } else if (i.restored) {
+    // 15 section 9.3, word for word: older points were deleted from the phone and cannot be sent.
     message =
-      'The server was restored from a backup. Shifts are marked "on phone only" until they are sent again.';
+      'The server was restored from a backup. MileWage is re-sending the last 14 days from your phone.';
   } else if (i.storage === 'critical' || i.storage === 'low') {
     message = STORAGE_TEXT[i.storage];
   } else if (attention) {

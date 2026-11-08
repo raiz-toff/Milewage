@@ -26,6 +26,7 @@ import { ChangePuller } from './sync/pull';
 import { buildStatus, storageState, type SyncStatus } from './sync/status';
 import { Outbox, shiftOf } from './sync/outbox';
 import { OutboxRunner } from './sync/runner';
+import { RestoreResend } from './sync/resend';
 import { QrScanner as CameraQrScanner } from './pairing/QrScanner';
 import { createLazyNativeTracker, nativeBattery, nativeLocationSwitch } from './tracker/native';
 import type { Tracker } from './tracker/types';
@@ -63,6 +64,8 @@ export interface Services {
   sync: SyncDrain;
   puller: ChangePuller;
   monitor: ConnectionMonitor;
+  /** Sends again what a server restored from a backup lost (15 section 9.3). */
+  resend: RestoreResend;
   /** Plain key-value storage (caches, flags). */
   plain: KeyValueStore;
   /** The numbers behind the home banner. */
@@ -162,9 +165,11 @@ export function createServices(p: Parts): Services {
     session,
     rand: p.rand,
     // shift.end waits until every point of the shift is uploaded or quarantined (15 section 6.2).
-    canSend: (item) =>
-      item.kind !== 'shift.end' ||
-      !feed.readPending(PUMP_LIMIT).some((pt) => pt.shiftClientId === shiftOf(item.entityKey)),
+    // After a restore nothing of a shift goes out before the server has it again (15 section 9.3).
+    canSend: async (item): Promise<boolean> =>
+      !(await resend.holds(shiftOf(item.entityKey))) &&
+      (item.kind !== 'shift.end' ||
+        !feed.readPending(PUMP_LIMIT).some((pt) => pt.shiftClientId === shiftOf(item.entityKey))),
     onSent: async ({ item, outcome, response }) => {
       if (item.kind !== 'shift.end') return;
       const id = shiftOf(item.entityKey);
@@ -204,12 +209,24 @@ export function createServices(p: Parts): Services {
     session,
     shiftReady: (id) => shift.isCreated(id),
     shiftParked: (id) => shift.isParked(id),
-    evictBlocked: () => monitor.restored,
+    evictBlocked: () => monitor.restored || resend.blocksEviction(),
     flushOutbox: () => shift.sync(),
     now: p.now,
     rand: p.rand,
   });
   late.uploader = uploader;
+  const resend: RestoreResend = new RestoreResend({
+    db: appDb,
+    store: shifts,
+    outbox,
+    runner,
+    tracker: p.tracker,
+    feed,
+    monitor,
+    session,
+    now: p.now,
+    rand: p.rand,
+  });
   const puller = new ChangePuller({
     db: appDb,
     outbox,
@@ -229,6 +246,7 @@ export function createServices(p: Parts): Services {
     uploader,
     feed,
     controller: shift,
+    resend,
     now: p.now,
   });
 
@@ -240,7 +258,7 @@ export function createServices(p: Parts): Services {
       parkedItems: counts.parked,
       oldestQueuedAt: counts.oldestAt,
       wrongServer: monitor.wrongServer,
-      restored: monitor.restored,
+      restored: monitor.restored || resend.active,
       halted: runner.haltedState ?? (state === 'repair' || state === 'auth_problem' ? state : null),
       offline: state === 'backoff' || state === 'waiting_create',
       storage: storageState((await p.freeBytes?.()) ?? null),
@@ -291,6 +309,7 @@ export function createServices(p: Parts): Services {
     sync,
     puller,
     monitor,
+    resend,
     plain: p.plain,
     status,
     notifications,
