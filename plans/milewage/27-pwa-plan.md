@@ -126,7 +126,10 @@ Settings). The logo is not decided (memory: brand palette); every icon comes fro
   server).
 - `cleanupOutdatedCaches` on (vite-plugin-pwa: "strongly recommend you NOT deactivate").
 - Development: no service worker (`devOptions` off), so `npm run dev` never serves a stale build.
-- Caddy: `/sw.js` with `Cache-Control: no-cache`, so the browser always asks for the newest one.
+- Caddy: `/sw.js` with `Cache-Control: no-cache`, so the browser always asks for the newest one,
+  and `/index.html` by name (the worker precaches it by that name; before PW2 only the screens'
+  paths served it, so `/index.html` was a 404 and the worker would never have installed).
+- Workbox `mode: 'production'` whatever `NODE_ENV` says (minified, no dev logging).
 
 ### 4.3 Update flow (PW2)
 

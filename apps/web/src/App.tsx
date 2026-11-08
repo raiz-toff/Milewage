@@ -10,6 +10,7 @@ import {
   Settings as SettingsIcon,
   Sun,
   User,
+  WifiOff,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -64,6 +65,41 @@ import type { Settings } from './api/client';
 
 function Notice({ children }: { children: string }) {
   return <p className="p-8 text-center text-muted-foreground">{children}</p>;
+}
+
+/**
+ * The server did not answer (plan 27 section 4.5). The installed app opens without a network, so
+ * this is what a driver sees offline: what is wrong and a way to try again, which also happens
+ * by itself when the connection comes back.
+ */
+function Unreachable({ message }: { message: string }) {
+  const { refresh } = useSession();
+  const [busy, setBusy] = useState(false);
+  const retry = async () => {
+    setBusy(true);
+    await refresh();
+    setBusy(false);
+  };
+  useEffect(() => {
+    const back = () => void refresh();
+    window.addEventListener('online', back);
+    return () => window.removeEventListener('online', back);
+  }, [refresh]);
+  const offline = !navigator.onLine;
+  return (
+    <div className="flex min-h-svh flex-col items-center justify-center gap-3 p-8 text-center">
+      <WifiOff aria-hidden className="size-6 text-muted-foreground" />
+      <h1 className="text-lg font-semibold">
+        {offline ? 'You are offline' : 'MileWage is not answering'}
+      </h1>
+      <p className="max-w-sm text-sm text-muted-foreground">
+        {offline ? 'MileWage needs a connection to your server. Your data is safe there.' : message}
+      </p>
+      <Button onClick={() => void retry()} disabled={busy}>
+        {busy ? 'Trying' : 'Try again'}
+      </Button>
+    </div>
+  );
 }
 
 const routeOf = (s: Screen) => s.path.replace(/\/\*$/, '');
@@ -303,7 +339,7 @@ export function App() {
     case 'loading':
       return <Notice>Loading</Notice>;
     case 'error':
-      return <Notice>{state.message}</Notice>;
+      return <Unreachable message={state.message} />;
     case 'needs_setup':
       return restoring ? (
         <Restore onBack={() => setRestoring(false)} />

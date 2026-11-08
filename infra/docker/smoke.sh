@@ -30,6 +30,9 @@ curl -fsS "$base/api/v1/setup/status" >/dev/null || fail "/api/v1/setup/status u
 curl -fsSI "$base/manifest.webmanifest" | grep -qi '^content-type: application/manifest+json' \
   || fail "the manifest is missing or has the wrong media type"
 curl -fsS -o /dev/null "$base/icons/icon-512.png" || fail "the app icon is not served"
+# The service worker, and index.html by name, which it precaches (plan 27 section 4.2).
+curl -fsS "$base/sw.js" | grep -q "index.html" || fail "the service worker is not served"
+curl -fsS "$base/index.html" | grep -q '<div id="root">' || fail "/index.html is not served"
 
 # Plan 19 P1 regression: the https address `tailscale serve` sends survives Caddy, so the download
 # page (and the pairing code) offer https://<host>.ts.net, not http://127.0.0.1.

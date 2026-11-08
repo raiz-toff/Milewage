@@ -46,6 +46,14 @@
 		header Content-Type "application/manifest+json"
 		file_server
 	}
+	# The service worker, and the page it keeps for offline starts (it fetches /index.html by
+	# name): always asked for again, so a new version is found (plan 27 section 4.2).
+	@fresh path /sw.js /index.html
+	handle @fresh {
+		root * /srv/web
+		header Cache-Control "no-cache"
+		file_server
+	}
 	@icons path /favicon.ico /apple-touch-icon.png /icons/*
 	handle @icons {
 		root * /srv/web

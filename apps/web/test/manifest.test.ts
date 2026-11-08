@@ -1,16 +1,16 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { spaPaths } from '../src/screens';
 import { THEME_COLORS } from '../src/theme';
+import { handleBlock, servedByCaddy, sitePaths } from './support/caddy';
 
 // Plan 27 section 4.1: the web app manifest, its icons and the page's head tags.
 const web = fileURLToPath(new URL('..', import.meta.url));
 const pub = join(web, 'public');
 const manifest = JSON.parse(readFileSync(join(pub, 'manifest.webmanifest'), 'utf8'));
 const html = readFileSync(join(web, 'index.html'), 'utf8');
-const caddyfile = readFileSync(join(web, '../../infra/docker/Caddyfile'), 'utf8');
 
 interface Icon {
   src: string;
@@ -94,34 +94,15 @@ describe('index.html head', () => {
   });
 });
 
-/** Every path a Caddy `path` matcher or `handle <path>` names, outside the API. */
-function caddyPaths(): string[] {
-  const named = [...caddyfile.matchAll(/^\s*@\w+ path (.+)$/gm)].flatMap((m) =>
-    m[1]!.trim().split(/\s+/),
-  );
-  const direct = [...caddyfile.matchAll(/^\s*handle (\/\S+) \{$/gm)].map((m) => m[1]!);
-  return [...named, ...direct];
-}
-
-const served = (path: string) =>
-  caddyPaths().some((p) => (p.endsWith('/*') ? path.startsWith(p.slice(0, -1)) : p === path));
-
-function walk(dir: string): string[] {
-  return readdirSync(dir).flatMap((name) => {
-    const full = join(dir, name);
-    return statSync(full).isDirectory() ? walk(full) : [full];
-  });
-}
-
 describe('Caddy serves the web app files', () => {
   it('every file in apps/web/public has a route (else it is a 404 in the Docker stack)', () => {
-    const files = walk(pub).map((f) => `/${relative(pub, f).split('\\').join('/')}`);
+    const files = sitePaths(pub);
     expect(files).toContain('/manifest.webmanifest');
-    for (const f of files) expect(served(f), f).toBe(true);
+    for (const f of files) expect(servedByCaddy(f), f).toBe(true);
   });
 
   it('the manifest is revalidated on each visit and has its media type', () => {
-    const block = /handle \/manifest\.webmanifest \{([\s\S]*?)\n\t\}/.exec(caddyfile)?.[1] ?? '';
+    const block = handleBlock('/manifest.webmanifest');
     expect(block).toContain('header Cache-Control "no-cache"');
     expect(block).toContain('header Content-Type "application/manifest+json"');
   });
