@@ -19,8 +19,9 @@ android {
 
 dependencies {
   implementation 'com.google.android.gms:play-services-location:21.0.1'
-  // 1.17 adds promoted ongoing notifications (Android 16 status-bar chip).
-  implementation 'androidx.core:core-ktx:1.17.0'
+  // 1.17 added promoted ongoing notifications (Android 16 status-bar chip); 1.19.1 adds
+  // NotificationCompat.MetricStyle (Android 17). Needs compileSdk 37 and AGP 9.1+.
+  implementation 'androidx.core:core-ktx:1.19.1'
   testImplementation 'junit:junit:4.13.2'
   testImplementation 'org.xerial:sqlite-jdbc:3.46.1.0'
 }

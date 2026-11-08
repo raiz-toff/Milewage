@@ -137,7 +137,11 @@ The module records its own lifecycle facts into a table in the same native-owned
 
 ### 5.10 Running-shift notification (owner decision 2026-11-07)
 
-The foreground service's ongoing notification is the driver's live view while another app is on screen; there is no map and no floating window. It shows the shift's distance (title), today's total with the shifts already ended today, a running clock in the header, and when expanded the start time and vehicle. Tapping opens the app. On Android 16+ it requests promotion (`setRequestPromotedOngoing`, `setShortCriticalText`), so the distance also shows as a status-bar chip where the system allows it.
+The foreground service's ongoing notification is the driver's live view while another app is on screen; there is no map and no floating window. Standard templates only (a custom layout cannot be promoted). Tapping opens the running shift, where it is ended; there are no action buttons (P4).
+
+- **Android 17+** (`MetricStyle`): the figures side by side, **Shift** (distance), **Time** (a live clock the system ticks) and, once a shift has already ended today, **Today** (total distance); title "Shift in progress"; the start time and vehicle in the header. Collapsed, Android shows the figures on one line without units.
+- **Android 8 to 16**: title "12.3 km this shift", a live clock in the header; text: today's total with the number of shifts, or for the first shift of the day the start time and vehicle; expanded, both lines (no expanded view when it would only repeat the text).
+- On Android 16+ it requests promotion (`setRequestPromotedOngoing`, `setShortCriticalText`), so the shift's distance also shows as a status-bar chip where the system allows it. It is re-posted only when a figure moves by 0.1 km or mi (`setOnlyAlertOnce`, one id).
 
 The distance is counted **in the service** (`LiveDistance.kt`), with the same stages 1-3 as the engine's live accumulator on the same stored integers, because the app's JS timers stop while it is in the background. It is approximate and never stored, like the Home screen figure. The app sends the parts that do not change during a shift with `setNotice` (start time, unit, today's earlier shifts, footer); `stop()` clears them. The channel is silent (`milewage_shift`, default importance, no sound or vibration).
 
