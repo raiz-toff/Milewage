@@ -53,6 +53,7 @@ export async function startServer(
         configDir: config.configDir,
         apkPath: config.apkPath,
         publicUrl: config.publicUrl,
+        homeUrl: config.homeUrl,
         httpAddressAllowed: config.httpAddressAllowed,
         appStoreUrl: config.appStoreUrl,
         state,

@@ -157,6 +157,29 @@ describe('config', () => {
     }
   });
 
+  test('MILEWAGE_HOME_URL: http or https, only on the home network (plan 28)', () => {
+    const at = (url: string) =>
+      loadConfig({
+        MILEWAGE_CONFIG_DIR: '/nonexistent',
+        NODE_ENV: 'production',
+        MILEWAGE_HOME_URL: url,
+      }).homeUrl;
+    expect(at('')).toBeNull();
+    expect(at('http://192.168.1.20:8080/')).toBe('http://192.168.1.20:8080');
+    expect(at('http://MileWage.local')).toBe('http://milewage.local');
+    expect(at('https://10.0.0.5')).toBe('https://10.0.0.5');
+    for (const bad of [
+      'http://box.tail1234.ts.net',
+      'https://box.tail1234.ts.net',
+      'http://localhost:8080',
+      'http://8.8.8.8',
+      'http://192.168.1.20/mw',
+      '192.168.1.20',
+    ]) {
+      expect(() => at(bad), bad).toThrow(/MILEWAGE_HOME_URL/);
+    }
+  });
+
   test('MILEWAGE_APP_STORE_URL: unset, or an https link', () => {
     const at = (url?: string) =>
       loadConfig({ MILEWAGE_CONFIG_DIR: '/nonexistent', MILEWAGE_APP_STORE_URL: url }).appStoreUrl;

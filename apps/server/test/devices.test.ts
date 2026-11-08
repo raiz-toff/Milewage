@@ -132,7 +132,9 @@ test('MILEWAGE_PUBLIC_URL is the address in the code, whatever address the brows
   });
   const { token, qr_payload, pair_url, base_url, base_url_source } = made.json();
   expect([base_url, base_url_source]).toEqual(['https://box.tail1234.ts.net', 'configured']);
-  expect(pair_url).toBe(`https://box.tail1234.ts.net/pair#v=1&t=${token}`);
+  // The browser is on the home address, so it rides along as h (plan 28).
+  const home = `&h=${encodeURIComponent('http://192.168.1.20:8080')}`;
+  expect(pair_url).toBe(`https://box.tail1234.ts.net/pair#v=1&t=${token}${home}`);
   expect(qr_payload).toContain(`u=${encodeURIComponent('https://box.tail1234.ts.net')}&`);
   await c.close();
 });
@@ -158,20 +160,82 @@ test("the driver's corrected address is used once it is a bare https address", a
   expect(h.db.prepare('SELECT COUNT(*) FROM pairing_tokens').pluck().get()).toBe(2);
 });
 
-test('a production server refuses a plain http address from the driver', async () => {
+test('a production server takes plain http from the driver only on the home network', async () => {
   const p = harness({}, { httpAddressAllowed: false });
   const { cookie: owner } = await p.signUp();
-  const res = await p.call(
-    'POST',
-    '/pairing-tokens',
-    { base_url: 'http://192.168.1.20' },
-    { cookie: owner },
-  );
+  const ask = (base_url: string) =>
+    p.call('POST', '/pairing-tokens', { base_url }, { cookie: owner });
+  const res = await ask('http://box.example.com');
   expect([res.statusCode, res.json().detail]).toEqual([
     422,
-    'The address must start with https://',
+    'The address must start with https://, or be on your home network (for example http://192.168.1.20:8080)',
+  ]);
+  const home = (await ask('http://192.168.1.20:8080')).json();
+  expect([home.base_url, home.home_url, home.away_url, home.base_url_source]).toEqual([
+    'http://192.168.1.20:8080',
+    'http://192.168.1.20:8080',
+    null,
+    'driver',
   ]);
   await p.close();
+});
+
+test('home and away addresses: in the code, its h, and the redeem answer (plan 28)', async () => {
+  // The web open at the home address, Tailscale configured: u is away, h is home.
+  const c = harness({}, { publicUrl: 'https://box.tail1234.ts.net', httpAddressAllowed: false });
+  const { cookie: owner } = await c.signUp();
+  const lan = { 'x-forwarded-proto': 'http', 'x-forwarded-host': '192.168.1.20:8080' };
+  const made = (
+    await c.call('POST', '/pairing-tokens', undefined, { cookie: owner, ...lan })
+  ).json();
+  expect([made.base_url, made.home_url, made.away_url]).toEqual([
+    'https://box.tail1234.ts.net',
+    'http://192.168.1.20:8080',
+    'https://box.tail1234.ts.net',
+  ]);
+  const h = `&h=${encodeURIComponent('http://192.168.1.20:8080')}`;
+  expect(made.qr_payload).toBe(
+    `milewage://pair?v=1&u=${encodeURIComponent('https://box.tail1234.ts.net')}&t=${made.token}${h}`,
+  );
+  expect(made.pair_url).toBe(`https://box.tail1234.ts.net/pair#v=1&t=${made.token}${h}`);
+  // The phone redeems over Tailscale and still learns the home address the server knows of.
+  const viaTailnet = await c.app.inject({
+    method: 'POST',
+    url: '/api/v1/pairing/redeem',
+    headers: { 'x-forwarded-proto': 'https', 'x-forwarded-host': 'box.tail1234.ts.net' },
+    payload: { token: made.token, device_name: 'Pixel 8', platform: 'android' },
+  });
+  expect(viaTailnet.json()).toMatchObject({
+    home_url: null, // MILEWAGE_HOME_URL unset, and this request came through Tailscale
+    away_url: 'https://box.tail1234.ts.net',
+  });
+  await c.close();
+
+  // MILEWAGE_HOME_URL set, the web on this computer: u is home, no h; redeem at home knows both.
+  const d = harness({}, { homeUrl: 'http://192.168.1.20:8080', httpAddressAllowed: false });
+  const { cookie: o2 } = await d.signUp();
+  const local = (
+    await d.call('POST', '/pairing-tokens', undefined, {
+      cookie: o2,
+      host: 'localhost:8080',
+      origin: 'http://localhost:8080',
+    })
+  ).json();
+  expect([local.base_url, local.base_url_source, local.home_url, local.away_url]).toEqual([
+    'http://192.168.1.20:8080',
+    'configured',
+    'http://192.168.1.20:8080',
+    null,
+  ]);
+  expect(local.qr_payload).not.toContain('&h=');
+  const atHome = await d.app.inject({
+    method: 'POST',
+    url: '/api/v1/pairing/redeem',
+    headers: { host: '192.168.1.20:8080' },
+    payload: { token: local.token, device_name: 'Pixel 8', platform: 'android' },
+  });
+  expect(atHome.json()).toMatchObject({ home_url: 'http://192.168.1.20:8080', away_url: null });
+  await d.close();
 });
 
 test('with the devices module off there are no pairing routes', async () => {

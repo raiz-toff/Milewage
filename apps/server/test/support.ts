@@ -41,6 +41,7 @@ export function harness(
     diagnosticsHousekeepingMs?: number;
     enabledExportFormats?: () => readonly string[];
     publicUrl?: string | null;
+    homeUrl?: string | null;
     httpAddressAllowed?: boolean;
     appStoreUrl?: string | null;
   } = {},
@@ -86,6 +87,7 @@ export function harness(
     configDir: join(dir, 'config'),
     apkPath: join(dir, 'config', 'milewage.apk'),
     publicUrl: extra.publicUrl,
+    homeUrl: extra.homeUrl,
     httpAddressAllowed: extra.httpAddressAllowed,
     appStoreUrl: extra.appStoreUrl,
   });

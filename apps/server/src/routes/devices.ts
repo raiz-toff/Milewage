@@ -1,6 +1,6 @@
 import { createReadStream, readFileSync, statSync } from 'node:fs';
 import type { FastifyRequest } from 'fastify';
-import type { RouteHost } from '@milewage/shared';
+import { isHomeAddress, type RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import { hashToken, newToken, type Authenticator } from '../auth/authenticator';
 import { FailureLimiter } from '../auth/limiter';
@@ -40,6 +40,14 @@ const apkVersion = (path: string): string | null => {
     return null;
   }
 };
+interface Found {
+  url: string;
+  source: BaseUrlSource;
+}
+interface Addresses extends Found {
+  home: string | null;
+  away: string | null;
+}
 const view = (d: DeviceRow, skew?: number) => ({
   id: d.id,
   name: d.name,
@@ -60,6 +68,8 @@ export interface DevicesContext {
   apkPath?: string;
   /** `MILEWAGE_PUBLIC_URL`: the address phones are given; null or absent to use the request's. */
   publicUrl?: string | null;
+  /** `MILEWAGE_HOME_URL`: the server on the home network (plan 28); null to use a home request's. */
+  homeUrl?: string | null;
   /** Accept a plain http address from the driver (development only). */
   httpAddressAllowed?: boolean;
   /** `MILEWAGE_APP_STORE_URL`: the app's store page; null until the app is published. */
@@ -74,6 +84,7 @@ export function devicesRoutes({
   readSettings,
   apkPath,
   publicUrl,
+  homeUrl = null,
   httpAddressAllowed = process.env.NODE_ENV !== 'production',
   appStoreUrl = null,
 }: DevicesContext) {
@@ -98,26 +109,39 @@ export function devicesRoutes({
     });
 
     /**
-     * The address phones are given (plan 19 section 3.2): the driver's correction, then
-     * `MILEWAGE_PUBLIC_URL`, then the address this request came in on (as the browser sees it).
+     * The addresses phones are given (plan 19 section 3.2, plan 28 section 4.2). Away (https):
+     * the driver's correction, then `MILEWAGE_PUBLIC_URL`, then this request's address when it is
+     * https and not on the home network. Home (http allowed): the driver's correction when it is a
+     * home address, then `MILEWAGE_HOME_URL`, then this request's address when it is one. `url`,
+     * the address in the code, is the away address, else the home one, else this request's.
      */
-    const address = (
-      req: FastifyRequest,
-      driver?: string,
-    ): { url: string; source: BaseUrlSource } => {
+    const address = (req: FastifyRequest, driver?: string): Addresses => {
+      const proto = first(req.headers['x-forwarded-proto']) ?? 'http';
+      const seen = `${proto}://${first(req.headers['x-forwarded-host']) ?? req.headers.host}`;
+      const seenHome = isHomeAddress(seen);
+      let away: Found | null = publicUrl
+        ? { url: publicUrl, source: 'configured' }
+        : proto === 'https' && !seenHome
+          ? { url: seen, source: 'request' }
+          : null;
+      let home: Found | null = homeUrl
+        ? { url: homeUrl, source: 'configured' }
+        : seenHome
+          ? { url: seen, source: 'request' }
+          : null;
       if (driver !== undefined) {
-        const checked = checkPublicUrl(driver, httpAddressAllowed);
+        const checked = checkPublicUrl(driver, httpAddressAllowed, true);
         if ('error' in checked) {
           throw new ProblemError('validation_failed', checked.error, [
             { path: '/base_url', message: checked.error },
           ]);
         }
-        return { url: checked.url, source: 'driver' };
+        const found: Found = { url: checked.url, source: 'driver' };
+        if (isHomeAddress(checked.url)) home = found;
+        else away = found;
       }
-      if (publicUrl) return { url: publicUrl, source: 'configured' };
-      const proto = first(req.headers['x-forwarded-proto']) ?? 'http';
-      const url = `${proto}://${first(req.headers['x-forwarded-host']) ?? req.headers.host}`;
-      return { url, source: 'request' };
+      const main = away ?? home ?? { url: seen, source: 'request' };
+      return { ...main, home: home?.url ?? null, away: away?.url ?? null };
     };
 
     app.post('/pairing-tokens', { bodyLimit: 4096 }, async (req, reply) => {
@@ -126,15 +150,17 @@ export function devicesRoutes({
       if (asked.base_url !== undefined && typeof asked.base_url !== 'string') {
         throw new ProblemError('validation_failed', 'base_url must be text.');
       }
-      const { url: base, source } = address(req, asked.base_url);
+      const { url: base, source, home, away } = address(req, asked.base_url);
       const token = newToken('mwp_');
       const createdAt = now();
       const expiresAt = createdAt + 10 * 60 * 1000;
       repo.addPairingToken({ userId, tokenHash: hashToken(token), createdAt, expiresAt });
-      const qr = `milewage://pair?v=1&u=${encodeURIComponent(base)}&t=${token}`;
+      // `h`, the home address, is new in plan 28 and optional: an older app reads only `u`.
+      const h = home && home !== base ? `&h=${encodeURIComponent(home)}` : '';
+      const qr = `milewage://pair?v=1&u=${encodeURIComponent(base)}&t=${token}${h}`;
       // The QR carries the https form: the phone app reads it, and so does any camera app, which
       // opens the server's /pair page. The token is in the fragment, so no server log sees it.
-      const pairUrl = `${base}/pair#v=1&t=${token}`;
+      const pairUrl = `${base}/pair#v=1&t=${token}${h}`;
       return reply.status(201).send({
         token,
         expires_at: expiresAt,
@@ -142,6 +168,8 @@ export function devicesRoutes({
         pair_url: pairUrl,
         base_url: base,
         base_url_source: source,
+        home_url: home,
+        away_url: away,
       });
     });
 
@@ -201,10 +229,14 @@ export function devicesRoutes({
           limiter.fail(req.ip); // unknown, expired and used look the same
           throw new ProblemError('invalid_pairing_token', 'This pairing code is not valid.');
         }
+        const { home, away } = address(req);
         const body = {
           device_id: device.id,
           device_token: credential,
           settings: settings(device.userId),
+          // Both addresses, so a phone linked at home learns the away one and the other way round.
+          home_url: home,
+          away_url: away,
         };
         return reply.status(201).send(body);
       },

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ModuleSettings } from '@milewage/shared';
 import { loadCommaOptions, type CommaOptions } from './comma-options';
-import { checkPublicUrl } from './public-url';
+import { checkHomeUrl, checkPublicUrl } from './public-url';
 
 export class ConfigError extends Error {
   override name = 'ConfigError';
@@ -29,6 +29,8 @@ export interface ServerConfig {
   apkPath: string;
   /** `MILEWAGE_PUBLIC_URL`: the address phones are given (plan 19 section 3.2); null to use the request's. */
   publicUrl: string | null;
+  /** `MILEWAGE_HOME_URL`: the server on the home network, http allowed (plan 28 section 4.2); null to use a home request's. */
+  homeUrl: string | null;
   /** Plain http addresses are accepted only outside production (debug builds of the app). */
   httpAddressAllowed: boolean;
   /** `MILEWAGE_APP_STORE_URL`: the app's store page (an https link), shown on the download page; null until published. */
@@ -84,6 +86,7 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): S
     comma: loadCommaOptions(settings, env),
     apkPath: env.MILEWAGE_APK_PATH || join(configDir, 'milewage.apk'),
     publicUrl: publicUrl(env.MILEWAGE_PUBLIC_URL, httpAddressAllowed),
+    homeUrl: homeUrl(env.MILEWAGE_HOME_URL),
     httpAddressAllowed,
     appStoreUrl: storeUrl(env.MILEWAGE_APP_STORE_URL),
     diagnostics: {
@@ -100,6 +103,13 @@ function publicUrl(value: string | undefined, allowHttp: boolean): string | null
   if (!value?.trim()) return null;
   const checked = checkPublicUrl(value, allowHttp);
   if ('error' in checked) throw new ConfigError(`MILEWAGE_PUBLIC_URL "${value}": ${checked.error}`);
+  return checked.url;
+}
+
+function homeUrl(value: string | undefined): string | null {
+  if (!value?.trim()) return null;
+  const checked = checkHomeUrl(value);
+  if ('error' in checked) throw new ConfigError(`MILEWAGE_HOME_URL "${value}": ${checked.error}`);
   return checked.url;
 }
 

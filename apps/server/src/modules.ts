@@ -175,6 +175,8 @@ export interface ServerContext extends CoreContext {
   apkPath?: string;
   /** `MILEWAGE_PUBLIC_URL` (plan 19 section 3.2): the address in pairing codes; null to use the request's. */
   publicUrl?: string | null;
+  /** `MILEWAGE_HOME_URL` (plan 28 section 4.2): the server on the home network; null to use a home request's. */
+  homeUrl?: string | null;
   /** Accept a plain http address from the driver (outside production only); default from `NODE_ENV`. */
   httpAddressAllowed?: boolean;
   /** `MILEWAGE_APP_STORE_URL`: the app's store page, for the download page; null until published. */

@@ -365,7 +365,7 @@ paths:
               type: object
               additionalProperties: false
               properties:
-                base_url: { type: string, description: "The driver's correction of the address (plan 19 section 3.2): an absolute https URL with no path, query or credentials; plain http only on a development server." }
+                base_url: { type: string, description: "The driver's correction of the address (plan 19 section 3.2): an absolute https URL with no path, query or credentials; plain http only to a home address (plan 28: private IPv4 and IPv6 ranges, .local, .lan, .home.arpa), which then becomes home_url, or anywhere on a development server." }
       responses:
         '201':
           description: One-time token, valid 10 minutes.
@@ -373,14 +373,16 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [token, expires_at, qr_payload, pair_url, base_url, base_url_source]
+                required: [token, expires_at, qr_payload, pair_url, base_url, base_url_source, home_url, away_url]
                 properties:
                   token: { type: string, pattern: '^mwp_[A-Za-z0-9_-]{43}$' }
                   expires_at: { $ref: '#/components/schemas/EpochMs' }
-                  qr_payload: { type: string, description: "milewage://pair?v=1&u=<server url>&t=<token>: the link that opens the phone app (Open in the MileWage app, the code text)." }
+                  qr_payload: { type: string, description: "milewage://pair?v=1&u=<server url>&t=<token>[&h=<home url>]: the link that opens the phone app (Open in the MileWage app, the code text). h (plan 28) is there when the home address differs from u; older apps ignore it." }
                   pair_url: { type: string, description: "<server url>/pair#v=1&t=<token>: what the QR shows (plan 24 Q1). The phone app reads it; any other camera opens the server's pair page, which links to the app. The token is in the fragment, so it never reaches a server log." }
-                  base_url: { type: string, description: The server address inside the code, without a trailing slash. }
-                  base_url_source: { enum: [configured, request, driver], description: "Where base_url came from: MILEWAGE_PUBLIC_URL, the address of this request (as the browser sees it), or the driver's base_url." }
+                  base_url: { type: string, description: "The server address inside the code (u), without a trailing slash: away_url, else home_url, else this request's address." }
+                  base_url_source: { enum: [configured, request, driver], description: "Where base_url came from: MILEWAGE_PUBLIC_URL or MILEWAGE_HOME_URL, the address of this request (as the browser sees it), or the driver's base_url." }
+                  home_url: { type: [string, 'null'], description: "Plan 28: the server on the home network (http allowed): the driver's home address, MILEWAGE_HOME_URL, or this request's address when it is a home address." }
+                  away_url: { type: [string, 'null'], description: "Plan 28: the https address used away from home: the driver's, MILEWAGE_PUBLIC_URL, or this request's when it is https and not a home address." }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '422': { $ref: '#/components/responses/Unprocessable' }
   /app:
@@ -461,6 +463,8 @@ paths:
                   device_id: { type: integer }
                   device_token: { type: string, pattern: '^mwd_[A-Za-z0-9_-]{43}$' }
                   settings: { $ref: '#/components/schemas/Settings' }
+                  home_url: { type: [string, 'null'], description: "Plan 28: the server's home-network address as this server knows it (null when unknown); absent from older servers." }
+                  away_url: { type: [string, 'null'], description: "Plan 28: the server's https address for away from home (null when unknown); absent from older servers." }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '429': { $ref: '#/components/responses/RateLimited' }
 

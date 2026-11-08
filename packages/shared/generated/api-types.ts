@@ -3327,7 +3327,7 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": {
-                    /** @description The driver's correction of the address (plan 19 section 3.2): an absolute https URL with no path, query or credentials; plain http only on a development server. */
+                    /** @description The driver's correction of the address (plan 19 section 3.2): an absolute https URL with no path, query or credentials; plain http only to a home address (plan 28: private IPv4 and IPv6 ranges, .local, .lan, .home.arpa), which then becomes home_url, or anywhere on a development server. */
                     base_url?: string;
                 };
             };
@@ -3342,17 +3342,21 @@ export interface operations {
                     "application/json": {
                         token: string;
                         expires_at: components["schemas"]["EpochMs"];
-                        /** @description milewage://pair?v=1&u=<server url>&t=<token>: the link that opens the phone app (Open in the MileWage app, the code text). */
+                        /** @description milewage://pair?v=1&u=<server url>&t=<token>[&h=<home url>]: the link that opens the phone app (Open in the MileWage app, the code text). h (plan 28) is there when the home address differs from u; older apps ignore it. */
                         qr_payload: string;
                         /** @description <server url>/pair#v=1&t=<token>: what the QR shows (plan 24 Q1). The phone app reads it; any other camera opens the server's pair page, which links to the app. The token is in the fragment, so it never reaches a server log. */
                         pair_url: string;
-                        /** @description The server address inside the code */
+                        /** @description The server address inside the code (u), without a trailing slash: away_url, else home_url, else this request's address. */
                         base_url: string;
                         /**
-                         * @description Where base_url came from: MILEWAGE_PUBLIC_URL, the address of this request (as the browser sees it), or the driver's base_url.
+                         * @description Where base_url came from: MILEWAGE_PUBLIC_URL or MILEWAGE_HOME_URL, the address of this request (as the browser sees it), or the driver's base_url.
                          * @enum {unknown}
                          */
                         base_url_source: "configured" | "request" | "driver";
+                        /** @description Plan 28: the server on the home network (http allowed): the driver's home address, MILEWAGE_HOME_URL, or this request's address when it is a home address. */
+                        home_url: string | null;
+                        /** @description Plan 28: the https address used away from home: the driver's, MILEWAGE_PUBLIC_URL, or this request's when it is https and not a home address. */
+                        away_url: string | null;
                     };
                 };
             };
@@ -3469,6 +3473,10 @@ export interface operations {
                         device_id: number;
                         device_token: string;
                         settings: components["schemas"]["Settings"];
+                        /** @description Plan 28: the server's home-network address as this server knows it (null when unknown); absent from older servers. */
+                        home_url?: string | null;
+                        /** @description Plan 28: the server's https address for away from home (null when unknown); absent from older servers. */
+                        away_url?: string | null;
                     };
                 };
             };
