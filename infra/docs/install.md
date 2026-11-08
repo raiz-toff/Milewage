@@ -56,7 +56,7 @@ Replace the file the same way after an upgrade, so the phone and the server stay
 
 ## 4. Backups
 
-Backups run nightly and after a shift ends; the Backups page lists them and shows the off-site reminder. Download an encrypted copy now and then to another machine: a backup on the same disk is not a backup (10 section 6). Restoring on a fresh instance: on the setup screen choose "Restore from a backup instead", upload the file and enter the recovery key.
+Backups run nightly and after a shift ends; the Backups page lists them and shows the off-site reminder. Download an encrypted copy now and then to another machine: a backup on the same disk is not a backup (10 section 6). Restoring on a fresh instance: on the setup screen choose "Restore from a backup instead", upload the file and enter the recovery key. Restoring over existing data (for example to roll back an upgrade): stop the API, then `docker compose -f infra/docker/docker-compose.yml run --rm --no-deps api milewage-cli restore --file /app/backups/<file>.db.gz.age`; it asks for the recovery key, moves the current data aside into `/app/data/before-restore-<time>/` instead of deleting it, and prints what it restored. Details in `upgrade.md`, "Roll back".
 
 ## 5. Where things live
 

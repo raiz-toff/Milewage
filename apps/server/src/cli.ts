@@ -1,12 +1,10 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
+import { restoreCommand, type RestoreIo } from './cli-restore';
 import { recalcReport, type RecalcRow } from './processing/recalc-report';
 
-export interface CliIo {
-  out(line: string): void;
-  err(line: string): void;
-}
+export type CliIo = RestoreIo;
 
 const USAGE = `Usage: milewage-cli <command>
 
@@ -16,7 +14,13 @@ Commands:
       Prints the differences and changes nothing. Applying a new algorithm to a shift is done per shift
       (recalculate in the web client); a finalized shift is never changed automatically.
 
-Environment: MILEWAGE_DATA_DIR (default /app/data) holds milewage.db.
+  restore --file <backup.db.gz.age> [--key <recovery key> | --key @<file holding it>] [--yes]
+      Run with the api service stopped. Checks the backup, moves the current data into
+      <data>/before-restore-<time>/ (nothing is deleted) and writes the backup's data in its place.
+      Without --key it asks for the key; without --yes it asks before changing anything.
+
+Environment: MILEWAGE_DATA_DIR (default /app/data) holds milewage.db; MILEWAGE_CONFIG_DIR
+(default /app/config) holds secrets.json.
 `;
 
 const pad = (v: string | number | null, n: number) => String(v ?? '-').padStart(n);
@@ -41,8 +45,43 @@ function table(rows: readonly RecalcRow[]): string[] {
   return lines;
 }
 
-/** `milewage-cli` (10 section 7, 14 section 11). Returns the exit code: 0 ok, 1 failed, 2 usage. */
-export function runCli(
+const RESTORE_FLAGS = new Set(['--file', '--key', '--yes']);
+
+/** `restore` options: `--file x` or `--file=x`, `--key x` or `--key=x`, `--yes`. */
+function restoreArgs(
+  args: readonly string[],
+): { file?: string; key?: string; yes: boolean } | string {
+  const out: { file?: string; key?: string; yes: boolean } = { yes: false };
+  for (let i = 0; i < args.length; i++) {
+    const [name, inline] = args[i]!.split(/=(.*)/s, 2) as [string, string | undefined];
+    if (!RESTORE_FLAGS.has(name)) return `Unknown option ${args[i]}.`;
+    if (name === '--yes') {
+      out.yes = true;
+      continue;
+    }
+    const value = inline ?? args[++i];
+    if (!value) return `${name} needs a value.`;
+    out[name === '--file' ? 'file' : 'key'] = value;
+  }
+  return out;
+}
+
+/** `milewage-cli` (10 section 7, 14 section 11). Resolves to the exit code: 0 ok, 1 failed, 2 usage. */
+export async function runCli(
+  argv: readonly string[],
+  env: Readonly<Record<string, string | undefined>>,
+  io: CliIo,
+): Promise<number> {
+  if (argv[0] !== 'restore') return recalc(argv, env, io);
+  const opts = restoreArgs(argv.slice(1));
+  if (typeof opts === 'string') {
+    io.err(`${opts}\n${USAGE}`);
+    return 2;
+  }
+  return restoreCommand(opts, env, io);
+}
+
+function recalc(
   argv: readonly string[],
   env: Readonly<Record<string, string | undefined>>,
   io: CliIo,

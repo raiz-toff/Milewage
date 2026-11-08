@@ -30,13 +30,37 @@ Specs: `plans/milewage/10-backup-restore-and-ops-spec.md` sections 10 and 3.1. T
 
 ## Roll back to the previous version
 
-Migrations only go forward, so a rollback means going back to the version's data:
+Migrations only go forward, so a rollback means going back to the data as it was before the upgrade: the latest file in `pre-migration/`. Anything written after the upgrade is lost (phones re-send what they still hold, see below). Run these from the repository root, after:
 
-1. Put the previous image tag / repository version back and **do not start it against the upgraded database**.
-2. Restore the latest `pre-migration/` backup. Anything written after the upgrade is lost, and the web client says so before you confirm.
+```bash
+alias dc='docker compose -f infra/docker/docker-compose.yml --env-file infra/docker/.env'
+```
 
-**Gap, stated plainly:** the spec's tool for step 2 is `milewage-cli restore --file=...`. That command is **not built**. The only restore that exists is `POST /setup/restore` (the "Restore from a backup instead" screen), which works only while no user exists, so today a rollback means starting the old version on an **empty `data` volume** (rename or remove the old volume first, keep it until you are sure) and restoring the `pre-migration` file there with your recovery key. The file is in the `backups` volume under `pre-migration/`. Building `milewage-cli restore` (10 section 7) is the open item that makes this a single command.
+1. Put the previous version back and build it, **without starting it** (it refuses the upgraded database anyway):
+
+   ```bash
+   git checkout <previous version>
+   dc build api
+   ```
+
+2. Stop the API, see which pre-migration backups exist, and restore the newest one:
+
+   ```bash
+   dc stop api
+   dc run --rm --no-deps api ls /app/backups/pre-migration
+   dc run --rm --no-deps api milewage-cli restore --file /app/backups/pre-migration/<name>.db.gz.age
+   ```
+
+   It asks for the recovery key (the `AGE-SECRET-KEY-1...` line on your recovery card), checks the file, says what it will do and asks you to type `yes`. To skip the questions: `--key AGE-SECRET-KEY-1...` (start the command with a space so the shell does not keep it in its history) and `--yes`. `--key @/path/to/file` reads the key from a file inside the container.
+
+3. Start everything again: `dc up -d`.
+
+What the command does: it refuses while the API holds the database ("stop the api service first"); it decrypts and checks the backup with the same code as the restore screen and stops with nothing changed on a wrong key, a damaged file or a backup from a newer MileWage; it **moves** the current database and receipt files into `/app/data/before-restore-<time>/` (same `data` volume, nothing deleted) and writes the backup's data and receipts in their place; if the result fails its checks it puts the old data back. It raises the restore generation past both the old and the restored value, so each paired phone re-sends what it still holds (the last 14 days of points, all shifts and trips).
+
+Once you are satisfied, delete the moved-aside folder to get the space back: `dc run --rm --no-deps api rm -r /app/data/before-restore-<time>`.
+
+`milewage-cli restore` exists from the version that added it (PR R1, after 0.1.0). Rolling back to an older image means the earlier way: start that version on an **empty** `data` volume (keep the old volume until you are sure) and use "Restore from a backup instead" on the setup screen with the same `pre-migration` file.
 
 ## What to check afterwards
 
-The restore screen prints the counts it found (shifts, stop labels, points, date range). Compare them with what you expect, then open a recent shift and check its total.
+The restore command (and the restore screen) prints what it found: shifts and their date range, GPS points, stop labels and the new restore generation. Compare them with what you expect, then open a recent shift and check its total.

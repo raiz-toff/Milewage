@@ -13,10 +13,10 @@ let auth: { authorization: string };
 let t0: number;
 let endedAt: number;
 
-const cli = (...argv: string[]) => {
+const cli = async (...argv: string[]) => {
   const out: string[] = [];
   const err: string[] = [];
-  const code = runCli(
+  const code = await runCli(
     argv,
     { MILEWAGE_DATA_DIR: dirname(h.db.name) },
     {
@@ -60,8 +60,8 @@ beforeEach(async () => {
 afterEach(() => h.close());
 
 describe('milewage-cli recalc --dry-run (14 section 11)', () => {
-  test('an up-to-date shift shows no difference', () => {
-    const r = cli('recalc', '--dry-run');
+  test('an up-to-date shift shows no difference', async () => {
+    const r = await cli('recalc', '--dry-run');
     expect(r.code).toBe(0);
     expect(r.out).toContain('1 shifts compared, 0 differ, 0 skipped. Nothing was changed.');
   });
@@ -81,7 +81,7 @@ describe('milewage-cli recalc --dry-run (14 section 11)', () => {
       .prepare('UPDATE shifts SET total_m = 100, active_m = 100, deadhead_m = 0, calc_version = 1')
       .run();
     const before = dump();
-    const r = cli('recalc', '--dry-run');
+    const r = await cli('recalc', '--dry-run');
     expect(r.code).toBe(0);
     expect(r.out).toContain('finalized');
     expect(r.out).toContain(`1>${algorithmVersion}`);
@@ -90,7 +90,7 @@ describe('milewage-cli recalc --dry-run (14 section 11)', () => {
     expect(r.out).toContain('1 shifts compared, 1 differ');
     expect(dump()).toBe(before);
 
-    const json = JSON.parse(cli('recalc', '--dry-run', '--json').out);
+    const json = JSON.parse((await cli('recalc', '--dry-run', '--json')).out);
     expect(json.changed_nothing).toBe(true);
     expect(json.shifts[0]).toMatchObject({
       shiftId: 1,
@@ -119,30 +119,35 @@ describe('milewage-cli recalc --dry-run (14 section 11)', () => {
       },
       auth,
     );
-    expect(cli('recalc', '--dry-run').out).toContain('0 differ');
+    expect((await cli('recalc', '--dry-run')).out).toContain('0 differ');
     const date = h.db.prepare('SELECT local_date FROM shifts').pluck().get() as string;
-    expect(cli('recalc', '--dry-run', '--since', date).out).toContain('1 shifts compared');
-    expect(cli('recalc', '--dry-run', `--since=${date}`).out).toContain('1 shifts compared');
-    expect(cli('recalc', '--dry-run', '--since', '2999-01-01').out).toContain('0 shifts compared');
+    expect((await cli('recalc', '--dry-run', '--since', date)).out).toContain('1 shifts compared');
+    expect((await cli('recalc', '--dry-run', `--since=${date}`)).out).toContain(
+      '1 shifts compared',
+    );
+    expect((await cli('recalc', '--dry-run', '--since', '2999-01-01')).out).toContain(
+      '0 shifts compared',
+    );
   });
 
-  test('an archived shift is skipped, not compared', () => {
+  test('an archived shift is skipped, not compared', async () => {
     h.db
       .prepare('INSERT INTO route_archives VALUES (1, 1, \'{"coordinates":[]}\', 0, 0, 5, 1)')
       .run();
-    const r = cli('recalc', '--dry-run');
+    const r = await cli('recalc', '--dry-run');
     expect(r.out).toContain('skipped: raw points were archived');
     expect(r.out).toContain('0 shifts compared, 0 differ, 1 skipped');
   });
 
-  test('usage: --dry-run is required, bad options and dates are refused, there is no database', () => {
-    expect(cli('recalc').code).toBe(2);
-    expect(cli('recalc').err).toContain('--dry-run');
-    expect(cli('recalc', '--dry-run', '--apply').code).toBe(2);
-    expect(cli('recalc', '--dry-run', '--since', 'yesterday').code).toBe(2);
-    expect(cli('frobnicate').code).toBe(2);
-    expect(cli().code).toBe(0);
-    const none = runCli(
+  test('usage: --dry-run is required, bad options and dates are refused, there is no database', async () => {
+    expect((await cli('recalc')).code).toBe(2);
+    expect((await cli('recalc')).err).toContain('--dry-run');
+    expect((await cli('recalc', '--dry-run', '--apply')).code).toBe(2);
+    expect((await cli('recalc', '--dry-run', '--since', 'yesterday')).code).toBe(2);
+    expect((await cli('frobnicate')).code).toBe(2);
+    expect((await cli()).code).toBe(0);
+    expect((await cli('help')).err).toContain('restore --file <backup.db.gz.age>');
+    const none = await runCli(
       ['recalc', '--dry-run'],
       { MILEWAGE_DATA_DIR: '/nonexistent' },
       { out() {}, err() {} },

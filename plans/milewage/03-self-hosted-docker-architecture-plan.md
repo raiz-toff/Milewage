@@ -157,7 +157,9 @@ QR code with the server URL and a one-time token; the phone exchanges it for a r
 The server holds the only copy of the data (1.5). The full specification is [`10`](./10-backup-restore-and-ops-spec.md): SQLite online-backup API, verified on write, gzip + `age` encrypted (recovery key shown once and never stored on the server), 7 daily / 4 weekly / 12 monthly plus pre-migration and pre-restore copies, download button and documented Syncthing/rsync for off-site, and a restore that aborts before touching live data on any failed check.
 
 ```bash
-docker compose exec api milewage-cli restore --file=/app/backups/milewage-2026-11-01.db.gz.age
+docker compose stop api
+docker compose run --rm --no-deps api milewage-cli restore --file /app/backups/milewage-20261101T033000000Z.db.gz.age
+docker compose up -d
 ```
 
 ---
