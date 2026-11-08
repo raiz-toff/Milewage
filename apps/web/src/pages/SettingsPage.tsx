@@ -23,6 +23,7 @@ import { useSession, useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
 import { PageHeader } from '../ui/layout';
 import { Account } from './Account';
+import { AssistantsCard } from './Assistants';
 import { ImportCard } from './Import';
 import { AlertsCard } from './Notifications';
 import { PlatformsCard } from './Platforms';
@@ -98,6 +99,7 @@ function ModuleFlags({ modules }: { modules: Settings['modules'] }) {
       'stops',
       'diagnostics',
       'capture',
+      'mcp',
       'platforms',
     ] as const
   ).map((k) => [k, modules[k]] as const);
@@ -141,6 +143,7 @@ type SectionId =
   | 'tracking'
   | 'data'
   | 'account'
+  | 'assistants'
   | 'modules';
 
 /** How a section keeps its changes; said under its heading so nobody wonders. */
@@ -157,7 +160,7 @@ interface Section {
   description: string;
   saves?: keyof typeof SAVES;
   /** Shown only when this module runs on the server. */
-  module?: 'platforms' | 'notifications';
+  module?: 'platforms' | 'notifications' | 'mcp';
 }
 
 /** The settings sections in groups, in order. One topic per section, one URL each. */
@@ -222,6 +225,14 @@ const GROUPS: { label: string; sections: Section[] }[] = [
         label: 'Account and security',
         description: 'Your password, and the phones that can send data to this server.',
         saves: 'own',
+      },
+      {
+        id: 'assistants',
+        label: 'AI assistants',
+        description:
+          'Tokens that let an AI assistant such as Claude read your records and add to them.',
+        saves: 'own',
+        module: 'mcp',
       },
       {
         id: 'modules',
@@ -744,6 +755,7 @@ export function SettingsPage() {
         ) : null}
       </>
     ),
+    assistants: <AssistantsCard />,
     modules: <ModuleFlags modules={modules} />,
   };
 
