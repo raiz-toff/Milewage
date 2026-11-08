@@ -13,6 +13,7 @@ import {
   type ShiftInput,
   type StopLabelInput,
 } from '../src/index';
+import { instrumented, medianCpuMs } from './support/cpuTime';
 import { goldenInputs } from './support/goldenShift';
 import { seeded } from './support/rides';
 import { Path, SCENARIOS, shift, T0, track } from './support/scenarios';
@@ -279,20 +280,13 @@ describe('properties with stops', () => {
     }
   });
 
-  test('5,000 fixes with many stops still run in under 50 ms', () => {
+  test.skipIf(instrumented)('5,000 fixes with many stops still run in under 50 ms', () => {
     const p = new Path();
     for (let i = 0; i < 125; i++) p.ride(1500).wait(100).sleep(200);
     p.ride(1000);
     const input = p.input();
     expect(input.fixes.length).toBeGreaterThan(3000);
-    for (let i = 0; i < 3; i++) processShift(input);
-    const times: number[] = [];
-    for (let i = 0; i < 9; i++) {
-      const t0 = performance.now();
-      processShift(input);
-      times.push(performance.now() - t0);
-    }
-    times.sort((a, b) => a - b);
-    expect(times[4]!).toBeLessThan(50);
+    // median of 9 runs after a JIT warm-up, in CPU time (see support/cpuTime.ts)
+    expect(medianCpuMs(() => processShift(input))).toBeLessThan(50);
   });
 });

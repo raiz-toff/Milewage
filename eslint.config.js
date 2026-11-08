@@ -48,6 +48,7 @@ export default tseslint.config(
     ignores: [
       '**/node_modules/**',
       '**/dist/**',
+      'coverage/**', // npm run test:coverage output
       '**/generated/**',
       'plans/**',
       '.claude/**',

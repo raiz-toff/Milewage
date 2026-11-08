@@ -258,7 +258,7 @@ describe('onboarding wizard (plan 23)', () => {
     expect(await screen.findByRole('img', { name: 'Pairing code' })).toBeTruthy();
     expect(await screen.findByRole('link', { name: 'Get the app' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Pair later' })).toBeTruthy();
-    expect(await screen.findByText('Paired: Pixel 8.', {}, { timeout: 4000 })).toBeTruthy();
+    expect(await screen.findByText('Paired: Pixel 8.')).toBeTruthy(); // one PAIR_POLL_MS later
     expect(screen.queryByRole('button', { name: 'Pair later' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(await heading('Check your answers — Step 7 of 7')).toBeTruthy();

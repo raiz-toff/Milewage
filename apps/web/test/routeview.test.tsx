@@ -148,8 +148,8 @@ function open(settings = settingsFixture(), routeAnswer: object = { body: route 
 describe('route view', () => {
   it('draws on the OpenFreeMap basemap when no style URL is configured, and scrubs', async () => {
     open();
-    // The first test pays for the lazy import of the map module; a loaded machine needs longer.
-    await waitFor(() => expect(ml.state.maps).toHaveLength(1), { timeout: 5000 });
+    // The first test pays for the lazy import of the map module (waits up to test/support/setup.ts).
+    await waitFor(() => expect(ml.state.maps).toHaveLength(1));
     expect(ml.state.maps[0]!.options.style).toMatch(/tiles\.openfreemap\.org/);
     // The Elastic Slider: role="slider", moved with the keyboard (Shift+arrow = 10 steps).
     const slider = screen.getByRole('slider', { name: 'Replay position' });

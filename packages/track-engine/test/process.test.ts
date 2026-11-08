@@ -9,6 +9,7 @@ import {
   type RoutePoint,
   type ShiftInput,
 } from '../src/index';
+import { instrumented, medianCpuMs } from './support/cpuTime';
 import { goldenInputs } from './support/goldenShift';
 import { generateRide, seeded } from './support/rides';
 import { fixAt, SCENARIOS, shift, T0, track } from './support/scenarios';
@@ -231,20 +232,13 @@ describe('properties (14 section 10.2 item 6)', () => {
 });
 
 describe('performance (14 section 10.3)', () => {
-  test('5,000 fixes run in under 50 ms on Node', () => {
+  test.skipIf(instrumented)('5,000 fixes run in under 50 ms on Node', () => {
     // 5,000 fixes at 10 s: a zig-zag so the route keeps many vertices and the gate accepts most.
     const rows: [number, number, number][] = [];
     for (let i = 0; i < 5000; i++) rows.push([i * 10, i * 60, (i % 7) * 40]);
     const input = shift(track(rows), 50_000);
-    for (let i = 0; i < 3; i++) processShift(input); // warm up the JIT
-    const times: number[] = [];
-    for (let i = 0; i < 9; i++) {
-      const t0 = performance.now();
-      const r = processShift(input);
-      times.push(performance.now() - t0);
-      expect(r.stats.fixes_used).toBeGreaterThan(4000);
-    }
-    times.sort((a, b) => a - b);
-    expect(times[4]!).toBeLessThan(50); // median
+    expect(processShift(input).stats.fixes_used).toBeGreaterThan(4000);
+    // median of 9 runs after a JIT warm-up, in CPU time (see support/cpuTime.ts)
+    expect(medianCpuMs(() => processShift(input))).toBeLessThan(50);
   });
 });
