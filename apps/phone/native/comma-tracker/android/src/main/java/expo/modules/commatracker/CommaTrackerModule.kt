@@ -6,10 +6,13 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.LocationManager
+import android.os.BatteryManager
 import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import androidx.core.content.ContextCompat
+import androidx.core.location.LocationManagerCompat
 
 /** JS-facing tracker interface (09 section 5.1 item 5). Points are identified by their `seq`. */
 class CommaTrackerModule : Module() {
@@ -140,6 +143,26 @@ class CommaTrackerModule : Module() {
       val at = prefs.getLong(LocationTrackingService.KEY_GNSS_OFFSET_AT, 0L)
       if (at == 0L || System.currentTimeMillis() - at > 600_000L) null
       else prefs.getLong(LocationTrackingService.KEY_GNSS_OFFSET, 0L).toDouble()
+    }
+
+    // The phone's system Location switch; null when it cannot be read. With it off no fix
+    // arrives even with every permission granted, so the permission ladder warns.
+    Function("locationEnabled") {
+      val context = context ?: return@Function null
+      val manager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+        ?: return@Function null
+      LocationManagerCompat.isLocationEnabled(manager)
+    }
+
+    // Battery in whole per cent and whether it is charging, for `shift.summary` (16 section 3.2).
+    // Read at shift start and end only; null when the phone cannot say.
+    Function("battery") {
+      val context = context ?: return@Function null
+      val manager = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+        ?: return@Function null
+      val level = manager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+      if (level !in 0..100) return@Function null
+      mapOf("level" to level, "charging" to manager.isCharging)
     }
 
     // Opens the system battery-optimization settings list (no exemption permission is declared,

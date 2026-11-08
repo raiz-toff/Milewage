@@ -10,6 +10,7 @@ import { gzipSync, strToU8 } from 'fflate';
 import { ApiError, type ApiClient } from '../api/client';
 import type { CachedSettings, KeyValueStore } from '../pairing/pairing';
 import type { UploadStats } from '../upload/worker';
+import type { ShiftSummary } from './shiftSummary';
 
 export type DiagLevelSetting = 'off' | 'basic' | 'verbose';
 
@@ -129,7 +130,8 @@ export class PhoneDiagnostics implements DiagnosticsPort {
     await this.d.store.set(STATE_KEY, JSON.stringify({ seq: this.seq, dropped: this.dropped }));
   }
 
-  record(kind: DiagKind, data: Record<string, unknown>): void {
+  /** `shift` names the shift the event belongs to; without it the current `shiftClientId`. */
+  record(kind: DiagKind, data: Record<string, unknown>, shift = this.shiftClientId): void {
     const spec = Object.hasOwn(diagKinds, kind) ? diagKinds[kind] : undefined;
     const level = this.effectiveLevel;
     if (
@@ -145,7 +147,7 @@ export class PhoneDiagnostics implements DiagnosticsPort {
       level: spec?.level ?? 'basic',
       src: 'phone_js',
       seq: this.seq + 1,
-      ...(this.shiftClientId && { shift: this.shiftClientId }),
+      ...(shift && { shift }),
       v: this.d.appVersion,
       data,
     };
@@ -193,6 +195,11 @@ export class PhoneDiagnostics implements DiagnosticsPort {
       api_v: info.apiV,
       device: info.device,
     });
+  }
+
+  /** `shift.summary` at shift end (A1, H7), tagged with the shift it describes. */
+  recordShiftSummary(shiftClientId: string, summary: ShiftSummary): void {
+    this.record('shift.summary', { ...summary }, shiftClientId);
   }
 
   /** `upload.window` from the worker's counters (A7, A8). */

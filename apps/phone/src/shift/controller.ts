@@ -1,6 +1,12 @@
 import { createLiveAccumulator, type LiveAccumulator } from '@milewage/track-engine';
 import { ApiClient, ApiError } from '../api/client';
 import type { Flags } from '../pairing/pairing';
+import {
+  buildShiftSummary,
+  type BatteryPort,
+  type BatteryReading,
+  type ShiftSummary,
+} from '../diagnostics/shiftSummary';
 import type { KeyValueStore } from '../pairing/pairing';
 import type { Tracker } from '../tracker/types';
 import type { ShiftStore } from '../store/shiftStore';
@@ -33,6 +39,9 @@ export interface ActiveShift {
   conflict?: ServerShift | null;
   /** The driver chose to keep the local shift; the prompt is not shown again for this shift. */
   conflictDismissed?: boolean;
+  /** Battery at "Start shift" and at "End shift", for `shift.summary`; absent when unknown. */
+  batteryStart?: BatteryReading | null;
+  batteryEnd?: BatteryReading | null;
 }
 
 export interface ServerShift {
@@ -71,6 +80,10 @@ export interface ShiftDeps {
    * that shift's points. The barrier itself is the runner's `canSend` (08 section 4.2 rule 9).
    */
   beforeEnd?: (clientId: string) => Promise<boolean>;
+  /** Battery at shift start and end. Absent or null: no `shift.summary` is sent. */
+  battery?: BatteryPort;
+  /** Receives the `shift.summary` of a shift once, when its `shift.end` is queued. */
+  onSummary?: (clientId: string, summary: ShiftSummary) => Promise<void> | void;
 }
 
 const KEY = 'shift.active';
@@ -171,6 +184,7 @@ export class ShiftController {
     if (s.flags.tracking && !this.d.tracker.start(shift.clientId)) {
       return { ok: false, reason: 'tracker_refused' };
     }
+    shift.batteryStart = await this.battery();
     this.active = shift;
     this.attach(shift);
     await this.save();
@@ -194,6 +208,44 @@ export class ShiftController {
     return create.kind === 'conflict'
       ? { ok: false, reason: 'server_has_active', active: create.active }
       : { ok: false, reason: 'rejected' };
+  }
+
+  /** The battery now, or null when unknown. Never fails a start or an end. */
+  private async battery(): Promise<BatteryReading | null> {
+    try {
+      return (await this.d.battery?.read()) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Hands the shift's `shift.summary` (16 section 3.2) to diagnostics. Only when both battery
+   * levels are known: the allowlist requires them, and a guessed level would mislead the battery
+   * health check (H7). Best effort: ending the shift never depends on it.
+   */
+  private async summarise(
+    shift: ActiveShift,
+    endedAt: number,
+    local: ReturnType<typeof runLocal>,
+    engineMs: number,
+  ) {
+    if (!this.d.onSummary || !shift.batteryStart || !shift.batteryEnd) return;
+    try {
+      await this.d.onSummary(
+        shift.clientId,
+        buildShiftSummary({
+          startedAt: shift.startedAt,
+          endedAt,
+          start: shift.batteryStart,
+          end: shift.batteryEnd,
+          local,
+          engineMs,
+        }),
+      );
+    } catch {
+      // Diagnostics are best effort.
+    }
   }
 
   /** The vehicle used for the previous shift, to preselect it; null if none. */
@@ -314,7 +366,12 @@ export class ShiftController {
       this.pump(); // last look at the buffer so the live number matches what was recorded
       this.d.tracker.stop();
       this.detach();
-      this.active = { ...shift, endedAt: this.now(), odometerEndM: opts.odometerEndM ?? null };
+      this.active = {
+        ...shift,
+        endedAt: this.now(),
+        odometerEndM: opts.odometerEndM ?? null,
+        batteryEnd: shift.batteryStart ? await this.battery() : null,
+      };
       await this.save();
     }
     await this.handOff();
@@ -333,7 +390,9 @@ export class ShiftController {
     if (!shift || shift.endedAt === null) return;
     const s = await this.d.session();
     const endedAt = shift.endedAt;
+    const engineFrom = this.now();
     const local = !s || s.flags.tracking ? runLocal(this.d.tracker, { ...shift, endedAt }) : null;
+    const engineMs = this.now() - engineFrom;
     const { outbox, shifts } = this.d;
     if (!(await outbox.has('shift.end', shift.clientId))) {
       if (!shift.created) {
@@ -357,6 +416,7 @@ export class ShiftController {
         });
       }
       await outbox.enqueue('shift.end', shift.clientId, { ended_at: endedAt, ...local?.extras });
+      await this.summarise(shift, endedAt, local, engineMs);
     }
     if (shift.odometerEndM != null) {
       await shifts.setOdometer(shift.clientId, 'shift_end', shift.odometerEndM, endedAt);

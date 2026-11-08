@@ -47,8 +47,8 @@ export interface AndroidPermissionsDeps {
   api: AndroidPermissionApi;
   /** Remembers which permissions were asked for, so "never asked" and "blocked" differ. */
   store: KeyValueStore;
-  /** Whether the system location switch is on. Without a reader it is assumed on. */
-  locationEnabled?: () => Promise<boolean>;
+  /** Whether the system location switch is on. Without a reader, or null, it is assumed on. */
+  locationEnabled?: () => Promise<boolean | null>;
 }
 
 const askedKey = (step: RequestableStep) => `perm.asked.${step}`;

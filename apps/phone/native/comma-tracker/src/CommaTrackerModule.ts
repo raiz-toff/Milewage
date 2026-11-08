@@ -25,6 +25,10 @@ declare class CommaTrackerModule extends NativeModule {
   requestBatteryOptimizationSettings(): boolean;
   /** What the running-shift notification says around the distance; cleared by stop(). */
   setNotice(notice: ShiftNotice): void;
+  /** The system Location switch; null when it cannot be read. */
+  locationEnabled(): boolean | null;
+  /** Battery in whole per cent and whether it is charging; null when the phone cannot say. */
+  battery(): { level: number; charging: boolean } | null;
 }
 
 export default requireNativeModule<CommaTrackerModule>('CommaTracker');

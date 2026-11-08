@@ -21,3 +21,19 @@ export function createLazyNativeTracker(): Tracker {
     },
   });
 }
+
+/** Phone state the tracker module also reads. Absent on an APK built before these were added. */
+interface DeviceReads {
+  locationEnabled?: () => boolean | null;
+  battery?: () => { level: number; charging: boolean } | null;
+}
+
+const deviceReads = () => createNativeTracker() as unknown as DeviceReads;
+
+/** The system Location switch (`LocationManagerCompat.isLocationEnabled`); null when unknown. */
+export const nativeLocationSwitch = async (): Promise<boolean | null> =>
+  deviceReads().locationEnabled?.() ?? null;
+
+/** The battery from `BatteryManager`; null when unknown. */
+export const nativeBattery = async (): Promise<{ level: number; charging: boolean } | null> =>
+  deviceReads().battery?.() ?? null;

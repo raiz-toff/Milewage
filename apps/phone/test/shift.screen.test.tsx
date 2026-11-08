@@ -47,6 +47,19 @@ describe('home screen', () => {
     expect(routes.calls.some((c) => c.method === 'POST')).toBe(false);
   });
 
+  it('refuses to start while the Location switch is off and names the switch, not the permission', async () => {
+    const permissions = new FakePermissions({
+      foregroundLocation: 'granted',
+      locationServicesEnabled: false,
+    });
+    const { services, routes } = setup(undefined, { paired: true, permissions });
+    render(<App services={services} />);
+    fireEvent.press(await screen.findByRole('button', { name: 'Start shift' }));
+    expect(await screen.findByText(/Location is switched off on this phone/)).toBeTruthy();
+    expect(screen.queryByText(/Location permission is needed/)).toBeNull();
+    expect(routes.calls.some((c) => c.method === 'POST')).toBe(false);
+  });
+
   it('offers to continue the shift the server already has', async () => {
     const routes = server({
       'POST /shifts': () =>

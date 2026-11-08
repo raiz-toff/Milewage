@@ -5,6 +5,7 @@ import type { FetchFn } from './api/client';
 import { nativeNet, type NetPort } from './connect/reach';
 import { healthProbe, RoutePicker } from './connect/route';
 import { installCrashHandler, PhoneDiagnostics } from './diagnostics/phoneDiagnostics';
+import { batteryPort, type BatteryPort } from './diagnostics/shiftSummary';
 import { createLazyAppDb } from './db/lazyDb';
 import { openExpoAppDb, type AppSqlDb } from './db/appDb';
 import { Pairing, type KeyValueStore } from './pairing/pairing';
@@ -26,7 +27,7 @@ import { buildStatus, storageState, type SyncStatus } from './sync/status';
 import { Outbox, shiftOf } from './sync/outbox';
 import { OutboxRunner } from './sync/runner';
 import { QrScanner as CameraQrScanner } from './pairing/QrScanner';
-import { createLazyNativeTracker } from './tracker/native';
+import { createLazyNativeTracker, nativeBattery, nativeLocationSwitch } from './tracker/native';
 import type { Tracker } from './tracker/types';
 import { UploadWorker } from './upload/worker';
 
@@ -103,6 +104,8 @@ export interface Parts {
   freeBytes?: () => Promise<number | null>;
   /** OS notifications. Absent: a port that is never granted, so the banner is the only channel. */
   notifications?: NotificationsPort;
+  /** Battery at shift start and end, for `shift.summary`. Absent: the summary is not sent. */
+  battery?: BatteryPort;
   autoUpload?: boolean;
   appVersion?: string;
   deviceInfo?: DeviceInfo;
@@ -188,6 +191,12 @@ export function createServices(p: Parts): Services {
     now: p.now,
     newId: p.newId,
     beforeEnd: (id) => late.uploader!.drainShift(id),
+    battery: p.battery,
+    onSummary: async (id, summary) => {
+      await diagnostics.load();
+      diagnostics.recordShiftSummary(id, summary);
+      await diagnostics.persist();
+    },
   });
   const uploader = new UploadWorker({
     tracker: p.tracker,
@@ -314,6 +323,7 @@ export function productionParts(): Parts {
   const permissions = new AndroidPermissions({
     api: createReactNativePermissionApi(),
     store: plain,
+    locationEnabled: nativeLocationSwitch,
   });
   return {
     tracker: createLazyNativeTracker(),
@@ -321,6 +331,7 @@ export function productionParts(): Parts {
     // No notifications library yet (progress.md PR N1): never granted, the banner is the channel.
     notifications: createNotifications({ permissions, backend: null }),
     freeBytes: createFreeBytes(),
+    battery: batteryPort(nativeBattery),
     net: nativeNet(),
     secure: new SecureKeyValueStore(createExpoSecureBackend()),
     plain,

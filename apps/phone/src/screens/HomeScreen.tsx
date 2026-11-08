@@ -200,7 +200,10 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
     if (!canStartShift(initialLadder(snap))) {
       return toast.show({
         tone: 'error',
-        title: 'Location permission is needed to record a shift.',
+        // The switch and the permission are different fixes; name the one that is missing.
+        title: snap.locationServicesEnabled
+          ? 'Location permission is needed to record a shift.'
+          : 'Location is switched off on this phone. Turn it on to record a shift.',
         action: { label: 'Fix permissions', onPress: goPermissions },
       });
     }

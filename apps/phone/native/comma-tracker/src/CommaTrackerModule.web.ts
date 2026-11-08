@@ -27,6 +27,12 @@ class CommaTrackerModule extends NativeModule {
     return false;
   }
   setNotice() {}
+  locationEnabled() {
+    return null;
+  }
+  battery() {
+    return null;
+  }
 }
 
 export default registerWebModule(CommaTrackerModule, 'CommaTrackerModule');

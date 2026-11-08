@@ -4,8 +4,13 @@ import {
   type AndroidPermissionApi,
   type RawResult,
 } from '../src/permissions/android';
-import { advance, describeLadder, initialLadder } from '../src/permissions/ladder';
+import { advance, canStartShift, describeLadder, initialLadder } from '../src/permissions/ladder';
 import { MemoryStore } from '../src/pairing/pairing';
+import { nativeLocationSwitch } from '../src/tracker/native';
+
+/** Stands in for the tracker module; each test sets what the phone answers. */
+const mockNative: { locationEnabled?: () => boolean | null } = {};
+jest.mock('../native/comma-tracker', () => ({ __esModule: true, default: mockNative }));
 
 /** Models Android: a permission is granted, denied (can ask again) or blocked. */
 class FakeAndroid implements AndroidPermissionApi {
@@ -36,7 +41,7 @@ class FakeAndroid implements AndroidPermissionApi {
   }
 }
 
-function make(api = new FakeAndroid(), locationEnabled?: () => Promise<boolean>) {
+function make(api = new FakeAndroid(), locationEnabled?: () => Promise<boolean | null>) {
   const store = new MemoryStore();
   return { api, store, port: new AndroidPermissions({ api, store, locationEnabled }) };
 }
@@ -121,6 +126,35 @@ describe('AndroidPermissions', () => {
       throw new Error('x');
     });
     expect((await bad.port.snapshot()).locationServicesEnabled).toBe(true);
+  });
+
+  it('with the Location switch off the ladder warns and a shift cannot start; on, neither', async () => {
+    const OFF = 'Location is switched off on this phone. Turn it on or no miles are recorded.';
+    const ladder = async (on: boolean | null) => {
+      const m = make(undefined, async () => on);
+      for (const p of Object.values(P)) m.api.granted.add(p);
+      return { ...initialLadder(await m.port.snapshot(), true), disclosureAccepted: true };
+    };
+    const off = await ladder(false);
+    expect(describeLadder(off).warnings).toContain(OFF);
+    expect(describeLadder(off).mode).toBe('none');
+    expect(canStartShift(off)).toBe(false);
+    for (const on of [true, null]) {
+      const state = await ladder(on);
+      expect(describeLadder(state).warnings).toEqual([]);
+      expect(canStartShift(state)).toBe(true);
+    }
+  });
+
+  it('reads the switch from the tracker module, and null on a build without the reader', async () => {
+    mockNative.locationEnabled = () => false;
+    expect(await nativeLocationSwitch()).toBe(false);
+    mockNative.locationEnabled = () => true;
+    expect(await nativeLocationSwitch()).toBe(true);
+    delete mockNative.locationEnabled;
+    expect(await nativeLocationSwitch()).toBeNull();
+    const port = make(undefined, nativeLocationSwitch).port;
+    expect((await port.snapshot()).locationServicesEnabled).toBe(true);
   });
 
   it('opens the app settings page', async () => {
