@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { renderApp, settingsFixture, signedIn, pick, menu, optionsOf } from './support/kit';
 
@@ -80,11 +80,16 @@ function server(initial: Row[] = [car()]) {
 }
 
 describe('vehicles page', () => {
-  it('lists vehicles with their type and state', async () => {
-    server();
-    expect(await screen.findByText('Corolla')).toBeTruthy();
-    expect(screen.getByRole('cell', { name: 'Car' })).toBeTruthy();
-    expect(screen.getByText('active')).toBeTruthy();
+  it('shows each vehicle as a card with its type, and no state badge while active', async () => {
+    server([car({ make: 'Toyota', year: 2020, plate: 'ABC 123' })]);
+    const card = await screen.findByRole('listitem', { name: 'Corolla' });
+    expect(within(card).getByText('Car')).toBeTruthy();
+    expect(card.textContent).toContain('2020 Toyota');
+    expect(card.textContent).toContain('ABC 123');
+    expect(within(card).queryByText(/active|archived/i)).toBeNull();
+    expect(screen.queryByRole('table')).toBeNull();
+    // the add form waits behind the header button
+    expect(screen.queryByLabelText('Name')).toBeNull();
   });
 
   it('shows an empty state that opens the add form', async () => {
@@ -160,11 +165,11 @@ describe('vehicles page', () => {
     pick(screen.getByLabelText('Type'), 'scooter');
     pick(screen.getByLabelText('Ownership'), 'rented');
     fireEvent.click(screen.getByRole('button', { name: 'Add vehicle' }));
-    const row = (name: RegExp) => screen.getByRole('row', { name }).textContent;
-    await waitFor(() => expect(row(/Yulu/)).toContain('Rented'));
+    const row = (name: string) => screen.getByRole('listitem', { name }).textContent;
+    await waitFor(() => expect(row('Yulu')).toContain('Rented'));
     const post = s.calls.find((c) => c.method === 'POST' && c.path === '/vehicles');
     expect(post?.body).toEqual({ name: 'Yulu', kind: 'scooter', ownership: 'rented' });
-    expect(row(/Corolla/)).not.toContain('Owned'); // owned outright is the plain case
+    expect(row('Corolla')).not.toContain('Owned'); // owned outright is the plain case
   });
 
   it('changes ownership when editing', async () => {
@@ -174,7 +179,7 @@ describe('vehicles page', () => {
     pick(screen.getByLabelText('Ownership of Corolla'), 'financed');
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Save' })).toBeNull());
-    expect(screen.getByRole('row', { name: /Corolla/ }).textContent).toContain(
+    expect(screen.getByRole('listitem', { name: 'Corolla' }).textContent).toContain(
       'Financed (loan or hire purchase)',
     );
     expect(s.calls.find((c) => c.method === 'PATCH')?.body).toMatchObject({
@@ -203,11 +208,31 @@ describe('vehicles page', () => {
     menu('Corolla', 'Archive');
     await waitFor(() => expect(screen.queryByText('Corolla')).toBeNull());
     fireEvent.click(screen.getByLabelText('Show archived vehicles'));
-    expect(await screen.findByText('archived')).toBeTruthy();
+    expect(await screen.findByText('Archived')).toBeTruthy();
     menu('Corolla', 'Restore');
-    await waitFor(() => expect(screen.getByText('active')).toBeTruthy());
+    await waitFor(() => expect(screen.queryByText('Archived')).toBeNull());
     const bodies = s.calls.filter((c) => c.method === 'PATCH').map((c) => c.body);
     expect(bodies).toEqual([{ archived: true }, { archived: false }]);
+  });
+
+  it('marks the default vehicle and opens the service log from a button on its card', async () => {
+    renderApp(
+      {
+        ...signedIn(
+          settingsFixture({ default_vehicle_id: 1, modules: { tax: false, maintenance: true } }),
+        ),
+        'GET /vehicles': () => ({ body: [car()] }),
+        'GET /vehicles/1/maintenance': () => ({ body: [] }),
+      } as never,
+      '/vehicles',
+    );
+    const corolla = await screen.findByRole('listitem', { name: 'Corolla' });
+    expect(within(corolla).getByText('Default')).toBeTruthy();
+    const log = within(corolla).getByRole('button', { name: 'Service log' });
+    expect(log.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(log);
+    expect(log.getAttribute('aria-expanded')).toBe('true');
+    expect(await within(corolla).findByText('No service entries yet.')).toBeTruthy();
   });
 
   it('shows the server message when a change is refused', async () => {

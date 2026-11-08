@@ -1,15 +1,31 @@
-import { useCallback, useEffect, useState } from 'react';
-import { EmptyState, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
+import { useCallback, useEffect, useId, useState } from 'react';
+import { EmptyState, PageHeader, Section } from '../ui/layout';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import type { FormEvent } from 'react';
 import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
-import { formatDateTime } from '../format';
 import { useSession, useSettings } from '../session';
-import { Button, Field, FormError, Picker, SelectField } from '../ui/form';
+import { Button, Field, FormError, SelectField } from '../ui/form';
 import { RowMenu } from '../ui/RowMenu';
-import { Archive, ArchiveRestore, Pencil, Plus, Star } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import {
+  Archive,
+  ArchiveRestore,
+  Bike,
+  Car,
+  ChevronDown,
+  Footprints,
+  Motorbike,
+  Pencil,
+  Plus,
+  Scooter,
+  Star,
+  Van,
+  Wrench,
+} from 'lucide-react';
 import { VehicleMaintenance } from './VehicleMaintenance';
 import { VehicleTaxYear } from './VehicleTaxYear';
 
@@ -35,34 +51,53 @@ export const OWNERSHIP: { value: Ownership; label: string }[] = [
   { value: 'leased', label: 'Leased' },
   { value: 'rented', label: 'Rented' },
 ];
+/** Shown on the card only when the vehicle is not owned outright. */
+const ownershipNote = (o: Ownership) =>
+  o === 'owned' ? '' : (OWNERSHIP.find((x) => x.value === o)?.label ?? '');
+
+const ICONS: Record<Kind, LucideIcon> = {
+  car: Car,
+  van: Van,
+  motorcycle: Motorbike,
+  bicycle: Bike,
+  ebike: Bike,
+  scooter: Scooter,
+  walking: Footprints,
+};
+
 /** Hints that sit under the Type and Ownership choices, where the question is asked. */
 const TYPE_HINT =
   'Sets which mileage rate applies. Bicycles, e-bikes, scooters and walking get none.';
 const OWNERSHIP_HINT =
   'For your records. Whether rent or finance payments count for tax depends on your country.';
 
-/** Shown in the list only when the vehicle is not owned outright. */
-const ownershipNote = (o: Ownership) =>
-  o === 'owned' ? '' : (OWNERSHIP.find((x) => x.value === o)?.label ?? '');
+type Draft = {
+  name: string;
+  kind: Kind;
+  make: string;
+  model: string;
+  year: string;
+  plate: string;
+  ownership: Ownership;
+};
 
-function VehicleRow({ vehicle, onChanged }: { vehicle: Vehicle; onChanged: () => void }) {
-  const { api } = useSession();
-  const { timezone } = useSettings();
-  const [edit, setEdit] = useState<{
-    name: string;
-    kind: Kind;
-    make: string;
-    model: string;
-    year: string;
-    plate: string;
-    ownership: Ownership;
-  } | null>(null);
+/**
+ * One vehicle as a card (a GOV.UK summary card): its type icon, name and quiet details, the
+ * card's actions in the "..." menu, and below a rule this year's deduction and the service log.
+ */
+function VehicleCard({ vehicle, onChanged }: { vehicle: Vehicle; onChanged: () => void }) {
+  const { api, setSettings } = useSession();
+  const saved = useSettings();
+  const [edit, setEdit] = useState<Draft | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [service, setService] = useState(false);
+  const titleId = useId();
   const archived = vehicle.archived_at !== null;
+  const isDefault = saved.default_vehicle_id === vehicle.id;
+  const Icon = ICONS[vehicle.kind] ?? Car;
+  const showTax = saved.modules.tax && !archived;
+  const showService = saved.modules.maintenance && !archived;
 
-  const { setSettings } = useSession();
-  const saved = useSettings();
   async function makeDefault() {
     setError(null);
     try {
@@ -83,173 +118,191 @@ function VehicleRow({ vehicle, onChanged }: { vehicle: Vehicle; onChanged: () =>
       setError(describe(e));
     }
   }
+  function save(e: FormEvent) {
+    e.preventDefault();
+    if (edit === null || !edit.name.trim()) return;
+    void act({
+      name: edit.name.trim(),
+      kind: edit.kind,
+      make: edit.make.trim() || null,
+      model: edit.model.trim() || null,
+      year: edit.year.trim() === '' ? null : Number(edit.year),
+      plate: edit.plate.trim() || null,
+      ownership: edit.ownership,
+    });
+  }
+
+  const details = [
+    kindLabel(vehicle.kind),
+    [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' '),
+    vehicle.plate ?? '',
+    ownershipNote(vehicle.ownership),
+  ].filter(Boolean);
 
   return (
-    <tr className="border-t border-border align-top">
-      <td className="py-2 pr-4">
-        {edit === null ? (
-          <span className={archived ? 'text-muted-foreground line-through' : ''}>
-            {vehicle.name}
-          </span>
-        ) : (
-          <input
-            aria-label={`New name for ${vehicle.name}`}
-            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-            maxLength={64}
-            value={edit.name}
-            onChange={(e) => setEdit({ ...edit, name: e.target.value })}
-          />
-        )}
+    <li aria-labelledby={titleId}>
+      <Card className={cn(archived && 'bg-muted/40')}>
+        <div className="flex items-start gap-3 px-(--card-spacing)">
+          <div
+            aria-hidden="true"
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"
+          >
+            <Icon className="size-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2
+                id={titleId}
+                className={cn(
+                  'truncate text-base leading-snug font-medium',
+                  archived && 'text-muted-foreground',
+                )}
+              >
+                {vehicle.name}
+              </h2>
+              {isDefault ? <Badge variant="secondary">Default</Badge> : null}
+              {archived ? <Badge variant="outline">Archived</Badge> : null}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {details.map((d, i) => (
+                <span key={i}>
+                  {i > 0 ? ' · ' : null}
+                  <span className="whitespace-nowrap">{d}</span>
+                </span>
+              ))}
+            </p>
+          </div>
+          {edit === null ? (
+            <RowMenu
+              name={vehicle.name}
+              actions={[
+                ...(archived
+                  ? []
+                  : [
+                      {
+                        label: 'Edit',
+                        icon: Pencil,
+                        onSelect: () =>
+                          setEdit({
+                            name: vehicle.name,
+                            kind: vehicle.kind,
+                            make: vehicle.make ?? '',
+                            model: vehicle.model ?? '',
+                            year: vehicle.year === null ? '' : String(vehicle.year),
+                            plate: vehicle.plate ?? '',
+                            ownership: vehicle.ownership,
+                          }),
+                      },
+                    ]),
+                ...(archived || isDefault
+                  ? []
+                  : [{ label: 'Make default', icon: Star, onSelect: () => void makeDefault() }]),
+                archived
+                  ? {
+                      label: 'Restore',
+                      icon: ArchiveRestore,
+                      onSelect: () => void act({ archived: false }),
+                    }
+                  : {
+                      label: 'Archive',
+                      icon: Archive,
+                      destructive: true,
+                      onSelect: () => void act({ archived: true }),
+                    },
+              ]}
+            />
+          ) : null}
+        </div>
         {edit !== null ? (
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            {(['make', 'model', 'year', 'plate'] as const).map((k) => (
-              <input
-                key={k}
-                aria-label={`${k[0]!.toUpperCase()}${k.slice(1)} of ${vehicle.name}`}
-                placeholder={k}
-                className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-                value={edit[k]}
-                onChange={(e) => setEdit({ ...edit, [k]: e.target.value })}
-              />
-            ))}
-            <Picker
-              label={`Ownership of ${vehicle.name}`}
-              size="sm"
-              className="col-span-2 w-auto"
+          <form
+            aria-label={`Edit ${vehicle.name}`}
+            className="grid gap-3 border-t px-(--card-spacing) pt-(--card-spacing) sm:grid-cols-2"
+            onSubmit={save}
+          >
+            <Field
+              label="Name"
+              aria-label={`New name for ${vehicle.name}`}
+              maxLength={64}
+              value={edit.name}
+              onChange={(e) => setEdit({ ...edit, name: e.target.value })}
+            />
+            <SelectField
+              label="Type"
+              name={`Type of ${vehicle.name}`}
+              value={edit.kind}
+              onChange={(v) => setEdit({ ...edit, kind: v as Kind })}
+              options={KINDS}
+            />
+            {(['make', 'model', 'year', 'plate'] as const).map((k) => {
+              const label = `${k[0]!.toUpperCase()}${k.slice(1)}`;
+              return (
+                <Field
+                  key={k}
+                  label={label}
+                  aria-label={`${label} of ${vehicle.name}`}
+                  inputMode={k === 'year' ? 'numeric' : undefined}
+                  value={edit[k]}
+                  onChange={(e) => setEdit({ ...edit, [k]: e.target.value })}
+                />
+              );
+            })}
+            <SelectField
+              label="Ownership"
+              name={`Ownership of ${vehicle.name}`}
+              hint={OWNERSHIP_HINT}
               value={edit.ownership}
               onChange={(v) => setEdit({ ...edit, ownership: v as Ownership })}
               options={OWNERSHIP}
             />
+            <div className="flex items-end gap-2 sm:col-span-2">
+              <Button type="submit" disabled={!edit.name.trim()}>
+                Save
+              </Button>
+              <UiButton type="button" variant="ghost" onClick={() => setEdit(null)}>
+                Cancel
+              </UiButton>
+            </div>
+          </form>
+        ) : showTax || showService ? (
+          <div className="flex flex-wrap items-start justify-between gap-3 border-t px-(--card-spacing) pt-(--card-spacing)">
+            {showTax ? <VehicleTaxYear vehicleId={vehicle.id} name={vehicle.name} /> : null}
+            {showService ? (
+              <UiButton
+                type="button"
+                variant="outline"
+                size="sm"
+                aria-expanded={service}
+                onClick={() => setService(!service)}
+              >
+                <Wrench data-icon="inline-start" />
+                Service log
+                <ChevronDown
+                  data-icon="inline-end"
+                  className={cn('transition-transform', service && 'rotate-180')}
+                />
+              </UiButton>
+            ) : null}
           </div>
-        ) : (
-          <span className="block text-sm text-muted-foreground">
-            {[
-              [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' '),
-              ownershipNote(vehicle.ownership),
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-            {saved.default_vehicle_id === vehicle.id ? ' (default)' : ''}
-          </span>
-        )}
-        {saved.modules.tax && !archived && edit === null ? (
-          <VehicleTaxYear vehicleId={vehicle.id} name={vehicle.name} />
         ) : null}
-        {saved.modules.maintenance && !archived && edit === null ? (
-          <>
-            <UiButton
-              type="button"
-              variant="link"
-              size="sm"
-              className="h-auto px-0"
-              aria-expanded={service}
-              onClick={() => setService(!service)}
-            >
-              {service ? 'Hide service log' : 'Service log'}
-            </UiButton>
-            {service ? <VehicleMaintenance vehicleId={vehicle.id} name={vehicle.name} /> : null}
-          </>
+        {showService && service && edit === null ? (
+          <div className="px-(--card-spacing)">
+            <VehicleMaintenance vehicleId={vehicle.id} name={vehicle.name} />
+          </div>
         ) : null}
-        <FormError message={error} />
-      </td>
-      <td className="pr-4 text-muted-foreground">
-        {edit === null ? (
-          kindLabel(vehicle.kind)
-        ) : (
-          <Picker
-            label={`Type of ${vehicle.name}`}
-            size="sm"
-            className="w-auto min-w-28"
-            value={edit.kind}
-            onChange={(v) => setEdit({ ...edit, kind: v as Kind })}
-            options={KINDS}
-          />
-        )}
-      </td>
-      <td className="pr-4 tabular-nums text-sm text-muted-foreground">
-        {formatDateTime(vehicle.created_at, timezone)}
-      </td>
-      <td>
-        <Badge variant={archived ? 'outline' : 'secondary'}>
-          {archived ? 'archived' : 'active'}
-        </Badge>
-      </td>
-      <td className="space-x-3 text-right whitespace-nowrap">
-        {edit !== null ? (
-          <>
-            <UiButton
-              type="button"
-              variant="link"
-              size="sm"
-              className="h-auto px-0"
-              disabled={!edit.name.trim()}
-              onClick={() =>
-                void act({
-                  name: edit.name.trim(),
-                  kind: edit.kind,
-                  make: edit.make.trim() || null,
-                  model: edit.model.trim() || null,
-                  year: edit.year.trim() === '' ? null : Number(edit.year),
-                  plate: edit.plate.trim() || null,
-                  ownership: edit.ownership,
-                })
-              }
-            >
-              Save
-            </UiButton>
-            <UiButton type="button" variant="ghost" size="sm" onClick={() => setEdit(null)}>
-              Cancel
-            </UiButton>
-          </>
-        ) : (
-          <RowMenu
-            name={vehicle.name}
-            actions={[
-              ...(archived
-                ? []
-                : [
-                    {
-                      label: 'Edit',
-                      icon: Pencil,
-                      onSelect: () =>
-                        setEdit({
-                          name: vehicle.name,
-                          kind: vehicle.kind,
-                          make: vehicle.make ?? '',
-                          model: vehicle.model ?? '',
-                          year: vehicle.year === null ? '' : String(vehicle.year),
-                          plate: vehicle.plate ?? '',
-                          ownership: vehicle.ownership,
-                        }),
-                    },
-                  ]),
-              ...(archived || saved.default_vehicle_id === vehicle.id
-                ? []
-                : [{ label: 'Make default', icon: Star, onSelect: () => void makeDefault() }]),
-              archived
-                ? {
-                    label: 'Restore',
-                    icon: ArchiveRestore,
-                    onSelect: () => void act({ archived: false }),
-                  }
-                : {
-                    label: 'Archive',
-                    icon: Archive,
-                    destructive: true,
-                    onSelect: () => void act({ archived: true }),
-                  },
-            ]}
-          />
-        )}
-      </td>
-    </tr>
+        {error ? (
+          <div className="px-(--card-spacing)">
+            <FormError message={error} />
+          </div>
+        ) : null}
+      </Card>
+    </li>
   );
 }
 
 /**
- * Vehicles (07 section 2.2): the driver's vehicles. Vehicles are archived, never deleted, because
- * a shift in the tax record points at one. An archived vehicle stays in history and drops out of
- * the pickers. Add vehicle opens the form, as Add expense does.
+ * Vehicles (07 section 2.2): the driver's vehicles, each a card. Vehicles are archived, never
+ * deleted, because a shift in the tax record points at one. An archived vehicle stays in history
+ * and drops out of the pickers. Add vehicle opens the form, as Add expense does.
  */
 export function VehiclesPage() {
   const { api } = useSession();
@@ -361,25 +414,11 @@ export function VehiclesPage() {
           {adding ? null : addButton}
         </EmptyState>
       ) : (
-        <TableBox>
-          <table className={tableClass}>
-            <caption className="sr-only">Vehicles</caption>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Added</th>
-                <th>State</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {vehicles.map((v) => (
-                <VehicleRow key={v.id} vehicle={v} onChanged={() => void load()} />
-              ))}
-            </tbody>
-          </table>
-        </TableBox>
+        <ul aria-label="Vehicles" className="grid gap-3">
+          {vehicles.map((v) => (
+            <VehicleCard key={v.id} vehicle={v} onChanged={() => void load()} />
+          ))}
+        </ul>
       )}
       <label className="flex w-fit items-center gap-2 text-xs text-muted-foreground">
         <input
