@@ -225,7 +225,7 @@ export function Picker({
       onValueChange={(v) => onChange(v === EMPTY ? '' : v)}
       disabled={disabled}
     >
-      <SelectTrigger id={id} aria-label={label} size={size} className={cn('w-full', className)}>
+      <SelectTrigger id={id} aria-label={label} size={size} className={cn('w-full min-w-0', className)}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent position="popper" align="start">
@@ -255,8 +255,10 @@ export function SelectField({
   disabled?: boolean;
 }) {
   const id = useId();
+  // min-w-0 lets the field shrink inside a grid column, so a long choice is cut off with an
+  // ellipsis instead of spilling over the next field.
   return (
-    <div className="grid content-start gap-2">
+    <div className="grid min-w-0 content-start gap-2">
       <label htmlFor={id} className="text-sm font-medium">
         {label}
       </label>

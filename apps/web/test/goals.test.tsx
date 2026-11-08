@@ -93,6 +93,16 @@ describe('goals screen (module goals)', () => {
     await waitFor(() => expect(s.calls.some((c) => c.method === 'DELETE')).toBe(true));
   });
 
+  it('dropdowns can shrink in the form grid, so a long measure does not spill over Per', async () => {
+    open();
+    await screen.findByText('Weekly pay');
+    for (const name of ['Measure', 'Per']) {
+      const trigger = screen.getByLabelText(name);
+      expect(trigger.className).toMatch(/\bmin-w-0\b/);
+      expect(trigger.parentElement!.className).toMatch(/\bmin-w-0\b/);
+    }
+  });
+
   it('refuses a target of zero without calling the server', async () => {
     const s = open();
     await screen.findByText('Weekly pay');

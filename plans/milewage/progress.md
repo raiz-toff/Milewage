@@ -1797,3 +1797,9 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Branch `pr-W4c-setup-no-platform-step` (pushed, not merged), stacked on `pr-T5-install-tailscale`.
 - Owner report (2026-11-08): "Add your other apps" never ticked off. It counted as done only once a custom platform was created, so turning on Uber, DoorDash and the other listed apps did nothing. The setup wizard already asks which apps the driver uses (its "Your apps" step), so the dashboard card drops the step instead of asking twice. It now has up to four steps: vehicle, weekly goal, pair your phone, backup.
 - Tests: `apps/web/test/dashboard-extras.test.tsx` updated (4 steps, goal is now the next step, "3 left" when hidden, no "other apps"); they fail without the change.
+
+## PR W6 — Web: the Add a goal form no longer overlaps
+
+- Branch `pr-W6-goal-form-fit` (pushed, not merged), stacked on `pr-W4c-setup-no-platform-step`.
+- Owner report (2026-11-08, screenshot): on Goals, "Active distance (estimated)" in Measure ran over the Per dropdown. A grid item is at least as wide as its content by default (CSS Grid `min-width: auto`, [MDN: min-width auto on grid items](https://developer.mozilla.org/en-US/docs/Web/CSS/min-width)), and the select trigger never wraps, so the text spilled into the next column. `SelectField` and `Picker` now carry `min-w-0`, so a long choice is cut off with the trigger's existing one-line clamp; every select in a grid benefits. The goal form is two columns on small screens and, from `lg`, gives Measure a wider column with the button sized to its text.
+- Tests: `apps/web/test/goals.test.tsx` 1 new (Measure and Per triggers and their fields can shrink); fails without the change.
