@@ -60,15 +60,62 @@ test('setup creates the owner once: user, settings, instance, hashed password, s
     recovery_key: expect.stringMatching(/^AGE-SECRET-KEY-1[A-Z0-9]+$/),
     state: 'needs_confirmation',
   });
-  expect(String(res.headers['set-cookie'])).toMatch(
-    /^mw_session=.+; HttpOnly; Secure; SameSite=Strict/,
-  );
+  // An http page (the home address): no Secure, or the browser would drop the cookie (plan 28).
+  expect(String(res.headers['set-cookie'])).toMatch(/^mw_session=.+; HttpOnly; SameSite=Strict/);
   const hash = db.prepare('SELECT password_hash FROM users').pluck().get() as string;
   expect(hash).toMatch(/^scrypt\$/);
   expect([count('instance'), count('web_sessions')]).toEqual([1, 1]);
 
   const second = await post('/setup', { ...owner, username: 'eve' });
   expect([second.statusCode, second.json().code]).toEqual([409, 'setup_already_done']);
+});
+
+test('the session cookie is Secure when the page is https, and only then (plan 28)', async () => {
+  await signUp();
+  const cookieFrom = (h: Record<string, string>, behindProxy = false) =>
+    app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      payload: { username: 'sam', password: owner.password },
+      headers: { host: 'mw.test', ...h },
+      remoteAddress: behindProxy ? '172.29.88.2' : undefined,
+    });
+  const https = await cookieFrom({ origin: 'https://mw.test' });
+  expect(String(https.headers['set-cookie'])).toMatch(/; HttpOnly; Secure; SameSite=Strict;/);
+  const http = await cookieFrom({ origin: 'http://mw.test' });
+  expect(http.statusCode).toBe(204);
+  expect(String(http.headers['set-cookie'])).not.toMatch(/Secure/);
+  const logout = await app.inject({
+    method: 'POST',
+    url: '/api/v1/auth/logout',
+    headers: { host: 'mw.test', origin: 'https://mw.test', cookie: cookieOf(https) },
+  });
+  expect(String(logout.headers['set-cookie'])).toMatch(
+    /^mw_session=; HttpOnly; Secure;.*Max-Age=0/,
+  );
+});
+
+test('behind the trusted proxy, X-Forwarded-Proto https makes the cookie Secure', async () => {
+  const modules = createServerModules({ db, now: () => t, configDir: join(dir, 'config') });
+  const proxied = buildApp({
+    modules,
+    enabled: { core: true },
+    logLevel: 'silent',
+    trustProxy: ['172.29.88.0/24'],
+  }).fastify;
+  await signUp();
+  const login = (ip: string) =>
+    proxied.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      payload: { username: 'sam', password: owner.password },
+      headers: { host: 'mw.test', origin: 'http://mw.test', 'x-forwarded-proto': 'https' },
+      remoteAddress: ip,
+    });
+  expect(String((await login('172.29.88.2')).headers['set-cookie'])).toMatch(/; Secure;/);
+  // Not from the proxy: the header is not believed.
+  expect(String((await login('192.168.1.42')).headers['set-cookie'])).not.toMatch(/Secure/);
+  await proxied.close();
 });
 
 test('wrong password and unknown user give the same 401', async () => {

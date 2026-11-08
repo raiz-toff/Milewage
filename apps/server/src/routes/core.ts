@@ -6,7 +6,7 @@ import { fileSecrets, type SecretsStore } from '../backup/secrets';
 import { FailureLimiter } from '../auth/limiter';
 import { hashPassword, verifyPassword } from '../auth/password';
 import type { Authenticator } from '../auth/authenticator';
-import { clearCookie, startSession } from '../auth/sessions';
+import { clearCookie, secureRequest, startSession } from '../auth/sessions';
 import {
   confirmSetup,
   createInstanceReader,
@@ -206,7 +206,7 @@ export function coreRoutes(
         age_public_key: key.recipient,
         key_tail_check: tailCheck(keyTail(key.identity)),
       });
-      const cookie = startSession(sessions, user.id, now());
+      const cookie = startSession(sessions, user.id, now(), secureRequest(request));
       return reply
         .status(201)
         .header('set-cookie', cookie)
@@ -245,13 +245,16 @@ export function coreRoutes(
       limiter.reset(keys[1]);
       return reply
         .status(204)
-        .header('set-cookie', startSession(sessions, user.id, now()))
+        .header('set-cookie', startSession(sessions, user.id, now(), secureRequest(request)))
         .send();
     });
 
     app.post('/auth/logout', async (request, reply) => {
       sessions.delete(auth(request, 'S').idHash);
-      return reply.status(204).header('set-cookie', clearCookie()).send();
+      return reply
+        .status(204)
+        .header('set-cookie', clearCookie(secureRequest(request)))
+        .send();
     });
 
     app.post('/auth/password', passwordBody, async (request, reply) => {

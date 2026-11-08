@@ -5,17 +5,31 @@ import { ProblemError } from '../errors';
 
 const TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
-const cookie = (value: string, maxAge: number) =>
-  `mw_session=${value}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${maxAge}`;
+/**
+ * `Secure` only when the page is https (plan 28, H-P5): a browser drops a `Secure` cookie set by a
+ * plain http page (localhost excepted), so signing in at the home address `http://192.168.x.x`
+ * would silently fail. The page's scheme is the browser's `Origin` (sent with every sign-in POST),
+ * or `X-Forwarded-Proto` when it comes from the trusted proxy (Fastify's `protocol`).
+ */
+export const secureRequest = (request: FastifyRequest) =>
+  request.protocol === 'https' || /^https:/i.test(request.headers.origin ?? '');
 
-export function startSession(sessions: SessionRepository, userId: number, now: number): string {
+const cookie = (value: string, maxAge: number, secure: boolean) =>
+  `mw_session=${value}; HttpOnly;${secure ? ' Secure;' : ''} SameSite=Strict; Path=/; Max-Age=${maxAge}`;
+
+export function startSession(
+  sessions: SessionRepository,
+  userId: number,
+  now: number,
+  secure: boolean,
+): string {
   const value = randomBytes(32).toString('base64url');
   const row = { idHash: hash(value), userId, createdAt: now, expiresAt: now + TTL_MS };
   sessions.create({ ...row, lastSeenAt: now });
-  return cookie(value, TTL_MS / 1000);
+  return cookie(value, TTL_MS / 1000, secure);
 }
 
-export const clearCookie = () => cookie('', 0);
+export const clearCookie = (secure: boolean) => cookie('', 0, secure);
 
 export function authenticate(sessions: SessionRepository, request: FastifyRequest, now: number) {
   const origin = request.headers.origin;

@@ -33,7 +33,7 @@ This document is a specification, not code. The OpenAPI document in §13 is the 
 
 | Principal | Credential | Storage on server | Used by |
 |---|---|---|---|
-| **Web session** | Cookie `mw_session`: opaque 256-bit random value, `HttpOnly; Secure; SameSite=Strict; Path=/`. Sliding 30-day expiry. | SHA-256 hash in a session table (see §14 fix F4). | The web client. |
+| **Web session** | Cookie `mw_session`: opaque 256-bit random value, `HttpOnly; Secure; SameSite=Strict; Path=/` (`Secure` only when the page is https: plan 28 H2). Sliding 30-day expiry. | SHA-256 hash in a session table (see §14 fix F4). | The web client. |
 | **Device** | `Authorization: Bearer mwd_<43 base64url chars>` (256-bit random, `mwd_` prefix so secret scanners can find a leaked one). No expiry; valid until revoked. | SHA-256 hash in `devices.token_hash` (`07` §2.1). Plaintext never stored. | The phone. |
 | **Pairing token** | `mwp_<43 chars>`, one-time, expires in 10 minutes. | SHA-256 hash in `pairing_tokens.token_hash`. | The QR code only. |
 | **Assistant token** (module `mcp`, plan 26) | `Authorization: Bearer mwa_<43 chars>`, scope `read` or `write` (write includes read), optional expiry (30, 90 or 365 days; 90 by default), revocable. Accepted **only** by `POST /api/v1/mcp`, never by a REST route. | SHA-256 hash in `mcp_tokens.token_hash`; shown once at creation. | An AI assistant (MCP client). |

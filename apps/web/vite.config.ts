@@ -74,18 +74,9 @@ export default defineConfig({
     // Lets a phone pair against the dev server through `tailscale serve` (plan 19 §3.6).
     allowedHosts: ['.ts.net'],
     proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:3000',
-        // Dev only: the session cookie is Secure, which a browser drops on http:// at any address
-        // but localhost. Stripping it here lets the dev server be opened by IP over the LAN.
-        configure: (proxy) => {
-          proxy.on('proxyRes', (res) => {
-            const cookies = res.headers['set-cookie'];
-            if (cookies)
-              res.headers['set-cookie'] = cookies.map((c) => c.replace(/;\s*Secure/i, ''));
-          });
-        },
-      },
+      // The server leaves `Secure` off the session cookie on an http page itself (plan 28 H2), so
+      // the dev server opened by IP over the LAN signs in without a workaround here.
+      '/api': 'http://127.0.0.1:3000',
       '/healthz': 'http://127.0.0.1:3000',
     },
   },
