@@ -20,7 +20,7 @@ export interface AndroidPermissionApi {
   openSettings(): Promise<void>;
 }
 
-/** Permission names. Only the ones already declared in app.json (09 section 5.3). */
+/** Permission names. Only the ones already declared in app.config.js (09 section 5.3). */
 export const P = {
   fine: 'android.permission.ACCESS_FINE_LOCATION',
   background: 'android.permission.ACCESS_BACKGROUND_LOCATION',

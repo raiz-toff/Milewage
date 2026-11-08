@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-  <!-- Permissions are listed once, in apps/phone/app.json (09 section 5.3). This module declares
+  <!-- Permissions are listed once, in apps/phone/app.config.js (09 section 5.3). This module declares
        none: no battery-optimization exemption, no overlay, no boot receiver. -->
   <application>
     <service

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { ChevronRight, Cpu, MapPin, ShieldCheck, XCircle } from 'lucide-react-native';
-import app from '../../app.json';
+import { version } from '../../package.json'; // kept equal to VERSION by version:check
 import { Alert, AlertTitle } from '../components/ui/alert';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -126,9 +126,7 @@ export function SettingsScreen({ navigation }: ScreenProps<'Settings'>) {
 
       <View className="flex-row items-center justify-center gap-1.5 pt-2">
         <ShieldCheck size={12} color={C.mutedForeground} />
-        <Text variant="caption">
-          {`MileWage ${app.expo.version} · your data stays on your server`}
-        </Text>
+        <Text variant="caption">{`MileWage ${version} · your data stays on your server`}</Text>
       </View>
     </Screen>
   );

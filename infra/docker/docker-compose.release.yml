@@ -1,0 +1,72 @@
+# Home-lab stack from published images (infra/docs/install.md, "Run from published images").
+# The same services, settings and volumes as docker-compose.yml, but the images come from the
+# registry the `images` CI job pushes to instead of being built here (infra/docker/release.test.mjs
+# keeps the two files in step). Set MILEWAGE_IMAGE_REPO (for example
+# registry.example.com/you/milewage) and MILEWAGE_VERSION (a release tag such as v0.1.0; pin it,
+# :latest is only the fallback) in infra/docker/.env.
+name: milewage
+# Container logs rotate (10 section 11.2): 3 files of 10 MB per service.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '3'
+services:
+  caddy:
+    image: ${MILEWAGE_IMAGE_REPO:?set to your registry path}/caddy:${MILEWAGE_VERSION:-latest}
+    restart: unless-stopped
+    logging: *logging
+    ports:
+      - '127.0.0.1:${MILEWAGE_HOST_PORT:-8080}:8080'
+    environment:
+      # Caddy keeps the forwarded headers only from this address (plan 19 section 3.1).
+      - MILEWAGE_PROXY_GATEWAY=${MILEWAGE_PROXY_GATEWAY:-172.29.88.1}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    mem_limit: 64m
+    cpus: 0.5
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    image: ${MILEWAGE_IMAGE_REPO:?set to your registry path}/server:${MILEWAGE_VERSION:-latest}
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      - NODE_ENV=production
+      - MILEWAGE_MODE=home-lab
+      # The API believes X-Forwarded-For only from this network, which holds just Caddy and the API
+      # (the fixed /24 below). Without it every login and redeem limit would see Caddy's address.
+      - MILEWAGE_TRUST_PROXY=${MILEWAGE_PROXY_SUBNET:-172.29.88.0/24}
+      # The address phones are given, e.g. https://<host>.<tailnet>.ts.net (plan 19 section 3.2).
+      # Empty: the address the browser is on.
+      - MILEWAGE_PUBLIC_URL=${MILEWAGE_PUBLIC_URL:-}
+      # The app's store page once it is published (https); the download page then offers it first.
+      - MILEWAGE_APP_STORE_URL=${MILEWAGE_APP_STORE_URL:-}
+      # 1 turns on the MCP endpoint for AI assistants (plan 26); empty leaves it off.
+      - MILEWAGE_MODULE_MCP=${MILEWAGE_MODULE_MCP:-}
+    volumes:
+      - data:/app/data
+      - backups:/app/backups
+      - config:/app/config
+    mem_limit: 192m
+    cpus: 1.0
+    # no published ports; only Caddy reaches the API
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${MILEWAGE_PROXY_SUBNET:-172.29.88.0/24}
+          # Set, not left to Docker, so Caddy's trusted address and the real gateway always agree.
+          gateway: ${MILEWAGE_PROXY_GATEWAY:-172.29.88.1}
+
+volumes:
+  data:
+  backups:
+  config:
+  caddy_data:
+  caddy_config:

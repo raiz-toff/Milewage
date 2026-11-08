@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-// Keeps every package.json version equal to the VERSION file.
+// Keeps every package.json version equal to the VERSION file, and checks that the phone app config
+// (apps/phone/app.config.js, which reads VERSION itself) resolves to it.
 // Usage: node scripts/version.mjs check|sync
+import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,13 +28,42 @@ export function packageFiles(root) {
   return files;
 }
 
-/** Returns the list of package.json files whose version differs from VERSION. */
-export function check(root) {
+export const APP_CONFIG = join('apps', 'phone', 'app.config.js');
+
+/**
+ * The version the phone app config resolves to, evaluated in a separate node process with `env`
+ * (so MILEWAGE_VERSION_CODE is checked as a build would see it). Throws when the config fails.
+ */
+export function appConfigVersion(root, env = process.env) {
+  const file = join(root, APP_CONFIG);
+  const r = spawnSync(
+    process.execPath,
+    ['-e', 'process.stdout.write(JSON.stringify(require(process.argv[1]).expo.version))', file],
+    { env, encoding: 'utf8' },
+  );
+  if (r.status !== 0) {
+    const why = (r.stderr || '').split('\n').find((l) => /^\w*Error: /.test(l)) || r.stderr;
+    throw new Error(`does not load (${why.trim()})`);
+  }
+  return JSON.parse(r.stdout);
+}
+
+/** Returns the files (package.json, the phone app config) whose version differs from VERSION. */
+export function check(root, env = process.env) {
   const version = readVersion(root);
-  return packageFiles(root)
-    .map((file) => ({ file, found: JSON.parse(readFileSync(file, 'utf8')).version }))
-    .filter((p) => p.found !== version)
-    .map((p) => ({ ...p, expected: version }));
+  const found = packageFiles(root).map((file) => ({
+    file,
+    found: JSON.parse(readFileSync(file, 'utf8')).version,
+  }));
+  if (existsSync(join(root, APP_CONFIG))) {
+    const file = join(root, APP_CONFIG);
+    try {
+      found.push({ file, found: appConfigVersion(root, env) });
+    } catch (e) {
+      found.push({ file, found: `error: ${e.message}` });
+    }
+  }
+  return found.filter((p) => p.found !== version).map((p) => ({ ...p, expected: version }));
 }
 
 /** Rewrites every package.json version to VERSION; returns the files changed. */

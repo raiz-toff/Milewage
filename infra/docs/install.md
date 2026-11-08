@@ -27,6 +27,29 @@ The web client is now at `http://127.0.0.1:8080` on the host. The port is publis
 
 **First run in the browser.** Create the owner account (username, password of at least 10 characters, country, distance unit, currency, time zone). The next screen shows a **recovery key**. Write it on paper or save it in a password manager. It decrypts your backups and is not stored anywhere else: the server keeps only its public half and cannot show it again. Type its last 6 characters to finish setup. Until you do, every other page answers "setup incomplete".
 
+### Run from published images
+
+There are two compose files in `infra/docker/`, with the same services, settings and volumes:
+
+- `docker-compose.yml` **builds** the two images from this checkout (what `infra/install.sh` and every command in this guide use). The first build takes several minutes, longer on a Pi.
+- `docker-compose.release.yml` **pulls** them from a container registry instead: `server` and `caddy`, built for amd64 and arm64 by the `images` CI job on every release tag (`v0.1.0` and so on) and tagged with that version and `latest`.
+
+The release file needs two settings, in `infra/docker/.env` next to the ones `install.sh` wrote:
+
+```bash
+MILEWAGE_IMAGE_REPO=<registry>/<group>/<project>   # the GitLab project's container registry path
+MILEWAGE_VERSION=v0.1.0                             # pin a release; latest is only the fallback
+```
+
+Then use it in place of `docker-compose.yml`:
+
+```bash
+docker compose --env-file infra/docker/.env -f infra/docker/docker-compose.release.yml pull
+docker compose --env-file infra/docker/.env -f infra/docker/docker-compose.release.yml up -d --wait
+```
+
+Without `MILEWAGE_IMAGE_REPO` the file refuses to start ("set to your registry path"). **Not usable yet:** the images exist only once the GitLab project has a runner and a release tag has been built; until then the owner leaves `MILEWAGE_IMAGE_REPO` unset and builds locally. The volumes have the same names in both files, so switching from one to the other keeps your data; do not run both at once.
+
 ## 3. Reach it from the phone: Tailscale on the host
 
 1. Install Tailscale on the host and sign in. Install the Android app and sign in to the same tailnet.

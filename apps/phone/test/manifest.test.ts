@@ -20,8 +20,8 @@ const moduleDir = join(root, 'native', 'comma-tracker', 'android', 'src', 'main'
 const read = (p: string) => readFileSync(p, 'utf8');
 
 describe('manifest lint (09 section 5.3)', () => {
-  it('app.json declares exactly the allowed permissions and no forbidden one', () => {
-    const declared: string[] = JSON.parse(read(join(root, 'app.json'))).expo.android.permissions;
+  it('app.config.js declares exactly the allowed permissions and no forbidden one', () => {
+    const declared: string[] = require('../app.config.js').expo.android.permissions;
     expect([...declared].sort()).toEqual([...ALLOWED].sort());
     expect(declared.map((p) => PREFIX + p).filter((p) => FORBIDDEN.includes(p))).toEqual([]);
   });

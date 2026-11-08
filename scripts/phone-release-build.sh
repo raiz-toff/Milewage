@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Release APK build of the phone app on the `coder` machine (Node 22.22, JDK 17, Android SDK).
 # Output: apps/phone/android/app/build/outputs/apk/release/app-release.apk
-# The APK is signed with the Expo template's debug key; the signed pipeline is M10.3.
+# Signing: with the upload key when $HOME/.milewage/keystore.env (or MILEWAGE_KEYSTORE_ENV) exists
+# (made once by scripts/phone-keystore.sh; see scripts/phone-signing-env.sh), else the Expo debug key.
+# versionCode: MILEWAGE_VERSION_CODE (integer, default 1; apps/phone/app.config.js). Raise it for
+# every build uploaded to Google Play. versionName comes from the VERSION file.
 # --publish PATH (or MILEWAGE_APK_PUBLISH=PATH): then copy it to PATH, where the server hands it out
 # (scripts/publish-apk.sh; e.g. .dev/config/milewage.apk for `npm run dev`). Other arguments go to Gradle.
 set -euo pipefail
@@ -35,6 +38,10 @@ if [[ ! -d "$ANDROID_HOME/platforms" ]]; then
   echo "Android SDK not found at $ANDROID_HOME (set ANDROID_HOME)." >&2
   exit 1
 fi
+
+# shellcheck source=scripts/phone-signing-env.sh
+. "$ROOT/scripts/phone-signing-env.sh"
+milewage_signing_env
 
 cd "$ROOT"
 npm ci
