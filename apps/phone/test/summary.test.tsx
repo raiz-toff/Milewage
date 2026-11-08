@@ -1,8 +1,9 @@
 import { countryModules, mileageDeduction } from '@milewage/shared';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { App } from '../src/App';
 import { money } from '../src/screens/HomeSummary';
-import { summarize, weekStart } from '../src/store/summary';
+import { runningValue, summarize, weekStart } from '../src/store/summary';
+import { FakePermissions } from '../src/permissions/fake';
 import { drive, server, setup } from './support/shiftKit';
 
 jest.mock(
@@ -103,6 +104,42 @@ describe('home summary', () => {
     // Canada has official rates: the own rate is ignored.
     expect(summarize(rows, { ...opts, country: 'CA' }).month.deductionCents).toBe(
       summarize(rows, { ...opts, country: 'CA', ownRate: null }).month.deductionCents,
+    );
+  });
+
+  it('the running shift is priced after the shifts before it (a shared tier), and not at all without a rate', () => {
+    const before = [row('2025-03-01', 4_900_000), row('2025-03-02', 99_000, { status: 'active' })];
+    const shift = { totalM: 200_000, date: '2025-03-02', startedAt: 1, vehicleId: 1 };
+    const ca = countryModules.get('CA')!;
+    expect(runningValue(before, { country: 'CA', vehicleKinds: none }, shift)).toBe(
+      mileageDeduction(ca, {
+        totalM: 200_000,
+        priorM: 4_900_000,
+        date: '2025-03-02',
+        vehicleKind: 'car',
+      }),
+    );
+    expect(runningValue(before, { country: 'ZZ', vehicleKinds: none }, shift)).toBeNull();
+  });
+
+  it('the running shift shows its deduction value so far', async () => {
+    const { services, tracker } = setup(server(), {
+      paired: {
+        country: 'ZZ',
+        mileage_rate: 'yours',
+        own_mileage_rate: { cents_per_unit: 100, unit: 'km' },
+      },
+      permissions: new FakePermissions({ foregroundLocation: 'granted' }),
+      refreshMs: 20,
+    });
+    render(<App services={services} />);
+    fireEvent.press(await screen.findByRole('button', { name: 'Start shift' }));
+    expect(await screen.findByText('Shift running')).toBeTruthy();
+    drive(tracker); // about 0.45 km at 1.00 a km
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText('Deduction so far (your rate)').props.accessibilityValue.text,
+      ).toBe('$0.45'),
     );
   });
 

@@ -104,3 +104,25 @@ export function summarize(
     month: period(`${opts.today.slice(0, 7)}-01`),
   };
 }
+
+/**
+ * The running shift's deduction value so far (cents; null: no rate), as if it ended now: what
+ * it adds to its month, so a tiered rate (Canada's 5,000 km) counts the earlier shifts first.
+ */
+export function runningValue(
+  rows: readonly Row[],
+  opts: Omit<Parameters<typeof summarize>[1], 'today'>,
+  shift: { totalM: number; date: string; startedAt: number; vehicleId: number },
+): number | null {
+  const self: Row = {
+    local_date: shift.date,
+    started_at: shift.startedAt,
+    status: 'ended',
+    total_m: shift.totalM,
+    vehicle_id: shift.vehicleId,
+    sync_state: 'local',
+  };
+  const month = (r: readonly Row[]) => summarize(r, { ...opts, today: shift.date }).month;
+  const withIt = month([...rows, self]).deductionCents;
+  return withIt === null ? null : withIt - (month(rows).deductionCents ?? 0);
+}

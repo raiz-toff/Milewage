@@ -58,9 +58,8 @@ describe('odometer check on the phone', () => {
     expect(await screen.findByText('Shift running')).toBeTruthy();
     // Nothing about the odometer while the shift runs.
     expect(screen.queryByText(/odometer/i)).toBeNull();
-    fireEvent(screen.getByRole('button', { name: 'End shift' }), 'accessibilityAction', {
-      nativeEvent: { actionName: 'activate' },
-    });
+    fireEvent.press(screen.getByRole('button', { name: 'End shift' }));
+    fireEvent.press((await screen.findAllByRole('button', { name: 'End shift' })).at(-1)!);
     expect(await screen.findByText('Shift ended.')).toBeTruthy();
   }
 

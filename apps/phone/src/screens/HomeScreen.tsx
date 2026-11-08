@@ -10,13 +10,12 @@ import {
   Settings as SettingsIcon,
 } from 'lucide-react-native';
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
-import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Skeleton } from '../components/ui/skeleton';
 import { Text } from '../components/ui/text';
 import type { ScreenProps } from '../navigation';
-import { M_PER_UNIT, formatClock } from '../format';
+import { M_PER_UNIT } from '../format';
 import { cn } from '../lib/utils';
 import { deriveFlags } from '../pairing/pairing';
 import { BATTERY_VISITED, canStartShift, initialLadder } from '../permissions/ladder';
@@ -24,23 +23,15 @@ import { useServices } from '../services';
 import type { ActiveShift, ServerShift, Vehicle } from '../shift/controller';
 import { useColors } from '../theme/theme';
 import { useToast } from '../ui/Toast';
-import { Dot } from '../ui/Parts';
 import { Screen } from '../ui/Screen';
-import { SwipeButton } from '../components/ui/swipe-button';
 import { lastOdometerCheck, markOdometerChecked, odometerDue } from '../shift/odometerDue';
 import { HomeSummary } from './HomeSummary';
 import { OdometerPrompt } from './OdometerPrompt';
+import { RunningShift } from './RunningShift';
 import { SetupChecklist } from './SetupChecklist';
 import { SyncBanner } from './SyncBanner';
 
 const DIAG_WINDOW_MS = 10 * 60 * 1000;
-
-/** "1:04:09" from milliseconds. */
-function elapsed(ms: number): string {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  const two = (n: number) => String(n).padStart(2, '0');
-  return `${Math.floor(s / 3600)}:${two(Math.floor(s / 60) % 60)}:${two(s % 60)}`;
-}
 
 export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   const C = useColors();
@@ -351,7 +342,6 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   };
 
   const running = !!shift && shift.endedAt === null;
-  const distance = (meters / M_PER_UNIT[unit]).toFixed(1);
   const notices = (
     <>
       {conflict && (
@@ -429,79 +419,20 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
 
   if (running && shift) {
     return (
-      <Screen
-        title="Shift running"
-        header={
-          <View className="flex-row items-center justify-between px-4 pt-2">
-            <View className="flex-row items-center gap-2">
-              <Text variant="h4" accessibilityRole="header">
-                Shift running
-              </Text>
-              <Badge variant="outline">
-                <Dot color={C.signal} size={6} pulse />
-                <Text>Recording</Text>
-              </Badge>
-            </View>
-            {nav}
-          </View>
-        }
-        footer={
-          busy === 'end' ? (
-            <Button size="lg" variant="secondary" disabled accessibilityLabel="Ending shift">
-              <ActivityIndicator color={C.foreground} />
-              <Text>Ending shift…</Text>
-            </Button>
-          ) : (
-            <SwipeButton
-              variant="destructive"
-              label="Swipe to end shift"
-              accessibilityLabel="End shift"
-              onConfirm={() => void end()}
-            />
-          )
-        }
+      <RunningShift
+        shift={shift}
+        meters={meters}
+        now={now}
+        zone={zone}
+        unit={unit}
+        vehicle={vehicles.find((v) => v.id === shift.vehicleId)?.name}
+        ending={busy === 'end'}
+        onEnd={() => void end()}
+        nav={nav}
       >
-        <View className="items-center gap-2 py-6">
-          <Text
-            tabular
-            accessibilityLabel="Elapsed time"
-            numberOfLines={1}
-            className="font-sans-semibold tracking-tight"
-            style={{ fontSize: 56, lineHeight: 64 }}
-          >
-            {elapsed(now - shift.startedAt)}
-          </Text>
-          <Text variant="muted">{`Since ${formatClock(shift.startedAt, zone)}`}</Text>
-        </View>
-        <Card>
-          <CardHeader className="flex-row items-start justify-between">
-            <View className="flex-1 gap-1">
-              <CardDescription>Distance so far</CardDescription>
-              <CardTitle
-                tabular
-                accessibilityLabel="Distance"
-                className="font-sans-semibold text-4xl tracking-tight"
-              >
-                {distance} {unit}
-              </CardTitle>
-            </View>
-            {shift.created ? (
-              <Badge variant="secondary">
-                <Text>On server</Text>
-              </Badge>
-            ) : (
-              <Badge variant="outline">
-                <Text>Not yet sent to the server</Text>
-              </Badge>
-            )}
-          </CardHeader>
-          <CardContent>
-            <Text variant="muted">Approximate; the server calculates the total.</Text>
-          </CardContent>
-        </Card>
         {notices}
         {paired && <SyncBanner onSettings={goSettings} />}
-      </Screen>
+      </RunningShift>
     );
   }
 
