@@ -5,6 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 import { Button } from '../components/ui/button';
 import { Text } from '../components/ui/text';
 import { isTailnetAddress } from '../connect/reach';
+import { addressesOf } from '../connect/route';
 import { useServices } from '../services';
 import { REMINDER_SHOWN_KEY, reminderFor, type SyncStatus } from '../sync/status';
 import { useColors } from '../theme/theme';
@@ -26,16 +27,27 @@ export function SyncBanner({ onSettings }: { onSettings: () => void }) {
   const [busy, setBusy] = useState(false);
   /** Plan 19 section 3.5: something waiting 10 minutes for a `.ts.net` server, no VPN on. */
   const [tailscaleOff, setTailscaleOff] = useState(false);
+  /** Plan 28: waiting 10 minutes, off Wi-Fi, and the phone has only a home address. */
+  const [awayFromHome, setAwayFromHome] = useState(false);
 
   const refresh = useCallback(async () => {
     const next = await status();
     setS(next);
     const state = await plain.get(REMINDER_SHOWN_KEY);
     const now = Date.now();
-    const base = (await pairing.load())?.credential.baseUrl ?? '';
+    const cred = (await pairing.load())?.credential;
+    const { home, away } = cred ? addressesOf(cred) : { home: null, away: null };
     const waited = next.oldestAt !== null && now - next.oldestAt >= HINT_AFTER_MS;
     // With no VPN a tailnet address cannot be reached at all, so no failed upload is needed.
-    setTailscaleOff(waited && isTailnetAddress(base) && (await net.vpnActive()) === false);
+    // Plan 28: never while the phone sends to its home address; Tailscale is for away.
+    setTailscaleOff(
+      waited &&
+        !!away &&
+        isTailnetAddress(away) &&
+        pairing.where !== 'home' &&
+        (await net.vpnActive()) === false,
+    );
+    setAwayFromHome(waited && !!home && !away && (await net.localNetwork()) === false);
     const r = reminderFor(next.oldestAt, next.unsyncedShifts, now, state ? Number(state) : null);
     if (r.level !== 'none') {
       await plain.set(REMINDER_SHOWN_KEY, String(now));
@@ -91,6 +103,13 @@ export function SyncBanner({ onSettings }: { onSettings: () => void }) {
             <Text>Open Tailscale</Text>
           </Button>
         </View>
+      )}
+      {awayFromHome && (
+        <AlertDescription>
+          You are away from your home Wi-Fi. Shifts stay on this phone and are sent when you are
+          back. To send them from anywhere, set up Tailscale on your server (install guide, section
+          3).
+        </AlertDescription>
       )}
       {wrong && (
         <View className="flex-row flex-wrap gap-2 pt-1">

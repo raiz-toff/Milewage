@@ -11,6 +11,8 @@ import type { FetchFn } from '../api/client';
 
 export const PROBE_MS = 1500;
 export const REMEMBER_MS = 60_000;
+/** How often the phone looks for its server on the Wi-Fi when the home address stops answering. */
+export const REDISCOVER_MS = 10 * 60_000;
 
 export interface Addresses {
   baseUrl: string;
@@ -36,11 +38,19 @@ export interface RouteDeps {
   /** Whether `url` answers quickly as the server with this instance id (any, when null). */
   probe(url: string, instanceId: string | null): Promise<boolean>;
   now?: () => number;
+  /**
+   * On Wi-Fi with a silent home address: the server with this instance id announced on the Wi-Fi,
+   * if any (its address may have changed, e.g. a new DHCP lease). Looked for in the background.
+   */
+  rediscover?: (instanceId: string) => Promise<string | null>;
+  /** The server was found at a new home address: keep it. */
+  onHomeMoved?: (url: string) => void | Promise<void>;
 }
 
 export class RoutePicker {
   private memo: { key: string; url: string; where: Where; at: number } | null = null;
   private lastWhere: Where | null = null;
+  private lookedAt = -Infinity;
   private readonly now: () => number;
 
   constructor(private readonly d: RouteDeps) {
@@ -67,11 +77,27 @@ export class RoutePicker {
     if (m && m.key === key && this.now() - m.at < REMEMBER_MS) return m;
     const local = await this.d.localNetwork();
     const atHome = local !== false && (await this.d.probe(home, instanceId));
+    if (!atHome && local === true && instanceId) this.lookAround(home, instanceId);
     const picked = atHome
       ? { url: home, where: 'home' as const }
       : { url: away, where: 'away' as const };
     this.memo = { key, ...picked, at: this.now() };
     return picked;
+  }
+
+  /** In the background, at most every 10 minutes: has the server moved on this Wi-Fi? */
+  private lookAround(home: string, instanceId: string): void {
+    const { rediscover, onHomeMoved } = this.d;
+    if (!rediscover || !onHomeMoved || this.now() - this.lookedAt < REDISCOVER_MS) return;
+    this.lookedAt = this.now();
+    void rediscover(instanceId)
+      .then(async (url) => {
+        if (url && url !== home && (await this.d.probe(url, instanceId))) {
+          await onHomeMoved(url);
+          this.forget();
+        }
+      })
+      .catch(() => {});
   }
 
   /** A request got no answer: look again next time (walking out of the house switches to away). */

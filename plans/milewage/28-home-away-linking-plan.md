@@ -241,6 +241,10 @@ poll redeems it with the existing `repo.redeem`, so a linked phone is the same r
 - **Never to the wrong server**: http is refused in code for anything but home addresses; the home
   address is used only after the probe sees this phone's instance id; on mobile data it is never
   tried.
+- **A server that moved** (new DHCP address) is found again by its announced instance id and
+  checked with the same probe before the phone uses it (H8). The instance id is not a secret, so a
+  device on the home network could claim it and receive the phone's token over http; that is the
+  same trust as plain http on the LAN, and Q3's proof would close both.
 - **Link codes**: the short code is accepted only from a signed-in session, limited to 10 wrong
   tries per 15 minutes; the `device_code` is 256 random bits, single use, 10 minutes. On a watched
   LAN someone who reads the `device_code` could poll first and take the link: the real phone then

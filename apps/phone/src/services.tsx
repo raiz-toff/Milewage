@@ -121,14 +121,19 @@ export function createServices(p: Parts): Services {
   });
   const appDb = createLazyAppDb(p.openAppDb);
   const monitor = new ConnectionMonitor(appDb);
-  const pairing = new Pairing({
+  // Home or away for every request (plan 28 section 4.3); a server that moved on the Wi-Fi is
+  // found again by its instance id.
+  const route = new RoutePicker({
+    localNetwork: () => p.net.localNetwork(),
+    probe: healthProbe(p.fetch),
+    now: p.now,
+    rediscover: async (id) =>
+      (await p.net.discover()).find((s) => s.instanceId === id)?.url ?? null,
+    onHomeMoved: (url) => pairing.updateHome(url),
+  });
+  const pairing: Pairing = new Pairing({
     monitor,
-    // Home or away for every request (plan 28 section 4.3).
-    route: new RoutePicker({
-      localNetwork: () => p.net.localNetwork(),
-      probe: healthProbe(p.fetch),
-      now: p.now,
-    }),
+    route,
     anyHttp: p.anyHttp,
     secure: p.secure,
     plain: p.plain,

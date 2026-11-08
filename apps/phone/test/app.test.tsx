@@ -25,7 +25,7 @@ describe('app shell', () => {
     render(<App services={fakes()} />);
     expect(await screen.findByText('No shift running.')).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: 'Settings' }));
-    expect(await screen.findByText('Paired to https://mw.example.net')).toBeTruthy();
+    expect(await screen.findByText(/^Away: https:\/\/mw\.example\.net/)).toBeTruthy();
   });
 
   it.each(['dark', 'light'] as const)('renders in the %s scheme', async (name) => {

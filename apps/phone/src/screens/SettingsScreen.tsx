@@ -9,7 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Separator } from '../components/ui/separator';
 import { Text } from '../components/ui/text';
 import type { ScreenProps } from '../navigation';
-import { deriveFlags, type PairedState } from '../pairing/pairing';
+import { addressesOf } from '../connect/route';
+import { deriveFlags, type Credential, type PairedState } from '../pairing/pairing';
 import { useServices } from '../services';
 import { useColors } from '../theme/theme';
 import { useConfirm } from '../ui/Dialog';
@@ -67,7 +68,7 @@ export function SettingsScreen({ navigation }: ScreenProps<'Settings'>) {
           <CardHeader className="flex-row items-start justify-between">
             <View className="flex-1 gap-1">
               <CardTitle>Server</CardTitle>
-              <CardDescription>Paired to {state.credential.baseUrl}</CardDescription>
+              <Addresses credential={state.credential} where={pairing.where} />
             </View>
             <Badge variant={flags.tracking ? 'secondary' : 'outline'}>
               <Text>{flags.tracking ? 'Connected' : 'Tracking off'}</Text>
@@ -155,5 +156,29 @@ function Row({
       </View>
       <ChevronRight size={18} color={C.mutedForeground} />
     </ListRow>
+  );
+}
+
+/** The server's two addresses (plan 28) and which one the phone uses now. */
+function Addresses({
+  credential,
+  where,
+}: {
+  credential: Credential;
+  where: 'home' | 'away' | null;
+}) {
+  const { home, away } = addressesOf(credential);
+  const now = (w: 'home' | 'away') => (where === w ? ' (using now)' : '');
+  return (
+    <View className="gap-1">
+      {home && <CardDescription>{`At home: ${home}${now('home')}`}</CardDescription>}
+      {away ? (
+        <CardDescription>{`Away: ${away}${now('away')}`}</CardDescription>
+      ) : (
+        <CardDescription>
+          Away: not set up. Shifts are sent when the phone is on your home Wi-Fi.
+        </CardDescription>
+      )}
+    </View>
   );
 }

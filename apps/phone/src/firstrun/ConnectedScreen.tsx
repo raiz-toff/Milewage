@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
-import { Car, CheckCircle2 } from 'lucide-react-native';
+import { Car, CheckCircle2, Wifi } from 'lucide-react-native';
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Text } from '../components/ui/text';
+import { addressesOf } from '../connect/route';
 import type { ScreenProps } from '../navigation';
 import { useServices } from '../services';
 import type { Vehicle } from '../shift/controller';
@@ -23,6 +24,8 @@ function countryName(code: string): string {
 
 interface Seen {
   base: string;
+  /** Plan 28: no away address yet, so shifts are sent only from the home Wi-Fi. */
+  homeOnly: boolean;
   name: string | null;
   country: string | null;
   region: string | null;
@@ -48,6 +51,7 @@ export function ConnectedScreen({ navigation }: ScreenProps<'Connected'>) {
     const vehicles = await shift.vehicles().catch(() => null);
     setSeen({
       base: st?.credential.baseUrl ?? '',
+      homeOnly: !!st && !addressesOf(st.credential).away,
       name: s.display_name ?? null,
       country: st?.settings?.country ?? null,
       region: s.region ?? null,
@@ -116,6 +120,15 @@ export function ConnectedScreen({ navigation }: ScreenProps<'Connected'>) {
           >
             <Text>{checking ? 'Checking…' : 'Check again'}</Text>
           </Button>
+        </Alert>
+      )}
+      {seen?.homeOnly && (
+        <Alert icon={Wifi}>
+          <AlertTitle>Works on your home Wi-Fi.</AlertTitle>
+          <AlertDescription>
+            Away from home, shifts wait on this phone until you are back. To send them from
+            anywhere, set up Tailscale on your server later (install guide, section 3). Optional.
+          </AlertDescription>
         </Alert>
       )}
       {seen && !noVehicle && seen.vehicles !== null && (

@@ -360,6 +360,19 @@ export class Pairing {
     return this.keep(baseUrl, null, res.data, res.status, res.headers, first);
   }
 
+  /** Where requests go now (plan 28): home, away, or null before the first one. */
+  get where(): 'home' | 'away' | null {
+    return this.d.route?.where ?? null;
+  }
+
+  /** The server answered at a new home address on the Wi-Fi (same instance): keep it. */
+  async updateHome(url: string): Promise<void> {
+    const raw = await this.d.secure.get(K_CRED);
+    if (!raw || !isHomeAddress(url)) return;
+    const c = JSON.parse(raw) as Credential;
+    await this.d.secure.set(K_CRED, JSON.stringify({ ...c, homeUrl: url }));
+  }
+
   /** Settings that arrived through the change feed replace the cached copy (and drive the flags). */
   async storeSettings(settings: CachedSettings): Promise<void> {
     await this.d.plain.set(K_SETTINGS, JSON.stringify(settings));

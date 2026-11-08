@@ -35,7 +35,7 @@ describe('settings screen', () => {
     expect(await screen.findByText('Phone connected.')).toBeTruthy();
     await finishSetup();
     fireEvent.press(await screen.findByRole('button', { name: 'Settings' }));
-    expect(await screen.findByText('Paired to https://mw.example.net')).toBeTruthy();
+    expect(await screen.findByText(/^Away: https:\/\/mw\.example\.net/)).toBeTruthy();
     expect(await screen.findByText('Distances in kilometres.')).toBeTruthy();
     expect(screen.getByText('Stops and the estimated split are on.')).toBeTruthy();
     // Changing server asks first: Cancel keeps the connection, Disconnect ends it and says so.
@@ -44,7 +44,7 @@ describe('settings screen', () => {
     expect(await screen.findByText(`${change}?`)).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
     await waitFor(() => expect(screen.queryByText(`${change}?`)).toBeNull());
-    expect(screen.getByText(/Paired to/)).toBeTruthy();
+    expect(screen.getByText(/^Away: /)).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: change }));
     fireEvent.press(await screen.findByRole('button', { name: 'Disconnect' }));
     expect(await screen.findByText('Welcome to MileWage')).toBeTruthy();

@@ -2444,3 +2444,15 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - `npm run verify`: typecheck, lint, `version:check`, `openapi:check` green; vitest 1157 passed and 1 failed, `apps/web/test/maintenance.test.tsx` ("Unable to find … Service log", a web file this PR does not touch) at load average 25 on this machine; it passes alone (4 of 4). Phone jest 36 suites, 301 passed, 4 skipped.
 - Not checked on a phone: the whole flow on the owner's S24 against the dev server or the Docker stack with LAN access (the owner tests).
 - Assumption (owner to confirm): discovery listens 4 s before showing "none found"; the Link screen gives up after five lost answers in a row.
+
+## PR H8 — Phone: Tailscale hints only when away; both addresses in Settings; a moved server found again (plan 28)
+
+- Branch `pr-H8-phone-away-hints` (pushed, not merged), stacked on `pr-H7b-phone-link-screens`.
+- Done (plan 28 sections 4.3 and 6):
+  - **Home notice**: "Tailscale is off on this phone, so your server cannot be reached." (PO2d) now needs the away address to be the Tailscale one **and** the phone not to be sending to its home address. A phone with only a home address, off Wi-Fi, with something waiting 10 minutes, says instead: "You are away from your home Wi-Fi. Shifts stay on this phone and are sent when you are back. To send them from anywhere, set up Tailscale on your server (install guide, section 3)."
+  - **Settings › Server**: "At home: http://192.168.1.20:8080 (using now)" and "Away: https://….ts.net", or "Away: not set up. Shifts are sent when the phone is on your home Wi-Fi.", instead of "Paired to …".
+  - **Connected** (first run): with no away address, "Works on your home Wi-Fi." and "Away from home, shifts wait on this phone until you are back. To send them from anywhere, set up Tailscale on your server later (install guide, section 3). Optional."
+  - **A server that moved on the Wi-Fi** (a new DHCP address): when the phone is on Wi-Fi and the home address does not answer, it looks in the background (at most every 10 minutes) for the server announcing the same instance id, checks it with the same probe, and keeps the new home address. The request in hand goes away meanwhile. Plan 28 section 5 notes the trust this needs.
+- Standards checked: plan 28 section 3.1 (reachability over the Wi-Fi name); RFC 6763 TXT records for the instance id; GOV.UK [confirmation pages](https://design-system.service.gov.uk/patterns/confirmation-pages/) (say what happens next) for the Connected note.
+- Tests: `test/awayhints.test.tsx` 8 new (a silent home address on Wi-Fi looks for the same server once per 10 minutes and keeps the new address; never on mobile data; only a home address is kept; at home with Tailscale off no hint; away with Tailscale off the hint and Open Tailscale; home-only and off Wi-Fi the away sentence and no Tailscale hint; Settings shows At home (using now) and Away not set up; Connected's home-only note); `test/app.test.tsx` and `test/pairing.screen.test.tsx` read the Away line instead of "Paired to". They fail without the change.
+- Assumption (owner to confirm): 10 minutes between looks for a moved server.
