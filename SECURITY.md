@@ -10,9 +10,7 @@ Fixes go into a new 0.1 patch release. Older versions do not exist yet.
 
 ## How to report a problem
 
-Open a confidential issue on the project's GitLab. The public address is not decided yet, so:
-
-**[The owner fills in the address here.]**
+Use GitHub's private vulnerability reporting: <https://github.com/raiz-toff/Milewage/security/advisories/new>. Only the owner sees the report. If that page is not available, open an issue that says only "security, please contact me", with no details, and the owner will reach out.
 
 Please do not post details in a public place. Say what you found, how to repeat it, and which
 version you ran. Do not include real location history or passwords.

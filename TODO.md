@@ -6,14 +6,20 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
 
 - [ ] **Tag `v0.1.0`, or decide to wait for the field test** (owner, 2026-11-08). CHANGELOG and
       VERSION say 0.1.0, but `git tag` lists nothing. To tag:
-      `git tag -a v0.1.0 -m "MileWage 0.1.0" && git push origin v0.1.0`. Once a GitLab runner
-      exists, the tag starts the `images` job and offers the `phone-apk` job (started by hand; it
-      needs a runner tagged `android`). See `.gitlab-ci.yml`.
-- [ ] **Rewrite history to drop the dev data folder, or leave it** (owner, 2026-11-08). `cada039`
+      `git tag -a v0.1.0 -m "MileWage 0.1.0" && git push origin v0.1.0`. A tag starts nothing yet:
+      the release jobs left with GitLab; see the next item.
+- [x] **Rewrite history to drop the dev data folder, or leave it** (owner, 2026-11-08). Done
+      2026-11-08: rewritten before the first GitHub push; origin force-pushed to match. `cada039`
       committed `.dev.before-integrate-2026-11-08/` (dev databases, encrypted backups,
       `config/secrets.json`). Z1 takes it out of the index, but every commit from `cada039` on
       still holds it. Origin is a private git server on the LAN. A rewrite changes the hash of every
       commit since `cada039` (32 on 2026-11-08) and needs a force push.
+- [ ] **Release workflow on GitHub Actions** (owner, 2026-11-08). The GitLab `images` and
+      `phone-apk` jobs were removed with GitLab. Decide the registry (GitHub Container Registry,
+      `ghcr.io/raiz-toff/milewage`, is the natural one) and how the upload keystore reaches the
+      runner (an encrypted Actions secret holding `keystore.env` and the keystore file). Then the
+      workflow builds the server and Caddy images for amd64 and arm64 on a `v*` tag and the APK on
+      request, as the GitLab jobs did.
 - [ ] **Make Node 22.22 the default on `coder`** (owner, 2026-11-08). `node --version` is v24.15.0;
       `.nvmrc` says 22.22.0. Verify runs use Node 22 only because `~/.local/node22/bin` is put first
       on `PATH`; a shell without it runs Node 24. Install 22.22 as the default (nvm is not

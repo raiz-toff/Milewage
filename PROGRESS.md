@@ -54,9 +54,9 @@ M0 exit: `npm run verify` passes (typecheck, lint, version check, OpenAPI drift 
 
 ## Needs the owner
 
-- Register a GitLab runner (Docker executor) and give the project path; apply `infra/docs/branch-protection.md`. `.gitlab-ci.yml` is untested. Still open when re-checked on 2026-11-08 (`.gitlab-ci.yml` still says no runner is registered).
+- ~~Register a GitLab runner and apply the GitLab branch protection.~~ Dropped 2026-11-08: GitLab is no longer used. The code lives on GitHub; `.github/workflows/verify.yml` runs `npm run verify` on every pull request and on `main` (Z13).
 - Install Node 22.22 as the default on `coder` (currently extracted from Docker to `~/.local/node22`; default Node is 24.15). Still open when re-checked on 2026-11-08: `node --version` is v24.15.0, `.nvmrc` is 22.22.0.
-- `v0.1.0` has not been tagged (CHANGELOG and VERSION say 0.1.0 on 2026-11-08; the CI image job runs only on a `v*` tag, and the APK job is offered only on one). Checked 2026-11-08: `git tag` lists nothing.
+- `v0.1.0` has not been tagged (CHANGELOG and VERSION say 0.1.0 on 2026-11-08; the CI image job runs only on a `v*` tag, and the APK job is offered only on one). Checked 2026-11-08: `git tag` lists nothing. The image and APK jobs left with GitLab (Z13); a GitHub Actions release workflow is a to-do.
 - `cada039` (D1, 2026-11-08) committed the dev data folder `.dev.before-integrate-2026-11-08/` (databases, encrypted backups, `config/secrets.json`). Z1 removes it from the index and adds it to `.gitignore`, but it stays in history. A history rewrite is the owner's call; origin is a private git server on the LAN.
 
 ## PR 5 — [M1.1] Engine types, integer helpers, stages 1-2

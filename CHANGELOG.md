@@ -21,8 +21,14 @@ All notable changes to MileWage are listed here. The format follows
 - The phone records a battery and timing summary of each shift in its diagnostics (no coordinates).
 - Every server setting is described in `infra/docs/configuration.md`.
 
+### Changed
+
+- CI moved from GitLab to GitHub Actions: `npm run verify` and the dependency audit run on every
+  pull request and on `main` (`.github/workflows/verify.yml`). The release jobs are not ported yet.
+
 ### Removed
 
+- The GitLab pipeline, its test and the GitLab branch-protection guide.
 - The planning documents (`plans/`). They stay in the git history. The build log and the owner's
   to-do list moved to `PROGRESS.md` and `TODO.md` at the root.
 

@@ -1,0 +1,45 @@
+# The contract is `npm run verify`. CI runs exactly that on every pull request and on main.
+# infra/github-actions.test.mjs checks the shape of this file. Release builds (the server and Caddy
+# images, the signed APK) are not set up here yet; see TODO.md.
+name: verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: node -v
+      - run: npm ci
+      - run: npm run verify
+
+  # Known vulnerabilities in the production dependencies, high and critical only. It reports but
+  # does not block yet (baseline on 2026-11-08: 2 low and 9 moderate, none high); delete
+  # `continue-on-error` once the baseline is clean.
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm audit --omit=dev --audit-level=high

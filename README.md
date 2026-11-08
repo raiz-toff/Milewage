@@ -15,7 +15,7 @@ Running it: [`infra/docs/install.md`](infra/docs/install.md) (home lab with Tail
 
 Documentation: [guides for drivers](docs/README.md), [`CHANGELOG.md`](CHANGELOG.md), [`SECURITY.md`](SECURITY.md) and the index of owner decisions, [`DECISIONS.md`](DECISIONS.md).
 
-Releases: the phone app is signed with an upload key made once by `scripts/phone-keystore.sh` (kept in `~/.milewage`, never in git; back it up). CI (`.gitlab-ci.yml`) verifies every merge request and, on a `v*` tag, builds the server and Caddy images for amd64 and arm64 (`infra/docker/docker-compose.release.yml` runs them). It needs a GitLab runner, which is not registered yet.
+Releases: the phone app is signed with an upload key made once by `scripts/phone-keystore.sh` (kept in `~/.milewage`, never in git; back it up). CI (`.github/workflows/verify.yml`, GitHub Actions) runs `npm run verify` and a dependency audit on every pull request and on `main`. Release builds of the images and the APK are not set up on GitHub yet (`TODO.md`).
 
 Dependency updates: `renovate.json` asks for one weekly pull request with the minor and patch updates and for Docker images pinned by digest. It runs only when a Renovate bot (self-hosted, or the Mend Renovate app) is pointed at the project; nothing happens until then.
 
