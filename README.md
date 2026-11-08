@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="branding/coin-thin/lockup-reverse.svg" />
+    <img src="branding/coin-thin/lockup.svg" alt="MileWage" height="72" />
+  </picture>
+</p>
+
 # MileWage
 
 Self-hosted mileage tracking for gig riders and drivers. All planning documents are in [`plans/milewage/`](plans/milewage/README.md); the build order is [`17-gate4-execution-roadmap.md`](plans/milewage/17-gate4-execution-roadmap.md).
