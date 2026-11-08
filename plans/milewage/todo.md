@@ -35,8 +35,32 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
       open), or Apache-2.0 or MIT (allow wider reuse). The choice must come before any outside
       contribution. No LICENSE file is added until it is made.
 
+- [ ] **OS notifications on the phone need a backend** (N1, 2026-11-08). `expo-notifications` was
+      installed, inspected and removed: it always brings Firebase Cloud Messaging and Google's
+      datatransport logging, which the Q1 decision (plan 24 section 6) ruled out for the camera. The
+      port, the unsynced-data reminder logic and the tests are in place; nothing fires on a device
+      until the owner picks: (a) accept Firebase, (b) a small local Expo module on
+      `NotificationManagerCompat` plus an inexact `AlarmManager` alarm (recommended, same route as
+      the ZXing scanner), or (c) exclude Firebase in Gradle (unsupported by Expo).
+
 ## Owner to confirm
 
 Decisions builders made and wrote as "Assumption (owner to confirm)" in `progress.md`. The main
 ones: existing vehicles count as owned; "earnings" means after app fees; the own mileage rate has
 no dates; Nova Scotia HST 14 % vs 15 %; the dashboard opens on Week.
+
+Added 2026-11-08 by the integration pass (details in `progress.md` under each PR):
+
+- R1 `milewage-cli restore`: the old data is parked at `<data>/before-restore-<time>/` inside the
+  `data` volume (not beside it), kept until the owner deletes it; no extra `pre-restore/` backup is
+  written; `diagnostics.db` is left in place.
+- F1 money: every stored amount is read as integer minor units of `settings.currency`, so a stored
+  JPY `1250` shows as ¥1,250 (the old display divided by 100 regardless of currency). Schedule's
+  time field offers 5-minute steps.
+- S1 privacy page: `/privacy` on the owner's own address is the Google Play privacy-policy URL and
+  names no developer contact; HSTS is one year without `includeSubDomains`; the page suggests
+  `tailscale serve reset`, which clears every serve setting on that machine.
+- C1 releases: tags are `v<VERSION>`; in CI the Android versionCode is the pipeline IID, so hand-made
+  APKs need a higher `MILEWAGE_VERSION_CODE`; the `images` job needs a privileged runner; Renovate
+  groups Expo and React Native minors with everything else.
+- N1 phone: the unsynced-data reminder has no on/off switch yet (plan 15 section 13 names one).
