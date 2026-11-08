@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { Slider } from '@/components/ui/slider';
 import { Section } from '../ui/layout';
 import { ApiError, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
@@ -123,18 +124,22 @@ export function RouteView({
         />
       </Suspense>
       <div className="flex items-center gap-4">
-        <input
-          type="range"
+        <Slider
           aria-label="Replay position"
-          className="flex-1 accent-primary"
+          valueText={cursor ? formatTime(cursor.t, tz) : undefined}
+          className="flex-1 py-2"
           min={0}
           max={STEPS}
-          value={step}
-          onChange={(e) => setStep(Number(e.target.value))}
+          value={[step]}
+          onValueChange={([v]) => setStep(v ?? 0)}
         />
         {cursor ? (
-          <output className="w-64 tabular-nums text-sm text-muted-foreground">
-            {formatTime(cursor.t, tz)} · {speedIn(cursor.speed, settings.distance_unit)}
+          <output className="shrink-0 rounded-md bg-muted px-2 py-1 text-sm tabular-nums">
+            {formatTime(cursor.t, tz)}
+            <span className="text-muted-foreground">
+              {' · '}
+              {speedIn(cursor.speed, settings.distance_unit)}
+            </span>
           </output>
         ) : null}
       </div>

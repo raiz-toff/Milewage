@@ -1812,3 +1812,9 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Standards checked: onboarding-checklist practice keeps completed tasks completed and lets optional ones be dismissed ([Appcues checklists](https://docs.appcues.com/en_US/checklists), [Userpilot checklist best practices](https://userpilot.com/blog/onboarding-checklist/), [NN/g on progress indicators and checklists](https://www.nngroup.com/articles/progress-indicators/)).
 - Tests: `apps/server/test/onboarding.test.ts` 1 new (adds only, no repeats, unknown step 422, run-again clears); `apps/web/test/dashboard-extras.test.tsx` 2 new (a step seen done is kept, a kept goal stays done after deletion; Skip on optional steps only). All fail without the change.
 - Assumption (owner to confirm): goal and backup are skippable; vehicle and phone are not. Existing owners start with an empty list, filled from what is done the first time the dashboard opens.
+
+## PR W9 — Web: the route replay uses the shadcn Slider
+
+- Branch `pr-W9-replay-slider` (pushed, not merged), stacked on `pr-W8-setup-steps-stick`.
+- Owner request (2026-11-08, screenshot of the shift map): replace the browser's range input under the route with "something modern from shadcn". Added the official [shadcn/ui Slider](https://ui.shadcn.com/docs/components/slider) with its CLI (`shadcn add slider`, radix-nova style, built on [Radix Slider](https://www.radix-ui.com/primitives/docs/components/slider)). One local change to it: `aria-label` and a new `valueText` go on the thumb, which is what carries `role="slider"` in Radix, so screen readers hear "Replay position, 21:55". The time and speed next to it sit in a small muted chip.
+- Tests: `apps/web/test/routeview.test.tsx` now finds the slider by role and moves it with Page Up (keyboard, as Radix handles it); fails without the change.

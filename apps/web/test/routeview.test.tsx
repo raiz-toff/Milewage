@@ -151,12 +151,15 @@ describe('route view', () => {
     // The first test pays for the lazy import of the map module; a loaded machine needs longer.
     await waitFor(() => expect(ml.state.maps).toHaveLength(1), { timeout: 5000 });
     expect(ml.state.maps[0]!.options.style).toMatch(/tiles\.openfreemap\.org/);
-    const slider = screen.getByLabelText('Replay position') as HTMLInputElement;
+    // The shadcn (Radix) slider: role="slider" on the thumb, moved with the keyboard.
+    const slider = screen.getByRole('slider', { name: 'Replay position' });
     expect(screen.getByText(/0 km\/h/)).toBeTruthy();
     const pin = () => ml.state.markers.find((m) => m.color);
     await waitFor(() => expect(pin()).toBeTruthy());
     expect(pin()!.on).toBe(false); // at the start the Start marker is enough
-    fireEvent.change(slider, { target: { value: '500' } });
+    // Page Up moves ten steps; 50 presses is halfway (500 of 1000).
+    for (let i = 0; i < 50; i++) fireEvent.keyDown(slider, { key: 'PageUp' });
+    expect(slider.getAttribute('aria-valuenow')).toBe('500');
     // halfway in time is the middle fix: 36 km/h and the middle coordinate
     await waitFor(() => expect(screen.getByText(/36 km\/h/)).toBeTruthy());
     expect(screen.getByText('45.01000, -75.00000')).toBeTruthy();
