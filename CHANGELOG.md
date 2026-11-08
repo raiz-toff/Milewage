@@ -20,6 +20,8 @@ All notable changes to MileWage are listed here. The format follows
 - The phone reads the system Location switch, so the permission steps can say when it is off.
 - The phone records a battery and timing summary of each shift in its diagnostics (no coordinates).
 - Every server setting is described in `infra/docs/configuration.md`.
+- Repository: a code owners file, a pull request template and a bug report template under
+  `.github/`.
 
 ### Changed
 
