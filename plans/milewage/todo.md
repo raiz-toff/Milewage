@@ -31,6 +31,9 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
 - [ ] Error `type` URIs use `https://milewage.dev/errors/…`, a domain the owner does not own
       (`apps/server/src/errors.ts`, plan 08).
 - [ ] Choose a licence for MileWage before taking outside contributions (plan 21 §2.4).
+      Usual options for self-hosted apps: AGPL-3.0 (used by Immich and Nextcloud; keeps hosted forks
+      open), or Apache-2.0 or MIT (allow wider reuse). The choice must come before any outside
+      contribution. No LICENSE file is added until it is made.
 
 ## Owner to confirm
 

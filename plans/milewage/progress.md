@@ -2176,3 +2176,14 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Seq ordering on the server: it does not compare a seq with the device's highest seen seq. It stores any new `(device_id, seq)` and counts an existing one as a duplicate (`telemetry.insert`, `routes/tracking.ts`). Rejecting a lower seq would be wrong: backlog uploads, retries after a lost acknowledgement and batches across several shifts (plan 15 section 6.2) legitimately send lower seqs after higher ones, and a per-device high-water mark would silently drop them. No change.
 - Done: no production change. A test pins the invariant so a future change to redeem (reusing a device row) fails loudly.
 - Tests: `apps/server/test/devices.test.ts` 1 new: the same seq 1 twice from one device is a duplicate; after pairing again the new device id differs and seq 1 is stored as a fresh point; the points belong to the two ids; the old token keeps working until `DELETE /devices/:id`, then answers `device_revoked`, and the new token is unaffected. Fails if redeem ever reuses a device row (the second seq 1 would count as a duplicate).
+## PR D1 — Docs for humans: changelog, security policy, decisions, driver docs
+
+- Branch `pr-D1-docs`, on `main` (caeed56). Documentation only; no code changed.
+- Done: `CHANGELOG.md` (Keep a Changelog 1.1; `[Unreleased]` empty, `[0.1.0] - 2026-11-08` by area, with a "Not yet verified" block); `SECURITY.md` (supported 0.1.x, report by a confidential GitLab issue with a visible placeholder for the address, scope, a short threat model, what reporters can expect); `DECISIONS.md` (one table of dated and numbered owner decisions, each linked to its plan section; `plans/` stays the record); `docs/` with an index, `how-miles-are-counted`, `active-and-deadhead`, `for-your-accountant`, `if-your-phone-is-lost` and `faq`; a "Documentation" line in the root `README.md`; the licence options under "Choose a licence" in `todo.md` (no LICENSE file).
+- Decisions/limits:
+  - The lost-phone page says what M5.8 built: after a restore the phone marks shifts "on phone only" and blocks eviction, but does not re-send its points (the tracker has no method for it). Plan 15 section 9.3 says it re-sends; the page follows the code.
+  - The accountant page repeats plan 04 section 1 and says those requirements are unchecked against the offices' pages. Plan 04 still mentions a PDF log export; the page says no PDF exists (M9.4).
+  - Only Canada has a tax estimate (`countries/ca/tax.ts`); the FAQ says so. Every pack is `verified: false`.
+  - The page at `/privacy` is described but not built here; another change adds it.
+  - The active and deadhead page gives the 180 s stop toggle from the engine; the stop-detection constants (40 m, 120 s) are left out because the plans call them a guess.
+  - The decisions table lists only written decisions. Builder-only choices (for example the PDF skip, M9.4) are left out.
