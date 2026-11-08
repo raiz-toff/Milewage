@@ -120,6 +120,104 @@ describe('backups page', () => {
   });
 });
 
+describe('a new recovery key', () => {
+  const KEY = 'AGE-SECRET-KEY-1NEWKEY0000000000000000000000000000000000000000ABCDEF';
+  function openKey(
+    confirmed: { backup: unknown } = { backup: backup({ id: 9, trigger: 'manual' }) },
+  ) {
+    let items = [backup()];
+    return renderApp(
+      {
+        ...signedIn(),
+        'GET /backups': () => ({ body: items }),
+        'GET /system/status': () => ({ body: status() }),
+        'POST /backups/recovery-key': ({ body }: { body: { password: string } }) =>
+          body.password === 'right password'
+            ? { status: 201, body: { recovery_key: KEY, state: 'needs_confirmation' } }
+            : {
+                status: 401,
+                body: { code: 'invalid_credentials', detail: 'The password is wrong.' },
+              },
+        'POST /backups/recovery-key/confirm': ({ body }: { body: { last6: string } }) => {
+          if (body.last6.toUpperCase() !== 'ABCDEF') {
+            return {
+              status: 422,
+              body: { code: 'validation_failed', detail: 'That is not the end of the new key.' },
+            };
+          }
+          if (confirmed.backup) items = [confirmed.backup as ReturnType<typeof backup>, ...items];
+          return { body: { state: 'ready', ...confirmed } };
+        },
+      } as never,
+      '/backups',
+    );
+  }
+  const start = async () => {
+    await screen.findByText('nightly');
+    fireEvent.click(screen.getByRole('button', { name: 'Make a new recovery key' }));
+    return screen.findByRole('dialog');
+  };
+
+  it('asks for the password and says older backups still need the old key', async () => {
+    const { calls } = openKey();
+    const dialog = await start();
+    expect(dialog.textContent).toContain('Backups made before today still need the old key');
+    fireEvent.change(screen.getByLabelText('Your password'), { target: { value: 'wrong one' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Make the new key' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('The password is wrong.');
+    expect(screen.queryByTestId('new-recovery-key')).toBeNull();
+    expect(calls.find((c) => c.path === '/backups/recovery-key')?.body).toEqual({
+      password: 'wrong one',
+    });
+  });
+
+  it('shows the key once, confirms its end and lists the first backup under it', async () => {
+    const { calls } = openKey();
+    await start();
+    fireEvent.change(screen.getByLabelText('Your password'), {
+      target: { value: 'right password' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Make the new key' }));
+    expect((await screen.findByTestId('new-recovery-key')).textContent).toBe(KEY);
+    const saved = screen.getByRole('button', { name: 'I saved it' }) as HTMLButtonElement;
+    expect(saved.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText('Last 6 characters of the key'), {
+      target: { value: 'zzzzzz' },
+    });
+    fireEvent.click(saved);
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'That is not the end of the new key.',
+    );
+    fireEvent.change(screen.getByLabelText('Last 6 characters of the key'), {
+      target: { value: 'abcdef' },
+    });
+    fireEvent.click(saved);
+    expect(await screen.findByText('New recovery key in use')).toBeTruthy();
+    expect(screen.getByText(/A backup with it was made just now/)).toBeTruthy();
+    expect(screen.queryByTestId('new-recovery-key')).toBeNull();
+    expect(await screen.findByText('manual')).toBeTruthy();
+    const sent = calls.filter((c) => c.path === '/backups/recovery-key/confirm');
+    expect(sent.map((c) => c.body)).toEqual([{ last6: 'zzzzzz' }, { last6: 'abcdef' }]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Close' })[0]!);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('says so when the first backup under the new key failed', async () => {
+    openKey({ backup: null });
+    await start();
+    fireEvent.change(screen.getByLabelText('Your password'), {
+      target: { value: 'right password' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Make the new key' }));
+    await screen.findByTestId('new-recovery-key');
+    fireEvent.change(screen.getByLabelText('Last 6 characters of the key'), {
+      target: { value: 'ABCDEF' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'I saved it' }));
+    expect(await screen.findByText(/the first backup with it failed/)).toBeTruthy();
+  });
+});
+
 describe('restore onto a fresh instance', () => {
   const fresh = (restore: () => { status?: number; body?: unknown }) =>
     renderApp({

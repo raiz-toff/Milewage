@@ -6,6 +6,7 @@ These pages explain MileWage in plain words. They describe what is built in vers
 - [Active and deadhead miles](active-and-deadhead.md): how stops are found, and why the split is an estimate.
 - [For your accountant](for-your-accountant.md): the exports, what a mileage log holds, and what the tax figure is and is not.
 - [If your phone is lost](if-your-phone-is-lost.md): what is on the phone and what to do.
+- [If you lose your recovery key](if-you-lose-your-recovery-key.md): what can and cannot be recovered, and how to make a new key.
 - [Questions and answers](faq.md): battery, privacy, countries, backups and more.
 
 To install or upgrade the server, see [`infra/docs/install.md`](../infra/docs/install.md) and [`infra/docs/upgrade.md`](../infra/docs/upgrade.md).

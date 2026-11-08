@@ -8,6 +8,7 @@ import type { Schemas } from '../api/client';
 import { formatDateTime } from '../format';
 import { useSession, useSettings } from '../session';
 import { Button, FormError } from '../ui/form';
+import { NewRecoveryKey } from './NewRecoveryKey';
 
 type Backup = Schemas['Backup'];
 type Status = Schemas['SystemStatus'];
@@ -176,6 +177,7 @@ export function Backups() {
       {status && modules.backup_download ? (
         <Offsite offsite={status.offsite} downloaded={downloaded} onChange={acknowledge} />
       ) : null}
+      <NewRecoveryKey />
     </section>
   );
 }

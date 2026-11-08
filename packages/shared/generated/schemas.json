@@ -4205,6 +4205,60 @@
         }
       }
     },
+    "NewRecoveryKeyRequest": {
+      "type": "object",
+      "required": [
+        "password"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "password": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The owner's password",
+          "asked again before the key changes.": null
+        }
+      }
+    },
+    "NewRecoveryKey": {
+      "type": "object",
+      "required": [
+        "recovery_key",
+        "state"
+      ],
+      "properties": {
+        "recovery_key": {
+          "type": "string",
+          "description": "age private key; never stored on the server."
+        },
+        "state": {
+          "const": "needs_confirmation"
+        }
+      }
+    },
+    "NewRecoveryKeyConfirmed": {
+      "type": "object",
+      "required": [
+        "state",
+        "backup"
+      ],
+      "properties": {
+        "state": {
+          "const": "ready"
+        },
+        "backup": {
+          "description": "The first backup under the new key, or null when it failed (the key change stands; run a backup again).",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Backup"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
     "OffsiteState": {
       "type": "object",
       "required": [

@@ -115,6 +115,12 @@ export function createBackupService(o: BackupServiceOptions) {
     }
   }
 
+  /** Undefined when there is no owner yet. Rejects with BackupError; older backups are never deleted then. */
+  function run(trigger: BackupTrigger): Promise<BackupRunRow | undefined> {
+    inFlight ??= execute(trigger).finally(() => (inFlight = undefined));
+    return inFlight;
+  }
+
   return {
     engine,
     /** Called after every run, verified or failed (one listener per interested module). */
@@ -131,10 +137,18 @@ export function createBackupService(o: BackupServiceOptions) {
     /** Where a recorded backup lives on the `backups` volume. */
     pathOf: (row: BackupRunRow) => join(o.dir, row.fileName),
     cleanTemp: () => engine.cleanTemp(),
-    /** Undefined when there is no owner yet. Rejects with BackupError; older backups are never deleted then. */
-    run(trigger: BackupTrigger): Promise<BackupRunRow | undefined> {
-      inFlight ??= execute(trigger).finally(() => (inFlight = undefined));
-      return inFlight;
+    run,
+    /**
+     * Like `run`, but never joins a run that started earlier: it waits for that one to end first.
+     * For a change the next file must carry, such as a new recovery key.
+     */
+    runAfterCurrent(trigger: BackupTrigger): Promise<BackupRunRow | undefined> {
+      const earlier = inFlight;
+      if (!earlier) return run(trigger);
+      return earlier.then(
+        () => run(trigger),
+        () => run(trigger),
+      );
     },
     list: () => repo.list(),
     byId: (id: number) => repo.byId(id),

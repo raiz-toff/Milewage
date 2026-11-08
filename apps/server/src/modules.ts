@@ -556,7 +556,9 @@ export function createServerModules(ctx: ServerContext) {
     defineModule({
       ...backupModule,
       routes: (host) => {
-        backupRoutes({ ...ctx, authn, service: backup, download: ctx.backupDownload })(host);
+        backupRoutes({ ...ctx, authn, service: backup, secrets, download: ctx.backupDownload })(
+          host,
+        );
         restoreRoutes({ ...ctx, restore, uploadDir })(host);
       },
       jobs: ctx.backupSchedule ? [nightlyBackupJob(backup, ctx.now, ctx.log)] : [],

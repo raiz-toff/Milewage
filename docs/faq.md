@@ -44,7 +44,7 @@ Yes. The server makes an encrypted backup every night and after a shift ends. Yo
 
 ## What if I forget the recovery key?
 
-Then your backups cannot be read, by you or by anyone else. The server never stores the key. The data on the running server is not affected.
+Then the backups locked with it cannot be read, by you or by anyone else. The server never stores the key. The data on the running server is not affected. You can make a new key on the Backups page; it protects the backups made from then on. See [If you lose your recovery key](if-you-lose-your-recovery-key.md).
 
 ## Can several drivers share one server?
 

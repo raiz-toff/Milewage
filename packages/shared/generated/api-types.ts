@@ -1550,6 +1550,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/backups/recovery-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make a new recovery key (10 section 9). Needs the owner's password. Backups keep using the old key until the new one is confirmed.
+         * @description The new private key is shown once and never stored. Backups made before the change are not re-encrypted and still need the old key. A new request replaces a key that was not confirmed.
+         */
+        post: operations["createRecoveryKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/backups/recovery-key/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm the new recovery key; backups switch to it and one backup is made with it at once. */
+        post: operations["confirmNewRecoveryKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/system/status": {
         parameters: {
             query?: never;
@@ -2798,6 +2835,22 @@ export interface components {
             integrity_ok: boolean;
             /** @enum {unknown} */
             trigger: "nightly" | "shift_end" | "manual" | "pre_migration" | "pre_restore";
+        };
+        NewRecoveryKeyRequest: {
+            /** @description The owner's password */
+            password: string;
+        };
+        NewRecoveryKey: {
+            /** @description age private key; never stored on the server. */
+            recovery_key: string;
+            /** @constant */
+            state: "needs_confirmation";
+        };
+        NewRecoveryKeyConfirmed: {
+            /** @constant */
+            state: "ready";
+            /** @description The first backup under the new key, or null when it failed (the key change stands; run a backup again). */
+            backup: components["schemas"]["Backup"] | null;
         };
         OffsiteState: {
             last_download_at: number | null;
@@ -6474,6 +6527,61 @@ export interface operations {
                     "application/json": components["schemas"]["OffsiteState"];
                 };
             };
+        };
+    };
+    createRecoveryKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewRecoveryKeyRequest"];
+            };
+        };
+        responses: {
+            /** @description The new key, shown once. Confirm it with its last 6 characters. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewRecoveryKey"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["Unprocessable"];
+            429: components["responses"]["RateLimited"];
+        };
+    };
+    confirmNewRecoveryKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    last6: string;
+                };
+            };
+        };
+        responses: {
+            /** @description New backups use the new key. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewRecoveryKeyConfirmed"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["Unprocessable"];
         };
     };
     getSystemStatus: {

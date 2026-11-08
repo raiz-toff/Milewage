@@ -84,7 +84,7 @@ x-modules:
     toggle: engine is not toggleable; backup.on_shift_end, backup.download
     default: true
     dependsOn: [core]
-    operations: [listBackups, runBackup, downloadBackup, setOffsiteAck, restoreOnFreshInstance]
+    operations: [listBackups, runBackup, downloadBackup, setOffsiteAck, restoreOnFreshInstance, createRecoveryKey, confirmNewRecoveryKey]
   diagnostics:
     toggle: modules.diagnostics   # plus settings.diagnostics_level (off, basic, verbose); 16 section 5
     default: true
@@ -2379,6 +2379,53 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/OffsiteState' }
+  /backups/recovery-key:
+    post:
+      tags: [backups]
+      operationId: createRecoveryKey
+      summary: Make a new recovery key (10 section 9). Needs the owner's password. Backups keep using the old key until the new one is confirmed.
+      description: >-
+        The new private key is shown once and never stored. Backups made before the change are not
+        re-encrypted and still need the old key. A new request replaces a key that was not confirmed.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NewRecoveryKeyRequest' }
+      responses:
+        '201':
+          description: The new key, shown once. Confirm it with its last 6 characters.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NewRecoveryKey' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /backups/recovery-key/confirm:
+    post:
+      tags: [backups]
+      operationId: confirmNewRecoveryKey
+      summary: Confirm the new recovery key; backups switch to it and one backup is made with it at once.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [last6]
+              additionalProperties: false
+              properties:
+                last6: { type: string, minLength: 6, maxLength: 6 }
+      responses:
+        '200':
+          description: New backups use the new key.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NewRecoveryKeyConfirmed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
 
   /system/status:
     get:
@@ -3735,6 +3782,28 @@ components:
         sha256: { type: string }
         integrity_ok: { type: boolean }
         trigger: { enum: [nightly, shift_end, manual, pre_migration, pre_restore] }
+    NewRecoveryKeyRequest:
+      type: object
+      required: [password]
+      additionalProperties: false
+      properties:
+        password: { type: string, minLength: 1, description: The owner's password, asked again before the key changes. }
+    NewRecoveryKey:
+      type: object
+      required: [recovery_key, state]
+      properties:
+        recovery_key: { type: string, description: age private key; never stored on the server. }
+        state: { const: needs_confirmation }
+    NewRecoveryKeyConfirmed:
+      type: object
+      required: [state, backup]
+      properties:
+        state: { const: ready }
+        backup:
+          description: The first backup under the new key, or null when it failed (the key change stands; run a backup again).
+          oneOf:
+            - { $ref: '#/components/schemas/Backup' }
+            - { type: 'null' }
     OffsiteState:
       type: object
       required: [last_download_at, synced_elsewhere_at, reminder_due]
