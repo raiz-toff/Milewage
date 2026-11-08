@@ -44,6 +44,9 @@ All notable changes to MileWage are listed here. The format follows
 
 ### Docs
 
+- The design system is a project skill, `.claude/skills/milewage-design/`: palette and theme tokens,
+  type, the web and phone primitives, the voice and the number formats, for anyone building a
+  screen.
 - Plans 02 to 19 have a build note under their status line, and plan 12 has a spike status table.
 - A row in `DECISIONS.md` for the spike checks that are still open.
 
