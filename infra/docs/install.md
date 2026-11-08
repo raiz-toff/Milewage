@@ -126,3 +126,21 @@ MileWage can let an AI assistant such as Claude read your records and add to the
 4. Ask, for example, "How much did I make per hour last week?" or "Add a $54.20 fuel expense from Esso today". Your assistant asks before each change unless you allowed it.
 
 Revoke a token on the same page as soon as you stop using it; changes made by assistants are listed there too. claude.ai's own connectors reach servers from the internet, not from your tailnet, so they cannot connect to a Tailscale-only MileWage; do not open the endpoint with `tailscale funnel` for them.
+
+## 8. Security headers and another map service
+
+Caddy sends a `Content-Security-Policy` with every answer: the web client may load scripts, styles, fonts, its worker and its manifest from your server only, and map data and pictures from `https://tiles.openfreemap.org` (the default basemap). Over https (through `tailscale serve`) it also sends `Strict-Transport-Security: max-age=31536000`; plain http on the host gets none, so `http://127.0.0.1:8080` keeps working.
+
+If you build the web client with `VITE_MAP_STYLE_URL` pointing at another map service, add that host, and every host its style names for tiles, sprites and glyphs, to `img-src` and `connect-src` in `infra/docker/Caddyfile`. Otherwise the browser blocks it and maps show the plain background with the route. A style served from your own server needs no change; `VITE_MAP_STYLE_URL=none` needs none either.
+
+## 9. Privacy page, and removing MileWage with its data
+
+Every instance serves `https://<your address>/privacy` without sign-in: what the phone and the server record and who else sees something. You can give it as the app's privacy policy address. The sign-in screen, Settings › Tracking and privacy, the account menu and the `/app` download page link to it.
+
+To remove MileWage and everything it stored, first download a backup if you may want the records later, then on the host, in the MileWage folder:
+
+```bash
+docker compose -f infra/docker/docker-compose.yml down -v
+```
+
+This stops the containers and deletes the `data`, `backups`, `config`, `caddy_data` and `caddy_config` volumes. Backup files you downloaded elsewhere are not touched. `tailscale serve reset` stops Tailscale serving it (it clears every `tailscale serve` setting on the host). On each phone: Android Settings › Apps › MileWage › Storage › Clear storage, or uninstall the app.

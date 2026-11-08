@@ -43,8 +43,13 @@ describe('app download page', () => {
 
   it('a published app: Google Play first, the direct download second', async () => {
     open(APK, PLAY);
-    const links = await screen.findAllByRole('link');
-    expect(links.map((l) => l.textContent)).toEqual(['Get it on Google Play', 'Download MileWage']);
+    await screen.findByRole('link', { name: 'Get it on Google Play' });
+    const links = screen.getAllByRole('link');
+    expect(links.map((l) => l.textContent)).toEqual([
+      'Get it on Google Play',
+      'Download MileWage',
+      'Privacy',
+    ]);
     expect(links[0]!.getAttribute('href')).toBe(PLAY);
     expect(screen.getByText('Or download it directly:')).toBeTruthy();
   });

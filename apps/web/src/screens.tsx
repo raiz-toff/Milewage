@@ -32,6 +32,7 @@ import { ShiftsRoutes } from './pages/Shifts';
 import { GoalsPage } from './pages/Goals';
 import { TaxPage } from './pages/Tax';
 import { VehiclesPage } from './pages/Vehicles';
+import { publicPages } from './publicPages';
 
 /**
  * Every signed-in screen, in navigation order. `visible` is the module-flag rule of 05 section
@@ -166,8 +167,7 @@ export const screens: Screen[] = [
  */
 export const spaPaths = (list: Screen[] = screens): string[] => [
   '/',
-  '/pair', // public: the pairing QR's page (main.tsx)
-  '/app', // public: the app download page (main.tsx)
+  ...Object.keys(publicPages), // public: no sign-in (publicPages.tsx)
   '/onboarding', // the setup wizard (App.tsx), so a reload on a step works
   '/onboarding/*',
   ...list.flatMap((s) => (s.path.endsWith('/*') ? [s.path.slice(0, -2), s.path] : [s.path])),

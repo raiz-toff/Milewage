@@ -7,6 +7,7 @@ import {
   Monitor,
   Moon,
   Settings as SettingsIcon,
+  ShieldCheck,
   Sun,
   User,
   WifiOff,
@@ -164,6 +165,13 @@ function AccountMenu({ name }: { name: string | null }) {
             <DropdownMenuItem onSelect={() => navigate('/settings/general')}>
               <SettingsIcon />
               Settings
+            </DropdownMenuItem>
+            {/* A full page load: /privacy is a public page outside the router (publicPages.tsx). */}
+            <DropdownMenuItem asChild>
+              <a href="/privacy">
+                <ShieldCheck />
+                Privacy
+              </a>
             </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />

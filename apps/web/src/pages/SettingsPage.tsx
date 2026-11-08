@@ -21,7 +21,7 @@ import { levelWord, useCountries } from '../countries';
 import type { Schemas, Settings } from '../api/client';
 import { parseRate, rateInput } from '../format';
 import { useSession, useSettings } from '../session';
-import { Button, Field, FormError, SelectField } from '../ui/form';
+import { Button, Field, FormError, PrivacyLink, SelectField } from '../ui/form';
 import { PageHeader } from '../ui/layout';
 import { Account } from './Account';
 import { AssistantsCard } from './Assistants';
@@ -653,6 +653,10 @@ function TrackingSection({ prefs }: { prefs: Prefs }) {
             />
           ) : null}
         </div>
+        <p className="text-sm text-muted-foreground">
+          What the phone and this server record, and who else sees something:{' '}
+          <PrivacyLink className="font-medium text-foreground underline" />.
+        </p>
       </div>
     </SettingsCard>
   );

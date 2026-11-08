@@ -70,6 +70,12 @@ export function AppPage() {
           </p>
         </>
       )}
+      <p className="border-t pt-4 text-sm text-muted-foreground">
+        What the app records and who else sees it:{' '}
+        <a href="/privacy" className="underline underline-offset-4 hover:text-foreground">
+          Privacy
+        </a>
+      </p>
     </main>
   );
 }

@@ -319,10 +319,25 @@ export function FormError({ message }: { message: string | null }) {
   ) : null;
 }
 
-/** A centred card for screens shown before sign-in. */
+/**
+ * A link to the public privacy page (/privacy). A plain link, not a router one: that page lives
+ * outside the router and the session (publicPages.tsx), so it needs a full page load.
+ */
+export function PrivacyLink({ className }: { className?: string }) {
+  return (
+    <a
+      href="/privacy"
+      className={cn('underline-offset-4 hover:text-foreground hover:underline', className)}
+    >
+      Privacy
+    </a>
+  );
+}
+
+/** A centred card for screens shown before sign-in, with the privacy link under it. */
 export function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-svh items-center justify-center p-6">
+    <div className="flex min-h-svh flex-col items-center justify-center gap-4 p-6">
       <UiCard className="w-full max-w-sm">
         <CardHeader className="gap-3">
           <LogoMark size={40} />
@@ -330,6 +345,9 @@ export function Card({ title, children }: { title: string; children: ReactNode }
         </CardHeader>
         <CardContent className="space-y-4">{children}</CardContent>
       </UiCard>
+      <footer className="text-xs text-muted-foreground">
+        <PrivacyLink />
+      </footer>
     </div>
   );
 }

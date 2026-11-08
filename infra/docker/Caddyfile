@@ -18,9 +18,25 @@
 		Referrer-Policy no-referrer
 		X-Frame-Options DENY
 		-Server
+		# What the web client may load (08 response headers, decision 1.11). Only the OpenFreeMap
+		# basemap comes from elsewhere: its style, tiles, sprites and glyphs are all on
+		# tiles.openfreemap.org. MapLibre starts its worker from /assets (worker-src) and draws
+		# sprites from blob: URLs. Radix's scroll lock adds a <style> element and components set
+		# style attributes, hence 'unsafe-inline' for styles (never for scripts; the built
+		# index.html has no inline script). The service worker and the manifest are same-origin.
+		# A build with VITE_MAP_STYLE_URL pointing at another host must add that host (and every
+		# host its style names for tiles, sprites and glyphs) to img-src and connect-src, or the
+		# map shows the plain background; infra/docs/install.md section 8.
+		# "?" keeps a policy the API sets itself (platform logos: default-src 'none'; sandbox).
+		?Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tiles.openfreemap.org; font-src 'self'; connect-src 'self' https://tiles.openfreemap.org; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 	}
+	# HSTS only when the request reached the host over https (tailscale serve sets
+	# X-Forwarded-Proto: https, kept because it is a trusted proxy). Plain http on the host or
+	# the LAN gets none, so it keeps working there (browsers also ignore HSTS over http).
+	@https header X-Forwarded-Proto https
+	header @https Strict-Transport-Security "max-age=31536000"
 
-	# The API container publishes no port. Tiles are added by a later PR.
+	# The API container publishes no port.
 	# Body limits are set per handler, because a site-level limit would also cap the restore route.
 	# Restore uploads a whole backup (08 section 7.3: 512 MiB on this route only); the rest keep 2 MiB.
 	@restore path /api/v1/setup/restore
@@ -63,7 +79,7 @@
 	# The web client (apps/web, built into /srv/web by the caddy image target). Only its own
 	# screens fall back to index.html, so any other unknown path is still a 404.
 	# Keep this list in step with apps/web/src/screens.tsx.
-	@spa path / /pair /app /onboarding /onboarding/* /dashboard /shifts /shifts/* /expenses /progress /schedule /notifications /analytics /goals /tax /vehicles /odometer /exports /devices /backups /settings /settings/*
+	@spa path / /pair /app /privacy /onboarding /onboarding/* /dashboard /shifts /shifts/* /expenses /progress /schedule /notifications /analytics /goals /tax /vehicles /odometer /exports /devices /backups /settings /settings/*
 	handle @spa {
 		root * /srv/web
 		rewrite * /index.html

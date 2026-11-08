@@ -43,6 +43,23 @@ export function chooseStyle(url: string | undefined, dark: boolean): string | St
   return dark ? OPENFREEMAP.dark : OPENFREEMAP.light;
 }
 
+/**
+ * The host the browser fetches the basemap from in this build, or null when the build draws no
+ * basemap (`none`) or the style is on this server itself. The privacy page names it; the
+ * Caddyfile's Content-Security-Policy must allow it.
+ */
+export function basemapHost(url: string | undefined): string | null {
+  const style = chooseStyle(url, false);
+  if (typeof style !== 'string') return null;
+  try {
+    const here = globalThis.location?.origin ?? 'http://localhost';
+    const at = new URL(style, here);
+    return at.origin === new URL(here).origin ? null : at.host;
+  } catch {
+    return null;
+  }
+}
+
 export const routeColor = (dark: boolean) => (dark ? palette.dark : palette.light).route;
 export const casingColor = (dark: boolean) => (dark ? palette.dark : palette.light).casing;
 
