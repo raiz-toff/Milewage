@@ -152,4 +152,18 @@
   html {
     @apply font-sans;
   }
+  /*
+   * viewport-fit=cover (index.html) lets the installed app draw under a phone's notch and home
+   * bar; keep the content out of them (plan 27 section 4.6). Zero on screens without them.
+   */
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* The desktop sidebar is fixed, so it moves with the page. Unlayered, to win over its `left-0`. */
+:not([data-collapsible='offcanvas']) > [data-slot='sidebar-container'][data-side='left'] {
+  left: env(safe-area-inset-left);
 }

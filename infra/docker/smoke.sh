@@ -26,6 +26,10 @@ body="$(curl -fsS "$base/healthz")" || fail "/healthz unreachable through Caddy"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$base/nope")" = "404" ] || fail "unknown path is not 404"
 curl -fsS "$base/shifts" | grep -q '<div id="root">' || fail "the web client is not served at /shifts"
 curl -fsS "$base/api/v1/setup/status" >/dev/null || fail "/api/v1/setup/status unreachable"
+# Plan 27: the web app manifest with its media type, and the icons it names.
+curl -fsSI "$base/manifest.webmanifest" | grep -qi '^content-type: application/manifest+json' \
+  || fail "the manifest is missing or has the wrong media type"
+curl -fsS -o /dev/null "$base/icons/icon-512.png" || fail "the app icon is not served"
 
 # Plan 19 P1 regression: the https address `tailscale serve` sends survives Caddy, so the download
 # page (and the pairing code) offer https://<host>.ts.net, not http://127.0.0.1.

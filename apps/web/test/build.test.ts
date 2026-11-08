@@ -18,6 +18,10 @@ describe('production build', () => {
       expect(assets.some((f) => /^maplibre-gl-.*\.js$/.test(f))).toBe(true);
       expect(existsSync(join(out, 'assets', 'maplibre-gl-worker.mjs'))).toBe(true);
       expect(existsSync(join(out, 'index.html'))).toBe(true);
+      // Plan 27: the manifest and its icons are copied to the root, where the page links them.
+      for (const f of ['manifest.webmanifest', 'favicon.ico', 'apple-touch-icon.png'])
+        expect(existsSync(join(out, f)), f).toBe(true);
+      expect(readdirSync(join(out, 'icons'))).toContain('maskable-512.png');
     } finally {
       rmSync(out, { recursive: true, force: true });
     }

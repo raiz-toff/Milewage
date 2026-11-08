@@ -4,6 +4,24 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>MileWage</title>
+    <meta
+      name="description"
+      content="Mileage, earnings and expenses for gig drivers, on your own server."
+    />
+    <!-- Installable web app (plan 27). apps/web/icons/generate.py writes every icon. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/icons/icon-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- Window and status bar colour: each theme's page background. theme.ts keeps both in step
+         with the theme chosen in the app. -->
+    <meta name="theme-color" content="#f5f6f8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#101214" media="(prefers-color-scheme: dark)" />
+    <!-- Safari on iPhone and iPad: the home screen name, and opening without the address bar. -->
+    <meta name="apple-mobile-web-app-title" content="MileWage" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   </head>
   <body>
     <div id="root"></div>

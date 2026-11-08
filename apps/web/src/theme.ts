@@ -5,6 +5,22 @@ export type ThemeChoice = 'light' | 'dark' | 'system';
 const KEY = 'mw-theme';
 const darkQuery = () => window.matchMedia('(prefers-color-scheme: dark)');
 
+/** Each theme's page background (index.css `--background`), used as the window and bar colour. */
+export const THEME_COLORS = { light: '#f5f6f8', dark: '#101214' } as const;
+
+/**
+ * The `theme-color` metas in index.html follow the OS (one per `prefers-color-scheme`). A theme
+ * picked in the app wins over the OS, so both metas get its colour; "system" restores each one.
+ */
+function applyThemeColor(choice: ThemeChoice): void {
+  for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
+    const own = meta.getAttribute('media')?.includes('dark')
+      ? THEME_COLORS.dark
+      : THEME_COLORS.light;
+    meta.content = choice === 'system' ? own : THEME_COLORS[choice];
+  }
+}
+
 function stored(): ThemeChoice {
   try {
     const v = localStorage.getItem(KEY);
@@ -18,6 +34,7 @@ function stored(): ThemeChoice {
 export function applyTheme(choice: ThemeChoice = stored()): void {
   const dark = choice === 'dark' || (choice === 'system' && darkQuery().matches);
   document.documentElement.classList.toggle('dark', dark);
+  applyThemeColor(choice);
 }
 
 export function useTheme(): [ThemeChoice, (choice: ThemeChoice) => void] {

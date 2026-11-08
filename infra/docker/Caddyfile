@@ -38,6 +38,20 @@
 		}
 		reverse_proxy api:3000
 	}
+	# The installable web app's files (plan 27): the manifest is checked again on every visit, so
+	# a change is seen at once; Go's MIME table has no .webmanifest. Icons rarely change.
+	handle /manifest.webmanifest {
+		root * /srv/web
+		header Cache-Control "no-cache"
+		header Content-Type "application/manifest+json"
+		file_server
+	}
+	@icons path /favicon.ico /apple-touch-icon.png /icons/*
+	handle @icons {
+		root * /srv/web
+		header Cache-Control "public, max-age=86400"
+		file_server
+	}
 	# The web client (apps/web, built into /srv/web by the caddy image target). Only its own
 	# screens fall back to index.html, so any other unknown path is still a 404.
 	# Keep this list in step with apps/web/src/screens.tsx.
