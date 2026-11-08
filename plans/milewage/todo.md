@@ -4,6 +4,23 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
 
 ## Open
 
+- [ ] **Tag `v0.1.0`, or decide to wait for the field test** (owner, 2026-11-08). CHANGELOG and
+      VERSION say 0.1.0, but `git tag` lists nothing. To tag:
+      `git tag -a v0.1.0 -m "MileWage 0.1.0" && git push origin v0.1.0`. Once a GitLab runner
+      exists, the tag starts the `images` job and offers the `phone-apk` job (started by hand; it
+      needs a runner tagged `android`). See `.gitlab-ci.yml`.
+- [ ] **Rewrite history to drop the dev data folder, or leave it** (owner, 2026-11-08). `cada039`
+      committed `.dev.before-integrate-2026-11-08/` (dev databases, encrypted backups,
+      `config/secrets.json`). Z1 takes it out of the index, but every commit from `cada039` on
+      still holds it. Origin is a private git server on the LAN. A rewrite changes the hash of every
+      commit since `cada039` (32 on 2026-11-08) and needs a force push.
+- [ ] **Make Node 22.22 the default on `coder`** (owner, 2026-11-08). `node --version` is v24.15.0;
+      `.nvmrc` says 22.22.0. Verify runs use Node 22 only because `~/.local/node22/bin` is put first
+      on `PATH`; a shell without it runs Node 24. Install 22.22 as the default (nvm is not
+      installed), or put `~/.local/node22/bin` first on `PATH` in the shell profile.
+- [ ] **Run spikes A, B and D, or record that the field test replaces them** (owner, 2026-11-08).
+      Only S0 has run; E is optional. Status table in
+      [`12`](./12-gate3-spike-plan.md) section 2, "Spike status (2026-11-08)".
 - [ ] **Time zone picker with every time zone** (owner, 2026-11-07). Setup and Settings show a
       plain text field ("America/Toronto"). Make it a searchable list of all IANA time zones
       (`Intl.supportedValuesOf('timeZone')`, the standard list browsers and Node ship), shadcn

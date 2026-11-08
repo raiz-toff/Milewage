@@ -3,6 +3,7 @@
 **Lead Agents:** Agent 2 (Backend Architect) & Agent 1 (Mobile Systems)  
 **Auditor:** Agent 5 (Anti-Slop Auditor)  
 **Status:** DRAFT SPECIFICATION — decision 1.5c (2026-11-04, `06`). Plan document: no code is written by this document.  
+**Build note (2026-11-08):** built; what was done and what differs is in [`progress.md`](./progress.md). Decision 1.5c is recorded in `06` section 2. No sign-off of this document itself is recorded in `06` section 6; it is an input to roadmap `17`, which the owner approved on 2026-11-04 (Gate 4).  
 **Parent:** [`plans/milewage/README.md`](./README.md)  
 **Inputs:** the Modularity Rule (README §1.3), schema [`07`](./07-database-schema-spec.md), API [`08`](./08-api-spec.md), tracker [`09`](./09-background-gps-decision.md), operations [`10`](./10-backup-restore-and-ops-spec.md), spikes [`12`](./12-gate3-spike-plan.md), engine [`14`](./14-phone-processing-spec.md), phone storage and sync [`15`](./15-offline-storage-and-sync-spec.md).
 

@@ -3,6 +3,7 @@
 **Lead Agents:** Agent 1 (Mobile Systems) & Agent 3 (Standards & Compliance)  
 **Auditor:** Agent 5 (Anti-Slop Auditor)  
 **Status:** DRAFT SPECIFICATION — decisions made, awaiting Human review. No code is written by this document.  
+**Build note (2026-11-08):** built; what was done and what differs is in [`progress.md`](./progress.md). Decisions 1.5a and 1.5b are recorded in `06` section 2. No sign-off of this document itself is recorded in `06` section 6; it is an input to roadmap `17`, which the owner approved on 2026-11-04 (Gate 4).  
 **Parent:** [`plans/milewage/README.md`](./README.md)  
 **Implements:** Gate 1 items **1.5a** (the phone is a working local app, offline for weeks) and **1.5b** (no per-delivery taps: stops are auto-detected, the active/deadhead split is an estimate, labelling is web-only) in [`06`](./06-human-in-the-loop-review-gates.md).  
 **Inputs:** Comma's code, read-only (`utils/geoCalculations.ts`, `src/registry/gpsConfig.ts`, `store/useActiveShift.ts`, `hooks/useGPSTracking.ts`, `modules/comma-tracker/.../LocationTrackingService.kt`, `docs/architecture/gps-engine.md`, `web/src/core/gps-tracker.js`), and MileWage `02`, `07`, `08`, `09`, README §1.3.  

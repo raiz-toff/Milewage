@@ -2,6 +2,7 @@
 
 **Lead Agent:** Agent 0 (Orchestrator) with Agents 2, 3 and 4  
 **Status:** DRAFT SPECIFICATION — decision 1.9 (owner, 2026-11-05) recorded; modules below are specified, none is built yet  
+**Build note (2026-11-08):** built; what was done and what differs is in [`progress.md`](./progress.md). The modules ship in 0.1.0 ([`CHANGELOG.md`](../../CHANGELOG.md)), so "none is built yet" is out of date. Decision 1.9 (2026-11-05, `06` section 6) is the owner's record for this plan; no separate sign-off of the spec is recorded.  
 **Parent:** [`plans/milewage/README.md`](./README.md) · Amends [`01`](./01-core-vision-and-scope.md), [`05`](./05-design-system-and-ui-plan.md), [`07`](./07-database-schema-spec.md), [`08`](./08-api-spec.md), [`11`](./11-gate2-audit-and-decisions.md)  
 **Source read (read-only):** `commaApp` `app/`, `app/(tabs)`, `src/` (schema, registry, services), `utils/taxCalculations.ts` and `docs/`.
 

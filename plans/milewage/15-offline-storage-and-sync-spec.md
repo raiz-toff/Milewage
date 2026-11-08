@@ -3,6 +3,7 @@
 **Lead Agents:** Agent 1 (Mobile Systems) & Agent 2 (Backend Architect)  
 **Auditor:** Agent 5 (Anti-Slop Auditor)  
 **Status:** DRAFT SPECIFICATION (post-Gate 3, decision 1.5a) — decisions made, awaiting Human review  
+**Build note (2026-11-08):** built; what was done and what differs is in [`progress.md`](./progress.md). Decision 1.5a is recorded in `06` section 2. No sign-off of this document itself is recorded in `06` section 6; it is an input to roadmap `17`, which the owner approved on 2026-11-04 (Gate 4).  
 **Parent:** [`plans/milewage/README.md`](./README.md)  
 **Inputs:** decision 1.5a in [`06`](./06-human-in-the-loop-review-gates.md); schema [`07`](./07-database-schema-spec.md); API [`08`](./08-api-spec.md); phone engine [`09`](./09-background-gps-decision.md); buffer [`02`](./02-mobile-architecture-plan.md); backup and restore [`10`](./10-backup-restore-and-ops-spec.md). Comma (read only): `docs/architecture/database.md`, `src/database/schema.ts`, `src/services/sync/mergeRules.ts`.  
 **Companion:** [`14`](./14-phone-processing-spec.md) (shared processing module). This document says *where* the module runs and *what is stored and sent*; it does not repeat the algorithm. Where `14` defines an identity, a flag or a version rule, `14` wins. Reconciled on 2026-11-04 (`11` §7): the assumptions once marked "needs 14" are now `14` §6.4 (`trip_key`), §9 (exact integer comparison, `input_digest`) and §11 (`calc_version`).

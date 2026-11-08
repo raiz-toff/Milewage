@@ -5,6 +5,8 @@
 **Parent:** [`plans/milewage/README.md`](./README.md) · Rules: [`06`](./06-human-in-the-loop-review-gates.md) §5 (≤ 400 lines per PR, tests with every PR, no broken `main`)  
 **Inputs:** specs `00`–`16`, dossier `11`, spike plan `12` (merged into this roadmap by the Human on 2026-11-04), `infra-requirements.md`
 
+**Build note (2026-11-08):** built; what was done and what differs is in [`progress.md`](./progress.md), and version 0.1.0 is in [`CHANGELOG.md`](../../CHANGELOG.md). Gate 4 was approved on 2026-11-04 (`06` section 6, [`DECISIONS.md`](../../DECISIONS.md)); "Nothing here has been built" in the status line predates the build.
+
 Durations below are **estimates** for one owner working with agents. They are not measured, and the long poles are owner-supplied items (rides, a VM, an account), not code.
 
 ---

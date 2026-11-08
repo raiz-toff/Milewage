@@ -2,6 +2,7 @@
 
 **Lead Agent:** Agent 0 (Orchestrator) with Agent 5 (Anti-Slop Auditor)  
 **Status:** REVISED 2026-11-04, **awaiting re-approval** by the Human. The earlier seven-spike plan approved 2026-11-03 is superseded by this one (§16 lists the differences). Nothing here has been run except S0.  
+**Build note (2026-11-08):** built; what was done and what differs is in [`progress.md`](./progress.md). This revision was not re-approved as such: on 2026-11-04 the owner merged Gate 3 into Gate 4, with the spike checks as build milestones (`06` section 6, [`DECISIONS.md`](../../DECISIONS.md)). Only S0 has run; see "Spike status (2026-11-08)" below.  
 **Parent:** [`README.md`](./README.md) · **Governance:** [`06`](./06-human-in-the-loop-review-gates.md) §4  
 **Inputs:** `07` (schema), `08` (API), `09` (Spike A criteria), `10` (Spike B tests B1–B12), `11` §4 (claims), [`infra-requirements.md`](./infra-requirements.md) (real hardware), [`spikes/S0-results.md`](./spikes/S0-results.md), `milewage-spikes/B/README.md` (Spike B rig and findings), README §1.3 (Modularity Rule)
 
@@ -54,6 +55,18 @@ Not testable with this hardware and therefore **untested risk** (§14): Pixel an
 | **A** | "Ride with it" | Does the trimmed module behave **no worse than Comma's** on normal shifts? | Needs the rig built and sideloaded. |
 | **C-lite** | Offline queue | Is every buffered point stored exactly once? | **Folded into A and B** (§6). |
 | **E, F** | Basemap size; year-long PDF | See §7. | **Deferred.** Optional modules; they cannot block anything. |
+
+**Spike status (2026-11-08).** Gate 3 was merged into Gate 4 on 2026-11-04, so these checks became build milestones (`06` section 6). The build is done; only S0 has a results file in [`spikes/`](./spikes/).
+
+| ID | Status | What it would verify |
+|:--:|---|---|
+| **S0** | **Done** | The claims in `11` §4, at the desk ([`spikes/S0-results.md`](./spikes/S0-results.md)). Claims 10 and 14 still wait on A, 12 on B, 13 on E. |
+| **A** | Not run | The tracker on the S24 Ultra over real shifts: battery, gaps, distance against the odometer, survival, stop detection, and the engine under Hermes (A10, A12). |
+| **B** | Not run | The shipped stack in the 1 vCPU / 1 GB VM: RAM budget, 50 req/s telemetry, backup, crash, power pull, restore. Tests B1–B17 are ported to `infra/vm-tests/` (PR M3.6) and have had only a local smoke run; `B-results.md` was never written. |
+| **C-lite** | Not run | No loss and no duplicates in the offline queue; folded into A and B. |
+| **D** | Not run | The phone on mobile data reaching the server over Tailscale https on a fresh host, with no custom CA (plan `19` T7). |
+| **E** | Not run (deferred, optional) | The size of a self-hosted PMTiles basemap. 0.1.0 uses OpenFreeMap tiles (decision 1.11). |
+| **F** | Not run (deferred, optional) | A year-long PDF in the small VM. 0.1.0 has no PDF export. |
 
 **Order:** B-rig VM and D can start now (no phone build needed). A-rig is built on `coder` in parallel. A needs B's ingest route up. C-lite runs on the same rigs.
 

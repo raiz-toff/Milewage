@@ -3,6 +3,7 @@
 **Lead Agent:** Agent 1 (Mobile & Android Systems Specialist)  
 **Auditor:** Agent 5 (Anti-Slop Auditor)  
 **Status:** DRAFT SPECIFICATION (Gate 1 In Progress)  
+**Build note (2026-11-08):** built; what was done and what differs is in [`progress.md`](./progress.md). Gate 1 was approved on 2026-11-03 (`06` section 6, [`DECISIONS.md`](../../DECISIONS.md)); this status line was not updated after that.  
 **Parent:** [`plans/milewage/README.md`](./README.md)
 
 ---

@@ -6,6 +6,32 @@ All notable changes to MileWage are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Backups page: make a new recovery key after setup. A backup under the new key is made right
+  away.
+- Show more on the Expenses and Notifications lists.
+- The import preview shows every problem it finds.
+- Edit a goal: its name, measure, period and target.
+- An hour-of-day chart on Analytics.
+- The phone sends its shifts again after the server is restored from a backup.
+- The phone reads the system Location switch, so the permission steps can say when it is off.
+- The phone records a battery and timing summary of each shift in its diagnostics (no coordinates).
+- Every server setting is described in `infra/docs/configuration.md`.
+
+### Fixed
+
+- The dev data folder committed by mistake is removed from git. It stays in the history.
+- MCP audit rows older than the retention period are removed.
+- The release APK job in CI runs the manifest checks.
+- A server given only a data folder keeps its backups beside it, not in the folder it was started
+  from.
+
+### Docs
+
+- Plans 02 to 19 have a build note under their status line, and plan 12 has a spike status table.
+- A row in `DECISIONS.md` for the spike checks that are still open.
+
 ## [0.1.0] - 2026-11-08
 
 First tagged version. It is a complete first build, but it has not been tried in the real world.

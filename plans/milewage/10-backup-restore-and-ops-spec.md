@@ -3,6 +3,7 @@
 **Lead Agent:** Agent 2 (Self-Hosted Docker & Backend Architect)  
 **Auditor:** Agent 5 (Anti-Slop Auditor)  
 **Status:** DRAFT SPECIFICATION (Gate 2 input)  
+**Build note (2026-11-08):** built; what was done and what differs is in [`progress.md`](./progress.md). Gate 2 was approved on 2026-11-03 (`06` section 6, [`DECISIONS.md`](../../DECISIONS.md)); this status line was not updated after that.  
 **Parent:** [`plans/milewage/README.md`](./README.md) · Builds on [`03`](./03-self-hosted-docker-architecture-plan.md) §3–§5
 
 **Scope inherited from signed-off Gate 1:** single driver per instance (1.4), the server holds the only copy of the data (1.5), TypeScript + SQLite (1.3), home lab first on x86_64 and ARM64 incl. Raspberry Pi (1.7), Android first (1.6).

@@ -3,6 +3,7 @@
 **Lead Agent:** Agent 1 (Mobile & Android Systems Specialist)  
 **Auditor:** Agent 5 (Anti-Slop Auditor)  
 **Status:** PROPOSED DECISION for Gate 2 (needs Human sign-off)  
+**Build note (2026-11-08):** built; what was done and what differs is in [`progress.md`](./progress.md). This decision was approved on 2026-11-03 with Gate 2 (`06` sections 3 and 6, [`DECISIONS.md`](../../DECISIONS.md)); this status line was not updated after that.  
 **Parent:** [`plans/milewage/README.md`](./README.md) · Related: [`02-mobile-architecture-plan.md`](./02-mobile-architecture-plan.md), `06` items 1.5, 1.6
 
 ---

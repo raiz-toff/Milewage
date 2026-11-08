@@ -2,6 +2,7 @@
 
 **Lead Agent:** Agent 5 (Anti-Slop Auditor) with Agent 0 (Orchestrator)  
 **Status:** AWAITING HUMAN REVIEW (Gate 2 is **not** approved)  
+**Build note (2026-11-08):** built; what was done and what differs is in [`progress.md`](./progress.md). Gate 2 was approved on 2026-11-03 (`06` section 6, [`DECISIONS.md`](../../DECISIONS.md)), so "not approved" above is out of date.  
 **Parent:** [`plans/milewage/README.md`](./README.md) · Covers [`07`](./07-database-schema-spec.md), [`08`](./08-api-spec.md), [`09`](./09-background-gps-decision.md), [`10`](./10-backup-restore-and-ops-spec.md)
 
 ---

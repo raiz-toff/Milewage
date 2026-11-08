@@ -3,6 +3,7 @@
 **Lead Agent:** Agent 2 (Self-Hosted Docker & Backend Architect)  
 **Auditor:** Agent 5 (Anti-Slop Auditor)  
 **Status:** DRAFT SPECIFICATION (Gate 2) — decisions made, awaiting Human sign-off  
+**Build note (2026-11-08):** built; what was done and what differs is in [`progress.md`](./progress.md). Gate 2 was approved on 2026-11-03 (`06` section 6, [`DECISIONS.md`](../../DECISIONS.md)); this status line was not updated after that.  
 **Parent:** [`plans/milewage/README.md`](./README.md)  
 **Inputs:** schema in [`07`](./07-database-schema-spec.md), phone engine in [`09`](./09-background-gps-decision.md), operations in [`10`](./10-backup-restore-and-ops-spec.md), exports in [`04`](./04-data-standards-and-handovers-plan.md), phone buffer in [`02`](./02-mobile-architecture-plan.md), shared processing engine in [`14`](./14-phone-processing-spec.md), phone storage and sync in [`15`](./15-offline-storage-and-sync-spec.md). Updated 2026-11-04 for decision 1.5a (§4.4, §6a, the `sync` module in §16) and decision 1.5b (no phone delivery routes; the `stops` module replaces `deliveries`: stops are auto-detected, labelled only on the web, toggled by `settings.stops_enabled`). Updated 2026-11-04 for decision 1.5c: the `diagnostics` and `capture` modules (§16.2, spec in [`16`](./16-diagnostics-and-telemetry-spec.md)), 12 operations in 8 paths, and the diagnostics fields of `Settings`.
 

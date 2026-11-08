@@ -52,8 +52,8 @@ cd milewage
 git log --oneline -1
 ```
 
-This needs an SSH key the Git server accepts. If the clone is refused: **STOP: owner** (they add the
-key or give you another URL). Use the `main` branch.
+The owner gives you the repository address. This needs an SSH key the Git server accepts. If the
+clone is refused: **STOP: owner** (they add the key or give you another URL). Use the `main` branch.
 
 ## 3. Start the stack
 

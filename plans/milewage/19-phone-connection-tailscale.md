@@ -1,7 +1,7 @@
 # 19 — Phone Connection over Tailscale
 
 **Lead Agent:** Agent 2 (Self-Hosted Docker & Backend Architect) with Agents 1 and 4
-**Status:** Building (2026-11-07): T1 done (`pr-T1-caddy-trusted-proxies`), T2 done (`pr-T2-public-url`), T3 done (`pr-T3-web-address`), T5 done (`pr-T5-install-tailscale`); T6's Vite part done. The rest below is not built yet.
+**Status:** Building (checked 2026-11-08 against `progress.md`): T1, T2, T3 and T5 done (2026-11-07); T4 done on the phone by PO2c and PO2d; T6's Vite part done, the README dev section not written; T7 not done (the install guide with screenshots, the owner's run on a real fresh host with a real tailnet, Spike D, `D-results.md`). Plan [`28`](./28-home-away-linking-plan.md) (H0–H8, merged 2026-11-08) changed the path at home: the phone uses plain http on the home network and no Tailscale screen comes before Connect.
 **Parent:** [`plans/milewage/README.md`](./README.md) · Builds on decision 1.7 (`06`) and [`10`](./10-backup-restore-and-ops-spec.md) §8 · Amends [`08`](./08-api-spec.md) §2.4, [`10`](./10-backup-restore-and-ops-spec.md) §8.1, [`15`](./15-offline-storage-and-sync-spec.md) §9.4, [`17`](./17-gate4-execution-roadmap.md) M10.1, `infra/docs/install.md` §3
 
 Tailscale was chosen as the way the phone reaches the home server on 2026-11-03 (decision 1.7). This plan turns that decision into a feature a driver can follow from start to finish, and fixes what stops it working today.

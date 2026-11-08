@@ -2,6 +2,7 @@
 
 **Lead Agent:** Agent 0 (Lead Orchestrator) & Agent 5 (Anti-Slop Auditor)  
 **Status:** ACTIVE GOVERNANCE PROTOCOL  
+**Build note (2026-11-08):** built; see [`progress.md`](./progress.md). The build started on 2026-11-04 with PR 1 (`43d2d20`), so §4 "CURRENT STAGE" and the Final Exec note in §6 ("no implementation work has begun") are out of date. §6 records no date for lifting that deferred start. The spike checks that Gate 3 moved into the build (A, B, D) have not run (`12`, "Spike status (2026-11-08)").  
 **Parent:** [`plans/milewage/README.md`](./README.md)
 
 ---

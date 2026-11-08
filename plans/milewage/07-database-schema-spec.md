@@ -3,6 +3,7 @@
 **Lead Agents:** Agent 2 (Backend Architect) & Agent 3 (Standards & Compliance)  
 **Auditor:** Agent 5 (Anti-Slop Auditor)  
 **Status:** DRAFT SPECIFICATION (Gate 2) — decisions made, awaiting Human sign-off. Updated 2026-11-04 for decision 1.5b (no phone delivery taps; auto-detected stops, web-only labelling, `stops` module replaces `deliveries`) and 1.5c (settings columns for diagnostics; the diagnostics store is a separate file, §2.9).  
+**Build note (2026-11-08):** built; what was done and what differs is in [`progress.md`](./progress.md). Gate 2 was approved on 2026-11-03 (`06` section 6, [`DECISIONS.md`](../../DECISIONS.md)); this status line was not updated after that.  
 **Parent:** [`plans/milewage/README.md`](./README.md)  
 **Inputs:** Gate 1 decisions 1.1–1.8 in [`06`](./06-human-in-the-loop-review-gates.md); stack in [`03`](./03-self-hosted-docker-architecture-plan.md); phone buffer in [`02`](./02-mobile-architecture-plan.md); compliance in [`04`](./04-data-standards-and-handovers-plan.md).
 
