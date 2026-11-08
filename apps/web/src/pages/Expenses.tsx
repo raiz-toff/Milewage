@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FileX, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, FileX, Pencil, Plus, Trash2 } from 'lucide-react';
 import { RowMenu } from '../ui/RowMenu';
 import { EmptyState, PageHeader, Section, StatCard, TableBox, tableClass } from '../ui/layout';
 import { Button as UiButton } from '@/components/ui/button';
@@ -41,14 +41,15 @@ export function quickCategories(cats: Category[], rows: Expense[]): string[] {
   return cats.map((c) => c.slug).filter((s) => chosen.includes(s));
 }
 
-const blank = (today: string) => ({
+/** A new expense: today, fuel, deductible in full, on the default vehicle (fuel is a vehicle cost). */
+const blank = (today: string, vehicle = '') => ({
   spent_on: today,
   category: 'fuel',
   amount: '',
   merchant: '',
   deductible: true,
   business_pct: 100,
-  vehicle_id: '',
+  vehicle_id: vehicle,
   shift_id: '',
   notes: '',
   recurrence: '',
@@ -93,7 +94,9 @@ export function bodyOf(d: Draft): Schemas['ExpenseCreate'] {
  */
 export function ExpensesPage() {
   const { api } = useSession();
-  const { currency, modules } = useSettings();
+  const { currency, modules, default_vehicle_id } = useSettings();
+  // Vehicle costs go on the driver's default vehicle unless they choose another.
+  const auto = default_vehicle_id === null ? '' : String(default_vehicle_id);
   const [items, setItems] = useState<Expense[] | null>(null);
   const [totals, setTotals] = useState<Schemas['ExpenseTotals'] | null>(null);
   const [due, setDue] = useState<Expense[]>([]);
@@ -105,8 +108,10 @@ export function ExpensesPage() {
   // `?new` (the dashboard's Add expense) opens the form at once.
   const [params] = useSearchParams();
   const [draft, setDraft] = useState<Draft | null>(() =>
-    params.has('new') ? blank(new Date().toISOString().slice(0, 10)) : null,
+    params.has('new') ? blank(new Date().toISOString().slice(0, 10), auto) : null,
   );
+  // Merchant, deductible share, vehicle, shift, repeats and notes wait behind "More details".
+  const [more, setMore] = useState(false);
   const ids = useId();
   const [editing, setEditing] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -181,6 +186,12 @@ export function ExpensesPage() {
           category: slug,
           deductible: cat(slug)?.default_deductible ?? true,
           business_pct: cat(slug)?.default_business_pct ?? 100,
+          vehicle_id:
+            d.vehicle_id !== '' && d.vehicle_id !== auto
+              ? d.vehicle_id
+              : cat(slug)?.vehicle_related
+                ? auto
+                : '',
         },
     );
 
@@ -240,7 +251,13 @@ export function ExpensesPage() {
         }
       >
         {draft === null ? (
-          <Button type="button" onClick={() => setDraft(blank(today))}>
+          <Button
+            type="button"
+            onClick={() => {
+              setDraft(blank(today, auto));
+              setMore(false);
+            }}
+          >
             <Plus />
             Add expense
           </Button>
@@ -358,93 +375,138 @@ export function ExpensesPage() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <Field
-              label="Merchant"
-              list="merchants"
-              maxLength={120}
-              value={draft.merchant}
-              onChange={(e) => setDraft({ ...draft, merchant: e.target.value })}
-            />
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-primary"
-                  checked={draft.deductible}
-                  onChange={(e) => setDraft({ ...draft, deductible: e.target.checked })}
-                />
-                Deductible
-              </label>
-              <span className="text-sm text-muted-foreground">Business use</span>
-              {PICKS.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  aria-pressed={draft.business_pct === p}
-                  className={`rounded-full border px-3 py-1 text-sm ${draft.business_pct === p ? 'border-primary bg-primary/15 font-medium' : 'border-border text-muted-foreground'}`}
-                  onClick={() => setDraft({ ...draft, business_pct: p })}
-                >
-                  {p}%
-                </button>
-              ))}
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <SelectField
-                label="Vehicle"
-                value={draft.vehicle_id}
-                onChange={(v) => setDraft({ ...draft, vehicle_id: v })}
-                options={[
-                  { value: '', label: 'None' },
-                  ...vehicles.map((v) => ({ value: String(v.id), label: v.name })),
-                ]}
-              />
-              <SelectField
-                label="Shift"
-                value={draft.shift_id}
-                onChange={(v) => setDraft({ ...draft, shift_id: v })}
-                options={[
-                  { value: '', label: 'None' },
-                  ...shifts.map((s) => ({ value: String(s.id), label: s.local_date })),
-                ]}
-              />
-              <SelectField
-                label="Repeats"
-                value={draft.recurrence}
-                onChange={(v) =>
-                  setDraft({ ...draft, recurrence: v, next_due: draft.next_due || draft.spent_on })
-                }
-                options={[
-                  { value: '', label: 'No' },
-                  { value: 'weekly', label: 'Weekly' },
-                  { value: 'monthly', label: 'Monthly' },
-                  { value: 'yearly', label: 'Yearly' },
-                ]}
-              />
-              {draft.recurrence ? (
-                <DateField
-                  label="Next due"
-                  value={draft.next_due}
-                  onChange={(next_due) => setDraft({ ...draft, next_due })}
-                />
-              ) : null}
-            </div>
-            <datalist id="merchants">
-              {merchants.map((m) => (
-                <option key={m} value={m} />
-              ))}
-            </datalist>
-            <Field
-              label="Notes"
-              maxLength={2000}
-              value={draft.notes}
-              onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
-            />
-            {cat(draft.category)?.covered_by_standard_rate && draft.vehicle_id ? (
-              <p role="note" className="text-sm text-muted-foreground">
-                If this vehicle uses the standard mileage rate, the rate already covers this cost:
-                it is saved but not deducted.
+              <p className="text-xs text-muted-foreground">
+                {!draft.deductible
+                  ? 'Not deductible.'
+                  : draft.business_pct === 100
+                    ? 'Deductible in full.'
+                    : `Deductible: ${draft.business_pct} % business use.`}
+                {cat(draft.category)?.covered_by_standard_rate && draft.vehicle_id ? (
+                  <span role="note">
+                    {' '}
+                    If this vehicle uses the standard mileage rate, the rate already covers this
+                    cost: it is saved but not deducted.
+                  </span>
+                ) : null}
               </p>
+            </div>
+            <div className="space-y-1">
+              <button
+                type="button"
+                aria-expanded={more}
+                onClick={() => setMore(!more)}
+                className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                <ChevronDown
+                  aria-hidden="true"
+                  className={`size-4 transition-transform motion-reduce:transition-none ${more ? '' : '-rotate-90'}`}
+                />
+                More details
+              </button>
+              {more ? null : (
+                <p className="pl-5 text-xs text-muted-foreground">
+                  Merchant, deductible share, vehicle, shift, repeats, notes
+                </p>
+              )}
+            </div>
+            {more ? (
+              <div className="space-y-4">
+                <Field
+                  label="Merchant"
+                  list="merchants"
+                  maxLength={120}
+                  value={draft.merchant}
+                  onChange={(e) => setDraft({ ...draft, merchant: e.target.value })}
+                />
+                <datalist id="merchants">
+                  {merchants.map((m) => (
+                    <option key={m} value={m} />
+                  ))}
+                </datalist>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-primary"
+                      checked={draft.deductible}
+                      onChange={(e) => setDraft({ ...draft, deductible: e.target.checked })}
+                    />
+                    Deductible
+                  </label>
+                  {draft.deductible ? (
+                    <div role="group" aria-label="Business use" className="flex flex-wrap gap-2">
+                      <span className="self-center text-sm text-muted-foreground">
+                        Business use
+                      </span>
+                      {PICKS.map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          aria-pressed={draft.business_pct === p}
+                          className={chip(draft.business_pct === p)}
+                          onClick={() => setDraft({ ...draft, business_pct: p })}
+                        >
+                          {p}%
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {vehicles.length > 0 || draft.vehicle_id ? (
+                    <SelectField
+                      label="Vehicle"
+                      value={draft.vehicle_id}
+                      onChange={(v) => setDraft({ ...draft, vehicle_id: v })}
+                      options={[
+                        { value: '', label: 'None' },
+                        ...vehicles.map((v) => ({ value: String(v.id), label: v.name })),
+                      ]}
+                    />
+                  ) : null}
+                  {shifts.length > 0 || draft.shift_id ? (
+                    <SelectField
+                      label="Shift"
+                      value={draft.shift_id}
+                      onChange={(v) => setDraft({ ...draft, shift_id: v })}
+                      options={[
+                        { value: '', label: 'None' },
+                        ...shifts.map((s) => ({ value: String(s.id), label: s.local_date })),
+                      ]}
+                    />
+                  ) : null}
+                  <SelectField
+                    label="Repeats"
+                    value={draft.recurrence}
+                    onChange={(v) =>
+                      setDraft({
+                        ...draft,
+                        recurrence: v,
+                        next_due: draft.next_due || draft.spent_on,
+                      })
+                    }
+                    options={[
+                      { value: '', label: 'No' },
+                      { value: 'weekly', label: 'Weekly' },
+                      { value: 'monthly', label: 'Monthly' },
+                      { value: 'yearly', label: 'Yearly' },
+                    ]}
+                  />
+                  {draft.recurrence ? (
+                    <DateField
+                      label="Next due"
+                      value={draft.next_due}
+                      onChange={(next_due) => setDraft({ ...draft, next_due })}
+                    />
+                  ) : null}
+                </div>
+                <Field
+                  label="Notes"
+                  maxLength={2000}
+                  value={draft.notes}
+                  onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
+                />
+              </div>
             ) : null}
             <div className="flex gap-3">
               <Button type="submit">{editing === null ? 'Save expense' : 'Save changes'}</Button>
@@ -550,6 +612,7 @@ export function ExpensesPage() {
                             onSelect: () => {
                               setDraft(draftOf(x));
                               setEditing(x.id);
+                              setMore(true);
                             },
                           },
                           ...(modules.receipts && x.has_receipt
