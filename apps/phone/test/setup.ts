@@ -31,3 +31,7 @@ jest.mock('react-native-gesture-handler', () => ({
   GestureDetector: ({ children }: { children: unknown }) => children,
   usePanGesture: () => ({}),
 }));
+
+// expo-file-system's native module is absent under Jest. The app reads only `Paths.availableDiskSpace`
+// (storage/freeSpace.ts); tests change it with `jest.requireMock('expo-file-system').Paths`.
+jest.mock('expo-file-system', () => ({ Paths: { availableDiskSpace: 64 * 1024 ** 3 } }));

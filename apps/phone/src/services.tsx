@@ -9,6 +9,9 @@ import { openExpoAppDb, type AppSqlDb } from './db/appDb';
 import { Pairing, type KeyValueStore } from './pairing/pairing';
 import { AndroidPermissions, createReactNativePermissionApi } from './permissions/android';
 import type { PermissionsPort } from './permissions/ladder';
+import { createNotifications, type NotificationsPort } from './notifications/port';
+import { UnsyncedReminders } from './notifications/unsynced';
+import { createFreeBytes } from './storage/freeSpace';
 import { createExpoSecureBackend, SecureKeyValueStore } from './storage/secureStore';
 import { openExpoDb, SqliteKeyValueStore } from './storage/sqliteStore';
 import { ShiftController } from './shift/controller';
@@ -62,6 +65,10 @@ export interface Services {
   plain: KeyValueStore;
   /** The numbers behind the home banner. */
   status: () => Promise<SyncStatus>;
+  /** The phone's own OS notifications; do nothing without the notifications permission. */
+  notifications: NotificationsPort;
+  /** The unsynced reminder as an OS notification (15 section 4.4), kept in step with the banner. */
+  reminders: UnsyncedReminders;
   uploader: UploadWorker;
   diagnostics: PhoneDiagnostics;
   /** Loads the diagnostics ring, applies the cached level and records `app.start` (once). */
@@ -89,8 +96,10 @@ export interface Parts {
   scanner?: QrScanner;
   refreshMs?: number;
   rand?: () => number;
-  /** Free device storage in bytes; null when it cannot be read. NOT wired in production yet. */
+  /** Free device storage in bytes; null when it cannot be read (`storage/freeSpace.ts`). */
   freeBytes?: () => Promise<number | null>;
+  /** OS notifications. Absent: a port that is never granted, so the banner is the only channel. */
+  notifications?: NotificationsPort;
   autoUpload?: boolean;
   appVersion?: string;
   deviceInfo?: DeviceInfo;
@@ -214,6 +223,10 @@ export function createServices(p: Parts): Services {
     });
   };
 
+  const notifications =
+    p.notifications ?? createNotifications({ permissions: p.permissions, backend: null });
+  const reminders = new UnsyncedReminders({ port: notifications, plain: p.plain, now: p.now });
+
   let started = false;
   const startDiagnostics = async () => {
     if (started) return;
@@ -256,6 +269,8 @@ export function createServices(p: Parts): Services {
     monitor,
     plain: p.plain,
     status,
+    notifications,
+    reminders,
     uploader,
     diagnostics,
     startDiagnostics,
@@ -274,17 +289,23 @@ const clean = (v: unknown, fallback: string, re: RegExp) =>
     .slice(0, 40) || fallback;
 
 /**
- * Production wiring. The native tracker loads on first use, so tests never touch it.
- * The pairing credential is in the Keystore-backed store;
+ * The production edges. The native tracker and the file-system reading load on first use, so
+ * tests never touch them. The pairing credential is in the Keystore-backed store;
  * the active shift, cached settings, permission flags and the diagnostics ring are in SQLite.
  */
-export function defaultServices(): Services {
-  if (cached) return cached;
+export function productionParts(): Parts {
   const c = Platform.constants as unknown as Record<string, unknown>;
   const plain = new SqliteKeyValueStore(() => openExpoDb());
-  const s = createServices({
+  const permissions = new AndroidPermissions({
+    api: createReactNativePermissionApi(),
+    store: plain,
+  });
+  return {
     tracker: createLazyNativeTracker(),
-    permissions: new AndroidPermissions({ api: createReactNativePermissionApi(), store: plain }),
+    permissions,
+    // No notifications library yet (progress.md PR N1): never granted, the banner is the channel.
+    notifications: createNotifications({ permissions, backend: null }),
+    freeBytes: createFreeBytes(),
     net: nativeNet(),
     secure: new SecureKeyValueStore(createExpoSecureBackend()),
     plain,
@@ -297,7 +318,13 @@ export function defaultServices(): Services {
       android: clean(c.Release, '0', /[^A-Za-z0-9._+-]/g),
       sdk: Number(c.Version) > 0 ? Number(c.Version) : 1,
     },
-  });
+  };
+}
+
+/** Production wiring, built once. */
+export function defaultServices(): Services {
+  if (cached) return cached;
+  const s = createServices(productionParts());
   installCrashHandler(
     s.diagnostics,
     (globalThis as { ErrorUtils?: Parameters<typeof installCrashHandler>[1] }).ErrorUtils,

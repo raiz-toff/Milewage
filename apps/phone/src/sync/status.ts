@@ -25,6 +25,9 @@ export function markerFor(s: Pick<ShiftRow, 'sync_state' | 'recon_status'>): {
   }
 }
 
+/** Plain-store key: when the banner last showed the unsynced reminder (epoch ms). */
+export const REMINDER_SHOWN_KEY = 'reminder.lastShownAt';
+
 export interface Reminder {
   level: 'none' | 'normal' | 'strong';
   text: string;

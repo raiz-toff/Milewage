@@ -6,11 +6,10 @@ import { Button } from '../components/ui/button';
 import { Text } from '../components/ui/text';
 import { isTailnetAddress } from '../connect/reach';
 import { useServices } from '../services';
-import { reminderFor, type SyncStatus } from '../sync/status';
+import { REMINDER_SHOWN_KEY, reminderFor, type SyncStatus } from '../sync/status';
 import { useColors } from '../theme/theme';
 
 const DAY = 86_400_000;
-const K_REMINDER = 'reminder.lastShownAt';
 const HINT_AFTER_MS = 10 * 60_000;
 
 /**
@@ -20,7 +19,8 @@ const HINT_AFTER_MS = 10 * 60_000;
  */
 export function SyncBanner({ onSettings }: { onSettings: () => void }) {
   const C = useColors();
-  const { status, sync, monitor, plain, shift, uploader, runner, pairing, net } = useServices();
+  const { status, sync, monitor, plain, shift, uploader, runner, pairing, net, reminders } =
+    useServices();
   const [s, setS] = useState<SyncStatus | null>(null);
   const [reminder, setReminder] = useState('');
   const [busy, setBusy] = useState(false);
@@ -30,7 +30,7 @@ export function SyncBanner({ onSettings }: { onSettings: () => void }) {
   const refresh = useCallback(async () => {
     const next = await status();
     setS(next);
-    const state = await plain.get(K_REMINDER);
+    const state = await plain.get(REMINDER_SHOWN_KEY);
     const now = Date.now();
     const base = (await pairing.load())?.credential.baseUrl ?? '';
     const waited = next.oldestAt !== null && now - next.oldestAt >= HINT_AFTER_MS;
@@ -38,10 +38,12 @@ export function SyncBanner({ onSettings }: { onSettings: () => void }) {
     setTailscaleOff(waited && isTailnetAddress(base) && (await net.vpnActive()) === false);
     const r = reminderFor(next.oldestAt, next.unsyncedShifts, now, state ? Number(state) : null);
     if (r.level !== 'none') {
-      await plain.set(K_REMINDER, String(now));
+      await plain.set(REMINDER_SHOWN_KEY, String(now));
       setReminder(r.text);
     }
-  }, [status, plain, pairing, net]);
+    // The same reminder as an OS notification for when the app is closed; cancelled once all is sent.
+    await reminders.update(next).catch(() => undefined);
+  }, [status, plain, pairing, net, reminders]);
 
   useEffect(() => {
     void refresh();
