@@ -2176,6 +2176,7 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Seq ordering on the server: it does not compare a seq with the device's highest seen seq. It stores any new `(device_id, seq)` and counts an existing one as a duplicate (`telemetry.insert`, `routes/tracking.ts`). Rejecting a lower seq would be wrong: backlog uploads, retries after a lost acknowledgement and batches across several shifts (plan 15 section 6.2) legitimately send lower seqs after higher ones, and a per-device high-water mark would silently drop them. No change.
 - Done: no production change. A test pins the invariant so a future change to redeem (reusing a device row) fails loudly.
 - Tests: `apps/server/test/devices.test.ts` 1 new: the same seq 1 twice from one device is a duplicate; after pairing again the new device id differs and seq 1 is stored as a fresh point; the points belong to the two ids; the old token keeps working until `DELETE /devices/:id`, then answers `device_revoked`, and the new token is unaffected. Fails if redeem ever reuses a device row (the second seq 1 would count as a duplicate).
+
 ## PR D1 — Docs for humans: changelog, security policy, decisions, driver docs
 
 - Branch `pr-D1-docs`, on `main` (caeed56). Documentation only; no code changed.
