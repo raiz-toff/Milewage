@@ -75,6 +75,9 @@ describe('scripts/phone-keystore.sh', () => {
       expect(again.stderr).toMatch(/Refusing to overwrite/);
       expect(readFileSync(keystore).equals(before)).toBe(true);
     },
+    // keytool starts a JVM and makes an RSA 2048 key, three times over here; on GitHub's shared
+    // runner that took longer than the 5 s default (0.4 s on a workstation).
+    60_000,
   );
 
   test('refuses to overwrite an existing keystore given with --out', () => {
