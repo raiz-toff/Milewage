@@ -124,6 +124,19 @@ describe('tax screen (module tax)', () => {
     expect(screen.getByText(/expect a T4A/)).toBeTruthy();
   });
 
+  it('folds the working, the settings and the jar entries under Details', async () => {
+    open();
+    const details = await screen.findByRole('region', { name: 'Details' });
+    const summaries = [...details.querySelectorAll('summary')].map((x) => x.textContent);
+    expect(summaries[0]).toMatch(/^How this is worked outTaxable income \$6,300\.00/);
+    expect(summaries[1]).toMatch(/^Tax settingsSet aside 25%; not registered for HST/);
+    expect(details.querySelectorAll('details[open]')).toHaveLength(0);
+    // A $0.00 line is muted, not hidden.
+    expect(screen.getByRole('row', { name: /Pension, second band.*\$0\.00/ }).className).toMatch(
+      /text-muted-foreground/,
+    );
+  });
+
   it('steps between tax years with arrows, not a free text field', async () => {
     const s = open();
     await screen.findByRole('heading', { name: `Set aside for ${YEAR}` });
@@ -225,6 +238,7 @@ describe('tax screen (module tax)', () => {
       '3',
     );
     expect(s.calls.find((c) => c.method === 'POST')?.body).toEqual({ amount_cents: 5000 });
+    fireEvent.click(screen.getByText('Tax jar entries'));
     fireEvent.click(screen.getByRole('button', { name: /Delete jar entry/ }));
     await waitFor(() => expect(s.calls.some((c) => c.method === 'DELETE')).toBe(true));
   });

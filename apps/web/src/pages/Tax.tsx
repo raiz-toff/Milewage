@@ -10,16 +10,21 @@ import { dateLocale, formatDay, todayIn } from '../dateText';
 import { formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
 import { Button, Field, FormError } from '../ui/form';
+import { MoreCard } from './ShiftStates';
 import { toCents } from './ShiftEarnings';
 
 type TaxYear = Schemas['TaxYear'];
 type Jar = Schemas['TaxJar'];
+/** A line of the working: label, figure, and whether it is muted ($0.00 or not estimated). */
+type Line = [string, string, boolean];
+const line = (label: string, value: string, quiet = false): Line => [label, value, quiet];
+const TOTAL = 'Set aside in total';
 
 /**
  * Tax Center (module `tax`, 18 section 7). An estimate to bring to an accountant: it shows its
  * working, says when the rates are unverified, files nothing, and shows the mileage deduction as
- * a deduction, never as cash. Summary first (what to set aside, the next date, the jar), then
- * the working and the dates.
+ * a deduction, never as cash. Summary first (what to set aside, the next date, the jar); the
+ * working, the settings and the jar's entries are folded below it (progressive disclosure).
  */
 export function TaxPage() {
   const { api } = useSession();
@@ -73,6 +78,7 @@ export function TaxPage() {
 
   if (!report) return <FormError message={error} />;
   const est = report.estimate;
+  const income = report.income;
   const salesTax = report.sales_tax_name ?? 'sales tax';
   const deadlines = [...report.deadlines].sort((a, b) =>
     (a.date ?? '').localeCompare(b.date ?? ''),
@@ -81,6 +87,157 @@ export function TaxPage() {
   const filled = jar?.target_cents
     ? Math.min(100, (jar.balance_cents / jar.target_cents) * 100)
     : 0;
+
+  // Every figure the API returns stays here; a $0.00 or not-estimated line is muted, not hidden.
+  const working: Line[] =
+    income && est
+      ? [
+          line('Earnings (base, tips, bonus)', money(income.total_cents)),
+          // Shown only when entered (plan 22), so nothing changes for other drivers.
+          ...(income.fees_cents
+            ? [line('Platform fees (already taken off)', money(income.fees_cents))]
+            : []),
+          ...(income.tax_withheld_cents
+            ? [
+                line(
+                  'Tax withheld by platforms (not counted below)',
+                  money(-income.tax_withheld_cents),
+                ),
+              ]
+            : []),
+          line('Expenses you can deduct', `− ${money(report.deductions?.expenses_cents)}`),
+          line(
+            'Mileage deduction (a deduction, not cash)',
+            `− ${money(report.deductions?.mileage_cents)}`,
+          ),
+          line('Taxable income', money(est.taxable_income_cents)),
+          ...est.lines.map((l) =>
+            line(l.label, l.cents === null && l.note ? l.note : money(l.cents), !l.cents),
+          ),
+          line(TOTAL, money(est.total_set_aside_cents)),
+          line('Quarterly instalment (a quarter)', money(est.instalment_cents)),
+          ...(est.sales_tax
+            ? [line('Sales tax owing (collected − credits)', money(est.sales_tax.owing_cents))]
+            : []),
+        ]
+      : [];
+
+  const details = [
+    ...(working.length && est
+      ? [
+          {
+            key: 'working',
+            title: 'How this is worked out',
+            hint: `Taxable income ${money(est.taxable_income_cents)}, then each amount to set aside`,
+            body: (
+              <table className="w-full text-left text-sm">
+                <caption className="sr-only">How this is worked out</caption>
+                <tbody>
+                  {working.map(([k, v, quiet]) => (
+                    <tr
+                      key={k}
+                      className={cn(
+                        k === TOTAL
+                          ? 'border-t-2 border-foreground/20 font-semibold'
+                          : 'border-t first:border-t-0',
+                        quiet && 'text-muted-foreground',
+                      )}
+                    >
+                      <th
+                        scope="row"
+                        className={cn(
+                          'py-2 pr-4 font-normal',
+                          k === TOTAL ? 'font-semibold' : 'text-muted-foreground',
+                        )}
+                      >
+                        {k}
+                      </th>
+                      <td className="py-2 text-right tabular-nums">{v}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ),
+          },
+        ]
+      : []),
+    ...(report.supported
+      ? [
+          {
+            key: 'settings',
+            title: 'Tax settings',
+            hint: `Set aside ${report.set_aside_bp / 100}%; ${report.sales_tax_registered ? '' : 'not '}registered for ${salesTax}`,
+            body: (
+              <div className="flex flex-wrap items-end gap-4">
+                <Field
+                  label="Set-aside rate (%)"
+                  inputMode="decimal"
+                  value={rate}
+                  onChange={(e) => setRate(e.target.value)}
+                />
+                <Button
+                  type="button"
+                  busy={!(Number(rate) >= 0 && Number(rate) <= 100)}
+                  onClick={() => void putYear({ set_aside_bp: Math.round(Number(rate) * 100) })}
+                >
+                  Save rate
+                </Button>
+                <label className="flex h-9 items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-primary"
+                    checked={report.sales_tax_registered}
+                    onChange={(e) => void putYear({ sales_tax_registered: e.target.checked })}
+                  />
+                  Registered for {salesTax}
+                </label>
+                {report.sales_tax_registered ? (
+                  <Field
+                    label="Sales tax you collected"
+                    inputMode="decimal"
+                    value={collected}
+                    onChange={(e) => setCollected(e.target.value)}
+                  />
+                ) : null}
+              </div>
+            ),
+          },
+        ]
+      : []),
+    ...(jar?.entries.length
+      ? [
+          {
+            key: 'jar',
+            title: 'Tax jar entries',
+            hint: `${jar.entries.length} added for ${year}`,
+            body: (
+              <ul className="divide-y text-sm">
+                {jar.entries.map((e) => (
+                  <li key={e.id} className="flex items-center gap-3 py-1.5">
+                    <span className="tabular-nums">{day(e.entered_on)}</span>
+                    <span className="tabular-nums">{money(e.amount_cents)}</span>
+                    <span className="min-w-0 flex-1 truncate text-muted-foreground">{e.note}</span>
+                    <UiButton
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`Delete jar entry ${e.entered_on} ${money(e.amount_cents)}`}
+                      onClick={() =>
+                        void act(() =>
+                          unwrap(api.DELETE('/tax/jar/{id}', { params: { path: { id: e.id } } })),
+                        )
+                      }
+                    >
+                      Delete
+                    </UiButton>
+                  </li>
+                ))}
+              </ul>
+            ),
+          },
+        ]
+      : []),
+  ];
 
   return (
     <section className="space-y-6">
@@ -185,28 +342,6 @@ export function TaxPage() {
               <p className="text-xs text-muted-foreground">
                 Your own record of what you set aside; no money moves.
               </p>
-              <ul className="divide-y text-sm">
-                {jar?.entries.map((e) => (
-                  <li key={e.id} className="flex items-center gap-3 py-1.5">
-                    <span className="tabular-nums">{day(e.entered_on)}</span>
-                    <span>{money(e.amount_cents)}</span>
-                    <span className="text-muted-foreground">{e.note}</span>
-                    <UiButton
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`Delete jar entry ${e.entered_on} ${money(e.amount_cents)}`}
-                      onClick={() =>
-                        void act(() =>
-                          unwrap(api.DELETE('/tax/jar/{id}', { params: { path: { id: e.id } } })),
-                        )
-                      }
-                    >
-                      Delete
-                    </UiButton>
-                  </li>
-                ))}
-              </ul>
             </div>
           ) : null}
         </Section>
@@ -244,104 +379,9 @@ export function TaxPage() {
             ))}
           </Section>
         ) : null}
-        {report.supported ? (
-          <Section label="Working" title="How this is worked out">
-            {report.income && est ? (
-              <table className="w-full text-left text-sm">
-                <caption className="sr-only">Estimate</caption>
-                <tbody>
-                  {[
-                    ['Earnings (base, tips, bonus)', money(report.income.total_cents)],
-                    // Shown only when entered (plan 22), so nothing changes for other drivers.
-                    ...(report.income.fees_cents
-                      ? [['Platform fees (already taken off)', money(report.income.fees_cents)]]
-                      : []),
-                    ...(report.income.tax_withheld_cents
-                      ? [
-                          [
-                            'Tax withheld by platforms (not counted below)',
-                            money(-report.income.tax_withheld_cents),
-                          ],
-                        ]
-                      : []),
-                    ['Expenses you can deduct', `− ${money(report.deductions?.expenses_cents)}`],
-                    [
-                      'Mileage deduction (a deduction, not cash)',
-                      `− ${money(report.deductions?.mileage_cents)}`,
-                    ],
-                    ['Taxable income', money(est.taxable_income_cents)],
-                    ...est.lines.map((l) => [
-                      l.label,
-                      l.cents === null && l.note ? l.note : money(l.cents),
-                    ]),
-                    ['Set aside in total', money(est.total_set_aside_cents)],
-                    ['Quarterly instalment (a quarter)', money(est.instalment_cents)],
-                  ].map(([k, v]) => (
-                    <tr
-                      key={k}
-                      className={
-                        k === 'Set aside in total'
-                          ? 'border-t-2 border-foreground/20 font-semibold'
-                          : 'border-t first:border-t-0'
-                      }
-                    >
-                      <th
-                        scope="row"
-                        className={`py-2 pr-4 font-normal ${k === 'Set aside in total' ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
-                      >
-                        {k}
-                      </th>
-                      <td className="py-2 text-right tabular-nums">{v}</td>
-                    </tr>
-                  ))}
-                  {est.sales_tax ? (
-                    <tr className="border-t">
-                      <th scope="row" className="py-2 pr-4 font-normal text-muted-foreground">
-                        Sales tax owing (collected − credits)
-                      </th>
-                      <td className="py-2 text-right tabular-nums">
-                        {money(est.sales_tax.owing_cents)}
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            ) : null}
-            <div className="flex flex-wrap items-end gap-4 border-t pt-4">
-              <Field
-                label="Set-aside rate (%)"
-                inputMode="decimal"
-                value={rate}
-                onChange={(e) => setRate(e.target.value)}
-              />
-              <Button
-                type="button"
-                busy={!(Number(rate) >= 0 && Number(rate) <= 100)}
-                onClick={() => void putYear({ set_aside_bp: Math.round(Number(rate) * 100) })}
-              >
-                Save rate
-              </Button>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-primary"
-                  checked={report.sales_tax_registered}
-                  onChange={(e) => void putYear({ sales_tax_registered: e.target.checked })}
-                />
-                Registered for {salesTax}
-              </label>
-              {report.sales_tax_registered ? (
-                <Field
-                  label="Sales tax you collected"
-                  inputMode="decimal"
-                  value={collected}
-                  onChange={(e) => setCollected(e.target.value)}
-                />
-              ) : null}
-            </div>
-          </Section>
-        ) : null}
       </div>
+
+      {details.length > 0 ? <MoreCard label="Details" title="Details" rows={details} /> : null}
     </section>
   );
 }

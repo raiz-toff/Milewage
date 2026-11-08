@@ -2151,3 +2151,15 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - `npm run verify` steps, one after another (memory is short): typecheck (server, phone, web), lint and prettier, `version:check`, `openapi:check` green; vitest with 2 workers 143 files, 1131 passed, 3 skipped; phone 33 suites, 282 passed.
 - Not done: screenshots (no browser started; the machine is short of memory).
 - Assumption (owner to confirm): the notice text still comes from the server (two short sentences in one note), because the same text goes into the exports; shortening it to one sentence is a server change for later. The quick-add chips are removed. The year arrows stop at next year.
+
+## PR W14b — Web: Tax page, the working and the settings folded under Details
+
+- Branch `pr-W14b-tax-details`, stacked on `pr-W14-tax-simpler` (W14a). Part 2 of 2.
+- Done (`apps/web/src/pages/Tax.tsx`): under the summary and the deadlines, one **Details** card with folded rows (the `MoreCard` a shift's page uses, now with an optional label and title; the shift page is unchanged), each with a one-line summary:
+  - **How this is worked out** ("Taxable income $6,300.00, then each amount to set aside"): every line as before, including the quarterly instalment and sales tax owing; a `$0.00` or not-estimated line is muted, not hidden.
+  - **Tax settings** ("Set aside 25%; not registered for HST"): the set-aside rate with **Save rate**, "Registered for …" named from the country data, and the collected sales tax when registered. They no longer sit inside the estimate.
+  - **Tax jar entries** ("2 added for 2026"), only when there are some: dates in the driver's locale, **Delete**.
+  - The page now opens on three things: what to set aside with the next date and the jar, the deadlines, and the folded details.
+- Standards checked: NN/g [progressive disclosure](https://www.nngroup.com/articles/progressive-disclosure/) (secondary features one click away, one level deep) and [accordions](https://www.nngroup.com/articles/accordions-on-desktop/) (a summary line on each fold so the hidden content can be found); GOV.UK Design System [Details](https://design-system.service.gov.uk/components/details/) (native `<details>`, for what only some people need; the total, the next date and the notice stay out of it) and [Summary list](https://design-system.service.gov.uk/components/summary-list/) (the working as label and value).
+- Tests: `apps/web/test/tax.test.tsx` 1 new, 1 changed: Details has the working and the settings folded, with their summary lines, and a $0.00 line is muted; the jar's entries open from "Tax jar entries" before Delete. Fail without the change.
+- `npm run verify` steps, one after another: typecheck (server, phone, web), lint and prettier, `version:check`, `openapi:check` green; vitest with 2 workers 143 files, 1136 passed, 3 skipped; phone 33 suites, 282 passed.
