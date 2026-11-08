@@ -15,9 +15,14 @@ if (!regular) throw new Error(`no regular subdivisions in ${url}`);
 
 // CLDR writes `caon` for CA-ON, and `cans~u` for cans, cant, canu (the last letter runs on).
 const codes = {};
-// Only tokens shaped like CLDR codes count, so a stray comment fragment can never become one.
-const tokens = regular
-  .replace(/<!--[\s\S]*?-->/g, '')
+// XML comments go, repeated until none is left (one pass could leave a nested `<!--` behind), and
+// only tokens shaped like CLDR codes count, so a stray fragment can never become one.
+let body = regular;
+for (let last = ''; last !== body; ) {
+  last = body;
+  body = body.replace(/<!--[\s\S]*?-->/g, '');
+}
+const tokens = body
   .trim()
   .split(/\s+/)
   .filter((t) => /^[a-z0-9]+(~[a-z0-9])?$/.test(t));
