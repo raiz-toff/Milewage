@@ -1791,3 +1791,9 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Tests: `infra/install.test.mjs` 4 new, run with fake `docker`, `curl` and `tailscale` on a PATH that holds only the tools the script needs (the host's real Tailscale is never called): Tailscale missing; yes after the privacy note serves the port, writes the address, recreates the API and checks the https address, never `funnel`; no, `--no-tailscale`, not signed in and certificates off serve and write nothing; `--yes-tailscale` without a terminal, and a failing `serve` exits 1 with the command to run and writes nothing. All fail without the change.
 - Not done: running it on a real fresh host with a real tailnet (plan 19 T7, the owner's Spike D). On this machine Tailscale was not touched.
 - Assumption (owner to confirm): plan 19 is still marked as awaiting sign-off; T1–T3 and T5 follow its recommended answers (Q1 ask then run, Q2 keep Change address, Q5 gateway only), as the owner asked for the Tailscale prompt on 2026-11-07.
+
+## PR W4c — Web: "Finish setting up" no longer asks to add apps
+
+- Branch `pr-W4c-setup-no-platform-step` (pushed, not merged), stacked on `pr-T5-install-tailscale`.
+- Owner report (2026-11-08): "Add your other apps" never ticked off. It counted as done only once a custom platform was created, so turning on Uber, DoorDash and the other listed apps did nothing. The setup wizard already asks which apps the driver uses (its "Your apps" step), so the dashboard card drops the step instead of asking twice. It now has up to four steps: vehicle, weekly goal, pair your phone, backup.
+- Tests: `apps/web/test/dashboard-extras.test.tsx` updated (4 steps, goal is now the next step, "3 left" when hidden, no "other apps"); they fail without the change.

@@ -135,7 +135,8 @@ function storeHidden(hidden: boolean) {
  * for the modules that are on, gone when everything visible is done. Onboarding-checklist
  * practice: progress shown, the next step first and marked, every step a link to where it is
  * done with why it matters, finished steps folded away, and "Hide for now" that can be undone.
- * If any answer cannot be read the card stays hidden rather than guess.
+ * If any answer cannot be read the card stays hidden rather than guess. Apps are chosen in the
+ * setup wizard, so turning platforms on is not a step here (W4c).
  */
 export function SetupChecklist() {
   const { api } = useSession();
@@ -146,19 +147,6 @@ export function SetupChecklist() {
 
   useEffect(() => {
     const items: Item[] = [
-      {
-        id: 'platforms',
-        text: 'Add your other apps',
-        why: "So each app's pay is kept apart.",
-        to: '/settings/platforms',
-        visible: modules.platforms,
-        done: async () =>
-          (
-            await unwrap<Schemas['Platform'][]>(
-              api.GET('/platforms', { params: { query: { include_inactive: true } } }),
-            )
-          ).some((p) => p.custom),
-      },
       {
         id: 'vehicle',
         text: 'Add your real vehicle',
@@ -211,7 +199,7 @@ export function SetupChecklist() {
     return () => {
       live = false;
     };
-  }, [api, modules.platforms, modules.goals, modules.devices]);
+  }, [api, modules.goals, modules.devices]);
 
   if (!state || state.every((i) => i.done)) return null;
   const open = state.filter((i) => !i.done);

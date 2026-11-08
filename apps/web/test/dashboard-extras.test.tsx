@@ -186,19 +186,19 @@ describe('dashboard checklist and goal ring (18 section 13)', () => {
   it('lists what is not done from server state as links, the next step marked, done folded away', async () => {
     open({ vehicles: [vehicle] });
     const card = await screen.findByRole('group', { name: 'Finish setting up' });
-    expect(within(card).getByText('1 of 5 done')).toBeTruthy();
+    expect(within(card).getByText('1 of 4 done')).toBeTruthy();
     expect(within(card).getByRole('progressbar').getAttribute('aria-valuenow')).toBe('1');
     const links = within(card)
       .getAllByRole('link')
       .map((l) => [l.textContent, l.getAttribute('href')]);
     expect(links).toEqual([
-      ["Add your other appsNextSo each app's pay is kept apart.", '/settings/platforms'],
-      ['Set a weekly goalSee how far along the week you are.', '/goals'],
+      ['Set a weekly goalNextSee how far along the week you are.', '/goals'],
       ['Pair your phoneThe phone records your shifts.', '/devices'],
       ['Run a backupA copy of your data you can restore.', '/backups'],
       ['Continue setup', '/onboarding'],
     ]);
     expect(within(card).queryByText(/Add your real vehicle/)).toBeNull();
+    expect(card.textContent).not.toMatch(/other apps/);
     const fold = within(card).getByRole('button', { name: '1 done' });
     expect(fold.getAttribute('aria-expanded')).toBe('false');
     fireEvent.click(fold);
@@ -212,7 +212,7 @@ describe('dashboard checklist and goal ring (18 section 13)', () => {
     const card = await screen.findByRole('group', { name: 'Finish setting up' });
     fireEvent.click(within(card).getByRole('button', { name: 'Hide for now' }));
     expect(screen.queryByRole('group', { name: 'Finish setting up' })).toBeNull();
-    expect(screen.getByText(/Setup steps hidden \(4 left\)/)).toBeTruthy();
+    expect(screen.getByText(/Setup steps hidden \(3 left\)/)).toBeTruthy();
     cleanup();
     open({ vehicles: [vehicle] });
     fireEvent.click(await screen.findByRole('button', { name: 'Show them' }));
