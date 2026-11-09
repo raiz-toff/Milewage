@@ -161,8 +161,9 @@ larger than a fix, so the work is not done twice.
   shows.
 - Before UI work, read the design skill. Driver-facing text follows its voice: short sentences,
   plain words, every problem message with one way forward.
-- Dependency updates arrive through Dependabot. `renovate.json` is there for a Renovate bot, should
-  one be pointed at the project.
+- Dependency security updates arrive through Dependabot. `renovate.json` asks for one weekly pull
+  request with the minor and patch updates, but it runs only when a Renovate bot is pointed at the
+  project; nothing happens until then.
 
 ## Licence
 
