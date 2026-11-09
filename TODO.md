@@ -4,6 +4,16 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
 
 ## Open
 
+- [ ] **Findings from the Help writers, not yet fixed** (2026-11-09; details in PROGRESS.md, DG0 to
+      DG2). (a) "Your mileage rate" cannot be entered: it applies only where the pack has no rate,
+      and Canada, the US and Great Britain all have one; decide whether a driver may override the
+      pack's rate. (b) The unverified notice shows on the Tax page and in the tax summary export
+      only; dashboard, shift pages and the phone show deductions without it. (c) The country list
+      says "United Kingdom" (CLDR via `Intl.DisplayNames`), the docs say "Great Britain". (d) Setting
+      Repeats on a saved expense hides it from the list and totals; repeating expenses have no list,
+      edit or stop on the web. (e) `tax_credit_cents` has no web field. (f) Analytics: "Gross" is after
+      app fees, "Per hour (online time)" never shows, pay per mile is computed but never shown.
+      (g) The platform colour the API accepts has no picker (also PL4b above).
 - [ ] **Flaky under load: `infra/install.test.mjs`** (2026-11-09). In one full `npm run verify` on a
       busy machine, "no, --no-tailscale, not signed in, or certificates off" saw the "not signed in"
       output instead of "HTTPS Certificates"; alone it passes 12 of 12 and the files have not changed
