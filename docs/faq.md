@@ -13,22 +13,24 @@ No. Nothing records until you start a shift, and it stops when you end it.
 Only you, on your own server. There is no MileWage cloud. A few things do leave your setup:
 
 - **Map tiles.** When a map is shown, your browser loads tiles from OpenFreeMap. OpenFreeMap can see which area you looked at. It does not get your shifts.
-- **Tailscale.** It carries the traffic between your phone and your server.
+- **Tailscale.** It carries the traffic between your phone and your server, except on your home Wi-Fi when LAN access is on.
 - **An AI assistant, if you turn it on.** That option is off by default. If you enable it, the assistant you connect can read what you allow it to read.
 
-Your server also serves a Privacy page at `/privacy`.
+Your server also serves a Privacy page at `/privacy`. Open it from the account menu at the foot of the web app's sidebar.
 
 ## Which countries work?
 
-Canada, the United States and Great Britain have country packs. All of their rates are unverified. Only Canada has a tax estimate. Anywhere else you can still track miles and enter your own rate.
+Canada, the United States and Great Britain have country packs, and they are the only countries you can choose today. All of their rates are unverified. Only Canada has a tax estimate. The field for your own mileage rate appears only for a country without a rate, so it does not appear yet.
 
 ## Can I use it without Tailscale?
 
-Not in this version. The release app only connects over https, and it refuses plain http. Tailscale gives your home server a safe https address without opening anything on your router.
+At home, yes, once LAN access is on ([`infra/docs/install.md`](../infra/docs/install.md), section 2a). On your home Wi-Fi the phone can reach the server over plain http at its home address. Away from home it needs an https address, and the release app refuses plain http there. Tailscale gives your home server a safe https address without opening anything on your router.
+
+To pair the phone, scan the QR code from the web's Devices page. On the home Wi-Fi the app can also find the server by itself and ask for the link code shown there instead.
 
 ## Can I run it on a Raspberry Pi?
 
-That is the aim, but the image has not been built or tested for ARM yet.
+That is the aim. Each release builds the server images for arm64 as well as amd64, but they have not been tested on a Raspberry Pi or any ARM host yet.
 
 ## Does it work on an iPhone?
 
@@ -56,4 +58,4 @@ No. It is an estimate and is labelled that way. Your total miles do not depend o
 
 ## Where is the source code, and what is the licence?
 
-The code is on the owner's private git server today. A licence has not been chosen yet, so for now nobody has been given the right to reuse the code.
+The code is public on GitHub at [raiz-toff/Milewage](https://github.com/raiz-toff/Milewage). It is free software under the GNU Affero General Public License, version 3 only (AGPL-3.0-only). See [`LICENSE`](../LICENSE).

@@ -21,9 +21,11 @@ The phone and the server run the same piece of code, called the track engine. It
 
 When a shift ends, the phone shows you its total. The server then works the total out again from the points it received. If the two totals match, the shift is marked as matching. If they do not, MileWage flags the shift and shows the difference. It does not quietly overwrite either number. The usual reasons are a different engine version, points that arrived late, or edits made on the web.
 
-## What "recalculate" does
+## When the total is worked out again
 
-Recalculate is a button on a shift page in the web app. The server runs the engine again on the points it holds. Your corrections are kept: trip edits, stop labels and trips you added by hand. Use it after an upgrade changes the engine. A shift you have finalized cannot be recalculated.
+The server runs the engine again on the points it holds when a shift ends, when points arrive late, and when you add or edit a trip or label a stop. Your corrections are kept: trip edits, stop labels and trips you added by hand. There is no Recalculate button in the web app. After an upgrade changes the engine, `milewage-cli recalc --dry-run` lists the shifts whose totals would change. It changes nothing.
+
+A finalized shift is never worked out again. The web app shows it as "Reviewed". Finalizing a shift is not available in the app yet.
 
 ## The map line can differ from the mileage
 

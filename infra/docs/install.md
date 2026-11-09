@@ -39,7 +39,7 @@ MILEWAGE_HOME_URL=http://192.168.1.20:8080     # this host's address on your net
 COMPOSE_PROFILES=lan                           # starts the small lan-discovery service
 ```
 
-The `lan-discovery` service announces `_milewage._tcp` on the Wi-Fi (mDNS, UDP 5353). Multicast does not cross Docker's bridge network, so it uses the host's network (`network_mode: host`, Linux only); it opens no other port. Hosts that already run Avahi may instead leave the profile off and put a service file in `/etc/avahi/services/` (see `avahi.service(5)`): type `_milewage._tcp`, the port, and TXT `v=1` and `path=/`.
+The `lan-discovery` service announces `_milewage._tcp` on the Wi-Fi (mDNS, UDP 5353). Multicast does not cross Docker's bridge network, so it uses the host's network (`network_mode: host`, Linux only); it opens no other port. Hosts that already run Avahi may instead leave the profile off and put a service file in `/etc/avahi/services/` (see `avahi.service(5)`): type `_milewage._tcp`, the port, and TXT `v=1`, `id=<instance id>` and `path=/`. The instance id is the `X-MileWage-Instance` header of `/healthz` (for example `curl -s -D - -o /dev/null http://127.0.0.1:8080/healthz`); the phone uses it to find its own server again if the address changes.
 
 Give the host a fixed address on your router (a DHCP reservation), so the home address stays right. If it changes, run `infra/install.sh --lan` again.
 
@@ -56,7 +56,7 @@ Give the host a fixed address on your router (a DHCP reservation), so the home a
 There are two compose files in `infra/docker/`, with the same services, settings and volumes:
 
 - `docker-compose.yml` **builds** the two images from this checkout (what `infra/install.sh` and every command in this guide use). The first build takes several minutes, longer on a Pi.
-- `docker-compose.release.yml` **pulls** them from a container registry instead: `server` and `caddy`, built for amd64 and arm64 by the `images` CI job on every release tag (`v0.1.0` and so on) and tagged with that version and `latest`.
+- `docker-compose.release.yml` **pulls** them from a container registry instead: `server` and `caddy`, built for amd64 and arm64 by the GitHub Actions release workflow (`.github/workflows/release.yml`) on every release tag (`v0.1.0` and so on) and tagged with that version and `latest`.
 
 The release file needs two settings, in `infra/docker/.env` next to the ones `install.sh` wrote:
 

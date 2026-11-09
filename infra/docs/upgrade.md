@@ -59,7 +59,7 @@ What the command does: it refuses while the API holds the database ("stop the ap
 
 Once you are satisfied, delete the moved-aside folder to get the space back: `dc run --rm --no-deps api rm -r /app/data/before-restore-<time>`.
 
-`milewage-cli restore` exists from the version that added it (PR R1, after 0.1.0). Rolling back to an older image means the earlier way: start that version on an **empty** `data` volume (keep the old volume until you are sure) and use "Restore from a backup instead" on the setup screen with the same `pre-migration` file.
+`milewage-cli restore` is in every version from 0.1.0. Rolling back to an image older than that means the earlier way: start that version on an **empty** `data` volume (keep the old volume until you are sure) and use "Restore from a backup instead" on the setup screen with the same `pre-migration` file.
 
 ## What to check afterwards
 

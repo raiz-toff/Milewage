@@ -16,6 +16,11 @@ All notable changes to MileWage are listed here. The format follows
 - The README rewritten for people who find the project on GitHub: what it is, features, status,
   installing the server and the phone, usage, a documentation index, development, releasing and
   contributing.
+- Guides corrected where they described controls the app does not have: a Recalculate button and
+  finalizing a shift on the web. The FAQ now gives the http rule (plain http on the home address,
+  https away from home), the licence (AGPL-3.0-only, public on GitHub) and the arm64 images (built,
+  not yet tested). The README and this changelog say where the unverified notice appears and when
+  your own mileage rate can be entered.
 
 ## [0.1.0] - 2026-11-09
 
@@ -31,7 +36,8 @@ Read "Not yet verified" first.
 - Nothing has run over a real Tailscale network. The install guide has not been followed on a
   fresh machine, a Raspberry Pi or an ARM host.
 - Every mileage rate and every tax figure is unverified. They were not checked against the tax
-  offices' own pages, and the app says so wherever it shows one.
+  offices' own pages. The Tax page (for Canada) and the tax summary export say so; the dashboard,
+  the shift pages and the phone show deductions without that notice.
 
 ### Server
 
@@ -39,15 +45,18 @@ Read "Not yet verified" first.
   database file.
 - Shifts, trips, stops and flags. The server recomputes every shift from the phone's raw points
   with the same shared engine the phone uses, and flags any difference instead of overwriting it.
-- Phones pair with a QR code and hold a device token that can be revoked at any time.
+- Phones pair with a QR code, or with a link code on the home Wi-Fi, and hold a device token
+  that can be revoked at any time.
 - Expenses with receipt photos, earnings entries, vehicles and their service log, odometer
   readings, goals, schedule, analytics, notifications and CSV import.
 - Country packs for Canada, the United States and Great Britain, with a mileage deduction and, for
-  Canada only, a tax estimate. A driver can set their own mileage rate.
+  Canada only, a tax estimate. A driver's own mileage rate can be entered only for a country
+  without a rate; all three packs have one, so the field does not appear yet.
 - Exports: mileage log CSV (per trip or per shift), expenses CSV, tax summary, GPX and GeoJSON.
   There is no PDF export in this version.
 - Nightly encrypted backups (age), a recovery key shown once at setup, restore on a fresh
-  server, and an upgrade that takes a backup first and reverts if it fails.
+  server, and an upgrade that takes a backup first. A failed migration is rolled back and the
+  server stays up read-only on the old database version.
 - Built-in diagnostics that stay on your own server and never carry coordinates.
 - An optional AI assistant endpoint (MCP). It is off by default and needs a token you create.
 
@@ -65,7 +74,7 @@ Read "Not yet verified" first.
   data when the server is reachable.
 - First-run screens that connect to your server, check Tailscale and ask for permissions.
 - A running-shift screen and notification with live distance. Shift lists work offline.
-- Banners for unsynced data, a wrong server and a server restored from an older backup.
+- Banners for shifts on phone only (not yet sent to the server), a wrong server and a server restored from an older backup.
 - The QR scanner uses ZXing, with no Google ML Kit.
 
 ### Infra
@@ -89,6 +98,8 @@ first build, released together with it.
 
 - A licence: MileWage is free software under the GNU Affero General Public License, version 3
   (`LICENSE`).
+- `milewage-cli restore`: restore a backup from the command line with the API stopped, for
+  example the pre-migration backup after a failed upgrade (`infra/docs/upgrade.md`).
 - Backups page: make a new recovery key after setup. A backup under the new key is made right
   away.
 - Show more on the Expenses and Notifications lists.

@@ -40,19 +40,23 @@ Three parts, one TypeScript monorepo:
 - Expenses with receipt photos, earnings, vehicles and their service log, odometer readings,
   goals, schedule, analytics, notifications and CSV import. Each module can be switched off.
 - Country packs for Canada, the United States and Great Britain: a mileage deduction, and for
-  Canada a tax estimate. You can set your own mileage rate.
+  Canada a tax estimate. Your own mileage rate can be entered only for a country without a rate;
+  all three packs have one, so the field does not appear yet.
 - Exports for your accountant: mileage log CSV per trip or per shift, expenses CSV, tax summary,
   GPX and GeoJSON.
 - Nightly encrypted backups (age) and a recovery key shown once. Restore onto a fresh server. An
-  upgrade takes a backup first and reverts if a migration fails.
-- Phones pair with a QR code and hold a device token you can revoke at any time.
+  upgrade takes a backup first. A failed migration is rolled back and the server stays up
+  read-only on the old database version.
+- Phones pair with a QR code, or with a link code on the home Wi-Fi, and hold a device token you
+  can revoke at any time.
 - Diagnostics that stay on your server and never carry coordinates.
 - An optional AI assistant endpoint (MCP), off by default.
 
 **Status.** Version 0.1.0 is a complete first build that has not yet been tried in the real
 world: no real shift on a real phone, no run over a real Tailscale network, and every mileage
-rate and tax figure is unverified against the tax offices' own pages. The app says so wherever it
-shows one. Details under "Not yet verified" in [`CHANGELOG.md`](CHANGELOG.md).
+rate and tax figure is unverified against the tax offices' own pages. The Tax page (for Canada)
+and the tax summary export say so; the dashboard, shift pages and phone show deductions without
+that notice. Details under "Not yet verified" in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Install
 

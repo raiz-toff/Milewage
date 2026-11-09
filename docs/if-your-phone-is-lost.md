@@ -29,7 +29,7 @@ A restore can leave the server behind what the phone has already sent. The phone
 - It marks the shifts it holds as "on phone only", since the server may not have them any more.
 - It stops deleting its own copies of points, so nothing it still holds is thrown away.
 - It tells you the server was restored: "MileWage is re-sending the last 14 days from your phone."
-- It sends its shifts again by itself, oldest first, on the next sync. You do not need to do anything. "Sync now" starts it at once.
+- It sends its shifts to the server again by itself, oldest first, the next time it reaches the server. You do not need to do anything. The banner's "Sync now" button starts it at once.
 
 Each shift goes the same way as the first time: the shift, then all its points still on the phone, then its odometer readings, its end and your trip edits. A shift the server still has is not doubled. The server answers what it already has, and only what is missing is added.
 

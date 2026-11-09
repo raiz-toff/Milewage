@@ -29,7 +29,7 @@ These lists come from the plans and have not been checked against the offices' o
 
 ## Rates are unverified
 
-Every mileage rate and every tax figure in MileWage is shown as unverified until the owner checks it against the tax office's own page. You will see a notice wherever one appears. Check any figure against the official source before you use it. If your country has no rate, you can enter your own. It is then labelled as your rate, not an official one.
+Every mileage rate and every tax figure in MileWage is unverified until the owner checks it against the tax office's own page. The Tax page (for Canada) and the tax summary export say so in a notice. The dashboard, the shift pages and the phone show deductions without that notice, but they use the same unverified rates. Check any figure against the official source before you use it. A field for your own rate appears only for a country without a rate, and Canada, the United States and Great Britain all have one, so it does not appear yet. A rate you enter there is labelled as your rate, not an official one.
 
 ## The tax figure is an estimate
 

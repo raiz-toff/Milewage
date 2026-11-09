@@ -12,7 +12,8 @@ Commands:
   recalc --dry-run [--since YYYY-MM-DD] [--json]
       Compare what the current algorithm gives each ended or finalized shift with what is stored.
       Prints the differences and changes nothing. Applying a new algorithm to a shift is done per shift
-      (recalculate in the web client); a finalized shift is never changed automatically.
+      (POST /api/v1/shifts/<id>/recalculate; the web app has no control for it); a finalized shift is
+      never changed automatically.
 
   restore --file <backup.db.gz.age> [--key <recovery key> | --key @<file holding it>] [--yes]
       Run with the api service stopped. Checks the backup, moves the current data into
