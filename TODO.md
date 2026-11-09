@@ -4,6 +4,11 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
 
 ## Open
 
+- [ ] **Flaky under load: `infra/install.test.mjs`** (2026-11-09). In one full `npm run verify` on a
+      busy machine, "no, --no-tailscale, not signed in, or certificates off" saw the "not signed in"
+      output instead of "HTTPS Certificates"; alone it passes 12 of 12 and the files have not changed
+      since H4b. Probably two cases sharing the fake host's state when vitest runs files in parallel;
+      give each case its own fake-host directory.
 - [ ] **Look at Help in a browser** (DG3, 2026-11-09): light and dark, 360 px wide, keyboard focus
       through the side list, a long page's anchors, Settings > Help pages off and on. No browser was
       available to the builder. Then decide on more Help links (Tax, Expenses, Backups, Settings >
