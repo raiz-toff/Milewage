@@ -4,7 +4,8 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
 
 ## Open
 
-- [ ] **Tag `v0.1.0`, or decide to wait for the field test** (owner, 2026-11-08). CHANGELOG and
+- [x] **Tag `v0.1.0`, or decide to wait for the field test** (owner, 2026-11-08). Done 2026-11-09:
+      tagged at `17f03c3`, the APK and the images are on the GitHub release. CHANGELOG and
       VERSION say 0.1.0, but `git tag` lists nothing. To tag:
       `git tag -a v0.1.0 -m "MileWage 0.1.0" && git push origin v0.1.0`. A tag starts nothing yet:
       the release jobs left with GitLab; see the next item.

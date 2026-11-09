@@ -11,6 +11,12 @@ All notable changes to MileWage are listed here. The format follows
 - A release workflow: on every `v*` tag GitHub builds the server and Caddy images for amd64 and
   arm64 and publishes them as packages (`ghcr.io/raiz-toff/milewage/server` and `/caddy`).
 
+### Docs
+
+- The README rewritten for people who find the project on GitHub: what it is, features, status,
+  installing the server and the phone, usage, a documentation index, development, releasing and
+  contributing.
+
 ## [0.1.0] - 2026-11-09
 
 First tagged version. It is a complete first build, but it has not been tried in the real world.
