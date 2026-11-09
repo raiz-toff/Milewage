@@ -38,7 +38,7 @@ MileWage counts distance from the GPS track. An odometer reading is evidence bes
 - **After a shift ends**, the phone sometimes shows "Odometer check". It asks in each new month, and when 14 days have passed since that vehicle's last check. The reading is saved as the shift's end reading. Not now puts it off until the next one is due.
 - **On the phone**, open Shifts, then the shift. Under Corrections, type the End odometer.
 - **On a shift page on the web**, under Odometer, type the Start or End reading and choose Save.
-- **On the Odometer page on the web**, under "Add a fiscal-year reading", choose Year start or Year end, the date and the reading. Shift readings are listed below, each with a link to its shift.
+- **On the Odometer page on the web**, under "Add a tax-year reading", choose Year start or Year end, the date and the reading. Shift readings are listed below, each with a link to its shift.
 
 The readings of a Reviewed shift cannot be changed.
 
@@ -46,7 +46,7 @@ The readings of a Reviewed shift cannot be changed.
 
 What MileWage shows here comes from the project's plans. It has not been checked against the tax offices' own pages.
 
-- **Canada.** The Odometer page says the CRA asks for the reading at the start and end of each fiscal year. It also says when this year's start reading is missing. The CRA allows a base year and a shorter sample year; MileWage stores the readings but has no mode for that.
+- **Canada.** The Odometer page says the CRA asks for the reading at the start and end of each tax year. It also says when this year's start reading is missing. The CRA allows a base year and a shorter sample year; MileWage stores the readings but has no mode for that.
 - **United States.** IRS Publication 463 does not require odometer readings. They are extra evidence.
 - **Great Britain and elsewhere.** The page says "Readings are optional. Enter them if your tax office asks."
 

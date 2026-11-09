@@ -66,7 +66,7 @@ export function SyncBanner({ onSettings }: { onSettings: () => void }) {
   /** Another MileWage server answers at this address (15 section 9.4). */
   const wrong = s.halt === 'wrong_server';
   const days = s.oldestAt === null ? 0 : Math.floor((Date.now() - s.oldestAt) / DAY);
-  const label = `Sync status ${s.color}`;
+  const label = `Sending status ${s.color}`;
 
   if (s.color === 'green' && s.unsyncedShifts === 0 && !s.message && !wrong && reminder === '') {
     return (
@@ -142,7 +142,7 @@ export function SyncBanner({ onSettings }: { onSettings: () => void }) {
             await refresh();
           }}
         >
-          <Text>{busy ? 'Sending…' : 'Sync now'}</Text>
+          <Text>{busy ? 'Sending…' : 'Send now'}</Text>
         </Button>
       )}
     </Alert>

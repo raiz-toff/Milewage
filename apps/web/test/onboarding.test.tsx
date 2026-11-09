@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Schemas, Settings } from '../src/api/client';
+import { rateLine } from '../src/onboarding/SetupSteps';
 import { pick, renderApp, settingsFixture, signedIn } from './support/kit';
 import type { Handler } from './support/kit';
 import { countriesFixture } from './support/fixtures';
@@ -169,7 +170,13 @@ describe('onboarding wizard (plan 23)', () => {
     const { calls } = wizard({ region: 'ON' }, '/onboarding/vehicle');
     expect(await heading(/Your vehicle — Step 3 of \d/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Skip this step' })).toBeNull();
-    expect(screen.getByRole('note').textContent).toBe('Gets the official mileage rate of Canada.');
+    expect(screen.getByRole('note').textContent).toBe(
+      'Uses the mileage rate for Canada (not yet checked against the official publications).',
+    );
+    const canada = countriesFixture().find((c) => c.code === 'CA')!;
+    expect(rateLine('car', { ...canada, verified: true })).toBe(
+      'Uses the official mileage rate for Canada.',
+    );
     pick('Type', 'bicycle');
     expect(screen.getByRole('note').textContent).toMatch(/^Bicycles, .* have no mileage rate\.$/);
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));

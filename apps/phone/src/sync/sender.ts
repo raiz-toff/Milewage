@@ -66,7 +66,7 @@ export interface Sender {
    */
   sendNow(): Promise<boolean>;
   /**
-   * The driver's "Sync now" and "Check the address": lifts every halt of the device session, then
+   * The driver's "Send now" and "Check the address": lifts every halt of the device session, then
    * a round that reads the change log too. A server that still refuses halts it again.
    */
   retry(): Promise<boolean>;

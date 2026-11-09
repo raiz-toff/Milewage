@@ -55,7 +55,7 @@ export interface Services {
   shifts: ShiftStore;
   /** Trip, odometer and notes edits made on the phone. */
   edits: PhoneEdits;
-  /** Sending to the server: the one status the screens show, "Sync now", the send loop. */
+  /** Sending to the server: the one status the screens show, "Send now", the send loop. */
   sender: Sender;
   /** Plain key-value storage (caches, flags). */
   plain: KeyValueStore;

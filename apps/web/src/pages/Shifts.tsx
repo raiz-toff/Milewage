@@ -572,7 +572,7 @@ export function ShiftDetail() {
         <Section
           label="Stops"
           title="Label stops"
-          description="Optional. A label corrects the estimate for that stop and adds its payout."
+          description="Optional. A label corrects the estimate for that stop and adds its fare."
         >
           <StopsPanel shift={shift} data={stops} />
         </Section>

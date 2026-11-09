@@ -329,7 +329,7 @@ describe('sender: the device session halts it', () => {
     expect((await services.sender.status()).halt).toBeNull();
   });
 
-  it('"Sync now" lifts the halt and tries once; a server that still refuses halts it again', async () => {
+  it('"Send now" lifts the halt and tries once; a server that still refuses halts it again', async () => {
     const routes = server({ 'POST /shifts': () => problem(403, 'scope_forbidden') });
     const { services } = await endedOffline(routes);
     expect(await services.sender.sendNow()).toBe(false);

@@ -26,7 +26,7 @@ With Settings > Alerts > "Backup problems" on, the Notifications page tells you 
 
 Your backups sit on the same disk as your data. If that disk fails, both are lost. So now and then, choose Download next to the newest backup and keep the file on another computer or drive. The file stays encrypted with your recovery key.
 
-After 30 days without a download, the page says "No copy of your backups has left this server recently." If another tool already copies your backup folder elsewhere, tick "My backup folder is synced to another place". You are asked again after 90 days.
+After 30 days without a download, the page says "No copy of your backups has left this server recently." If another tool already copies your backup folder elsewhere, tick "My backup folder is copied to another place". You are asked again after 90 days.
 
 If there is no Download link, downloads are turned off on the server. Turn `backup.download` back on as the [configuration guide](../../infra/docs/configuration.md) says.
 

@@ -35,7 +35,7 @@ const LIMIT = 500;
 
 export const odometerView = (r: OdometerRow) => snakeKeys(r, 'userId');
 
-/** The odometer review and the fiscal-year readings the CRA asks for (08 section 3, 07 section 2.2). Web session only. */
+/** The odometer review and the tax-year readings the CRA asks for (08 section 3, 07 section 2.2). Web session only. */
 export function odometerRoutes(
   app: FastifyInstance,
   {

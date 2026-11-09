@@ -35,7 +35,7 @@ There is no tax section: the Tax page works from these answers.
 
 ## Alerts
 
-Shown when the notifications module runs. Under "Tell me about" are switches for shift reminders, goals and progress, tax dates, streak, backup problems, and the "Unsynced data reminder (on the phone)".
+Shown when the notifications module runs. Under "Tell me about" are switches for shift reminders, goals and progress, tax dates, streak, backup problems, and the "Shifts not yet sent (on the phone)".
 
 Alerts appear on the Notifications page, behind the bell at the top. The two switches marked "on the phone" do nothing yet: the phone app sends no reminders of its own in this version. Its home screen still says when shifts are on phone only.
 

@@ -1673,7 +1673,7 @@ paths:
     put:
       tags: [receipts]
       operationId: putExpenseReceipt
-      summary: Upload or replace the one receipt of an expense (JPEG, PNG, WebP or PDF, 10 MB at most). The server removes GPS data from a JPEG and checks the bytes against the declared type. Web session only.
+      summary: Upload or replace the one receipt of an expense (JPEG, PNG, WebP or PDF, 10 MB at most). The server removes GPS data from a JPEG, PNG or WebP photo (a PDF is stored as it is) and checks the bytes against the declared type. Web session only.
       security: [{ sessionCookie: [] }]
       requestBody:
         required: true

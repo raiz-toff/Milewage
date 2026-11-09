@@ -105,6 +105,7 @@ describe('notifications (module notifications)', () => {
   it('the Alerts card on Settings flips a toggle', async () => {
     const s = open('/settings/alerts');
     fireEvent.click(await screen.findByLabelText('Tax dates'));
+    expect(screen.getByLabelText('Shifts not yet sent (on the phone)')).toBeTruthy();
     await waitFor(() =>
       expect(
         s.calls.find((c) => c.method === 'PATCH' && c.path === '/notifications/prefs')?.body,

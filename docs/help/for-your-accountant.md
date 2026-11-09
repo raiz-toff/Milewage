@@ -15,7 +15,7 @@ Open the Exports page in the web app. Pick a period, then download:
 - **Mileage log (CSV).** One row per trip, or one row per shift. It opens in any spreadsheet. The shift file has the date, times, vehicle, platform, active, deadhead and total distance, the deduction value and your notes. It also has your odometer readings and a check against the GPS total. The active and deadhead columns are estimates, and a column says so.
 - **Expenses (CSV).** Your expenses for the period, with the category and the deductible part.
 - **Tax summary.** The numbers behind the year's tax estimate, with the working shown.
-- **GPX and GeoJSON.** Your routes, for map programs and for anyone who wants to look at them on a map. They never contain payouts, labels or customer details.
+- **GPX and GeoJSON.** Your routes, for map programs and for anyone who wants to look at them on a map. They never contain money, labels or customer details.
 
 There is no PDF export in this version.
 
@@ -28,7 +28,7 @@ A good log is written at the time of travel and shows, for each business trip: t
 What the tax offices ask for, as written in the project's plans:
 
 - **IRS (United States).** A record kept at or near the time of travel with the date, destination, business purpose and distance of each use, and the total for the year. IRS Publication 463 does not require odometer readings. They are optional extra evidence.
-- **CRA (Canada).** A logbook with the date, destination, purpose and distance of each trip, and the year's business and personal distance. The CRA asks for the odometer reading at the start and end of each fiscal year. MileWage has places for those readings.
+- **CRA (Canada).** A logbook with the date, destination, purpose and distance of each trip, and the year's business and personal distance. The CRA asks for the odometer reading at the start and end of each tax year. MileWage has places for those readings.
 - **HMRC (United Kingdom).** The journeys, their dates, the reasons, and the miles for each type of vehicle.
 
 These lists come from the plans and have not been checked against the offices' own pages yet. The tax offices do not publish a required layout. So MileWage does not call any export "compliant", and nothing here promises that an audit will go well. Ask your accountant what they need.

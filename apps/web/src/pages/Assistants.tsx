@@ -163,10 +163,12 @@ export function AssistantsCard() {
     <div className="space-y-4">
       <Section title="Connect an AI assistant" label="Connect an AI assistant">
         <p className="text-sm text-muted-foreground">
-          An assistant such as Claude can read your shifts, earnings, expenses, goals and tax
-          estimate, and with a "Read and change" token add expenses, earnings lines, odometer
-          readings and trips, or fix a shift's notes. It sees your notes and merchant names too. It
-          cannot delete anything, see your password, backups or GPS points, or change settings.
+          A token is the secret code you make for one assistant so it can reach your server. You can
+          revoke it at any time. An assistant such as Claude can read your shifts, earnings,
+          expenses, goals and tax estimate, and with a "Read and change" token add expenses,
+          earnings lines, odometer readings and trips, or fix a shift's notes. It sees your notes
+          and merchant names too. It cannot delete anything, see your password, backups or GPS
+          points, or change settings.
         </p>
         {made ? <MadeToken made={made} onDone={() => setMade(null)} /> : null}
         <form onSubmit={(e) => void make(e)} className="grid gap-3 sm:grid-cols-3">

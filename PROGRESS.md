@@ -2660,3 +2660,11 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Design skill: `components.md` covers `SectionNav`, `LinkRow`, `HelpLink` and the Help pages note; `SKILL.md` names them.
 - Not done: the look in a browser (light and dark, 360 px, keyboard focus); no browser here. Owner item in TODO.md.
 - Assumption (owner to confirm): a link to a page whose module is off is plain text (the spec would have sent it to GitHub); the version note shows on the Help index too; only the five spec placements were added (Tax, Expenses, Backups and Settings > Tracking could follow).
+
+## PR V1 — Voice: the app's own words follow the voice table
+
+- Squash commit on main (see `git log`, "[V1] Voice"); built by an Opus agent in a worktree from the writers' findings, on top of AR6. Clean merge. The coordinating session changed the help pages that quoted the old words in the same commit.
+- Strings: phone "Sync now" to "Send now", "Sync status" to "Sending status", the shifts toast and screen text use "sent to the server" and "on phone only"; web "Unsynced data reminder (on the phone)" to "Shifts not yet sent (on the phone)", "synced to another place" to "copied to another place"; Stops "Payout" to "Fare" (API field `payout` unchanged), "cash trip" to "cash order", GPX/GeoJSON "No payouts" to "No money"; Odometer "Fiscal year" to "Tax year" (also the CA pack's logbook sentence); SetupSteps: an unchecked pack says "Uses the mileage rate for <country> (not yet checked against the official publications)", a pack with `verified: true` would say "official"; Assistants gains one sentence saying what a token is; the `vehicles.ts` comment says what the default vehicle does.
+- Receipts: the hand-rolled JPEG stripper now also clears PNG `eXIf` (checksum recomputed; XMP and raw-Exif chunks dropped) and WebP EXIF (XMP dropped; header flags and size updated); PDFs pass through; platform logos still JPEG only. Five new tests incl. PNG and WebP uploads. OpenAPI receipts summary updated (comment-only, types regenerated).
+- Country names come from `Intl.DisplayNames` (CLDR) in `packages/shared/src/countries/name.ts`, so the list says "United Kingdom" while the docs say "Great Britain"; owner to decide.
+- Verify in the worktree: vitest 170 files 1411 passed; phone 381 passed. 37 files, +306 −64.

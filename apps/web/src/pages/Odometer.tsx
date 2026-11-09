@@ -22,7 +22,7 @@ const KIND_TEXT: Record<Reading['kind'], string> = {
 };
 
 /**
- * Odometer logbook (07 section 2, 04 audit): fiscal-year start and end readings (what the tax
+ * Odometer logbook (07 section 2, 04 audit): tax-year start and end readings (what the tax
  * office asks comes from the `logbook` field of the settings, plan 21),
  * and the optional per-shift readings the phone or web entered. Readings are optional everywhere
  * and are shown in the driver's unit.
@@ -129,7 +129,7 @@ export function OdometerPage() {
         </div>
       ) : null}
 
-      <Section title="Add a fiscal-year reading">
+      <Section title="Add a tax-year reading">
         <form
           className="grid gap-3 sm:grid-cols-4"
           onSubmit={(e) => {
@@ -166,7 +166,7 @@ export function OdometerPage() {
         <p className="text-muted-foreground">Loading</p>
       ) : (
         <>
-          <ReadingsTable title="Fiscal year" rows={yearReadings} onDelete={remove} />
+          <ReadingsTable title="Tax year" rows={yearReadings} onDelete={remove} />
           <ReadingsTable title="Shifts" rows={shiftReadings} />
         </>
       )}

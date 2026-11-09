@@ -47,7 +47,10 @@ describe('off-site copy control (backup download module)', () => {
     open({ last_download_at: 1_700_000_000_000 }, { backup_download: true });
     const section = await screen.findByRole('region', { name: 'Off-site copy' });
     expect(section.textContent).toContain('Last download: Nov 14, 2023');
-    expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false);
+    const box = screen.getByRole('checkbox', {
+      name: 'My backup folder is copied to another place',
+    }) as HTMLInputElement;
+    expect(box.checked).toBe(false);
   });
 
   it('ticking sends synced_elsewhere true and shows the confirmation', async () => {

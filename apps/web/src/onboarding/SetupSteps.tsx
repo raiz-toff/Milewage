@@ -104,12 +104,16 @@ export function AppsStep({ ctx, next }: StepProps) {
 /** Same rule as the server's `notAutomobile` (18 section 4.1): no allowance rate applies. */
 const NO_RATE: Kind[] = ['bicycle', 'ebike', 'scooter', 'walking'];
 
-/** Which rate will value this vehicle's distance, in one line. */
+/** Which rate will value this vehicle's distance, in one line; "official" only once checked. */
 export function rateLine(kind: Kind, country: OnboardingCtx['country']) {
   if (NO_RATE.includes(kind))
     return 'Bicycles, e-bikes, scooters and walking have no mileage rate.';
-  if (!country || country.supports.mileage)
-    return `Gets the official mileage rate${country ? ` of ${country.name}` : ''}.`;
+  if (!country || country.supports.mileage) {
+    const where = country ? ` for ${country.name}` : '';
+    return country?.verified
+      ? `Uses the official mileage rate${where}.`
+      : `Uses the mileage rate${where} (not yet checked against the official publications).`;
+  }
   return 'No official rate here: you can set your own rate.';
 }
 

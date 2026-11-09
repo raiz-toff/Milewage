@@ -88,7 +88,7 @@ describe('device session: the sender obeys it', () => {
     expect(routes.calls.slice(from).map((c) => `${c.method} ${c.path}`)).toEqual(['GET /settings']);
 
     routes.routes[`POST /shifts/${ID}/end`] = () => json(200, {});
-    expect(await services.sender.retry()).toBe(true); // "Sync now"
+    expect(await services.sender.retry()).toBe(true); // "Send now"
     expect(routes.calls.slice(from).map((c) => c.path)).toContain('/sync/changes');
   });
 

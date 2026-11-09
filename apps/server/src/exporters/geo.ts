@@ -12,7 +12,7 @@ const iso = (ms: number) => new Date(ms).toISOString().replace('.000Z', 'Z');
  * GPX 1.1, one track per shift (08 section 11). Points are the stored raw fixes; a shift whose raw points were
  * archived (07 section 4.2) is written from its simplified route and says "[simplified]" in its name and the
  * file's description.
- * Payouts, labels, places and notes are never written.
+ * Money, labels, places and notes are never written.
  */
 function* gpx(c: ExportContext) {
   yield '<?xml version="1.0" encoding="UTF-8"?>\n';

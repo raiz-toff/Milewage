@@ -99,7 +99,7 @@ const LABELS: [keyof Prefs, string][] = [
   ['tax_deadlines', 'Tax dates'],
   ['streak', 'Streak'],
   ['backup', 'Backup problems'],
-  ['sync_reminder', 'Unsynced data reminder (on the phone)'],
+  ['sync_reminder', 'Shifts not yet sent (on the phone)'],
 ];
 
 /** Settings card with the toggles of the module. */

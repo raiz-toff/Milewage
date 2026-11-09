@@ -207,7 +207,7 @@ describe('home banner keeps the OS reminder in step', () => {
     await waitFor(() => expect(notifications.pending.get(UNSYNCED_ID)).toBeDefined());
 
     down = false;
-    fireEvent.press(screen.getByRole('button', { name: 'Sync now' }));
+    fireEvent.press(screen.getByRole('button', { name: 'Send now' }));
     await waitFor(() => expect(notifications.calls).toContain(`cancel ${UNSYNCED_ID}`));
     expect(notifications.pending.size).toBe(0);
   });

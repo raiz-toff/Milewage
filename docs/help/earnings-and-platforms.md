@@ -14,7 +14,7 @@ Earnings are what the platforms paid you after their app fees. You enter them on
 A shift's earnings for a platform come from one of two places:
 
 - **A total you type** on the shift's Earnings card. The card marks it "entered by you".
-- **Stop labels**, when stop detection is on. The Payout and Tip on a shift's stop labels add up per platform, marked "from stop labels". On a stop label, Payout is the fare for that order.
+- **Stop labels**, when stop detection is on. The Fare and Tip on a shift's stop labels add up per platform, marked "from stop labels". On a stop label, Fare is the pay for that order.
 
 A total you type replaces that platform's stop labels for the shift. The labels stay on the shift page. The owner can make the two add up instead, with `MILEWAGE_EARNINGS_OVERRIDE`; see [tax and country options](../../infra/docs/configuration.md#6-tax-and-country-options).
 
@@ -30,7 +30,7 @@ Remove, next to a platform, deletes everything entered for that platform on that
 
 ## Lines for fees, cash and payouts
 
-Choose "Add a cash trip, fee or payout line". Pick the platform and the kind, type the amount without a sign, and choose Add line. A line cannot be edited. To fix one, remove it and add it again.
+Choose "Add a cash order, fee or payout line". Pick the platform and the kind, type the amount without a sign, and choose Add line. A line cannot be edited. To fix one, remove it and add it again.
 
 | Kind                     | What it is                                | In your earnings  |
 | ------------------------ | ----------------------------------------- | ----------------- |
@@ -42,13 +42,13 @@ Choose "Add a cash trip, fee or payout line". Pick the platform and the kind, ty
 | Top-up                   | Money you paid into the platform's wallet | Not counted       |
 | Payout                   | Money the platform sent to your bank      | Not counted       |
 
-A cash trip is two lines: a Fare and the same amount as Cash collected. The fare counts as earnings; the cash line says the money is already in your hand.
+A cash order is two lines: a Fare and the same amount as Cash collected. The fare counts as earnings; the cash line says the money is already in your hand.
 
 ## The balance with the app
 
 Once a platform has such lines, the card shows its fees, tax withheld, cash collected and balance. The balance is every line added up. Pay and top-ups raise it. Fees, tax withheld, cash collected and payouts lower it. A correction moves it either way.
 
-For example, a cash trip of 20.00 with a 4.00 commission: Fare 20.00, Cash collected 20.00, Commission 4.00. Your earnings are 16.00. The card says "You owe the app 4.00", because the app's cut has to come out of cash you already hold. A Payout line for what the platform sends you brings a positive balance back to zero.
+For example, a cash order of 20.00 with a 4.00 commission: Fare 20.00, Cash collected 20.00, Commission 4.00. Your earnings are 16.00. The card says "You owe the app 4.00", because the app's cut has to come out of cash you already hold. A Payout line for what the platform sends you brings a positive balance back to zero.
 
 The balance is kept per shift and platform. There is no running balance across shifts in this version. A weekly payout or a top-up that belongs to no single shift goes on a shift of that week.
 

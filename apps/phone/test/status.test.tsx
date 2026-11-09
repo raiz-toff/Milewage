@@ -186,7 +186,7 @@ describe('wrong server and restore generation', () => {
 });
 
 describe('home banner', () => {
-  it('shows what is not on the server, offers Sync now, and says so when a phone was revoked', async () => {
+  it('shows what is not on the server, offers Send now, and says so when a phone was revoked', async () => {
     let revoked = false;
     const routes = server({
       'POST /shifts': () => (revoked ? problem(401, 'device_revoked') : problem(503, 'x', true)),
@@ -199,9 +199,9 @@ describe('home banner', () => {
       await screen.findByText(/Not yet on server: 1 shift · 0 points · oldest \d+ days ago/),
     ).toBeTruthy();
     revoked = true;
-    fireEvent.press(screen.getByRole('button', { name: 'Sync now' }));
+    fireEvent.press(screen.getByRole('button', { name: 'Send now' }));
     // Revoked with no shift running: the app start gate goes back to the first-run screens.
     expect(await screen.findByText(/disconnected from your server. Connect again/)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Sync now' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Send now' })).toBeNull();
   });
 });

@@ -15,7 +15,7 @@ The key is only for backups. Your server keeps working without it. Shifts, trips
 ## What cannot be recovered
 
 - The old key. It was never stored, so there is no reset.
-- Backups locked with the old key, if you do not have that key. Nobody can open them, you included. This also goes for copies you downloaded or synced to another machine.
+- Backups locked with the old key, if you do not have that key. Nobody can open them, you included. This also goes for copies you downloaded or copied to another machine.
 
 ## What to do
 

@@ -1069,7 +1069,7 @@ export interface paths {
         };
         /** The receipt file, streamed with its stored type. */
         get: operations["getExpenseReceipt"];
-        /** Upload or replace the one receipt of an expense (JPEG, PNG, WebP or PDF, 10 MB at most). The server removes GPS data from a JPEG and checks the bytes against the declared type. Web session only. */
+        /** Upload or replace the one receipt of an expense (JPEG, PNG, WebP or PDF, 10 MB at most). The server removes GPS data from a JPEG, PNG or WebP photo (a PDF is stored as it is) and checks the bytes against the declared type. Web session only. */
         put: operations["putExpenseReceipt"];
         post?: never;
         delete: operations["deleteExpenseReceipt"];

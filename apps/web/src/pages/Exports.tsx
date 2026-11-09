@@ -130,8 +130,8 @@ const HINT: Record<Format, string> = {
   pdf: 'A summary page and the trip log (PDF).',
   expenses: 'Your expenses in the period, as a spreadsheet (CSV). No receipt files.',
   tax_summary: 'The estimate for {year} with its working (CSV): an estimate, not tax advice.',
-  gpx: 'The recorded routes, for map and GPS apps. No payouts, labels or notes.',
-  geojson: 'Routes and detected stops, for mapping tools. No payouts, labels or notes.',
+  gpx: 'The recorded routes, for map and GPS apps. No money, labels or notes.',
+  geojson: 'Routes and detected stops, for mapping tools. No money, labels or notes.',
 };
 const GROUPS: { title: string; description?: string; formats: Format[] }[] = [
   {

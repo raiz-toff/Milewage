@@ -99,7 +99,7 @@ export const caCountry: CountryModule = {
       },
     },
     logbook: {
-      readings: 'The CRA asks for the odometer reading at the start and end of each fiscal year.',
+      readings: 'The CRA asks for the odometer reading at the start and end of each tax year.',
       notes: [
         'A full 12-month logbook can serve as a base year; a 3-month sample can then be used while your use stays within 10% of the base year. MileWage stores the readings but has no base-year or sample mode. Check the rules with the CRA.',
       ],

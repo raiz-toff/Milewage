@@ -226,11 +226,11 @@ export function StopsPanel({
       },
       {
         key: 'payout',
-        label: `Payout (${currency})`,
+        label: `Fare (${currency})`,
         numeric: true,
         sortValue: (s) => s.label?.payout_cents ?? null,
         text: (s) => money(s.label?.payout_cents ?? 0, currency),
-        render: (s) => input(s, 'payout', 'Payout'),
+        render: (s) => input(s, 'payout', 'Fare'),
       },
       {
         key: 'tip',

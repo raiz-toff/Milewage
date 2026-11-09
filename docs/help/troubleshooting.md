@@ -24,7 +24,7 @@ If the phone says "You are away from your home Wi-Fi", it has only a home addres
 
 ## Shifts are on phone only
 
-The phone's home screen counts what is not on the server yet: "Not yet on server", with the number of shifts and points and the age of the oldest. The phone sends them by itself as soon as it reaches your server, and keeps trying every minute or less. "Sync now" sends at once. After 3 days the banner adds a reminder, and stronger words after 7 days.
+The phone's home screen counts what is not on the server yet: "Not yet on server", with the number of shifts and points and the age of the oldest. The phone sends them by itself as soon as it reaches your server, and keeps trying every minute or less. "Send now" sends at once. After 3 days the banner adds a reminder, and stronger words after 7 days.
 
 If it says "Some items could not be sent", open that shift on the phone to see why. If it says "This phone was removed from your server", the phone was revoked: pair it again as [Phones and devices](phones-and-devices.md#pair-a-phone-again) says. Do not clear the app's storage meanwhile: see [If your phone is lost](if-your-phone-is-lost.md).
 

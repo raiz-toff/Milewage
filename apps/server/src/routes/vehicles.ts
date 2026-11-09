@@ -62,7 +62,8 @@ export function vehicleRoutes(
     const archivedAt =
       archived === undefined ? {} : { archivedAt: archived ? (current.archivedAt ?? now()) : null };
     const saved = repo.update(userId, id, { ...b, ...archivedAt }) ?? current;
-    // An archived vehicle cannot stay the one preselected for a new shift.
+    // An archived vehicle cannot stay the default (it pre-fills new expenses and CSV-imported shifts
+    // that name no vehicle).
     const prefs = createSettingsRepository(db);
     if (saved.archivedAt !== null && prefs.get(userId)?.defaultVehicleId === id) {
       prefs.update(userId, { defaultVehicleId: null, updatedAt: now() });

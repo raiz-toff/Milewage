@@ -25,6 +25,6 @@ export function totalsCaption(s: {
   total_m: number | null;
   calc_source: 'phone' | 'server';
 }): string {
-  if (s.total_m === null) return 'Totals will appear after sync';
+  if (s.total_m === null) return 'Totals will appear once it is sent to the server';
   return s.calc_source === 'server' ? 'Confirmed by server' : 'Calculated on phone';
 }

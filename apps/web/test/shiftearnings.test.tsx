@@ -67,7 +67,7 @@ const typed = {
   ],
 };
 
-/** The typed row after a cash trip: commission 20.00 taken, 100.00 collected in cash. */
+/** The typed row after a cash order: commission 20.00 taken, 100.00 collected in cash. */
 const cash = (() => {
   const row = typed.entries[0]!;
   return {
@@ -210,7 +210,7 @@ describe('shift earnings block (module earnings)', () => {
     expect(within(card).queryByText(/replaces that platform/)).toBeNull();
     expect(within(card).queryByLabelText('Amount')).toBeNull();
     fireEvent.click(
-      within(card).getByRole('button', { name: 'Add a cash trip, fee or payout line' }),
+      within(card).getByRole('button', { name: 'Add a cash order, fee or payout line' }),
     );
     expect(within(card).getByLabelText('Amount')).toBeTruthy();
   });
@@ -218,7 +218,7 @@ describe('shift earnings block (module earnings)', () => {
   it('refuses a line without an amount above zero', async () => {
     const s = open();
     await screen.findByText(/No earnings entered/);
-    fireEvent.click(screen.getByRole('button', { name: 'Add a cash trip, fee or payout line' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add a cash order, fee or payout line' }));
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '-2' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add line' }));
     expect((await screen.findByRole('alert')).textContent).toMatch(/above zero/);

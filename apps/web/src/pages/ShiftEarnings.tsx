@@ -179,7 +179,7 @@ export function ShiftEarnings({
           className="-ml-2 self-start text-muted-foreground"
           onClick={() => setLedger(true)}
         >
-          Add a cash trip, fee or payout line
+          Add a cash order, fee or payout line
         </UiButton>
       ) : (
         <EarningLedger shiftId={shift.id} data={data} options={options} />

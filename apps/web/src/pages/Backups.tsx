@@ -194,7 +194,7 @@ function Offsite({
           checked={at !== null && !stale}
           onChange={(e) => onChange(e.target.checked)}
         />
-        <span>My backup folder is synced to another place</span>
+        <span>My backup folder is copied to another place</span>
       </label>
       {at !== null ? (
         <p className="text-sm text-muted-foreground">

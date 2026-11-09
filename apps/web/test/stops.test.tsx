@@ -79,7 +79,7 @@ describe('stops table', () => {
     await panel();
     pick(field(/^Label at/), 'dropoff');
     fireEvent.change(field(/^Platform at/), { target: { value: 'uber_eats' } });
-    fireEvent.change(field(/^Payout/), { target: { value: '12.50' } });
+    fireEvent.change(field(/^Fare/), { target: { value: '12.50' } });
     fireEvent.change(field(/^Tip/), { target: { value: '3' } });
     fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0]!);
     await screen.findByRole('button', { name: 'Clear' });
@@ -111,7 +111,7 @@ describe('stops table', () => {
     });
     await panel();
     expect((field(/^Platform at/) as HTMLInputElement).value).toBe('uber_eats');
-    expect((field(/^Payout/) as HTMLInputElement).value).toBe('12.50');
+    expect((field(/^Fare/) as HTMLInputElement).value).toBe('12.50');
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull());
     expect(calls.some((c) => c.method === 'DELETE')).toBe(true);
@@ -123,7 +123,7 @@ describe('stops table', () => {
     const { calls } = open([a]);
     await panel();
     pick(field(/^Label at/), 'pickup');
-    fireEvent.change(field(/^Payout/), { target: { value: 'twelve' } });
+    fireEvent.change(field(/^Fare/), { target: { value: 'twelve' } });
     fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0]!);
     expect(await screen.findByText('Enter an amount such as 12.50.')).toBeTruthy();
     expect(calls.some((c) => c.method === 'PUT')).toBe(false);

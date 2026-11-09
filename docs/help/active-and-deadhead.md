@@ -24,7 +24,7 @@ Your total miles for a shift come from the whole track. They are the same whethe
 
 ## Labelling a stop fixes the estimate
 
-On a shift page in the web app, you can mark a stop as a pickup or a dropoff. You can also add the platform, place, payout and tip. A pickup label means you were active from there, and a dropoff label means you were not. The rest of the shift is worked out from your label, so one correction can fix later stops too.
+On a shift page in the web app, you can mark a stop as a pickup or a dropoff. You can also add the platform, place, fare and tip. A pickup label means you were active from there, and a dropoff label means you were not. The rest of the shift is worked out from your label, so one correction can fix later stops too.
 
 Labelling is optional and only done on the web. Nothing here is needed for your total miles.
 

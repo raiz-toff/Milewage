@@ -66,7 +66,7 @@ describe('shift list and detail (work offline)', () => {
 
   it('captions: empty totals wait for the server', () => {
     expect(totalsCaption({ total_m: null, calc_source: 'phone' })).toBe(
-      'Totals will appear after sync',
+      'Totals will appear once it is sent to the server',
     );
   });
 });

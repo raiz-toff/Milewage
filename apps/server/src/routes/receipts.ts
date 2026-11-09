@@ -90,7 +90,7 @@ export function receiptsRoutes({
             { path: '/', message: `is not a ${declared} file` },
           ]);
         }
-        const bytes = declared === 'image/jpeg' ? stripGps(body) : body;
+        const bytes = stripGps(body); // a PDF passes through
         const used = db
           .prepare('SELECT coalesce(sum(bytes), 0) FROM expense_receipts WHERE expense_id <> ?')
           .pluck()

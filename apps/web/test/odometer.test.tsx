@@ -40,7 +40,7 @@ const DEC_31 = Date.parse('2025-12-31T14:00:00Z');
 
 // What the server sends for a Canadian driver (the CA `logbook` slot).
 const CA_LOGBOOK = {
-  readings: 'The CRA asks for the odometer reading at the start and end of each fiscal year.',
+  readings: 'The CRA asks for the odometer reading at the start and end of each tax year.',
   notes: [
     'A full 12-month logbook can serve as a base year; a 3-month sample then while within 10%.',
   ],
@@ -72,7 +72,7 @@ describe('odometer logbook', () => {
       reading(2, 'year_end', 11_900_000, DEC_31),
       reading(3, 'shift_start', 12_500_000, JAN_1 + 3_600_000, true),
     ]);
-    const year = within(await screen.findByRole('region', { name: 'Fiscal year' }));
+    const year = within(await screen.findByRole('region', { name: 'Tax year' }));
     expect(await year.findByText('12480.0 km')).toBeTruthy();
     expect(year.getByText('11900.0 km')).toBeTruthy();
     const shifts = within(screen.getByRole('region', { name: 'Shifts' }));
@@ -143,7 +143,7 @@ describe('odometer logbook', () => {
     expect(calls.some((c) => c.method === 'POST')).toBe(false);
   });
 
-  it('deletes a fiscal-year reading and reads the list again', async () => {
+  it('deletes a tax-year reading and reads the list again', async () => {
     const rows = [reading(1, 'year_start', 12_480_000, JAN_1)];
     const { calls } = open(rows, {
       'DELETE /odometer/1': () => {

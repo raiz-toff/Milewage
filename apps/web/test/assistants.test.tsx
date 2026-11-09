@@ -63,6 +63,9 @@ describe('settings: AI assistants (plan 26)', () => {
     expect(within(list).getByText('Read only')).toBeTruthy();
     const changes = screen.getByRole('region', { name: 'Recent changes by assistants' });
     expect(within(changes).getByText('add expense (expense #42)')).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Connect an AI assistant' }).textContent).toContain(
+      'A token is the secret code you make for one assistant so it can reach your server.',
+    );
 
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: ' Claude Code ' } });
     pick('Access', 'write');

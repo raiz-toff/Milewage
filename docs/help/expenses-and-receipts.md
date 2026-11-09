@@ -51,7 +51,7 @@ Each expense can hold one receipt, a photo or a PDF. In the list, use the Receip
 
 - The file can be JPEG, PNG, WebP or PDF, up to 10 MB.
 - All receipts together can take up to 2 GB.
-- Before a JPEG photo is stored, the server removes the location the camera wrote into it. PNG, WebP and PDF files are kept as they are.
+- Before a JPEG, PNG or WebP photo is stored, the server removes the location the camera wrote into it. PDF files are kept as they are.
 - Receipts stay on your server and go into every backup. A restore brings them back.
 - Receipts are added on the web only. The phone app does not take them.
 

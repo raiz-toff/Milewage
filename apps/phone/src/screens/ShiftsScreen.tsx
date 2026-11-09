@@ -53,7 +53,8 @@ export function ShiftsScreen({ navigation }: ScreenProps<'Shifts'>) {
     } catch {
       toast.show({
         title: 'Could not reach the server.',
-        description: 'The list shows what is on this phone; it syncs again by itself.',
+        description:
+          'The list shows what is on this phone. Shifts on phone only are sent again by themselves.',
       });
     } finally {
       await load();
@@ -64,7 +65,7 @@ export function ShiftsScreen({ navigation }: ScreenProps<'Shifts'>) {
   return (
     <Screen
       title="Shifts"
-      description="Every shift on this phone, newest first. Pull down to sync."
+      description="Every shift on this phone, newest first. Pull down to send to the server."
       onRefresh={() => void refresh()}
       refreshing={refreshing}
     >

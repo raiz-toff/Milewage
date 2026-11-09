@@ -80,7 +80,7 @@ describe('exports screen', () => {
     expect(routes.getByRole('button', { name: 'Download GeoJSON' })).toBeTruthy();
     expect(routes.queryByLabelText('CSV rows')).toBeNull();
     expect(screen.queryByRole('button', { name: /Mileage report|PDF/ })).toBeNull();
-    expect(routes.getAllByText(/No payouts, labels or notes/).length).toBe(2);
+    expect(routes.getAllByText(/No money, labels or notes/).length).toBe(2);
     expect(screen.queryByRole('heading', { name: 'Formats' })).toBeNull();
   });
 

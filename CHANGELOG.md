@@ -49,6 +49,12 @@ All notable changes to MileWage are listed here. The format follows
   `formatOdometer`) beside the money helpers, and no page serves as a helper library; one pairing
   session (`usePairingSession`) for Devices and the setup wizard, polling with TanStack Query; the
   shift page reads one shift record (`useShiftRecord`) and one pure view (`shiftView`).
+- The app's own words follow the voice table and the glossary: "Send now" (was "Sync now"),
+  "Shifts not yet sent (on the phone)", "My backup folder is copied to another place", the stop
+  label's "Fare" (was "Payout"; the API field is unchanged), "cash order" (was "cash trip"), "tax
+  year" (was "fiscal year"), and the setup wizard says a pack's mileage rate is "not yet checked
+  against the official publications" instead of calling it official. The Assistants page says what a
+  token is.
 
 ### Fixed
 
@@ -78,6 +84,8 @@ All notable changes to MileWage are listed here. The format follows
   just-ended shift active and get a 409; the round now ends that shift first.
 - The Devices page shows a newly paired phone by itself, and an expired pairing code is replaced
   with a fresh one. The maintenance odometer field accepts "12,345" and refuses negative numbers.
+- Receipt photos: location data is now removed from PNG and WebP photos too, not only JPEG, so the
+  Expenses page's sentence is true. PDF files are stored as they are.
 
 ### Docs
 

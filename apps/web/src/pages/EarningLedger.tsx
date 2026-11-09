@@ -28,7 +28,7 @@ const PLUS: EntryType[] = ['fare', 'tip', 'bonus', 'top_up'];
 const PAY: EntryType[] = ['fare', 'tip', 'bonus'];
 
 /**
- * The entries of each platform's row: cash trips, commission, fees, withheld tax, top-ups and
+ * The entries of each platform's row: cash orders, commission, fees, withheld tax, top-ups and
  * payouts (plan 22 section 6). The driver types a positive amount; the type gives the sign.
  */
 export function EarningLedger({
@@ -165,8 +165,8 @@ export function EarningLedger({
         </Button>
       </form>
       <p className="text-xs text-muted-foreground">
-        For cash trips, commission, fees, tax the app kept, top-ups and payouts. Type the amount
-        without a sign. A cash trip is a fare plus the cash you collected.
+        For cash orders, commission, fees, tax the app kept, top-ups and payouts. Type the amount
+        without a sign. A cash order is a fare plus the cash you collected.
       </p>
     </div>
   );
