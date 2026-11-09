@@ -8,10 +8,14 @@ All notable changes to MileWage are listed here. The format follows
 
 ### Added
 
-- Help pages for drivers: ten new guides in `docs/help/` (getting started, shifts and trips,
-  vehicles and odometer, expenses and receipts, earnings and platforms, mileage rates and tax,
-  backups and the recovery key, phones and devices, settings, troubleshooting), each checked against
-  the code. They are the content of the Help screen the web app gains next.
+- Help pages in the web app: a Help screen (`/help`) with the driver guides from `docs/help/`,
+  bundled into the build so they describe the version you run, with "What's new" cut from this
+  changelog for that version and a note with Reload when the server reports another version. Ten
+  new guides (getting started, shifts and trips, vehicles and odometer, expenses and receipts,
+  earnings and platforms, mileage rates and tax, backups and the recovery key, phones and devices,
+  settings, troubleshooting) join the six older ones, each checked against the code. Help links on
+  the shift checks, the stops panel, Devices, the lost-key page and Exports. Settings > Help pages
+  hides it all (`help_enabled`, default on). The same pages are readable on GitHub (ADR 0001, 0002).
 - A release workflow: on every `v*` tag GitHub builds the server and Caddy images for amd64 and
   arm64 and publishes them as packages (`ghcr.io/raiz-toff/milewage/server` and `/caddy`).
 

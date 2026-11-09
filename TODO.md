@@ -4,6 +4,10 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
 
 ## Open
 
+- [ ] **Look at Help in a browser** (DG3, 2026-11-09): light and dark, 360 px wide, keyboard focus
+      through the side list, a long page's anchors, Settings > Help pages off and on. No browser was
+      available to the builder. Then decide on more Help links (Tax, Expenses, Backups, Settings >
+      Tracking); the pages exist.
 - [ ] **Try the sending module on the phone** (AR5, 2026-11-09). (1) Add a trip on the phone's
       shift detail: it must reach the web (before, every phone-added trip was parked). (2) End a
       shift with the server reachable: the home screen sends it within the round. (3) Offline: "Offline.
