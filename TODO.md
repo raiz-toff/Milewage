@@ -4,6 +4,12 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
 
 ## Open
 
+- [ ] **Great Britain tax year** (AR4, 2026-11-09). Only the mileage rate tier follows 6 April; the
+      deduction method, double-counted expenses, the tax report, exports, analytics set-aside, goals
+      and the odometer year check use the calendar year. Decide whether GB figures should follow the
+      6 April year everywhere (then the Tax page, exports and `expense-math.ts` change together).
+- [ ] **Run `milewage-cli recalc` once after upgrading** if shifts were ever created by CSV import
+      (AR4): earlier imports left `calculated_at` empty, so their trips never reached the phone.
 - [ ] **Try the re-pairing fixes on the phone** (AR3, 2026-11-09). (1) Revoke the phone on the web,
       pair again with a new QR code: every queued shift (create and end, not only points) should be
       sent within a minute. (2) The same with a link code on the home Wi-Fi. (3) Scan the QR with the

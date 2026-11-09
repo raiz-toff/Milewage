@@ -33,6 +33,11 @@ All notable changes to MileWage are listed here. The format follows
 - The web app sends every change through one write path and refreshes every cached read after a
   successful change (ADR 0004). Settings live in the same cache as every other read. One module,
   `days.ts`, holds the driver's calendar day, week start and period ranges for every page.
+- The server reads the owner's settings once per request or job through one driver context, with
+  one "stops on" rule and one local-time conversion. The mileage deduction is one module with
+  batched queries (a 40-shift list costs 4 statement runs instead of about 160) and the deduction
+  method injected. The shift book is the one place that records, recomputes and announces a shift
+  and holds the 14-day device read window; routes are thin callers.
 
 ### Fixed
 
@@ -48,6 +53,12 @@ All notable changes to MileWage are listed here. The format follows
   shifts, so a Toronto driver adding an expense after about 19:00 got tomorrow's date.
 - Figures on other pages stayed stale after a save: Tax kept the old total after an expense was
   saved, and settings changes refreshed nothing.
+- The mileage deduction counted trips marked personal. It now uses the business distance (total
+  minus personal trips), including the distance that fills a rate tier (ADR 0005). Nothing stored
+  changes; every view corrects at once.
+- Shifts created by CSV import never reached the phone (their `calculated_at` stayed empty, so the
+  device pull skipped their trips). Imports now go through the shift book. Shifts imported before
+  this fix keep the empty value; `milewage-cli recalc` fills it.
 
 ### Docs
 
