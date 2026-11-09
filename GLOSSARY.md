@@ -203,7 +203,7 @@ _Avoid_: conflict log, undo history
 ### Money
 
 **Earnings**:
-What the driver made from platforms after app fees: fares, tips, bonuses, top-ups and corrections. Tax withheld and cash in hand are not part of it.
+What the driver made from platforms after app fees: fares, tips, bonuses and corrections. Top-ups (money the driver pays into a platform wallet), tax withheld and cash in hand are not part of it.
 _Avoid_: revenue, take-home, pay
 
 **Earning entry**:

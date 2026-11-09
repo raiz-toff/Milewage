@@ -1,0 +1,57 @@
+---
+summary: What to do when the server does not answer, shifts stay on the phone, totals differ, the map is blank or the server has moved.
+group: problems
+order: 10
+---
+
+# Troubleshooting
+
+## "MileWage is not answering"
+
+The web app shows this when it cannot reach your server. Usually the server machine is off, Tailscale is off on this computer, or you opened the home address away from home. Fix that, then choose "Try again". If it still fails, check on the server machine that the two containers run and read the API log, as the install guide shows in [Where things live](../../infra/docs/install.md#5-where-things-live).
+
+## "You are offline"
+
+This device has no network. Your data is safe on your server, and the web app tries again by itself when the connection comes back. Reconnect, or choose "Try again". The phone app keeps recording shifts offline.
+
+## Tailscale is off or signed out on the phone
+
+Away from your home Wi-Fi, the phone reaches your server only through Tailscale. When shifts have waited 10 minutes and Tailscale is off, the phone's home screen says "Tailscale is off on this phone, so your server cannot be reached." Tap "Open Tailscale" and connect.
+
+If Tailscale is on and the server still does not answer, the phone and the server may be signed in to different Tailscale accounts, or Tailscale is off on the server. Sign both in to the same account, as the install guide says in [section 3](../../infra/docs/install.md#3-reach-it-from-the-phone-tailscale-on-the-host).
+
+If the phone says "You are away from your home Wi-Fi", it has only a home address. Its shifts are sent when you are back. To send them from anywhere, set up Tailscale on the server, then pair the phone again so it learns the away address. See [Phones and devices](phones-and-devices.md#home-and-away-addresses).
+
+## Shifts are on phone only
+
+The phone's home screen counts what is not on the server yet: "Not yet on server", with the number of shifts and points and the age of the oldest. The phone sends them by itself as soon as it reaches your server, and keeps trying every minute or less. "Sync now" sends at once. After 3 days the banner adds a reminder, and stronger words after 7 days.
+
+If it says "Some items could not be sent", open that shift on the phone to see why. If it says "This phone was removed from your server", the phone was revoked: pair it again as [Phones and devices](phones-and-devices.md#pair-a-phone-again) says. Do not clear the app's storage meanwhile: see [If your phone is lost](if-your-phone-is-lost.md).
+
+## The phone and the server totals differ
+
+The phone and the server each work out a shift's total. If they disagree, the shift's Checks on the web say "The phone and the server worked out different totals." On the phone the shift is marked "On server (total differs)" and shows both numbers. Neither is overwritten. The web app, the exports and the tax figures use the server's total.
+
+The usual reasons are points that reached the server late, a different engine version, or edits on the web. Open MileWage on the phone while it has a connection, so it sends anything it still holds. If the totals still differ, nothing is broken: compare them with [How miles are counted](how-miles-are-counted.md#why-the-phone-and-the-server-agree) in mind.
+
+## The map is blank
+
+The web app's maps are drawn on map tiles from OpenFreeMap, which your browser fetches over the internet. When they cannot load, the map shows a plain background with the route and says "Basemap unavailable; showing the route only." Your miles are not affected. Check this device's internet connection and reload the page.
+
+If the page says "The map could not start in this browser", the timeline beside it lists the same trips and stops. Try another browser for the map.
+
+The phone app always draws routes on a plain background, so it needs no tiles.
+
+## "A new version of MileWage is ready"
+
+After your server is upgraded, the web app fetches the new version in the background. Choose "Reload" to switch to it. "Later" hides the offer until your next visit. This works only when the web app is open at an https address, such as your Tailscale address. At a plain http address, reload the page yourself after an upgrade.
+
+The phone app is updated separately. After a server upgrade, install the matching phone app, as the install guide says in [The phone app from your own server](../../infra/docs/install.md#3a-the-phone-app-from-your-own-server).
+
+## The server moved
+
+**A new address on your home network**, for example after the router gave the server machine a new one. On your Wi-Fi, when the old home address stops answering, the phone looks for your server, at most once every 10 minutes. If your server announces itself at a new address, the phone switches to it by itself. Then give the server a fixed address on your router and run `infra/install.sh --lan` again, so new pairing codes carry the right home address. See [Home network access](../../infra/docs/install.md#2a-home-network-access-optional-recommended-for-a-home-server).
+
+**A new machine.** Restore your latest backup onto it, as [Backups and the recovery key](backups-and-recovery-key.md#restore-onto-a-new-server) says. A restored server is still the same server to your phones. If its Tailscale address changed, pair each phone again.
+
+If you set up the new machine without restoring, the phone stops and says the address now points to a different MileWage server. Nothing is sent. Restore your backup onto the new server first, or choose "Re-pair to the new server" on the phone.
