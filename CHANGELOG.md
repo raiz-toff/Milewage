@@ -6,53 +6,11 @@ All notable changes to MileWage are listed here. The format follows
 
 ## [Unreleased]
 
-### Added
-
-- A licence: MileWage is free software under the GNU Affero General Public License, version 3
-  (`LICENSE`).
-- Backups page: make a new recovery key after setup. A backup under the new key is made right
-  away.
-- Show more on the Expenses and Notifications lists.
-- The import preview shows every problem it finds.
-- Edit a goal: its name, measure, period and target.
-- An hour-of-day chart on Analytics.
-- The phone sends its shifts again after the server is restored from a backup.
-- The phone reads the system Location switch, so the permission steps can say when it is off.
-- The phone records a battery and timing summary of each shift in its diagnostics (no coordinates).
-- Every server setting is described in `infra/docs/configuration.md`.
-- Repository: a code owners file, a pull request template and a bug report template under
-  `.github/`.
-
-### Changed
-
-- CI moved from GitLab to GitHub Actions: `npm run verify` and the dependency audit run on every
-  pull request and on `main` (`.github/workflows/verify.yml`). The release jobs are not ported yet.
-
-### Removed
-
-- The GitLab pipeline, its test and the GitLab branch-protection guide.
-- The planning documents (`plans/`). They stay in the git history. The build log and the owner's
-  to-do list moved to `PROGRESS.md` and `TODO.md` at the root.
-
-### Fixed
-
-- The dev data folder committed by mistake is removed from git. It stays in the history.
-- MCP audit rows older than the retention period are removed.
-- The release APK job in CI runs the manifest checks.
-- A server given only a data folder keeps its backups beside it, not in the folder it was started
-  from.
-
-### Docs
-
-- The design system is a project skill, `.claude/skills/milewage-design/`: palette and theme tokens,
-  type, the web and phone primitives, the voice and the number formats, for anyone building a
-  screen.
-- Plans 02 to 19 have a build note under their status line, and plan 12 has a spike status table.
-- A row in `DECISIONS.md` for the spike checks that are still open.
-
-## [0.1.0] - 2026-11-08
+## [0.1.0] - 2026-11-09
 
 First tagged version. It is a complete first build, but it has not been tried in the real world.
+The Android app is attached to the GitHub release as `milewage-0.1.0.apk` (versionCode 1), signed with
+the project's upload key.
 Read "Not yet verified" first.
 
 ### Not yet verified
@@ -112,3 +70,50 @@ Read "Not yet verified" first.
 
 PDF export, road-snapped map lines (planned), a live map (removed on purpose), iPhone, phones
 without Google services, offline basemaps, and more than one driver per server.
+
+The sections Added, Changed, Removed, Fixed and Docs below are the fix pass of 2026-11-08 on top of the
+first build, released together with it.
+
+### Added
+
+- A licence: MileWage is free software under the GNU Affero General Public License, version 3
+  (`LICENSE`).
+- Backups page: make a new recovery key after setup. A backup under the new key is made right
+  away.
+- Show more on the Expenses and Notifications lists.
+- The import preview shows every problem it finds.
+- Edit a goal: its name, measure, period and target.
+- An hour-of-day chart on Analytics.
+- The phone sends its shifts again after the server is restored from a backup.
+- The phone reads the system Location switch, so the permission steps can say when it is off.
+- The phone records a battery and timing summary of each shift in its diagnostics (no coordinates).
+- Every server setting is described in `infra/docs/configuration.md`.
+- Repository: a code owners file, a pull request template and a bug report template under
+  `.github/`.
+
+### Changed
+
+- CI moved from GitLab to GitHub Actions: `npm run verify` and the dependency audit run on every
+  pull request and on `main` (`.github/workflows/verify.yml`). The release jobs are not ported yet.
+
+### Removed
+
+- The GitLab pipeline, its test and the GitLab branch-protection guide.
+- The planning documents (`plans/`). They stay in the git history. The build log and the owner's
+  to-do list moved to `PROGRESS.md` and `TODO.md` at the root.
+
+### Fixed
+
+- The dev data folder committed by mistake is removed from git. It stays in the history.
+- MCP audit rows older than the retention period are removed.
+- The release APK job in CI runs the manifest checks.
+- A server given only a data folder keeps its backups beside it, not in the folder it was started
+  from.
+
+### Docs
+
+- The design system is a project skill, `.claude/skills/milewage-design/`: palette and theme tokens,
+  type, the web and phone primitives, the voice and the number formats, for anyone building a
+  screen.
+- Plans 02 to 19 have a build note under their status line, and plan 12 has a spike status table.
+- A row in `DECISIONS.md` for the spike checks that are still open.
