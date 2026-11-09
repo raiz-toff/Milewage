@@ -4,6 +4,11 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
 
 ## Open
 
+- [ ] **Try the sending module on the phone** (AR5, 2026-11-09). (1) Add a trip on the phone's
+      shift detail: it must reach the web (before, every phone-added trip was parked). (2) End a
+      shift with the server reachable: the home screen sends it within the round. (3) Offline: "Offline.
+      Saved on your phone." then sent when back. (4) After a server restore, the banner and the
+      resend of older shifts. (5) "Deduction so far" with a personal trip is lower than without.
 - [ ] **Great Britain tax year** (AR4, 2026-11-09). Only the mileage rate tier follows 6 April; the
       deduction method, double-counted expenses, the tax report, exports, analytics set-aside, goals
       and the odometer year check use the calendar year. Decide whether GB figures should follow the

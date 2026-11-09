@@ -38,6 +38,13 @@ All notable changes to MileWage are listed here. The format follows
   batched queries (a 40-shift list costs 4 statement runs instead of about 160) and the deduction
   method injected. The shift book is the one place that records, recomputes and announces a shift
   and holds the 14-day device read window; routes are thin callers.
+- The phone sends shifts through one module (`sync/sender.ts`); the screens read one status.
+  "End shift" hands the shift to the queue and the home screen sends; focus, pull-to-refresh and
+  "Send it now" run a full send round; "Check the address" also tries to send.
+- Web: distance helpers (`toMetres`, `fromMetres`, `distanceInput`, `parseDistance`,
+  `formatOdometer`) beside the money helpers, and no page serves as a helper library; one pairing
+  session (`usePairingSession`) for Devices and the setup wizard, polling with TanStack Query; the
+  shift page reads one shift record (`useShiftRecord`) and one pure view (`shiftView`).
 
 ### Fixed
 
@@ -59,6 +66,14 @@ All notable changes to MileWage are listed here. The format follows
 - Shifts created by CSV import never reached the phone (their `calculated_at` stayed empty, so the
   device pull skipped their trips). Imports now go through the shift book. Shifts imported before
   this fix keep the empty value; `milewage-cli recalc` fills it.
+- Every trip added on the phone was sent with an empty purpose, which the server refuses, so it
+  stayed parked for good and its shift showed "needs attention". A phone-added trip now gets
+  "Business driving", and a blank purpose is refused before it is queued.
+- The phone's "Deduction so far" counted trips marked personal; it now follows the server (ADR 0005).
+- After a restore, a send round could re-create restored shifts while the server still held the
+  just-ended shift active and get a 409; the round now ends that shift first.
+- The Devices page shows a newly paired phone by itself, and an expired pairing code is replaced
+  with a fresh one. The maintenance odometer field accepts "12,345" and refuses negative numbers.
 
 ### Docs
 
