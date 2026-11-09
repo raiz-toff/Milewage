@@ -8,8 +8,26 @@ All notable changes to MileWage are listed here. The format follows
 
 ### Added
 
+- Help pages for drivers: ten new guides in `docs/help/` (getting started, shifts and trips,
+  vehicles and odometer, expenses and receipts, earnings and platforms, mileage rates and tax,
+  backups and the recovery key, phones and devices, settings, troubleshooting), each checked against
+  the code. They are the content of the Help screen the web app gains next.
 - A release workflow: on every `v*` tag GitHub builds the server and Caddy images for amd64 and
   arm64 and publishes them as packages (`ghcr.io/raiz-toff/milewage/server` and `/caddy`).
+
+### Changed
+
+- The server is assembled by one function, `assembleServer`, for production and tests alike: the
+  module registry and the event bus come first, each switched-on module wires itself from one typed
+  host, and the list of modules exists once. The `modules` flags in `GET /settings` come from the
+  registry. A wrong `MILEWAGE_MODULE_EXPORT_<FORMAT>` value now stops the server at start instead of
+  failing the first settings read (ADR 0003).
+
+### Fixed
+
+- With the tracking module switched off, a failed backup now produces the `backup_failed` inbox item
+  and the diagnostics record. Before, the event emitter was only wired when tracking registered its
+  routes, so those events were dropped.
 
 ### Docs
 
