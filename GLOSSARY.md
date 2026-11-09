@@ -389,3 +389,21 @@ _Avoid_: MCP, bot, agent
 **Assistant token**:
 The code the owner makes for one assistant, with read or read-and-change access and an optional expiry. It can be revoked at any time.
 _Avoid_: MCP token, API key
+
+### Help
+
+**Help**:
+The section of the web app that explains MileWage to the owner in plain words, for the version their server runs. The owner can hide it in Settings; it is a preference, not a module.
+_Avoid_: docs, documentation, guides, manual, knowledge base, help module
+
+**Help page**:
+One page of Help, about one topic. The same page can be read on GitHub.
+_Avoid_: doc, article, guide (the operator guides in `infra/docs/` are different), help article
+
+**What's new**:
+The Help page that lists what changed in the version the server runs.
+_Avoid_: release notes, changelog (in driver-facing text), updates
+
+**Help link**:
+A link on a screen to the Help page about what that screen shows.
+_Avoid_: tooltip, contextual help, info icon, "learn more"
