@@ -21,6 +21,7 @@ import { PUMP_LIMIT, PointFeed } from './shift/feed';
 import { PhoneEdits } from './store/edits';
 import { ShiftStore, type ServerRecon, type ServerShift } from './store/shiftStore';
 import { SyncDrain } from './sync/drain';
+import { DeviceSession } from './pairing/deviceSession';
 import { ConnectionMonitor } from './sync/connection';
 import { ChangePuller } from './sync/pull';
 import { buildStatus, storageState, type SyncStatus } from './sync/status';
@@ -52,6 +53,8 @@ export interface Services {
   /** VPN state and the Tailscale app, for the connection messages (19 section 3.5). */
   net: NetPort;
   pairing: Pairing;
+  /** Holds every halt of sending (revoked, wrong server, sign-in problem); `resume` lifts them all. */
+  device: DeviceSession;
   feed: PointFeed;
   shift: ShiftController;
   /** Shifts, trips and results on the phone (`app.db`). */
@@ -126,7 +129,8 @@ export function createServices(p: Parts): Services {
     telemetryPending: () => p.tracker.readPending(1).length > 0,
   });
   const appDb = createLazyAppDb(p.openAppDb);
-  const monitor = new ConnectionMonitor(appDb);
+  const device = new DeviceSession(p.plain);
+  const monitor = new ConnectionMonitor(appDb, device);
   // Home or away for every request (plan 28 section 4.3); a server that moved on the Wi-Fi is
   // found again by its instance id.
   const route = new RoutePicker({
@@ -139,6 +143,7 @@ export function createServices(p: Parts): Services {
   });
   const pairing: Pairing = new Pairing({
     monitor,
+    device,
     route,
     anyHttp: p.anyHttp,
     secure: p.secure,
@@ -163,6 +168,7 @@ export function createServices(p: Parts): Services {
   const runner = new OutboxRunner({
     outbox,
     session,
+    device,
     rand: p.rand,
     // shift.end waits until every point of the shift is uploaded or quarantined (15 section 6.2).
     // After a restore nothing of a shift goes out before the server has it again (15 section 9.3).
@@ -207,6 +213,7 @@ export function createServices(p: Parts): Services {
     tracker: p.tracker,
     feed,
     session,
+    device,
     shiftReady: (id) => shift.isCreated(id),
     shiftParked: (id) => shift.isParked(id),
     evictBlocked: () => monitor.restored || resend.blocksEviction(),
@@ -224,6 +231,7 @@ export function createServices(p: Parts): Services {
     feed,
     monitor,
     session,
+    device,
     now: p.now,
     rand: p.rand,
   });
@@ -231,6 +239,7 @@ export function createServices(p: Parts): Services {
     db: appDb,
     outbox,
     session,
+    device,
     onSettings: (s) => pairing.storeSettings(s),
     now: p.now,
   });
@@ -253,13 +262,14 @@ export function createServices(p: Parts): Services {
   const status = async () => {
     const state = uploader.lastState;
     const counts = await outbox.counts();
+    const halt = await device.halted();
     return buildStatus({
       shifts: await shifts.list(),
       parkedItems: counts.parked,
       oldestQueuedAt: counts.oldestAt,
-      wrongServer: monitor.wrongServer,
+      wrongServer: halt === 'wrong_server',
       restored: monitor.restored || resend.active,
-      halted: runner.haltedState ?? (state === 'repair' || state === 'auth_problem' ? state : null),
+      halted: halt === 'wrong_server' ? null : halt,
       offline: state === 'backoff' || state === 'waiting_create',
       storage: storageState((await p.freeBytes?.()) ?? null),
     });
@@ -300,6 +310,7 @@ export function createServices(p: Parts): Services {
     permissions: p.permissions,
     net: p.net,
     pairing,
+    device,
     feed,
     shift,
     shifts,

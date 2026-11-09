@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { App } from '../src/App';
 import { addressProblem, explainFailure, isTailnetAddress } from '../src/connect/reach';
-import { parsePairingPayload } from '../src/pairing/pairing';
+import { parsePairingLink } from '@milewage/shared';
 import { fakeNet, json, makeServices, TOKEN } from './support/mock';
 import { server, setup } from './support/shiftKit';
 
@@ -51,7 +51,7 @@ describe('address checks and messages (plan 19 section 3.5)', () => {
 
   it('an answer without the MileWage header is not a MileWage server', async () => {
     const { services } = makeServices(async () => new Response('<html>', { status: 404 }));
-    const p = parsePairingPayload(code(TAILNET))!;
+    const p = parsePairingLink(code(TAILNET))!;
     await expect(services.pairing.redeem(p)).rejects.toMatchObject({ code: 'not_milewage' });
   });
 });

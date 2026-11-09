@@ -1,12 +1,12 @@
 import type { AppSqlDb } from '../db/appDb';
+import { encode, type Bodies, type OutboxKind, type QueuedChange } from './shiftRequests';
+
+export { shiftOf, type OutboxKind } from './shiftRequests';
 
 /**
  * The kinds the engine sends. `diag.batch` and `capture.batch` exist in the table (15 section 2.2)
  * but are sent by the diagnostics code at the lowest priority, never by this engine.
  */
-export type OutboxKind =
-  'shift.create' | 'shift.patch' | 'odometer.put' | 'trip.override' | 'trip.manual' | 'shift.end';
-
 export const OUTBOX_KINDS: readonly OutboxKind[] = [
   'shift.create',
   'shift.patch',
@@ -23,17 +23,20 @@ const COALESCED: ReadonlySet<OutboxKind> = new Set([
   'trip.manual',
 ]);
 
-export interface OutboxItem {
-  id: number;
-  kind: OutboxKind;
-  entityKey: string;
-  /** The exact API v1 request body (frozen, 08 section 8). */
-  body: Record<string, unknown>;
-  createdAt: number;
-  attempts: number;
-  lastError: string | null;
-  status: 'pending' | 'parked';
-}
+/** A queued change; its `kind` tells the shape of its `body`. */
+export type OutboxItem = {
+  [K in OutboxKind]: {
+    id: number;
+    kind: K;
+    entityKey: string;
+    /** The exact API v1 request body (frozen, 08 section 8), as `encode` built it. */
+    body: Bodies[K];
+    createdAt: number;
+    attempts: number;
+    lastError: string | null;
+    status: 'pending' | 'parked';
+  };
+}[OutboxKind];
 
 interface Row {
   id: number;
@@ -46,19 +49,17 @@ interface Row {
   status: 'pending' | 'parked';
 }
 
-const toItem = (r: Row): OutboxItem => ({
-  id: r.id,
-  kind: r.kind,
-  entityKey: r.entity_key,
-  body: JSON.parse(r.body) as Record<string, unknown>,
-  createdAt: r.created_at,
-  attempts: r.attempts,
-  lastError: r.last_error,
-  status: r.status,
-});
-
-/** The shift an item is about: every entity key starts with the shift's client id (a UUID). */
-export const shiftOf = (entityKey: string): string => entityKey.split(':')[0]!;
+const toItem = (r: Row): OutboxItem =>
+  ({
+    id: r.id,
+    kind: r.kind,
+    entityKey: r.entity_key,
+    body: JSON.parse(r.body) as unknown,
+    createdAt: r.created_at,
+    attempts: r.attempts,
+    lastError: r.last_error,
+    status: r.status,
+  }) as OutboxItem;
 
 /**
  * The durable FIFO of changes the server has not acknowledged yet (08 section 4.1, 15 section 6.2).
@@ -74,15 +75,12 @@ export class Outbox {
   ) {}
 
   /**
-   * Adds an item. A pending `odometer.put`, `trip.override` or `trip.manual` for the same entity
+   * Adds a change, encoded by `shiftRequests`. A pending `odometer.put`, `trip.override` or `trip.manual` for the same entity
    * that is not being sent right now is replaced in place instead (it keeps its place in the
    * queue and its creation time). `shift.create` and `shift.end` are never coalesced.
    */
-  async enqueue(
-    kind: OutboxKind,
-    entityKey: string,
-    body: Record<string, unknown>,
-  ): Promise<number> {
+  async enqueue(change: QueuedChange): Promise<number> {
+    const { kind, entityKey, body } = encode(change);
     const json = JSON.stringify(body);
     if (COALESCED.has(kind)) {
       const existing = await this.db.getAllAsync<{ id: number }>(

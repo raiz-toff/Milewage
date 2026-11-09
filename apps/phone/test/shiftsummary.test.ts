@@ -87,7 +87,7 @@ describe('shift.summary (16 section 3.2)', () => {
     const local = {
       result: { flags: ['gap_counted', 'gap_large', 'gap_dropped', 'low_fix_density'].map(flag) },
       manifest: { firstSeq: 1, lastSeq: 9, pointCount: 9 },
-      extras: {},
+      phoneResult: {},
     } as unknown as LocalRun;
     const s = buildShiftSummary({
       startedAt: 0,

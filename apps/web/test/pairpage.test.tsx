@@ -39,6 +39,16 @@ describe('pair page', () => {
     expect([req.method, new URL(req.url).pathname]).toEqual(['GET', '/api/v1/app']);
   });
 
+  it('keeps the home address the QR carried in the link to the app', () => {
+    const home = 'http://192.168.1.20:8080';
+    open(`#v=1&t=${TOKEN}&h=${encodeURIComponent(home)}`, true);
+    const link = screen.getByRole('link', { name: 'Open in the MileWage app' });
+    const base = encodeURIComponent(location.origin);
+    expect(link.getAttribute('href')).toBe(
+      `milewage://pair?v=1&u=${base}&t=${TOKEN}&h=${encodeURIComponent(home)}`,
+    );
+  });
+
   it('no app file: no Get the app; a broken link says what to do', async () => {
     open(`#v=1&t=${TOKEN}`, false);
     expect(screen.getByRole('link', { name: 'Open in the MileWage app' })).toBeTruthy();

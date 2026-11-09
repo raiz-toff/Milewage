@@ -1,14 +1,15 @@
-import { gzipSync, strToU8 } from 'fflate';
 import { ApiError, type ApiClient } from '../api/client';
 import type { AppSqlDb } from '../db/appDb';
+import type { DeviceSession } from '../pairing/deviceSession';
 import { runLocal } from '../shift/endPayload';
 import { PUMP_LIMIT, type PointFeed } from '../shift/feed';
 import type { ShiftRow, ShiftStore } from '../store/shiftStore';
-import type { Tracker, TrackerPoint } from '../tracker/types';
+import type { Tracker } from '../tracker/types';
 import { Backoff, BACKLOG_BATCH } from '../upload/worker';
 import type { ConnectionMonitor } from './connection';
 import type { Outbox } from './outbox';
 import type { OutboxRunner } from './runner';
+import { encode, halvedBatch, manualTripOf, send, type QueuedChange } from './shiftRequests';
 
 /** `sync_state` keys `resend:<shift client_id>`: one per shift still to be sent again. */
 export const RESEND_PREFIX = 'resend:';
@@ -46,6 +47,8 @@ export interface ResendDeps {
   feed: PointFeed;
   monitor: ConnectionMonitor;
   session: () => Promise<{ client: ApiClient } | null>;
+  /** The device session: a halt stops the resend; it goes on after `resume`. */
+  device: Pick<DeviceSession, 'halted'>;
   now?: () => number;
   rand?: () => number;
 }
@@ -257,14 +260,15 @@ export class RestoreResend {
     // 1. The shift itself. 201: created again. 200: the restore kept it (returned unchanged).
     let kept: { status?: string } | null = null;
     try {
-      const body: Record<string, unknown> = {
-        client_id: row.client_id,
-        vehicle_id: row.vehicle_id,
-        started_at: row.started_at,
+      const create = encode({
+        type: 'shift.create',
+        clientId: row.client_id,
+        vehicleId: row.vehicle_id,
+        startedAt: row.started_at,
         segmenter: row.segmenter,
-      };
-      if (row.notes !== null) body.notes = row.notes;
-      const r = await s.client.request<{ status?: string }>('POST', '/shifts', body);
+        notes: row.notes,
+      });
+      const r = await send<{ status?: string }>(s.client, create);
       if (r.status === 201) this.recreated = true;
       else kept = r.data ?? {};
     } catch (e) {
@@ -287,7 +291,7 @@ export class RestoreResend {
     if (!(await this.swap(sent.h, { ...sent.h.entry, phase: 'queued' }))) return 'restarted';
     const r = await this.d.runner.run({ shift: row.client_id });
     if (r.state === 'offline') return { stop: 'offline', retryInMs: r.retryInMs ?? 0 };
-    if (r.state === 'repair' || r.state === 'auth_problem') return { stop: 'halted' };
+    if (r.state === 'halted') return { stop: 'halted' };
     return 'done';
   }
 
@@ -327,23 +331,18 @@ export class RestoreResend {
       const batch = page.filter((p) => !pending.has(p.seq));
       if (batch.length > 0) {
         try {
-          await client.request(
-            'POST',
-            '/telemetry/batch',
-            undefined,
-            { 'Content-Encoding': 'gzip' },
-            gzipSync(strToU8(JSON.stringify(wire(id, batch)))),
-          );
+          await send(client, encode({ type: 'telemetry.batch', clientId: id, points: batch }));
           res.points += batch.length;
           this.backoff.reset();
         } catch (e) {
           if (!(e instanceof ApiError)) throw e;
           if (e.status === 409 && e.code === 'shift_finalized') return { h }; // nothing more fits
-          if ((e.status === 413 || e.status === 422) && batch.length > 1) {
-            size = Math.max(1, Math.floor(page.length / 2));
+          const smaller = halvedBatch(e, batch.length);
+          if (smaller !== null) {
+            size = smaller;
             continue;
           }
-          if (e.status !== 422) return this.stop(e);
+          if (e.status !== 422) return await this.stop(e);
           // One point the server refuses for good: it is skipped, never deleted.
         }
       }
@@ -358,30 +357,28 @@ export class RestoreResend {
     const { outbox, store } = this.d;
     const id = row.client_id;
     for (const o of await store.odometer(id)) {
-      await outbox.enqueue('odometer.put', `${id}:${o.kind}`, {
-        reading_m: o.reading_m,
-        recorded_at: o.recorded_at,
+      await outbox.enqueue({
+        type: 'odometer.put',
+        clientId: id,
+        reading: o.kind,
+        readingM: o.reading_m,
+        recordedAt: o.recorded_at,
       });
     }
     if (row.status === 'active' || row.ended_at === null) return;
     if (!(await outbox.has('shift.end', id))) {
-      await outbox.enqueue('shift.end', id, await this.endBody(row));
+      await outbox.enqueue(await this.endOf(row));
     }
     for (const t of await store.trips(id)) {
       if (t.source === 'manual') {
-        await outbox.enqueue('trip.manual', `${id}:${t.trip_key}`, {
-          kind: t.kind,
-          started_at: t.started_at,
-          ended_at: t.ended_at,
-          distance_m: t.distance_m,
-          purpose: t.purpose,
-          edited_at: t.edited_at ?? row.updated_at,
-        });
+        await outbox.enqueue(manualTripOf(id, t, t.edited_at ?? row.updated_at));
       } else if (t.edited_at !== null) {
-        await outbox.enqueue('trip.override', t.trip_key, {
+        await outbox.enqueue({
+          type: 'trip.override',
+          tripKey: t.trip_key,
           kind: t.kind,
           purpose: t.purpose,
-          edited_at: t.edited_at,
+          editedAt: t.edited_at,
         });
       }
     }
@@ -392,58 +389,59 @@ export class RestoreResend {
    * the phone (15 section 6.1). With the points gone, the manifest and result stored at shift end,
    * so the server reports the difference and the phone keeps its numbers in the diff log.
    */
-  private async endBody(row: ShiftRow): Promise<Record<string, unknown>> {
+  private async endOf(row: ShiftRow): Promise<QueuedChange> {
     const endedAt = row.ended_at!;
+    const end = { type: 'shift.end', clientId: row.client_id, endedAt } as const;
     const local = runLocal(this.d.tracker, {
       clientId: row.client_id,
       startedAt: row.started_at,
       endedAt,
       segmenter: row.segmenter,
     });
-    if (local) return { ended_at: endedAt, ...local.extras };
-    const body: Record<string, unknown> = { ended_at: endedAt };
-    if (row.first_seq !== null && row.last_seq !== null && row.point_count !== null) {
-      body.manifest = {
-        first_seq: row.first_seq,
-        last_seq: row.last_seq,
-        point_count: row.point_count,
-      };
-    }
+    if (local) return { ...end, manifest: local.manifest, phoneResult: local.phoneResult };
+    const manifest =
+      row.first_seq !== null && row.last_seq !== null && row.point_count !== null
+        ? { firstSeq: row.first_seq, lastSeq: row.last_seq, pointCount: row.point_count }
+        : null;
     if (
-      row.input_digest !== null &&
-      row.calc_version !== null &&
-      row.total_m !== null &&
-      row.active_m !== null &&
-      row.deadhead_m !== null &&
-      row.personal_m !== null
+      row.input_digest === null ||
+      row.calc_version === null ||
+      row.total_m === null ||
+      row.active_m === null ||
+      row.deadhead_m === null ||
+      row.personal_m === null
     ) {
-      const trips = await this.d.store.trips(row.client_id);
-      body.phone_result = {
-        calc_version: row.calc_version,
-        segmenter: row.segmenter,
-        input_digest: row.input_digest,
-        total_m: row.total_m,
-        active_m: row.active_m,
-        deadhead_m: row.deadhead_m,
-        personal_m: row.personal_m,
-        trips_count: trips.filter((t) => t.source === 'auto').length,
-      };
+      return { ...end, manifest, phoneResult: null };
     }
-    return body;
+    const trips = await this.d.store.trips(row.client_id);
+    return {
+      ...end,
+      manifest,
+      phoneResult: {
+        calcVersion: row.calc_version,
+        segmenter: row.segmenter,
+        inputDigest: row.input_digest,
+        totalM: row.total_m,
+        activeM: row.active_m,
+        deadheadM: row.deadhead_m,
+        personalM: row.personal_m,
+        tripsCount: trips.filter((t) => t.source === 'auto').length,
+      },
+    };
   }
 
   private async failed(e: unknown, row: ShiftRow): Promise<Outcome> {
     if (!(e instanceof ApiError)) throw e;
     if (e.status === 409 && e.code === 'shift_already_active') return 'waiting'; // tried again later
-    if (e.status === 401 || e.status === 403 || e.retryable) return this.stop(e);
+    if (e.retryable || (await this.d.device.halted())) return this.stop(e);
     // Refused for good (a vehicle the restored server does not know, for example): the driver
     // sees the shift needs attention; the phone keeps it and tries again on the next sync.
     await this.d.store.setSyncState(row.client_id, 'needs_attention');
     return 'waiting';
   }
 
-  private stop(e: ApiError): Stop {
-    if (e.status === 401 || e.status === 403) return { stop: 'halted' };
+  private async stop(e: ApiError): Promise<Stop> {
+    if (await this.d.device.halted()) return { stop: 'halted' };
     return { stop: 'offline', retryInMs: this.backoff.next(e.retryAfterS) };
   }
 }
@@ -456,21 +454,4 @@ function parse(raw: string): ResendEntry | null {
   } catch {
     return null;
   }
-}
-
-/** The body of `POST /telemetry/batch` (08 section 5), as the upload worker sends it. */
-function wire(shiftClientId: string, batch: TrackerPoint[]) {
-  return {
-    shift_client_id: shiftClientId,
-    points: batch.map((p) => ({
-      seq: p.seq,
-      recorded_at: p.recordedAt,
-      lat_e7: p.latE7,
-      lon_e7: p.lonE7,
-      accuracy_m: p.accuracyM,
-      speed_dmps: p.speedDmps,
-      bearing_deg: p.bearingDeg,
-      altitude_m: p.altitudeM,
-    })),
-  };
 }

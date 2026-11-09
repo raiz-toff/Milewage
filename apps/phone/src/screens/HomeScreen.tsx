@@ -17,6 +17,7 @@ import { Text } from '../components/ui/text';
 import type { ScreenProps } from '../navigation';
 import { M_PER_UNIT } from '../format';
 import { cn } from '../lib/utils';
+import type { HaltReason } from '../pairing/deviceSession';
 import { deriveFlags } from '../pairing/pairing';
 import { BATTERY_VISITED, canStartShift, initialLadder } from '../permissions/ladder';
 import { useServices } from '../services';
@@ -38,7 +39,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   const C = useColors();
   const {
     shift: controller,
-    uploader,
+    device,
     sync,
     startDiagnostics,
     diagnosticsWindow,
@@ -70,7 +71,8 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   const [located, setLocated] = useState(true);
   /** What the first-run steps may have left for later (24 section 4.2 rule 2). */
   const [later, setLater] = useState({ always: true, notify: true, battery: true });
-  const [uploadState, setUploadState] = useState(uploader.lastState);
+  /** Revoked or a sign-in problem: the device session stopped sending. */
+  const [halt, setHalt] = useState<HaltReason | null>(null);
   const [progress, setProgress] = useState(sync.progress);
 
   const goSettings = () => navigation.navigate('Settings');
@@ -146,14 +148,23 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
     const unsubscribe = sync.subscribe(setProgress);
     void startDiagnostics();
     const diagTimer = setInterval(() => void diagnosticsWindow(), DIAG_WINDOW_MS);
-    const timer = setInterval(() => setUploadState(uploader.lastState), refreshMs);
     return () => {
       sync.stop();
       unsubscribe();
       clearInterval(diagTimer);
-      clearInterval(timer);
     };
-  }, [paired, autoUpload, uploader, sync, refreshMs, startDiagnostics, diagnosticsWindow]);
+  }, [paired, autoUpload, sync, startDiagnostics, diagnosticsWindow]);
+
+  useEffect(() => {
+    let live = true;
+    const read = () => void device.halted().then((h) => live && setHalt(h));
+    read();
+    const off = device.subscribe(read);
+    return () => {
+      live = false;
+      off();
+    };
+  }, [device]);
 
   /** Metres from the typed reading; null when empty; NaN when it is not a number. */
   const toMeters = (text: string) => {
@@ -377,10 +388,10 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
           </View>
         </Alert>
       )}
-      {(uploadState === 'repair' || uploadState === 'auth_problem') && (
+      {(halt === 'repair' || halt === 'auth_problem') && (
         <Alert variant="destructive" icon={AlertTriangle}>
           <AlertTitle accessibilityRole="alert">
-            {uploadState === 'repair'
+            {halt === 'repair'
               ? 'The server no longer accepts this phone. Pair it again in Settings. Recorded points are kept.'
               : 'Sign-in problem with the server. Recorded points are kept.'}
           </AlertTitle>

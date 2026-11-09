@@ -1,7 +1,7 @@
 import { ApiClient, ApiError } from '../src/api/client';
 import { explainFailure } from '../src/connect/reach';
 import { addressesOf, healthProbe, RoutePicker, REMEMBER_MS } from '../src/connect/route';
-import { parsePairingPayload } from '../src/pairing/pairing';
+import { parsePairingLink } from '@milewage/shared';
 import { DEVICE_TOKEN, fakeNet, json, makeServices, SETTINGS, TOKEN } from './support/mock';
 
 const HOME = 'http://192.168.1.20:8080';
@@ -58,22 +58,6 @@ describe('plain http only on the home network (owner decision 2026-11-08)', () =
     await client(AWAY).request('GET', '/settings');
     await client('http://box.example.com', true).request('GET', '/settings'); // debug build
     expect(sent).toHaveLength(4);
-  });
-
-  it('a code carries its home address in h; anything but a home address there is ignored', () => {
-    expect(parsePairingPayload(code(HOME))).toEqual({
-      baseUrl: AWAY,
-      token: TOKEN,
-      homeUrl: HOME,
-    });
-    expect(parsePairingPayload(code('http://evil.example.com'))).toEqual({
-      baseUrl: AWAY,
-      token: TOKEN,
-    });
-    expect(parsePairingPayload(code())).toEqual({ baseUrl: AWAY, token: TOKEN });
-    // the https form the QR shows
-    const page = `${AWAY}/pair#v=1&t=${TOKEN}&h=${encodeURIComponent(HOME)}`;
-    expect(parsePairingPayload(page)?.homeUrl).toBe(HOME);
   });
 
   it('at home there is no Tailscale to blame', () => {
@@ -151,7 +135,7 @@ describe('a phone with both addresses', () => {
   it('redeems a code at home on the Wi-Fi, and keeps both addresses', async () => {
     const s = servers();
     const { services } = makeServices(s.fetch);
-    const state = await services.pairing.redeem(parsePairingPayload(code(HOME))!);
+    const state = await services.pairing.redeem(parsePairingLink(code(HOME))!);
     expect(s.calls).toEqual([`GET ${HOME}/healthz`, `POST ${HOME}/api/v1/pairing/redeem`]);
     expect(state.credential).toMatchObject({ baseUrl: HOME, homeUrl: HOME, awayUrl: AWAY });
   });
@@ -161,7 +145,7 @@ describe('a phone with both addresses', () => {
     const net = fakeNet();
     net.local = false;
     const { services } = makeServices(s.fetch, { net });
-    const state = await services.pairing.redeem(parsePairingPayload(code(HOME))!);
+    const state = await services.pairing.redeem(parsePairingLink(code(HOME))!);
     expect(s.calls).toEqual([`POST ${AWAY}/api/v1/pairing/redeem`]);
     expect(state.credential).toMatchObject({ baseUrl: AWAY, homeUrl: HOME, awayUrl: AWAY });
   });
@@ -169,7 +153,7 @@ describe('a phone with both addresses', () => {
   it('sends home while home answers, and away once it stops, without asking the driver', async () => {
     const s = servers();
     const { services } = makeServices(s.fetch);
-    await services.pairing.redeem(parsePairingPayload(code(HOME))!);
+    await services.pairing.redeem(parsePairingLink(code(HOME))!);
     s.calls.length = 0;
     const session = (await services.pairing.session())!;
     await session.client.request('GET', '/settings');

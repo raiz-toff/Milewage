@@ -1,20 +1,21 @@
+import { pairingLinks, parsePairingLink } from '@milewage/shared';
 import { useMemo } from 'react';
 import { createApi } from '../api/client';
 import { AppButtons, onAndroid, useAppAvailable } from '../pairing/GetTheApp';
 
 /**
- * `/pair#v=1&t=<token>`: what the pairing QR opens in a phone's own camera app (plan 24 Q1,
+ * `/pair#v=1&t=<token>[&h=<home address>]`: what the pairing QR opens in a phone's own camera app (plan 24 Q1,
  * fallback). It needs no sign-in and hands the code to the MileWage app with the
  * `milewage://pair` link. The token is in the fragment, so it never reaches the server.
  */
 export function PairPage() {
   const api = useMemo(() => createApi(), []);
   const available = useAppAvailable(api);
-  const params = new URLSearchParams(globalThis.location.hash.slice(1));
-  const token = params.get('t') ?? '';
-  const ok = params.get('v') === '1' && /^mwp_[A-Za-z0-9_-]{10,}$/.test(token);
-  const base = globalThis.location.origin + globalThis.location.pathname.replace(/\/pair\/?$/, '');
-  const link = `milewage://pair?v=1&u=${encodeURIComponent(base)}&t=${token}`;
+  const { origin, pathname, hash } = globalThis.location;
+  // The page link the QR showed, read with the one shared format: the home address `h` goes on.
+  const code = parsePairingLink(origin + pathname + hash);
+  const ok = code !== null;
+  const link = code ? pairingLinks(code).appLink : '';
   return (
     <main className="mx-auto max-w-md space-y-4 p-6">
       <h1 className="text-2xl font-semibold tracking-tight">Connect your phone to MileWage</h1>

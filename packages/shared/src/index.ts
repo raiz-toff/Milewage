@@ -11,3 +11,4 @@ export * from './platforms';
 export * from './expense-categories';
 export * from './badges';
 export * from './home-address';
+export * from './pairing-link';

@@ -2,6 +2,7 @@ import type { AppSqlDb } from '../db/appDb';
 import type { Outbox } from '../sync/outbox';
 import type { ShiftStore, TripRow } from './shiftStore';
 import { newId } from '../shift/uuid';
+import { manualTripOf } from '../sync/shiftRequests';
 
 export type TripKind = 'active' | 'deadhead' | 'personal';
 
@@ -67,7 +68,7 @@ export class PhoneEdits {
     if (trip.source === 'manual') {
       await this.queueManual(trip.shift_client_id, { ...trip, kind, purpose }, at);
     } else {
-      await this.d.outbox.enqueue('trip.override', tripKey, { kind, purpose, edited_at: at });
+      await this.d.outbox.enqueue({ type: 'trip.override', tripKey, kind, purpose, editedAt: at });
     }
     await this.move(trip.shift_client_id, trip.kind, kind, trip.distance_m);
     return { ok: true };
@@ -130,9 +131,12 @@ export class PhoneEdits {
     if (!Number.isFinite(readingM) || readingM < 0) return { ok: false, reason: 'invalid' };
     const at = this.stamp();
     await this.d.store.setOdometer(clientId, kind, readingM, at);
-    await this.d.outbox.enqueue('odometer.put', `${clientId}:${kind}`, {
-      reading_m: Math.round(readingM),
-      recorded_at: at,
+    await this.d.outbox.enqueue({
+      type: 'odometer.put',
+      clientId,
+      reading: kind,
+      readingM,
+      recordedAt: at,
     });
     return { ok: true };
   }
@@ -148,7 +152,7 @@ export class PhoneEdits {
       at,
       clientId,
     );
-    await this.d.outbox.enqueue('shift.patch', clientId, { notes, updated_at: at });
+    await this.d.outbox.enqueue({ type: 'shift.patch', clientId, notes, updatedAt: at });
     return { ok: true };
   }
 
@@ -157,14 +161,7 @@ export class PhoneEdits {
     t: Pick<TripRow, 'trip_key' | 'kind' | 'started_at' | 'ended_at' | 'distance_m' | 'purpose'>,
     at: number,
   ) {
-    return this.d.outbox.enqueue('trip.manual', `${clientId}:${t.trip_key}`, {
-      kind: t.kind,
-      started_at: t.started_at,
-      ended_at: t.ended_at,
-      distance_m: t.distance_m,
-      purpose: t.purpose,
-      edited_at: at,
-    });
+    return this.d.outbox.enqueue(manualTripOf(clientId, t, at));
   }
 
   /**

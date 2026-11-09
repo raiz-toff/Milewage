@@ -1,5 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { App } from '../src/App';
+import { DeviceSession } from '../src/pairing/deviceSession';
+import { MemoryStore } from '../src/pairing/pairing';
 import { ConnectionMonitor } from '../src/sync/connection';
 import {
   buildStatus,
@@ -132,9 +134,9 @@ describe('wrong server and restore generation', () => {
     await services.shift.start({ vehicleId: 3 });
     await services.shift.end();
     inst = 'inst-B'; // the address now answers as another server
-    await services.outbox.enqueue('shift.patch', ID, { notes: 'x', updated_at: 1 });
+    await services.outbox.enqueue({ type: 'shift.patch', clientId: ID, notes: 'x', updatedAt: 1 });
     await services.sync.drain();
-    expect(services.monitor.wrongServer).toBe(true);
+    expect(await services.device.halted()).toBe('wrong_server');
     const sent = srv.calls.length;
     await services.sync.drain();
     await services.puller.pull({ force: true });
@@ -142,17 +144,20 @@ describe('wrong server and restore generation', () => {
     expect((await services.outbox.counts()).pending).toBeGreaterThan(0);
     expect((await services.status()).message).toMatch(/different MileWage server/);
     inst = 'inst-A';
-    services.monitor.clearWrongServer();
+    await services.device.resume(); // "Check the address"
     await services.sync.drain();
-    expect(services.monitor.wrongServer).toBe(false);
+    expect(await services.device.halted()).toBeNull();
   });
 
   it('an answer without the headers (captive portal) is not a wrong server', async () => {
     const db = openNodeAppDb();
     await migrate(db);
-    const m = new ConnectionMonitor(db);
+    const device = new DeviceSession(new MemoryStore());
+    const m = new ConnectionMonitor(db, device);
     m.observe(new Headers(), 'inst-A');
-    expect(m.wrongServer).toBe(false);
+    expect(await device.halted()).toBeNull();
+    m.observe(new Headers({ 'X-MileWage-Instance': 'inst-B' }), 'inst-A');
+    expect(await device.halted()).toBe('wrong_server');
   });
 
   it('a higher restore generation marks shifts "on phone only" again and blocks eviction', async () => {
@@ -163,7 +168,7 @@ describe('wrong server and restore generation', () => {
          server_deduction_cents, server_deduction_known)
        VALUES ('a', 3, 'ended', 'whole_shift', 1, '2026-11-01', 1, 'on_server', 99, 1)`,
     );
-    const m = new ConnectionMonitor(db);
+    const m = new ConnectionMonitor(db, new DeviceSession(new MemoryStore()));
     m.observe(new Headers({ 'X-MileWage-Instance': 'i', 'X-MileWage-Restore-Gen': '2' }), 'i');
     await m.settled();
     expect(m.restored).toBe(false); // first sight of a generation only records it

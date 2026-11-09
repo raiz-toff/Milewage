@@ -10,6 +10,7 @@ import { Separator } from '../components/ui/separator';
 import { Text } from '../components/ui/text';
 import type { ScreenProps } from '../navigation';
 import { addressesOf } from '../connect/route';
+import { haltFor } from '../pairing/deviceSession';
 import { deriveFlags, type Credential, type PairedState } from '../pairing/pairing';
 import { useServices } from '../services';
 import { useColors } from '../theme/theme';
@@ -32,7 +33,8 @@ export function SettingsScreen({ navigation }: ScreenProps<'Settings'>) {
       if (s) {
         const r = await pairing.refreshSettings(s);
         setState(r.state);
-        if (r.error?.status === 401)
+        // Revoked or refused (401, 403): the device session has stopped sending.
+        if (r.error && haltFor(r.error))
           setError('Re-pair this phone: the server no longer accepts it.');
       }
     });

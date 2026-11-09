@@ -1,29 +1,30 @@
 import type { AppSqlDb } from '../db/appDb';
+import type { DeviceSession } from '../pairing/deviceSession';
 import { RESEND_PREFIX, resendValue } from './resend';
 
 /**
  * Identity checks on every answer (15 section 9.3, 9.4). A different `X-MileWage-Instance` than the
- * one stored at pairing means the address now points at another server: all requests stop and all
- * data stays. A higher `X-MileWage-Restore-Gen` means the server was restored from a backup: the
+ * one stored at pairing means the address now points at another server: the device session halts
+ * every request and all data stays. A higher `X-MileWage-Restore-Gen` means the server was restored from a backup: the
  * shifts the phone thought were safe are marked "on phone only" again, eviction is blocked, and
  * every shift the server once acknowledged is written down to be sent again (`resend.ts`).
  * A second restore while that runs starts each of them over.
  * An answer without the headers (captive portal, proxy page) is not a wrong server.
  */
 export class ConnectionMonitor {
-  wrongServer = false;
   restored = false;
   private chain: Promise<void> = Promise.resolve();
 
-  constructor(private readonly db: AppSqlDb) {}
-
-  blocked = (): boolean => this.wrongServer;
+  constructor(
+    private readonly db: AppSqlDb,
+    private readonly device: Pick<DeviceSession, 'halt'>,
+  ) {}
 
   observe = (headers: Headers, expectedInstance: string | null): void => {
     const instance = headers.get('X-MileWage-Instance');
     if (!instance) return;
     if (expectedInstance && instance !== expectedInstance) {
-      this.wrongServer = true;
+      void this.device.halt('wrong_server');
       return;
     }
     const gen = Number(headers.get('X-MileWage-Restore-Gen'));
@@ -31,11 +32,6 @@ export class ConnectionMonitor {
       this.chain = this.chain.then(() => this.checkGeneration(gen)).catch(() => undefined);
     }
   };
-
-  /** The driver checked the address or re-paired. */
-  clearWrongServer(): void {
-    this.wrongServer = false;
-  }
 
   acknowledgeRestore(): void {
     this.restored = false;

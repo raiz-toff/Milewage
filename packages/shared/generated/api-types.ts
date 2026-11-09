@@ -3473,7 +3473,7 @@ export interface operations {
                         expires_at: components["schemas"]["EpochMs"];
                         /** @description milewage://pair?v=1&u=<server url>&t=<token>[&h=<home url>]: the link that opens the phone app (Open in the MileWage app, the code text). h (plan 28) is there when the home address differs from u; older apps ignore it. */
                         qr_payload: string;
-                        /** @description <server url>/pair#v=1&t=<token>: what the QR shows (plan 24 Q1). The phone app reads it; any other camera opens the server's pair page, which links to the app. The token is in the fragment, so it never reaches a server log. */
+                        /** @description <server url>/pair#v=1&t=<token>[&h=<home url>]: what the QR shows (plan 24 Q1), with the same h as qr_payload. The phone app reads it; any other camera opens the server's pair page, which links to the app. The token is in the fragment, so it never reaches a server log. */
                         pair_url: string;
                         /** @description The server address inside the code (u), without a trailing slash: away_url, else home_url, else this request's address. */
                         base_url: string;

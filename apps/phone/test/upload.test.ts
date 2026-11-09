@@ -214,20 +214,23 @@ describe('UploadWorker failures and the offline queue', () => {
               upload_hint_s: 60,
             }),
     });
-    expect((await p.uploader.drain()).state).toBe('repair');
-    expect((await p.uploader.drain()).state).toBe('repair');
+    expect((await p.uploader.drain()).state).toBe('halted');
+    expect(await p.services.device.halted()).toBe('repair');
+    expect((await p.uploader.drain()).state).toBe('halted');
     expect(p.posts()).toHaveLength(1); // the second drain made no request
     expect(p.tracker.readPending(10)).toHaveLength(3);
     revoked = false;
-    p.uploader.resume();
+    await p.services.device.resume(); // what pairing again does
     expect(await p.uploader.drain()).toMatchObject({ state: 'idle', uploaded: 3 });
   });
 
   it('another 401 or a 403 is a sign-in problem, not a revoke', async () => {
     const p = phone(1, { 'POST /telemetry/batch': () => problem(401, 'invalid_token') });
-    expect((await p.uploader.drain()).state).toBe('auth_problem');
+    expect((await p.uploader.drain()).state).toBe('halted');
+    expect(await p.services.device.halted()).toBe('auth_problem');
     const q = phone(1, { 'POST /telemetry/batch': () => problem(403, 'scope_forbidden') });
-    expect((await q.uploader.drain()).state).toBe('auth_problem');
+    expect((await q.uploader.drain()).state).toBe('halted');
+    expect(await q.services.device.halted()).toBe('auth_problem');
   });
 
   it('404 shift_not_found flushes the outbox and retries, then parks after 3 attempts without dropping', async () => {

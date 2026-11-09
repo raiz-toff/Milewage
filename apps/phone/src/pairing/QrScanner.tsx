@@ -1,3 +1,4 @@
+import { parsePairingLink } from '@milewage/shared';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -17,7 +18,6 @@ import { PALETTE } from '../theme/colors';
 import { useColors } from '../theme/theme';
 import { Alert, AlertTitle } from '../components/ui/alert';
 import { useToast } from '../ui/Toast';
-import { parsePairingPayload } from './pairing';
 
 const FRAME = 248;
 const CORNER = 36;
@@ -118,7 +118,7 @@ export function QrScanner({
             onScanned={({ nativeEvent: { text: data } }) => {
               if (done.current) return;
               done.current = true;
-              if (!parsePairingPayload(data.trim())) {
+              if (!parsePairingLink(data.trim())) {
                 setWrongCode(true);
                 return;
               }

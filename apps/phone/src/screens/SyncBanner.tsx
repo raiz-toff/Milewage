@@ -20,9 +20,10 @@ const HINT_AFTER_MS = 10 * 60_000;
  */
 export function SyncBanner({ onSettings }: { onSettings: () => void }) {
   const C = useColors();
-  const { status, sync, monitor, plain, shift, uploader, runner, pairing, net, reminders } =
-    useServices();
+  const { status, sync, device, plain, shift, pairing, net, reminders } = useServices();
   const [s, setS] = useState<SyncStatus | null>(null);
+  /** Another MileWage server answers at this address (15 section 9.4). */
+  const [wrong, setWrong] = useState(false);
   const [reminder, setReminder] = useState('');
   const [busy, setBusy] = useState(false);
   /** Plan 19 section 3.5: something waiting 10 minutes for a `.ts.net` server, no VPN on. */
@@ -33,6 +34,7 @@ export function SyncBanner({ onSettings }: { onSettings: () => void }) {
   const refresh = useCallback(async () => {
     const next = await status();
     setS(next);
+    setWrong((await device.halted()) === 'wrong_server');
     const state = await plain.get(REMINDER_SHOWN_KEY);
     const now = Date.now();
     const cred = (await pairing.load())?.credential;
@@ -55,16 +57,20 @@ export function SyncBanner({ onSettings }: { onSettings: () => void }) {
     }
     // The same reminder as an OS notification for when the app is closed; cancelled once all is sent.
     await reminders.update(next).catch(() => undefined);
-  }, [status, plain, pairing, net, reminders]);
+  }, [status, device, plain, pairing, net, reminders]);
 
   useEffect(() => {
     void refresh();
-    return sync.subscribe(() => void refresh());
-  }, [sync, refresh]);
+    const offSync = sync.subscribe(() => void refresh());
+    const offDevice = device.subscribe(() => void refresh());
+    return () => {
+      offSync();
+      offDevice();
+    };
+  }, [sync, device, refresh]);
 
   if (!s) return null;
   const days = s.oldestAt === null ? 0 : Math.floor((Date.now() - s.oldestAt) / DAY);
-  const wrong = monitor.wrongServer;
   const label = `Sync status ${s.color}`;
 
   if (s.color === 'green' && s.unsyncedShifts === 0 && !s.message && !wrong && reminder === '') {
@@ -116,9 +122,9 @@ export function SyncBanner({ onSettings }: { onSettings: () => void }) {
           <Button
             variant="outline"
             size="sm"
-            onPress={() => {
-              monitor.clearWrongServer();
-              void refresh();
+            onPress={async () => {
+              await device.resume();
+              await refresh();
             }}
           >
             <Text>Check the address</Text>
@@ -136,8 +142,7 @@ export function SyncBanner({ onSettings }: { onSettings: () => void }) {
           disabled={busy}
           onPress={async () => {
             setBusy(true);
-            uploader.resume();
-            runner.resume();
+            await device.resume();
             await shift.sync();
             await sync.drain();
             setBusy(false);

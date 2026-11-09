@@ -1,10 +1,19 @@
 import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { requestFor } from '../src/sync/runner';
-import type { OutboxItem } from '../src/sync/outbox';
 import { json, mockServer, problem } from './support/mock';
-import { A, B, makeSync } from './support/syncKit';
+import {
+  A,
+  B,
+  create,
+  end,
+  makeSync,
+  MANUAL,
+  manualTrip,
+  notes,
+  odometer,
+  override,
+} from './support/syncKit';
 
 const ok = () => json(200, {});
 const routes = (over: Record<string, () => Response | Promise<Response>> = {}) =>
@@ -21,12 +30,17 @@ const routes = (over: Record<string, () => Response | Promise<Response>> = {}) =
 describe('outbox: queue', () => {
   it('keeps send order, stores the exact body and counts what is waiting', async () => {
     const { outbox, clock } = await makeSync(routes());
-    await outbox.enqueue('shift.create', A, { client_id: A, vehicle_id: 3 });
+    await outbox.enqueue(create(A));
     clock.t = 2_000;
-    await outbox.enqueue('shift.end', A, { ended_at: 5 });
+    await outbox.enqueue(end(A, 5));
     const items = await outbox.pending();
     expect(items.map((i) => i.kind)).toEqual(['shift.create', 'shift.end']);
-    expect(items[0]!.body).toEqual({ client_id: A, vehicle_id: 3 });
+    expect(items[0]!.body).toEqual({
+      client_id: A,
+      vehicle_id: 3,
+      started_at: 1_000,
+      segmenter: 'whole_shift',
+    });
     expect(await outbox.counts()).toEqual({ pending: 2, parked: 0, oldestAt: 1_000 });
     expect(await outbox.has('shift.end', A)).toBe(true);
     expect(await outbox.has('shift.end', B)).toBe(false);
@@ -35,28 +49,27 @@ describe('outbox: queue', () => {
   it('coalesces odometer, override and manual-trip writes in place, never create or end', async () => {
     const { outbox } = await makeSync(routes());
     const tk = `${A}:1000:active`;
-    const manual = `${A}:99999999-9999-4999-8999-999999999999`;
-    await outbox.enqueue('shift.create', A, { n: 1 });
-    await outbox.enqueue('odometer.put', `${A}:shift_end`, { reading_m: 1 });
-    await outbox.enqueue('odometer.put', `${A}:shift_end`, { reading_m: 2 });
-    await outbox.enqueue('odometer.put', `${A}:shift_start`, { reading_m: 7 });
-    await outbox.enqueue('trip.override', tk, { kind: 'active', purpose: 'a' });
-    await outbox.enqueue('trip.override', tk, { kind: 'personal', purpose: 'b' });
-    await outbox.enqueue('trip.manual', manual, { distance_m: 1 });
-    await outbox.enqueue('trip.manual', manual, { distance_m: 2 });
-    await outbox.enqueue('shift.create', A, { n: 2 });
-    await outbox.enqueue('shift.end', A, { n: 1 });
-    await outbox.enqueue('shift.end', A, { n: 2 });
+    await outbox.enqueue(create(A));
+    await outbox.enqueue(odometer(A, 'shift_end', 1));
+    await outbox.enqueue(odometer(A, 'shift_end', 2));
+    await outbox.enqueue(odometer(A, 'shift_start', 7));
+    await outbox.enqueue(override(tk, 'active', 'a'));
+    await outbox.enqueue(override(tk, 'personal', 'b'));
+    await outbox.enqueue(manualTrip(A, MANUAL, 1));
+    await outbox.enqueue(manualTrip(A, MANUAL, 2));
+    await outbox.enqueue(create(A));
+    await outbox.enqueue(end(A, 1));
+    await outbox.enqueue(end(A, 2));
     const items = await outbox.pending();
     expect(items.map((i) => [i.kind, i.body])).toEqual([
-      ['shift.create', { n: 1 }],
-      ['odometer.put', { reading_m: 2 }],
-      ['odometer.put', { reading_m: 7 }],
-      ['trip.override', { kind: 'personal', purpose: 'b' }],
-      ['trip.manual', { distance_m: 2 }],
-      ['shift.create', { n: 2 }],
-      ['shift.end', { n: 1 }],
-      ['shift.end', { n: 2 }],
+      ['shift.create', expect.objectContaining({ client_id: A })],
+      ['odometer.put', { reading_m: 2, recorded_at: 1_000 }],
+      ['odometer.put', { reading_m: 7, recorded_at: 1_000 }],
+      ['trip.override', { kind: 'personal', purpose: 'b', edited_at: 1_000 }],
+      ['trip.manual', expect.objectContaining({ distance_m: 2 })],
+      ['shift.create', expect.objectContaining({ client_id: A })],
+      ['shift.end', { ended_at: 1 }],
+      ['shift.end', { ended_at: 2 }],
     ]);
   });
 
@@ -64,58 +77,21 @@ describe('outbox: queue', () => {
     const ref: { outbox?: Awaited<ReturnType<typeof makeSync>>['outbox'] } = {};
     const server = routes({
       [`PUT /shifts/${A}/odometer/shift_end`]: async () => {
-        await ref.outbox!.enqueue('odometer.put', `${A}:shift_end`, { reading_m: 2 });
+        await ref.outbox!.enqueue(odometer(A, 'shift_end', 2));
         return json(200, {});
       },
     });
     const made = await makeSync(server);
     const outbox = made.outbox;
     ref.outbox = outbox;
-    await outbox.enqueue('odometer.put', `${A}:shift_end`, { reading_m: 1 });
+    await outbox.enqueue(odometer(A, 'shift_end', 1));
     const r = await made.runner.run();
     expect(r.sent).toBe(1);
     expect((server.calls[0]!.body as { reading_m: number }).reading_m).toBe(1);
     const left = await outbox.pending();
-    expect(left.map((i) => i.body)).toEqual([{ reading_m: 2 }]);
+    expect(left.map((i) => i.body)).toEqual([{ reading_m: 2, recorded_at: 1_000 }]);
     await made.runner.run();
     expect(server.calls.map((c) => (c.body as { reading_m: number }).reading_m)).toEqual([1, 2]);
-  });
-});
-
-describe('outbox: requests', () => {
-  const item = (kind: OutboxItem['kind'], entityKey: string): OutboxItem => ({
-    id: 1,
-    kind,
-    entityKey,
-    body: { x: 1 },
-    createdAt: 0,
-    attempts: 0,
-    lastError: null,
-    status: 'pending',
-  });
-  it('maps every kind to its route in 08', () => {
-    const tk = `${A}:1700000000000:deadhead`;
-    expect(requestFor(item('shift.create', A))).toMatchObject({ method: 'POST', path: '/shifts' });
-    expect(requestFor(item('shift.patch', A))).toMatchObject({
-      method: 'PATCH',
-      path: `/shifts/${A}`,
-    });
-    expect(requestFor(item('odometer.put', `${A}:shift_start`))).toMatchObject({
-      method: 'PUT',
-      path: `/shifts/${A}/odometer/shift_start`,
-    });
-    expect(requestFor(item('trip.override', tk))).toMatchObject({
-      method: 'PUT',
-      path: `/shifts/${A}/trip-overrides/${encodeURIComponent(tk)}`,
-    });
-    expect(requestFor(item('trip.manual', `${A}:abc`))).toMatchObject({
-      method: 'PUT',
-      path: `/shifts/${A}/trips/abc`,
-    });
-    expect(requestFor(item('shift.end', A))).toMatchObject({
-      method: 'POST',
-      path: `/shifts/${A}/end`,
-    });
   });
 });
 
@@ -128,9 +104,9 @@ describe('outbox: runner', () => {
     const { outbox, runner } = await makeSync(server, {
       onSent: ({ item, applied }) => void seen.push([item.kind, applied]),
     });
-    await outbox.enqueue('shift.create', A, { client_id: A });
-    await outbox.enqueue('shift.patch', A, { notes: 'n' });
-    await outbox.enqueue('shift.end', A, { ended_at: 9 });
+    await outbox.enqueue(create(A));
+    await outbox.enqueue(notes(A, 'n'));
+    await outbox.enqueue(end(A, 9));
     const r = await runner.run();
     expect(r).toEqual({ state: 'idle', sent: 3, parked: 0, retryInMs: null });
     expect(server.calls.map((c) => `${c.method} ${c.path}`)).toEqual([
@@ -159,8 +135,8 @@ describe('outbox: runner', () => {
       },
     });
     const { outbox, runner } = await makeSync(server);
-    await outbox.enqueue('shift.create', A, { client_id: A });
-    await outbox.enqueue('shift.end', A, {});
+    await outbox.enqueue(create(A));
+    await outbox.enqueue(end(A));
     const first = await runner.run();
     expect(first).toMatchObject({ state: 'offline', sent: 0, retryInMs: 2000 });
     expect(server.calls.length).toBe(1);
@@ -188,9 +164,9 @@ describe('outbox: runner', () => {
     const { outbox, runner } = await makeSync(server, {
       onParked: (i, e) => void parked.push(`${i.kind}:${e.code}`),
     });
-    await outbox.enqueue('shift.create', A, { client_id: A });
-    await outbox.enqueue('shift.end', A, {});
-    await outbox.enqueue('shift.end', B, {});
+    await outbox.enqueue(create(A));
+    await outbox.enqueue(end(A));
+    await outbox.enqueue(end(B));
     const r = await runner.run();
     expect(r).toMatchObject({ sent: 1, parked: 1, state: 'idle' });
     expect(parked).toEqual(['shift.create:shift_already_active']);
@@ -211,7 +187,7 @@ describe('outbox: runner', () => {
     const { outbox, runner } = await makeSync(server, {
       onSent: (s) => void outcomes.push(s.outcome),
     });
-    await outbox.enqueue('shift.patch', A, { notes: 'x' });
+    await outbox.enqueue(notes(A, 'x'));
     expect((await runner.run()).parked).toBe(0);
     expect(outcomes).toEqual(['finalized']);
     expect((await outbox.counts()).pending).toBe(0);
@@ -222,15 +198,16 @@ describe('outbox: runner', () => {
     const server = routes({
       'POST /shifts': () => (revoked ? problem(401, 'device_revoked') : json(201, {})),
     });
-    const { outbox, runner } = await makeSync(server);
-    await outbox.enqueue('shift.create', A, {});
-    await outbox.enqueue('shift.end', A, {});
-    expect((await runner.run()).state).toBe('repair');
-    expect((await runner.run()).state).toBe('repair');
+    const { outbox, runner, device } = await makeSync(server);
+    await outbox.enqueue(create(A));
+    await outbox.enqueue(end(A));
+    expect((await runner.run()).state).toBe('halted');
+    expect(await device.halted()).toBe('repair');
+    expect((await runner.run()).state).toBe('halted');
     expect(server.calls.length).toBe(1);
     expect((await outbox.counts()).pending).toBe(2);
     revoked = false;
-    runner.resume();
+    await device.resume(); // what pairing again does
     expect((await runner.run()).sent).toBe(2);
   });
 
@@ -240,10 +217,10 @@ describe('outbox: runner', () => {
     const { outbox, runner } = await makeSync(server, {
       canSend: (i) => i.kind !== 'shift.end' || barrier,
     });
-    await outbox.enqueue('shift.create', A, {});
-    await outbox.enqueue('shift.end', A, {});
-    await outbox.enqueue('odometer.put', `${A}:shift_end`, { reading_m: 1 });
-    await outbox.enqueue('shift.end', B, {});
+    await outbox.enqueue(create(A));
+    await outbox.enqueue(end(A));
+    await outbox.enqueue(odometer(A, 'shift_end', 1));
+    await outbox.enqueue(end(B));
     barrier = false;
     await runner.run();
     expect(server.calls.map((c) => c.path)).toEqual(['/shifts']);
@@ -260,8 +237,8 @@ describe('outbox: runner', () => {
   it('can be limited to one shift', async () => {
     const server = routes();
     const { outbox, runner } = await makeSync(server);
-    await outbox.enqueue('shift.end', B, {});
-    await outbox.enqueue('shift.end', A, {});
+    await outbox.enqueue(end(B));
+    await outbox.enqueue(end(A));
     await runner.run({ shift: A });
     expect(server.calls.map((c) => c.path)).toEqual([`/shifts/${A}/end`]);
   });
@@ -276,7 +253,7 @@ describe('outbox: runner', () => {
       },
     });
     const { outbox, runner } = await makeSync(server);
-    await outbox.enqueue('shift.create', A, {});
+    await outbox.enqueue(create(A));
     const first = runner.run();
     await new Promise((r) => setTimeout(r, 5));
     expect((await runner.run()).state).toBe('busy');
@@ -285,7 +262,7 @@ describe('outbox: runner', () => {
     expect(server.calls.length).toBe(1);
 
     const unpaired = await makeSync(routes(), { paired: false });
-    await unpaired.outbox.enqueue('shift.end', A, {});
+    await unpaired.outbox.enqueue(end(A));
     expect((await unpaired.runner.run()).state).toBe('not_paired');
     expect((await unpaired.outbox.counts()).pending).toBe(1);
   });
@@ -305,7 +282,7 @@ describe('outbox: kill and resume', () => {
       });
       const first = await makeSync(server, { path });
       kill = () => first.db.close();
-      await first.outbox.enqueue('shift.end', A, { ended_at: 9, phone_result: { total_m: 5 } });
+      await first.outbox.enqueue(end(A, 9, true));
       await expect(first.runner.run()).rejects.toThrow();
 
       kill = null;
@@ -328,8 +305,8 @@ describe('outbox: kill and resume', () => {
       const path = join(dir, 'app.db');
       const down = routes({ 'POST /shifts': () => problem(503, 'unavailable', true) });
       const first = await makeSync(down, { path });
-      await first.outbox.enqueue('shift.create', A, { client_id: A });
-      await first.outbox.enqueue('shift.end', A, { ended_at: 1 });
+      await first.outbox.enqueue(create(A));
+      await first.outbox.enqueue(end(A, 1));
       await first.runner.run();
       first.db.close();
 

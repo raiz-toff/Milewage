@@ -1,5 +1,6 @@
 import { ApiError } from '../src/api/client';
-import { deriveFlags, parsePairingPayload } from '../src/pairing/pairing';
+import { parsePairingLink } from '@milewage/shared';
+import { deriveFlags } from '../src/pairing/pairing';
 import {
   DEVICE_TOKEN,
   json,
@@ -27,43 +28,11 @@ const okServer = () =>
     'GET /settings': () => json(200, { ...SETTINGS, distance_unit: 'km' }),
   });
 
-describe('QR payload', () => {
-  it('parses the 08 format and trims a trailing slash', () => {
-    const p = parsePairingPayload(
-      `milewage://pair?v=1&u=${encodeURIComponent('https://a.b:8443/mw/')}&t=${TOKEN}`,
-    );
-    expect(p).toEqual({ baseUrl: 'https://a.b:8443/mw', token: TOKEN });
-  });
-
-  it('parses the https page link the QR shows; the base is the page, not a smuggled u', () => {
-    const base = { baseUrl: 'https://box.tail1.ts.net', token: TOKEN };
-    expect(parsePairingPayload(`https://box.tail1.ts.net/pair#v=1&t=${TOKEN}`)).toEqual(base);
-    const evil = `https://box.tail1.ts.net/pair#v=1&t=${TOKEN}&u=https%3A%2F%2Fevil.example`;
-    expect(parsePairingPayload(evil)).toEqual(base);
-    expect(parsePairingPayload(`https://a.b/mw/pair#v=1&t=${TOKEN}`)?.baseUrl).toBe(
-      'https://a.b/mw',
-    );
-  });
-
-  it.each([
-    'https://example.com',
-    `https://a.b/pair?v=1&t=${TOKEN}`,
-    `https://a.b/pair#v=2&t=${TOKEN}`,
-    `milewage://pair?v=2&u=https%3A%2F%2Fa.b&t=${TOKEN}`,
-    `milewage://pair?v=1&u=ftp%3A%2F%2Fa.b&t=${TOKEN}`,
-    'milewage://pair?v=1&u=https%3A%2F%2Fa.b&t=mwd_short',
-    'milewage://pair?v=1&u=https%3A%2F%2Fa.b',
-    'milewage://pair?v=1&u=%E0%A4%A&t=x',
-  ])('rejects %s', (text) => {
-    expect(parsePairingPayload(text)).toBeNull();
-  });
-});
-
 describe('redeem against the mock server', () => {
   it('stores the credential securely and the settings in the cache, sends no auth', async () => {
     const server = okServer();
     const { services, secure, plain } = makeServices(server.fetch);
-    const state = await services.pairing.redeem(parsePairingPayload(QR)!);
+    const state = await services.pairing.redeem(parsePairingLink(QR)!);
     expect(state.credential).toMatchObject({
       deviceId: 7,
       deviceToken: DEVICE_TOKEN,
@@ -83,7 +52,7 @@ describe('redeem against the mock server', () => {
       'POST /pairing/redeem': () => problem(401, 'invalid_pairing_token'),
     });
     const { services, secure } = makeServices(server.fetch);
-    await expect(services.pairing.redeem(parsePairingPayload(QR)!)).rejects.toMatchObject({
+    await expect(services.pairing.redeem(parsePairingLink(QR)!)).rejects.toMatchObject({
       status: 401,
       code: 'invalid_pairing_token',
     });
@@ -94,7 +63,7 @@ describe('redeem against the mock server', () => {
     const { services } = makeServices(async () => {
       throw new Error('offline');
     });
-    const err = await services.pairing.redeem(parsePairingPayload(QR)!).catch((e) => e);
+    const err = await services.pairing.redeem(parsePairingLink(QR)!).catch((e) => e);
     expect(err).toBeInstanceOf(ApiError);
     expect(err).toMatchObject({ code: 'network', retryable: true });
   });
@@ -102,7 +71,7 @@ describe('redeem against the mock server', () => {
   it('refreshSettings sends the bearer and replaces the cache; failure keeps the cache', async () => {
     const server = okServer();
     const { services } = makeServices(server.fetch);
-    const paired = await services.pairing.redeem(parsePairingPayload(QR)!);
+    const paired = await services.pairing.redeem(parsePairingLink(QR)!);
     const r = await services.pairing.refreshSettings(paired);
     expect(r.state.settings?.distance_unit).toBe('km');
     const get = server.calls.find((c) => c.method === 'GET')!;
@@ -125,7 +94,7 @@ describe('redeem against the mock server', () => {
     const changes = jest.fn();
     services.pairing.subscribe(changes);
     expect(await services.pairing.status()).toBe('unpaired');
-    const paired = await services.pairing.redeem(parsePairingPayload(QR)!);
+    const paired = await services.pairing.redeem(parsePairingLink(QR)!);
     expect(await services.pairing.status()).toBe('paired');
     await services.pairing.refreshSettings(paired);
     expect(await services.pairing.status()).toBe('paired'); // a good answer changes nothing
@@ -134,14 +103,14 @@ describe('redeem against the mock server', () => {
     expect(await services.pairing.status()).toBe('revoked');
     expect(await services.pairing.load()).not.toBeNull(); // nothing deleted
     revoked = false;
-    await services.pairing.redeem(parsePairingPayload(QR)!);
+    await services.pairing.redeem(parsePairingLink(QR)!);
     expect(await services.pairing.status()).toBe('paired');
     expect(changes).toHaveBeenCalledTimes(3);
   });
 
   it('unpair forgets the credential', async () => {
     const { services } = makeServices(okServer().fetch);
-    await services.pairing.redeem(parsePairingPayload(QR)!);
+    await services.pairing.redeem(parsePairingLink(QR)!);
     await services.pairing.unpair();
     expect(await services.pairing.load()).toBeNull();
   });

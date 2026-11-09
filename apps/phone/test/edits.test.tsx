@@ -73,7 +73,9 @@ describe('phone edits (15 section 8)', () => {
     const { services, tracker, trip } = await endedShift();
     jest.spyOn(tracker, 'gnssOffsetMs').mockReturnValue(-5_000);
     await services.edits.editTrip(trip.trip_key, { purpose: 'x' });
-    expect((await services.outbox.pending()).at(-1)!.body.edited_at).toBe(100_000 - 5_000);
+    expect((await services.outbox.pending()).at(-1)!.body).toMatchObject({
+      edited_at: 100_000 - 5_000,
+    });
   });
 
   it('refuses what 07 forbids: unknown trip, bad values, finalized shifts; the distance is never touched', async () => {

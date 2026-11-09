@@ -1,3 +1,4 @@
+import { parsePairingLink } from '@milewage/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Link2, Server, Wifi, XCircle } from 'lucide-react-native';
@@ -9,7 +10,6 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Text } from '../components/ui/text';
 import type { ScreenProps } from '../navigation';
-import { parsePairingPayload } from '../pairing/pairing';
 import { useServices } from '../services';
 import { useColors } from '../theme/theme';
 import { useConfirm } from '../ui/Dialog';
@@ -23,7 +23,7 @@ import { useToast } from '../ui/Toast';
  */
 export function ConnectScreen({ navigation, route }: ScreenProps<'Connect'>) {
   const C = useColors();
-  const { pairing, uploader, net, scanner: Scanner } = useServices();
+  const { pairing, net, scanner: Scanner } = useServices();
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Failure | null>(null);
@@ -32,15 +32,14 @@ export function ConnectScreen({ navigation, route }: ScreenProps<'Connect'>) {
 
   const submit = async (input: string) => {
     if (busy) return;
-    const payload = parsePairingPayload(input.trim());
+    const payload = parsePairingLink(input.trim());
     if (!payload) return setError({ text: 'That is not a MileWage pairing code.' });
     const bad = addressProblem(payload.baseUrl, !__DEV__);
     if (bad) return setError({ text: bad });
     setError(null);
     setBusy(true);
     try {
-      await pairing.redeem(payload);
-      uploader.resume();
+      await pairing.redeem(payload); // lifts every halt: queued shifts go again
       setText('');
       toast.show({
         tone: 'success',
@@ -63,7 +62,7 @@ export function ConnectScreen({ navigation, route }: ScreenProps<'Connect'>) {
     if (!pairLink) return;
     navigation.setParams({ pairLink: undefined });
     void (async () => {
-      const payload = parsePairingPayload(pairLink);
+      const payload = parsePairingLink(pairLink);
       if (!payload) {
         return toast.show({
           tone: 'error',

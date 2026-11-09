@@ -1,3 +1,4 @@
+import type { DeviceSession } from '../pairing/deviceSession';
 import type { components } from '@milewage/shared/generated/api-types';
 import { ApiError } from '../api/client';
 import type { AppSqlDb, SqlValue } from '../db/appDb';
@@ -19,6 +20,8 @@ export interface PullDeps {
   db: AppSqlDb;
   outbox: Outbox;
   session: () => Promise<{ client: ApiClient; flags: Flags } | null>;
+  /** The device session: nothing is pulled while it is halted. */
+  device: Pick<DeviceSession, 'halted'>;
   /** The server's settings arrived through the feed (they drive the flags). */
   onSettings?: (s: CachedSettings) => void | Promise<void>;
   now?: () => number;
@@ -48,6 +51,7 @@ export class ChangePuller {
     const s = await this.d.session();
     if (!s) return none('not_paired');
     if (!s.flags.sync) return none('disabled');
+    if (await this.d.device.halted()) return none('halted');
     this.busy = true;
     try {
       let applied = 0;
@@ -70,7 +74,7 @@ export class ChangePuller {
             await this.set(CURSOR, '0');
             continue;
           }
-          if (e.status === 401 || e.status === 403) return { state: 'halted', applied };
+          if (await this.d.device.halted()) return { state: 'halted', applied };
           return { state: 'offline', applied };
         }
         await this.d.db.withTransactionAsync(async () => {
@@ -136,13 +140,14 @@ export class ChangePuller {
     );
   }
 
-  private async unsent(
-    kind: OutboxItem['kind'],
+  private async unsent<K extends OutboxItem['kind']>(
+    kind: K,
     shift: string,
     match?: (i: OutboxItem) => boolean,
   ) {
     return (await this.d.outbox.pending()).filter(
-      (i) => i.kind === kind && shiftOf(i.entityKey) === shift && (!match || match(i)),
+      (i): i is Extract<OutboxItem, { kind: K }> =>
+        i.kind === kind && shiftOf(i.entityKey) === shift && (!match || match(i)),
     );
   }
 

@@ -1,8 +1,9 @@
-import { gzipSync, strToU8 } from 'fflate';
 import { ApiError } from '../api/client';
 import type { ApiClient } from '../api/client';
+import type { DeviceSession } from '../pairing/deviceSession';
 import type { Flags } from '../pairing/pairing';
 import { PUMP_LIMIT, type PointFeed } from '../shift/feed';
+import { encode, halvedBatch, send } from '../sync/shiftRequests';
 import type { Tracker, TrackerPoint } from '../tracker/types';
 
 /** 08 section 4.2 rules 5 and 7, section 5. */
@@ -20,8 +21,8 @@ export type UploadState =
   | 'backoff'
   | 'waiting_create'
   | 'parked'
-  | 'repair'
-  | 'auth_problem'
+  /** The device session stops sending (revoked, wrong server, sign-in problem). */
+  | 'halted'
   | 'not_paired'
   | 'tracking_off'
   | 'cancelled';
@@ -93,6 +94,8 @@ export interface WorkerDeps {
   tracker: Tracker;
   feed: PointFeed;
   session: () => Promise<{ client: ApiClient; flags: Flags } | null>;
+  /** The device session: nothing is sent while it is halted; its `resume` starts the worker clean. */
+  device: Pick<DeviceSession, 'halted' | 'subscribe'>;
   /** Has `POST /shifts` for this shift been acknowledged (08 section 4.2 rule 2)? */
   shiftReady: (clientId: string) => boolean | Promise<boolean>;
   /** The shift's create was refused for good: park its points instead of waiting for it. */
@@ -117,7 +120,6 @@ const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n
 export class UploadWorker {
   private readonly now: () => number;
   private readonly backoff: Backoff;
-  private halted: 'repair' | 'auth_problem' | null = null;
   private notFound = new Map<string, number>();
   private parked = new Set<string>();
   private busy = false;
@@ -130,6 +132,7 @@ export class UploadWorker {
   constructor(private readonly d: WorkerDeps) {
     this.now = d.now ?? Date.now;
     this.backoff = new Backoff(d.rand);
+    d.device.subscribe(() => void this.d.device.halted().then((h) => h === null && this.unpark()));
   }
 
   /** Seconds between uploads while a shift is running: 60, or the server's hint clamped to 10-300. */
@@ -143,9 +146,11 @@ export class UploadWorker {
     return s;
   }
 
-  /** After re-pairing (or fixing the credential) uploads may resume. */
-  resume(): void {
-    this.halted = null;
+  /**
+   * Forgets the shifts whose points were set aside, so they are tried again: after the device
+   * session resumes (a new pairing) and after a restored server got a shift again.
+   */
+  unpark(): void {
     this.parked.clear();
     this.notFound.clear();
     this.backoff.reset();
@@ -202,7 +207,7 @@ export class UploadWorker {
       const session = await this.d.session();
       if (!session) return this.done('not_paired', uploaded, rejected, null);
       if (!session.flags.tracking) return this.done('tracking_off', uploaded, rejected, null);
-      if (this.halted) return this.done(this.halted, uploaded, rejected, null);
+      if (await this.d.device.halted()) return this.done('halted', uploaded, rejected, null);
 
       const pending = this.d.feed
         .readPending(PUMP_LIMIT)
@@ -248,11 +253,11 @@ export class UploadWorker {
         if (!(e instanceof ApiError)) throw e;
         const out = await this.onError(e, shiftId, batch);
         if (out.kind === 'halve') {
-          size = Math.max(1, Math.floor(batch.length / 2));
+          size = out.size;
         } else if (out.kind === 'retry') {
           return this.done('backoff', uploaded, rejected, out.delayMs);
         } else if (out.kind === 'halt') {
-          return this.done(this.halted!, uploaded, rejected, null);
+          return this.done('halted', uploaded, rejected, null);
         } else {
           rejected += out.rejected;
         }
@@ -265,31 +270,12 @@ export class UploadWorker {
     shiftId: string,
     batch: TrackerPoint[],
   ): Promise<WireBatch> {
-    const body = {
-      shift_client_id: shiftId,
-      points: batch.map((p) => ({
-        seq: p.seq,
-        recorded_at: p.recordedAt,
-        lat_e7: p.latE7,
-        lon_e7: p.lonE7,
-        accuracy_m: p.accuracyM,
-        speed_dmps: p.speedDmps,
-        bearing_deg: p.bearingDeg,
-        altitude_m: p.altitudeM,
-      })),
-    };
-    const gz = gzipSync(strToU8(JSON.stringify(body)));
+    const req = encode({ type: 'telemetry.batch', clientId: shiftId, points: batch });
     this.stats.attempts++;
-    this.stats.bytes_gz += gz.length;
+    this.stats.bytes_gz += req.gzip.length;
     const t0 = this.now();
     try {
-      const res = await client.request<WireBatch>(
-        'POST',
-        '/telemetry/batch',
-        undefined,
-        { 'Content-Encoding': 'gzip' },
-        gz,
-      );
+      const res = await send<WireBatch>(client, req);
       this.stats.ok++;
       this.stats.durations_ms.push(this.now() - t0);
       return res.data;
@@ -314,16 +300,13 @@ export class UploadWorker {
     shiftId: string,
     batch: TrackerPoint[],
   ): Promise<
-    | { kind: 'halve' }
+    | { kind: 'halve'; size: number }
     | { kind: 'retry'; delayMs: number }
     | { kind: 'halt' }
     | { kind: 'rejected'; rejected: number }
   > {
     const seqs = batch.map((p) => p.seq);
-    if (e.status === 401 || e.status === 403) {
-      this.halted = e.code === 'device_revoked' ? 'repair' : 'auth_problem';
-      return { kind: 'halt' };
-    }
+    if (await this.d.device.halted()) return { kind: 'halt' };
     if (e.status === 404 && e.code === 'shift_not_found') {
       const n = (this.notFound.get(shiftId) ?? 0) + 1;
       this.notFound.set(shiftId, n);
@@ -337,9 +320,9 @@ export class UploadWorker {
     if (e.status === 409 && e.code === 'shift_finalized') {
       return { kind: 'rejected', rejected: this.d.tracker.markRejected(seqs) };
     }
-    if (e.status === 413 && batch.length > 1) return { kind: 'halve' };
+    const smaller = halvedBatch(e, batch.length);
+    if (smaller !== null) return { kind: 'halve', size: smaller };
     if (e.status === 422) {
-      if (batch.length > 1) return { kind: 'halve' };
       return { kind: 'rejected', rejected: this.d.tracker.markRejected(seqs) };
     }
     return { kind: 'retry', delayMs: this.backoff.next(e.retryAfterS) };

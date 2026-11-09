@@ -1,8 +1,11 @@
 import { ApiError, type ApiClient, type ApiResponse } from '../api/client';
+import type { DeviceSession } from '../pairing/deviceSession';
 import { Backoff } from '../upload/worker';
 import { shiftOf, type Outbox, type OutboxItem } from './outbox';
+import { requestFor, send } from './shiftRequests';
 
-export type RunState = 'idle' | 'busy' | 'not_paired' | 'offline' | 'repair' | 'auth_problem';
+/** `halted`: the device session stops sending (revoked, wrong server, sign-in problem). */
+export type RunState = 'idle' | 'busy' | 'not_paired' | 'offline' | 'halted';
 
 export interface RunResult {
   state: RunState;
@@ -24,6 +27,8 @@ export interface Sent {
 export interface RunnerDeps {
   outbox: Outbox;
   session: () => Promise<{ client: ApiClient } | null>;
+  /** The device session: nothing is sent while it is halted. Its `resume` resets the backoff. */
+  device: Pick<DeviceSession, 'halted' | 'subscribe'>;
   /**
    * Called before an item is sent. False keeps it (and everything after it for the same shift)
    * pending. The `shift.end` barrier plugs in here (15 section 6.2 step 3).
@@ -36,59 +41,19 @@ export interface RunnerDeps {
   rand?: () => number;
 }
 
-export interface Request {
-  method: 'POST' | 'PUT' | 'PATCH';
-  path: string;
-  body: Record<string, unknown>;
-}
-
-/** Entity keys: shift `client_id`; `<shift>:<kind>`; `<shift>:<segment ms>:<kind>` (trip key); `<shift>:<trip uuid>`. */
-export function requestFor(item: OutboxItem): Request {
-  const shift = shiftOf(item.entityKey);
-  const rest = item.entityKey.slice(shift.length + 1);
-  switch (item.kind) {
-    case 'shift.create':
-      return { method: 'POST', path: '/shifts', body: item.body };
-    case 'shift.patch':
-      return { method: 'PATCH', path: `/shifts/${shift}`, body: item.body };
-    case 'odometer.put':
-      return { method: 'PUT', path: `/shifts/${shift}/odometer/${rest}`, body: item.body };
-    case 'trip.override':
-      return {
-        method: 'PUT',
-        path: `/shifts/${shift}/trip-overrides/${encodeURIComponent(item.entityKey)}`,
-        body: item.body,
-      };
-    case 'trip.manual':
-      return { method: 'PUT', path: `/shifts/${shift}/trips/${rest}`, body: item.body };
-    case 'shift.end':
-      return { method: 'POST', path: `/shifts/${shift}/end`, body: item.body };
-  }
-}
-
 /**
  * Sends outbox items one at a time, oldest first (15 section 6.2 step 4, 08 section 4.1). A
  * network failure or a 5xx stops the run and keeps the item pending (backoff 2/4/8/16/32/60 s);
- * a 4xx parks that item and holds back only the later items of the same shift; a 401/403 halts
- * everything until `resume`. Nothing is ever dropped.
+ * a 4xx parks that item and holds back only the later items of the same shift; while the device
+ * session is halted (a 401/403, a wrong server) nothing is sent. Nothing is ever dropped.
  */
 export class OutboxRunner {
   private busy = false;
-  private halted: 'repair' | 'auth_problem' | null = null;
   private readonly backoff: Backoff;
 
   constructor(private readonly d: RunnerDeps) {
     this.backoff = new Backoff(d.rand);
-  }
-
-  /** Why the runner stopped for good until `resume` (revoked or bad credential), if it did. */
-  get haltedState(): 'repair' | 'auth_problem' | null {
-    return this.halted;
-  }
-
-  resume(): void {
-    this.halted = null;
-    this.backoff.reset();
+    d.device.subscribe(() => this.backoff.reset());
   }
 
   /** Runs until the queue is empty, blocked, halted or a retryable failure. `shift` limits it to one shift. */
@@ -105,7 +70,7 @@ export class OutboxRunner {
   private async loop(only?: string): Promise<RunResult> {
     const { outbox } = this.d;
     const res: RunResult = { state: 'idle', sent: 0, parked: 0, retryInMs: null };
-    if (this.halted) return { ...res, state: this.halted };
+    if (await this.d.device.halted()) return { ...res, state: 'halted' };
     const session = await this.d.session();
     if (!session) return { ...res, state: 'not_paired' };
 
@@ -120,7 +85,7 @@ export class OutboxRunner {
       const req = requestFor(item);
       outbox.begin(item.id);
       try {
-        const response = await session.client.request(req.method, req.path, req.body);
+        const response = await send(session.client, req);
         await outbox.done(item.id);
         this.backoff.reset();
         res.sent++;
@@ -136,10 +101,9 @@ export class OutboxRunner {
           outbox.release(item.id);
           throw e;
         }
-        if (e.status === 401 || e.status === 403) {
+        if (await this.d.device.halted()) {
           await outbox.failed(item.id, e.code);
-          this.halted = e.code === 'device_revoked' ? 'repair' : 'auth_problem';
-          return { ...res, state: this.halted };
+          return { ...res, state: 'halted' };
         }
         if (e.retryable) {
           await outbox.failed(item.id, e.code);

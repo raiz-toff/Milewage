@@ -217,7 +217,12 @@ describe('pull (GET /sync/changes)', () => {
         },
       ]);
       const { services } = await phone(f.routes);
-      await services.outbox.enqueue('shift.patch', ID, { notes: 'phone', updated_at: phoneAt });
+      await services.outbox.enqueue({
+        type: 'shift.patch',
+        clientId: ID,
+        notes: 'phone',
+        updatedAt: phoneAt,
+      });
       await services.puller.pull({ force: true });
       expect((await services.shifts.get(ID))!.notes).toBe(wins ? null : 'web');
       expect(
@@ -247,7 +252,13 @@ describe('pull (GET /sync/changes)', () => {
     ]);
     const { services } = await phone(f.routes);
     await services.shifts.setSyncState(ID, 'local');
-    await services.outbox.enqueue('shift.end', ID, { ended_at: 9_000 });
+    await services.outbox.enqueue({
+      type: 'shift.end',
+      clientId: ID,
+      endedAt: 9_000,
+      manifest: null,
+      phoneResult: null,
+    });
     await services.puller.pull({ force: true });
     expect(await services.shifts.get(ID)).toMatchObject({
       status: 'ended',
@@ -266,7 +277,7 @@ describe('pull (GET /sync/changes)', () => {
       { id: 5, total_m: 0, active_m: 0, deadhead_m: 0, personal_m: 0, calc_version: 1 },
       null,
     );
-    await services.outbox.enqueue('shift.patch', ID, { notes: 'x', updated_at: 5 });
+    await services.outbox.enqueue({ type: 'shift.patch', clientId: ID, notes: 'x', updatedAt: 5 });
     await services.puller.pull({ force: true });
     expect(await services.shifts.get(ID)).toBeNull();
     expect((await services.outbox.counts()).pending).toBe(0);

@@ -12,6 +12,7 @@ import type { Tracker } from '../tracker/types';
 import type { ShiftStore } from '../store/shiftStore';
 import { shiftOf, type Outbox } from '../sync/outbox';
 import type { OutboxRunner } from '../sync/runner';
+import { encode, send, type QueuedChange } from '../sync/shiftRequests';
 import { runLocal } from './endPayload';
 import { PUMP_LIMIT, PointFeed, toFix } from './feed';
 import { shiftNotice } from './notice';
@@ -85,6 +86,23 @@ export interface ShiftDeps {
   /** Receives the `shift.summary` of a shift once, when its `shift.end` is queued. */
   onSummary?: (clientId: string, summary: ShiftSummary) => Promise<void> | void;
 }
+
+/** The shift's create, queued at the hand-off or sent at once while it runs. */
+const createOf = (shift: ActiveShift): QueuedChange => ({
+  type: 'shift.create',
+  clientId: shift.clientId,
+  vehicleId: shift.vehicleId,
+  startedAt: shift.startedAt,
+  segmenter: shift.segmenter,
+});
+
+const startOdometerOf = (shift: ActiveShift, readingM: number): QueuedChange => ({
+  type: 'odometer.put',
+  clientId: shift.clientId,
+  reading: 'shift_start',
+  readingM,
+  recordedAt: shift.startedAt,
+});
 
 const KEY = 'shift.active';
 const K_VEHICLE = 'shift.lastVehicle';
@@ -395,27 +413,26 @@ export class ShiftController {
     const engineMs = this.now() - engineFrom;
     const { outbox, shifts } = this.d;
     if (!(await outbox.has('shift.end', shift.clientId))) {
-      if (!shift.created) {
-        await outbox.enqueue('shift.create', shift.clientId, {
-          client_id: shift.clientId,
-          vehicle_id: shift.vehicleId,
-          started_at: shift.startedAt,
-          segmenter: shift.segmenter,
-        });
-      }
+      if (!shift.created) await outbox.enqueue(createOf(shift));
       if (shift.odometerStartM !== null && !shift.odometerSent) {
-        await outbox.enqueue('odometer.put', `${shift.clientId}:shift_start`, {
-          reading_m: shift.odometerStartM,
-          recorded_at: shift.startedAt,
-        });
+        await outbox.enqueue(startOdometerOf(shift, shift.odometerStartM));
       }
       if (shift.odometerEndM != null) {
-        await outbox.enqueue('odometer.put', `${shift.clientId}:shift_end`, {
-          reading_m: Math.round(shift.odometerEndM),
-          recorded_at: endedAt,
+        await outbox.enqueue({
+          type: 'odometer.put',
+          clientId: shift.clientId,
+          reading: 'shift_end',
+          readingM: shift.odometerEndM,
+          recordedAt: endedAt,
         });
       }
-      await outbox.enqueue('shift.end', shift.clientId, { ended_at: endedAt, ...local?.extras });
+      await outbox.enqueue({
+        type: 'shift.end',
+        clientId: shift.clientId,
+        endedAt,
+        manifest: local?.manifest ?? null,
+        phoneResult: local?.phoneResult ?? null,
+      });
       await this.summarise(shift, endedAt, local, engineMs);
     }
     if (shift.odometerEndM != null) {
@@ -486,10 +503,7 @@ export class ShiftController {
   private async sendOdometer(client: ApiClient, shift: ActiveShift) {
     if (shift.odometerStartM === null || shift.odometerSent) return;
     try {
-      await client.request('PUT', `/shifts/${shift.clientId}/odometer/shift_start`, {
-        reading_m: shift.odometerStartM,
-        recorded_at: shift.startedAt,
-      });
+      await send(client, encode(startOdometerOf(shift, shift.odometerStartM)));
       this.active = { ...this.active!, odometerSent: true };
       await this.save();
     } catch {
@@ -502,12 +516,7 @@ export class ShiftController {
     shift: ActiveShift,
   ): Promise<'ok' | 'pending' | { kind: 'conflict'; active: ServerShift } | { kind: 'rejected' }> {
     try {
-      await client.request('POST', '/shifts', {
-        client_id: shift.clientId,
-        vehicle_id: shift.vehicleId,
-        started_at: shift.startedAt,
-        segmenter: shift.segmenter,
-      });
+      await send(client, encode(createOf(shift)));
       this.active = { ...shift, created: true };
       await this.save();
       return 'ok';

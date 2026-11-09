@@ -1,6 +1,7 @@
-import { isHomeAddress } from '@milewage/shared';
+import { isHomeAddress, type PairingLink } from '@milewage/shared';
 import { ApiClient, ApiError, type FetchFn } from '../api/client';
 import type { RoutePicker } from '../connect/route';
+import { DeviceSession, haltFor } from './deviceSession';
 
 /** Async key-value storage. The secure one is Keystore-backed; the plain one holds caches. */
 export interface KeyValueStore {
@@ -22,46 +23,8 @@ export class MemoryStore implements KeyValueStore {
   }
 }
 
-export interface PairingPayload {
-  baseUrl: string;
-  token: string;
-  /** `h`: the server on the home network (plan 28), when the code carries one. */
-  homeUrl?: string;
-}
-
+/** An http(s) address with no query or fragment, as the server answers its home and away ones. */
 const ADDRESS = /^https?:\/\/[^\s/?#]+(:\d+)?(\/[^\s?#]*)?$/;
-
-/**
- * `milewage://pair?v=1&u=<url-encoded base URL>&t=<mwp_ token>` (08 section 2.4), or the https
- * form the QR shows, `<base URL>/pair#v=1&t=<token>` (plan 24 Q1), whose base is the page's own.
- * Returns null for anything else, including another version, so a scan of a stray QR does nothing.
- */
-export function parsePairingPayload(text: string): PairingPayload | null {
-  const page = /^(https?:\/\/[^\s/?#]+(?:\/[^\s?#]*)?)\/pair#(.*)$/.exec(text.trim());
-  // The page form's base is the page itself: a `u` inside its fragment is overridden.
-  const query = page
-    ? `${page[2]}&u=${encodeURIComponent(page[1]!)}`
-    : /^milewage:\/\/pair\?(.*)$/.exec(text.trim())?.[1];
-  if (query === undefined) return null;
-  const params = new Map<string, string>();
-  for (const pair of query.split('&')) {
-    const i = pair.indexOf('=');
-    if (i < 0) return null;
-    try {
-      params.set(pair.slice(0, i), decodeURIComponent(pair.slice(i + 1)));
-    } catch {
-      return null;
-    }
-  }
-  const u = params.get('u');
-  const t = params.get('t');
-  if (params.get('v') !== '1' || !u || !t || !/^mwp_[A-Za-z0-9_-]{10,}$/.test(t)) return null;
-  if (!ADDRESS.test(u)) return null;
-  // `h` is optional and only ever a home address; anything else in it is ignored.
-  const h = params.get('h');
-  const home = h && ADDRESS.test(h) && isHomeAddress(h) ? h.replace(/\/+$/, '') : undefined;
-  return { baseUrl: u.replace(/\/+$/, ''), token: t, ...(home ? { homeUrl: home } : {}) };
-}
 
 /** The slice of `GET /settings` the phone acts on. Unknown members are ignored. */
 export interface CachedSettings {
@@ -145,7 +108,6 @@ export interface PairedState {
 
 const K_CRED = 'pairing.credential';
 const K_SETTINGS = 'pairing.settings';
-const K_REVOKED = 'pairing.revoked';
 /** Set when a phone connects from the first-run screens: the setup steps (24 section 4.2) follow. */
 const K_SETUP = 'pairing.setup';
 
@@ -170,15 +132,23 @@ export interface PairingDeps {
   anyHttp?: boolean;
   /** Checks every answer's instance and restore generation against what this phone was paired with. */
   monitor?: {
-    blocked(): boolean;
     observe(headers: Headers, expectedInstance: string | null): void;
   };
+  /** Holds every halt of sending (revoked, wrong server, sign-in problem). Default: its own. */
+  device?: DeviceSession;
 }
 
 export class Pairing {
   private readonly listeners = new Set<() => void>();
+  /** The device session: the halt every sender obeys. Pairing again lifts it. */
+  readonly device: DeviceSession;
 
-  constructor(private readonly d: PairingDeps) {}
+  constructor(private readonly d: PairingDeps) {
+    this.device = d.device ?? new DeviceSession(d.plain);
+    // A revoke (or any halt) is a pairing change for the app start gate, again on each refusal:
+    // the gate may have waited for a running shift to end.
+    this.device.subscribe(() => this.changed());
+  }
 
   /** Called after every pairing change (paired, unpaired, revoked). Returns the unsubscribe. */
   subscribe(fn: () => void): () => void {
@@ -192,7 +162,7 @@ export class Pairing {
 
   async status(): Promise<PairingStatus> {
     if (!(await this.d.secure.get(K_CRED))) return 'unpaired';
-    return (await this.d.plain.get(K_REVOKED)) ? 'revoked' : 'paired';
+    return (await this.device.halted()) === 'repair' ? 'revoked' : 'paired';
   }
 
   /** True from a first connection until the driver finishes the setup steps. */
@@ -205,17 +175,11 @@ export class Pairing {
     this.changed();
   }
 
-  /** The server said this phone was revoked. Nothing is deleted; the gate asks to connect again. */
-  private async revoked(): Promise<void> {
-    if (!(await this.d.plain.get(K_REVOKED))) await this.d.plain.set(K_REVOKED, '1');
-    this.changed(); // again on each refusal: the gate may have waited for a running shift to end
-  }
-
   /**
    * Where to redeem a code: its home address when the phone is on Wi-Fi and the home address
    * answers (plan 28: at home the phone never needs Tailscale), else the code's own address.
    */
-  private async redeemAt(payload: PairingPayload): Promise<string> {
+  private async redeemAt(payload: PairingLink): Promise<string> {
     const home = payload.homeUrl;
     const route = this.d.route;
     if (!home || home === payload.baseUrl || !route) return payload.baseUrl;
@@ -230,7 +194,7 @@ export class Pairing {
   }
 
   /** Redeems the token; stores the credential securely and the settings in the cache. */
-  async redeem(payload: PairingPayload): Promise<PairedState> {
+  async redeem(payload: PairingLink): Promise<PairedState> {
     const first = (await this.status()) !== 'paired';
     const used = await this.redeemAt(payload);
     let milewage = false; // every MileWage answer carries X-MileWage-Api (15 section 9.4)
@@ -296,10 +260,12 @@ export class Pairing {
     };
     await this.d.secure.set(K_CRED, JSON.stringify(credential));
     await this.d.plain.set(K_SETTINGS, JSON.stringify(settings));
-    await this.d.plain.remove(K_REVOKED);
     if (first) await this.d.plain.set(K_SETUP, '1');
     this.d.onSettings?.(settings);
-    this.changed();
+    // A new credential: every halt is lifted at once, so every sender goes again (queued shift
+    // creates and ends, points, the change feed), and a wrong-server block is cleared. The
+    // session's resume is this pairing change for the listeners.
+    await this.device.resume();
     return { credential, settings };
   }
 
@@ -402,9 +368,13 @@ export class Pairing {
       token: c.deviceToken,
       fetch: this.d.fetch,
       now: this.d.now,
-      blocked: () => this.d.monitor?.blocked() ?? false,
+      blocked: this.device.blocked,
       onResponse: (h) => this.d.monitor?.observe(h, c.instanceId),
-      onProblem: (e) => void (e.code === 'device_revoked' && this.revoked()),
+      // Revoked or refused: the device session stops every sender. Nothing is deleted.
+      onProblem: (e) => {
+        const reason = haltFor(e);
+        if (reason) void this.device.halt(reason);
+      },
     });
   }
 
@@ -435,8 +405,7 @@ export class Pairing {
   async unpair(): Promise<void> {
     await this.d.secure.remove(K_CRED);
     await this.d.plain.remove(K_SETTINGS);
-    await this.d.plain.remove(K_REVOKED);
     await this.d.plain.remove(K_SETUP);
-    this.changed();
+    await this.device.resume(); // nothing is halted for no pairing; tells the listeners
   }
 }

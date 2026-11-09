@@ -170,7 +170,7 @@ export class SyncDrain {
       this.set({ phase: 'waiting' });
       return { state: 'offline', retryInMs: rest.retryInMs };
     }
-    if (rest.state === 'repair' || rest.state === 'auth_problem') {
+    if (rest.state === 'halted') {
       this.set({ phase: 'halted' });
       return { state: 'halted', retryInMs: null };
     }
@@ -206,7 +206,7 @@ export class SyncDrain {
     if (!resend) return null;
     const live = controller.current?.endedAt === null ? controller.current.clientId : null;
     const r = await resend.run({ live, shouldStop: this.stopped });
-    if (r.recreated) uploader.resume();
+    if (r.recreated) uploader.unpark();
     return r;
   }
 
@@ -246,8 +246,7 @@ export class SyncDrain {
       if (u.state === 'backoff' || u.state === 'waiting_create') {
         return { state: 'offline', retryInMs: u.retryInMs };
       }
-      if (u.state === 'repair' || u.state === 'auth_problem')
-        return { state: 'halted', retryInMs: null };
+      if (u.state === 'halted') return { state: 'halted', retryInMs: null };
       if (u.uploaded + u.rejected === 0) break;
       if (this.runningIsDue()) await this.serveRunning();
     }
@@ -256,8 +255,7 @@ export class SyncDrain {
 
   private halt(r: Awaited<ReturnType<OutboxRunner['run']>>): DrainSummary | null {
     if (r.state === 'offline') return { state: 'offline', retryInMs: r.retryInMs };
-    if (r.state === 'repair' || r.state === 'auth_problem')
-      return { state: 'halted', retryInMs: null };
+    if (r.state === 'halted') return { state: 'halted', retryInMs: null };
     return null;
   }
 }

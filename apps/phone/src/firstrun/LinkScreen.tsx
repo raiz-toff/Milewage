@@ -30,7 +30,7 @@ const MESSAGES: Record<string, string> = {
  */
 export function LinkScreen({ navigation, route }: ScreenProps<'Link'>) {
   const C = useColors();
-  const { pairing, uploader } = useServices();
+  const { pairing } = useServices();
   const toast = useToast();
   const { url, name } = route.params;
   const [state, setState] = useState<State>({ kind: 'asking' });
@@ -53,8 +53,7 @@ export function LinkScreen({ navigation, route }: ScreenProps<'Link'>) {
         try {
           const done = await pairing.pollLink(url, link.deviceCode);
           if (!live.current) return;
-          if (!done) return poll(link, link.intervalMs, 0);
-          uploader.resume();
+          if (!done) return poll(link, link.intervalMs, 0); // pairing lifts every halt
           toast.show({
             tone: 'success',
             title: 'Phone connected.',
@@ -79,7 +78,7 @@ export function LinkScreen({ navigation, route }: ScreenProps<'Link'>) {
       live.current = false;
       if (timer) clearTimeout(timer);
     };
-  }, [url, attempt, pairing, uploader, toast]);
+  }, [url, attempt, pairing, toast]);
 
   const code = state.kind === 'waiting' ? state.link.userCode : null;
   return (

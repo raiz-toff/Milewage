@@ -1,6 +1,6 @@
 import { createReadStream, readFileSync, statSync } from 'node:fs';
 import type { FastifyRequest } from 'fastify';
-import { isHomeAddress } from '@milewage/shared';
+import { isHomeAddress, pairingLinks } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import { hashToken, newToken, type Authenticator } from '../auth/authenticator';
 import { FailureLimiter } from '../auth/limiter';
@@ -166,12 +166,13 @@ export function devicesRoutes({
       const createdAt = now();
       const expiresAt = createdAt + 10 * 60 * 1000;
       repo.addPairingToken({ userId, tokenHash: hashToken(token), createdAt, expiresAt });
-      // `h`, the home address, is new in plan 28 and optional: an older app reads only `u`.
-      const h = home && home !== base ? `&h=${encodeURIComponent(home)}` : '';
-      const qr = `milewage://pair?v=1&u=${encodeURIComponent(base)}&t=${token}${h}`;
-      // The QR carries the https form: the phone app reads it, and so does any camera app, which
-      // opens the server's /pair page. The token is in the fragment, so no server log sees it.
-      const pairUrl = `${base}/pair#v=1&t=${token}${h}`;
+      // The QR carries the page link: the phone app reads it, and so does any camera app, which
+      // opens the server's /pair page. `h`, the home address (plan 28), rides in both forms.
+      const { appLink: qr, pageUrl: pairUrl } = pairingLinks({
+        baseUrl: base,
+        token,
+        ...(home ? { homeUrl: home } : {}),
+      });
       return reply.status(201).send({
         token,
         expires_at: expiresAt,

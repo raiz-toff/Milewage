@@ -1,15 +1,7 @@
 import { processShift, type Fix, type ShiftResult } from '@milewage/track-engine';
-import type { components } from '@milewage/shared/generated/api-types';
+import type { Manifest, PhoneTotals } from '../sync/shiftRequests';
 import type { Tracker } from '../tracker/types';
 import { PUMP_LIMIT, toFix } from './feed';
-
-type Schemas = components['schemas'];
-
-/** The additive `shift.end` fields of 08 section 4.4 / 14 section 9.3, typed from the OpenAPI file. */
-export interface EndExtras {
-  manifest?: Schemas['PointManifest'];
-  phone_result?: Schemas['PhoneResult'];
-}
 
 export interface EndShiftInfo {
   clientId: string;
@@ -33,8 +25,9 @@ export function readAllRows(tracker: Tracker, clientId: string) {
 
 export interface LocalRun {
   result: ShiftResult;
-  manifest: { firstSeq: number; lastSeq: number; pointCount: number };
-  extras: EndExtras;
+  /** The additive `shift.end` facts of 08 section 4.4 / 14 section 9.3. */
+  manifest: Manifest;
+  phoneResult: PhoneTotals;
 }
 
 /**
@@ -64,18 +57,15 @@ export function runLocal(tracker: Tracker, shift: EndShiftInfo): LocalRun | null
     return {
       result: r,
       manifest: { firstSeq: first, lastSeq: last, pointCount: rows.length },
-      extras: {
-        manifest: { first_seq: first, last_seq: last, point_count: rows.length },
-        phone_result: {
-          calc_version: r.algorithmVersion,
-          segmenter: shift.segmenter,
-          input_digest: r.inputDigest,
-          total_m: r.totals.totalM,
-          active_m: r.totals.activeM,
-          deadhead_m: r.totals.deadheadM,
-          personal_m: r.totals.personalM,
-          trips_count: r.trips.length,
-        },
+      phoneResult: {
+        calcVersion: r.algorithmVersion,
+        segmenter: shift.segmenter,
+        inputDigest: r.inputDigest,
+        totalM: r.totals.totalM,
+        activeM: r.totals.activeM,
+        deadheadM: r.totals.deadheadM,
+        personalM: r.totals.personalM,
+        tripsCount: r.trips.length,
       },
     };
   } catch {
