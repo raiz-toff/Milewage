@@ -4,6 +4,7 @@ import type { Schemas, Settings } from '../api/client';
 import { deductionWord, formatDistance, formatDuration, formatMoney } from '../format';
 import { adviceFor } from '../shift/advice';
 import type { EarnedSummary } from '../shift/view';
+import { HelpLink } from '../help';
 import { Section, StatCard } from '../ui/layout';
 
 type Shift = Schemas['Shift'];
@@ -147,7 +148,11 @@ export function AdviceList({ advice, title = 'What to do' }: { advice: string[];
 /** The checks card: what was found, then what to do about it. */
 export function ShiftChecks({ shift }: { shift: Shift }) {
   return (
-    <Section label="Checks" title="Checks">
+    <Section
+      label="Checks"
+      title="Checks"
+      action={<HelpLink page="how-miles-are-counted">How miles are counted</HelpLink>}
+    >
       <CheckList shift={shift} />
       {!shift.flags?.length && !shift.recon_status ? (
         <p className="text-sm text-muted-foreground">Nothing to check.</p>

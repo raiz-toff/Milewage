@@ -36,6 +36,32 @@ layout rule goes into `shiftView` and its table test (`test/shiftview.test.ts`),
 Page error handling: `PageErrorBoundary` keeps the sidebar usable and offers "Try again", which
 drops the cached answers and draws the page again.
 
+## Web: section navigation (`apps/web/src/ui/nav.tsx`)
+
+| Primitive    | Use it for                                                                                              |
+| ------------ | ------------------------------------------------------------------------------------------------------- |
+| `SectionNav` | A page made of sections or pages with one URL each (Settings, Help). `label` names the navigation, `noun` starts the narrow button ("Section: Units and format", "Page: FAQ"), `groups` are `{ label, items: { to, label }[] }`. A grouped side list that stays in view where the container is wide, one menu button where it is narrow; never scrolls sideways. Put it in an `@container` grid with `@2xl:grid-cols-[200px_minmax(0,1fr)]`. |
+| `LinkRow`    | A row that leads to another page: title, one line about it, a chevron. Rows sit in `<Card className="py-0"><ul className="divide-y">` (Settings' "Elsewhere in MileWage", the Help index). |
+
+## Web: Help (`apps/web/src/help/`)
+
+- `HelpLink`: `<HelpLink page="how-miles-are-counted">How miles are counted</HelpLink>`. A muted
+  `CircleHelp` link (16 px icon, `text-sm font-medium text-muted-foreground`, underline on hover)
+  to `/help/<page>`. It renders nothing while the owner has Help off (Settings > Help pages), so
+  place it freely: a `Section`'s `action`, the end of a `PageHeader` description, a line above a
+  panel. The caller writes the words; say what the driver will learn ("What a new key changes"),
+  not "Learn more". `page` must be a file name in `docs/help/` without `.md` (a test checks it),
+  and the page's `module` must match the screen's.
+- Help pages: the Markdown of `docs/help/*.md` is drawn by `HelpMarkdown` with the design system's
+  classes per element, never with `prose` (`@tailwindcss/typography` brings its own greys and
+  scale): `h2` `scroll-mt-20 pt-4 text-lg font-semibold tracking-tight`, `h3` `text-base
+  font-medium`, `p` `leading-7`, lists `list-disc`/`list-decimal space-y-2 pl-5`, links `font-medium
+  text-foreground underline underline-offset-4`, inline code `rounded bg-muted px-1.5 py-0.5
+  font-mono text-[0.85em]`, code blocks `rounded-lg border bg-muted p-3 font-mono text-sm`, quotes
+  `border-l-2 pl-4 text-muted-foreground`, tables in `TableBox` with `tableClass`, rules as
+  `Separator`. No raw HTML and no images in pages. The article is `max-w-3xl space-y-4`; a page
+  with three or more `##` headings gets an "On this page" box.
+
 ## Web: forms (`apps/web/src/ui/form.tsx`)
 
 | Primitive     | Notes                                                                                                 |

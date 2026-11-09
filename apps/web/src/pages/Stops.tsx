@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Schemas } from '../api/client';
 import { put, useChange } from '../api/query';
 import { formatTime, minorDigits, moneyInput, parseMoney } from '../format';
+import { HelpLink } from '../help';
 import { useSettings } from '../session';
 import { SortTable } from '../ui/SortTable';
 import type { Column } from '../ui/SortTable';
@@ -274,6 +275,9 @@ export function StopsPanel({
   const edited = (shift.flags ?? []).some((f) => f.code === 'manual_trip_present');
   return (
     <div className="space-y-3">
+      <p>
+        <HelpLink page="active-and-deadhead">About the estimate</HelpLink>
+      </p>
       {hasStackedOrders(stops) ? (
         <p role="status" className="rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm">
           Stacked orders? The estimate under-states active distance when orders overlap. Label the

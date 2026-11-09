@@ -16,7 +16,8 @@ import {
   Trophy,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import type { Modules } from './api/client';
+import type { Modules, Settings as SettingsRecord } from './api/client';
+import { helpScreen } from './help';
 import { AnalyticsPage } from './pages/Analytics';
 import { Backups } from './pages/Backups';
 import { Dashboard } from './pages/Dashboard';
@@ -35,6 +36,17 @@ import { VehiclesPage } from './pages/Vehicles';
 import { publicPages } from './publicPages';
 
 /**
+ * What decides whether a screen is there: the server's module flags, plus the owner's switches
+ * that are preferences rather than modules (`help`, from `settings.help_enabled`; ADR 0002).
+ */
+export type ScreenFlags = Modules & { help: boolean };
+
+export const screenFlags = (s: SettingsRecord): ScreenFlags => ({
+  ...s.modules,
+  help: s.help_enabled,
+});
+
+/**
  * Every signed-in screen, in navigation order. `visible` is the module-flag rule of 05 section
  * 5: a screen whose module is off is neither in the navigation nor reachable by URL.
  * Core screens have no rule and are always present.
@@ -43,7 +55,7 @@ export interface Screen {
   /** Route pattern; a trailing /* lets the screen own sub-routes. */
   path: string;
   label: string;
-  visible?: (modules: Modules) => boolean;
+  visible?: (flags: ScreenFlags) => boolean;
   element: ReactNode;
   /** Sidebar entry. Absent means not in the sidebar (the header bell opens Notifications). */
   nav?: { icon: LucideIcon; group: NavGroup };
@@ -158,6 +170,7 @@ export const screens: Screen[] = [
     element: <SettingsPage />,
     nav: { icon: Settings, group: 'system' },
   },
+  helpScreen,
 ];
 
 /**
@@ -173,5 +186,5 @@ export const spaPaths = (list: Screen[] = screens): string[] => [
   ...list.flatMap((s) => (s.path.endsWith('/*') ? [s.path.slice(0, -2), s.path] : [s.path])),
 ];
 
-export const visibleScreens = (modules: Modules): Screen[] =>
-  screens.filter((s) => !s.visible || s.visible(modules));
+export const visibleScreens = (flags: ScreenFlags): Screen[] =>
+  screens.filter((s) => !s.visible || s.visible(flags));

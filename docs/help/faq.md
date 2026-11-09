@@ -1,3 +1,9 @@
+---
+summary: Battery, privacy, countries, backups and more.
+group: reference
+order: 20
+---
+
 # Questions and answers
 
 ## How much battery does it use?
@@ -24,7 +30,7 @@ Canada, the United States and Great Britain have country packs, and they are the
 
 ## Can I use it without Tailscale?
 
-At home, yes, once LAN access is on ([`infra/docs/install.md`](../infra/docs/install.md), section 2a). On your home Wi-Fi the phone can reach the server over plain http at its home address. Away from home it needs an https address, and the release app refuses plain http there. Tailscale gives your home server a safe https address without opening anything on your router.
+At home, yes, once LAN access is on ([`infra/docs/install.md`](../../infra/docs/install.md), section 2a). On your home Wi-Fi the phone can reach the server over plain http at its home address. Away from home it needs an https address, and the release app refuses plain http there. Tailscale gives your home server a safe https address without opening anything on your router.
 
 To pair the phone, scan the QR code from the web's Devices page. On the home Wi-Fi the app can also find the server by itself and ask for the link code shown there instead.
 
@@ -38,7 +44,7 @@ Not yet. The phone app is Android only.
 
 ## How do I update?
 
-Follow [`infra/docs/upgrade.md`](../infra/docs/upgrade.md). Take a backup first. The server takes its own backup before changing the database, and it stays read-only if an upgrade fails.
+Follow [`infra/docs/upgrade.md`](../../infra/docs/upgrade.md). Take a backup first. The server takes its own backup before changing the database, and it stays read-only if an upgrade fails.
 
 ## Are my data backed up?
 
@@ -58,4 +64,4 @@ No. It is an estimate and is labelled that way. Your total miles do not depend o
 
 ## Where is the source code, and what is the licence?
 
-The code is public on GitHub at [raiz-toff/Milewage](https://github.com/raiz-toff/Milewage). It is free software under the GNU Affero General Public License, version 3 only (AGPL-3.0-only). See [`LICENSE`](../LICENSE).
+The code is public on GitHub at [raiz-toff/Milewage](https://github.com/raiz-toff/Milewage). It is free software under the GNU Affero General Public License, version 3 only (AGPL-3.0-only). See [`LICENSE`](../../LICENSE).

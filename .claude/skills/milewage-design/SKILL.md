@@ -14,8 +14,8 @@ reference that matches your task:
 - [references/tokens.md](references/tokens.md): every colour in light, dark and on the phone, the
   type scale, radius, spacing, icons. Read it when you touch a colour, a class name or a stylesheet.
 - [references/components.md](references/components.md): the web primitives (`PageHeader`,
-  `Section`, `StatCard`, `EmptyState`, `TableBox`, `RowMenu`, `Field`, `DateField`, `TimeField`,
-  `Picker`, `SelectField`, `ShowMore`, `HourBars`), the shadcn set that is installed, and the phone
+  `Section`, `StatCard`, `EmptyState`, `TableBox`, `SectionNav`, `LinkRow`, `HelpLink`, `RowMenu`,
+  `Field`, `DateField`, `TimeField`, `Picker`, `SelectField`, `ShowMore`, `HourBars`), the shadcn set that is installed, and the phone
   primitives (`Screen`, `ListRow`, `Rows`, `SectionLabel`, `Field`, `Toast`, `ConfirmProvider`,
   `Logo`, `Dot`). Read it before composing a page or a screen.
 - [references/voice-and-formats.md](references/voice-and-formats.md): how MileWage speaks, and the

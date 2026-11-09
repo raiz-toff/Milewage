@@ -1,3 +1,9 @@
+---
+summary: What the phone records, what is filtered out, and why the phone and the server agree.
+group: using
+order: 20
+---
+
 # How miles are counted
 
 ## What the phone records

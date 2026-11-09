@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { useChange } from '../api/query';
 import { Button, Field, FormError } from '../ui/form';
+import { HelpLink } from '../help';
 import { Section } from '../ui/layout';
 
 type Step =
@@ -29,7 +30,13 @@ export function NewRecoveryKey() {
     <Section
       label="Lost your recovery key?"
       title="Lost your recovery key?"
-      description="The old key cannot be recovered. MileWage never kept it. You can make a new key: it protects the backups made from now on."
+      description={
+        <>
+          The old key cannot be recovered. MileWage never kept it. You can make a new key: it
+          protects the backups made from now on.{' '}
+          <HelpLink page="if-you-lose-your-recovery-key">What a new key changes</HelpLink>
+        </>
+      }
     >
       <div>
         <UiButton type="button" variant="outline" onClick={() => setOpen(true)}>

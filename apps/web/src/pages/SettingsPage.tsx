@@ -1,18 +1,8 @@
 import { useState } from 'react';
-import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import type { FormEvent, ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
@@ -23,6 +13,7 @@ import { parseRate, rateInput } from '../format';
 import { settingsPatch, useSettings } from '../session';
 import { Button, Field, FormError, PrivacyLink, SelectField } from '../ui/form';
 import { PageHeader } from '../ui/layout';
+import { LinkRow, SectionNav } from '../ui/nav';
 import { Account } from './Account';
 import { AssistantsCard } from './Assistants';
 import { ImportCard } from './Import';
@@ -39,6 +30,7 @@ interface Draft {
   timezone: string;
   raw_retention_days: string;
   stops_enabled: boolean;
+  help_enabled: boolean;
   diagnostics_level: 'off' | 'basic' | 'verbose';
   display_name: string;
   region: string;
@@ -55,6 +47,7 @@ const draftOf = (s: Settings): Draft => ({
   timezone: s.timezone,
   raw_retention_days: String(s.raw_retention_days),
   stops_enabled: s.stops_enabled,
+  help_enabled: s.help_enabled,
   diagnostics_level: s.diagnostics.level,
   display_name: s.display_name ?? '',
   region: s.region ?? '',
@@ -140,6 +133,7 @@ type SectionId =
   | 'units'
   | 'alerts'
   | 'app'
+  | 'help'
   | 'platforms'
   | 'tracking'
   | 'data'
@@ -192,6 +186,13 @@ const GROUPS: { label: string; sections: Section[] }[] = [
         id: 'app',
         label: 'App on this device',
         description: 'Install MileWage so it opens in its own window, like an app.',
+      },
+      {
+        id: 'help',
+        label: 'Help pages',
+        description:
+          'How MileWage works, in plain words: in the sidebar and as links on some screens.',
+        saves: 'shared',
       },
     ],
   },
@@ -260,6 +261,7 @@ const FIELD_SECTION: Record<keyof Draft, SectionId> = {
   time_format: 'units',
   timezone: 'units',
   stops_enabled: 'tracking',
+  help_enabled: 'help',
   raw_retention_days: 'tracking',
   diagnostics_level: 'tracking',
 };
@@ -274,87 +276,6 @@ const visibleGroups = (modules: Settings['modules']) =>
     sections: g.sections.filter((s) => !s.module || modules[s.module]),
   })).filter((g) => g.sections.length > 0);
 
-type Group = ReturnType<typeof visibleGroups>[number];
-
-/**
- * The section list. Where there is room it is a grouped list beside the form that stays in view;
- * where there is not, one menu button that names the open section. Neither ever scrolls sideways.
- */
-function SettingsNav({ groups }: { groups: Group[] }) {
-  const { pathname } = useLocation();
-  const sections = groups.flatMap((g) => g.sections);
-  const current = sections.find((s) => pathname.startsWith(`/settings/${s.id}`)) ?? sections[0];
-  return (
-    <nav
-      aria-label="Settings sections"
-      className="@2xl:sticky @2xl:top-20 @2xl:max-h-[calc(100svh-6rem)] @2xl:self-start @2xl:overflow-y-auto @2xl:[scrollbar-width:thin]"
-    >
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <UiButton variant="outline" className="w-full justify-between @md:w-72 @2xl:hidden">
-            <span className="truncate">
-              <span className="text-muted-foreground">Section:</span> {current?.label}
-            </span>
-            <ChevronDown />
-          </UiButton>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="min-w-(--radix-dropdown-menu-trigger-width)">
-          {groups.map((g, i) => (
-            <DropdownMenuGroup key={g.label}>
-              {i > 0 ? <DropdownMenuSeparator /> : null}
-              <DropdownMenuLabel className="text-xs text-muted-foreground">
-                {g.label}
-              </DropdownMenuLabel>
-              {g.sections.map((s) => (
-                <DropdownMenuItem key={s.id} asChild>
-                  <Link
-                    to={`/settings/${s.id}`}
-                    aria-current={s === current ? 'page' : undefined}
-                    className="aria-[current=page]:font-medium"
-                  >
-                    {s.label}
-                  </Link>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuGroup>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <div className="hidden space-y-4 text-sm @2xl:block">
-        {groups.map((g, i) => (
-          <div key={g.label} className="space-y-1">
-            <p
-              id={`settings-group-${i}`}
-              className="px-3 text-xs font-medium text-muted-foreground"
-            >
-              {g.label}
-            </p>
-            <ul aria-labelledby={`settings-group-${i}`} className="flex flex-col gap-1">
-              {g.sections.map((s) => (
-                <li key={s.id}>
-                  <NavLink
-                    to={`/settings/${s.id}`}
-                    className={({ isActive }) =>
-                      cn(
-                        'block rounded-md px-3 py-1.5 transition-colors',
-                        isActive
-                          ? 'bg-muted font-medium text-foreground'
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                      )
-                    }
-                  >
-                    {s.label}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-    </nav>
-  );
-}
-
 /** The top of a section: its name, what it is for and how it saves. */
 function SectionHeader({ section }: { section: Section }) {
   return (
@@ -365,24 +286,6 @@ function SectionHeader({ section }: { section: Section }) {
         <p className="text-xs text-muted-foreground">{SAVES[section.saves]}</p>
       ) : null}
     </div>
-  );
-}
-
-/** A row that leads to another page of the app. */
-function LinkRow({ to, title, children }: { to: string; title: string; children: string }) {
-  return (
-    <li>
-      <Link
-        to={to}
-        className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted"
-      >
-        <span className="space-y-0.5">
-          <span className="block text-sm font-medium">{title}</span>
-          <span className="block text-sm text-muted-foreground">{children}</span>
-        </span>
-        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-      </Link>
-    </li>
   );
 }
 
@@ -652,6 +555,31 @@ function TrackingSection({ prefs }: { prefs: Prefs }) {
   );
 }
 
+/** The owner's switch for Help (ADR 0002): off hides it from the sidebar and every screen. */
+function HelpSection({ prefs }: { prefs: Prefs }) {
+  const { draft, set } = prefs;
+  return (
+    <SettingsCard>
+      <div className="flex items-start justify-between gap-6">
+        <div className="space-y-1">
+          <label htmlFor="help-enabled" className="text-sm font-medium">
+            Show help pages
+          </label>
+          <p className="text-sm text-muted-foreground">
+            Turn it off to hide Help from the sidebar and the help links on screens. Nothing else
+            changes.
+          </p>
+        </div>
+        <Switch
+          id="help-enabled"
+          checked={draft.help_enabled}
+          onCheckedChange={(on) => set({ help_enabled: on })}
+        />
+      </div>
+    </SettingsCard>
+  );
+}
+
 /**
  * Opens the onboarding wizard again at its first step (plan 23 section 4.4). The driver stays
  * onboarded, so leaving half-way returns to the app; Finish keeps the first time.
@@ -708,6 +636,11 @@ export function SettingsPage() {
         <InstallSection />
       </SettingsCard>
     ),
+    help: (
+      <PrefsForm prefs={prefs}>
+        <HelpSection prefs={prefs} />
+      </PrefsForm>
+    ),
     platforms: (
       <SettingsCard>
         <PlatformsCard />
@@ -763,7 +696,14 @@ export function SettingsPage() {
       {/* Sized by its own width, not the window's: the side list needs room beside the form. */}
       <div className="@container">
         <div className="grid gap-6 @2xl:grid-cols-[200px_minmax(0,1fr)] @2xl:gap-8">
-          <SettingsNav groups={groups} />
+          <SectionNav
+            label="Settings sections"
+            noun="Section"
+            groups={groups.map((g) => ({
+              label: g.label,
+              items: g.sections.map((s) => ({ to: `/settings/${s.id}`, label: s.label })),
+            }))}
+          />
           <div className="max-w-3xl min-w-0">
             <Routes>
               {groups

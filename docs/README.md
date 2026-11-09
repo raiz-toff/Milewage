@@ -1,18 +1,6 @@
-# MileWage guides for drivers
+# MileWage documentation
 
-These pages explain MileWage in plain words. They describe what is built in version 0.1.0. Where something is planned or not yet tested, the page says so.
+- [`help/`](help/README.md): help for drivers, in plain words. The same pages are in the web app, under Help, for the version your server runs.
+- [`adr/`](adr/README.md): architecture decisions from 2026-11-09 on, for developers. The help pages stay for drivers.
 
-- [How miles are counted](how-miles-are-counted.md): what the phone records, what is filtered out, and why the phone and the server agree.
-- [Active and deadhead miles](active-and-deadhead.md): how stops are found, and why the split is an estimate.
-- [For your accountant](for-your-accountant.md): the exports, what a mileage log holds, and what the tax figure is and is not.
-- [If your phone is lost](if-your-phone-is-lost.md): what is on the phone and what to do.
-- [If you lose your recovery key](if-you-lose-your-recovery-key.md): what can and cannot be recovered, and how to make a new key.
-- [Questions and answers](faq.md): battery, privacy, countries, backups and more.
-
-To install or upgrade the server, see [`infra/docs/install.md`](../infra/docs/install.md) and [`infra/docs/upgrade.md`](../infra/docs/upgrade.md).
-
-Your own server also serves a Privacy page at `/privacy`. It says what your server keeps and what leaves it.
-
-Other files in the project: [`CHANGELOG.md`](../CHANGELOG.md), [`SECURITY.md`](../SECURITY.md) and [`DECISIONS.md`](../DECISIONS.md).
-
-For developers: architecture decisions from 2026-11-09 on are recorded in [`adr/`](adr/README.md); these guides stay for drivers.
+To install or upgrade the server, see [`infra/docs/install.md`](../infra/docs/install.md) and [`infra/docs/upgrade.md`](../infra/docs/upgrade.md). Other files in the project: [`CHANGELOG.md`](../CHANGELOG.md), [`SECURITY.md`](../SECURITY.md) and [`DECISIONS.md`](../DECISIONS.md).

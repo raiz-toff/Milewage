@@ -1,3 +1,9 @@
+---
+summary: What can and cannot be recovered, and how to make a new key.
+group: problems
+order: 30
+---
+
 # If you lose your recovery key
 
 ## What the key does

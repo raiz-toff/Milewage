@@ -36,6 +36,7 @@ export const settings = sqliteTable('settings', {
   onboardedAt: integer('onboarded_at'),
   workKinds: text('work_kinds', { mode: 'json' }).$type<string[]>(),
   setupDone: text('setup_done', { mode: 'json' }).$type<string[]>(),
+  helpEnabled: integer('help_enabled').notNull().default(1),
   updatedAt: integer('updated_at').notNull(),
 });
 

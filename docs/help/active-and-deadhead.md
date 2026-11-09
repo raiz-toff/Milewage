@@ -1,3 +1,9 @@
+---
+summary: How stops are found, and why the split between active and deadhead miles is an estimate.
+group: using
+order: 30
+---
+
 # Active and deadhead miles
 
 Active miles are driven with an order. Deadhead miles are driven without one, such as the drive to the next restaurant. Some drivers want to see the two separately.

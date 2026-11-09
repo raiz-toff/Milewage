@@ -1,3 +1,9 @@
+---
+summary: What is on the phone, what to do, and what happens after your server is restored.
+group: problems
+order: 20
+---
+
 # If your phone is lost
 
 ## What is on the phone

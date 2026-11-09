@@ -1885,6 +1885,8 @@ export interface components {
             raw_retention_days: number;
             /** @description Driver-facing toggle for auto-detected stops, the estimated active/deadhead split and web labelling (decision 1.5b). Default true. Captured per shift at shift start (Shift.segmenter), so changing it never alters an existing shift. */
             stops_enabled: boolean;
+            /** @description The owner's switch for the Help pages in the web app and the help links on screens. Default true. Web only; the server has no help module (ADR 0002). */
+            help_enabled: boolean;
             /** @description Greeting and export header. */
             display_name: string | null;
             /** @description Subdivision code without the country (CA: ON, QC ...); validated by the country pack. */
@@ -1926,6 +1928,7 @@ export interface components {
             timezone?: string;
             raw_retention_days?: number;
             stops_enabled?: boolean;
+            help_enabled?: boolean;
             /**
              * @description verbose reverts to basic after 7 days (16 section 5).
              * @enum {unknown}

@@ -185,6 +185,7 @@ describe('settings page', () => {
       timezone: 'America/Toronto',
       raw_retention_days: '90',
       stops_enabled: true,
+      help_enabled: true,
       diagnostics_level: 'basic' as const,
       display_name: '',
       region: '',

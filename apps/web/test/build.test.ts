@@ -59,6 +59,23 @@ describe('service worker (plan 27 section 4.2)', () => {
     expect(list).not.toContain('assets/maplibre-gl-worker.mjs');
   });
 
+  it('precaches the Help pages in a lazy chunk, not in the entry chunk (ADR 0001)', () => {
+    const html = readFileSync(join(out, 'index.html'), 'utf8');
+    const entry = /<script[^>]+src="\/(assets\/[^"]+\.js)"/.exec(html)![1]!;
+    const text = (f: string) => readFileSync(join(out, f), 'utf8');
+    const chunks = readdirSync(join(out, 'assets'))
+      .filter((f) => f.endsWith('.js'))
+      .map((f) => `assets/${f}`);
+    // A sentence from a page body, and the Markdown renderer.
+    const help = chunks.filter((f) => text(f).includes('Raw GPS is noisy.'));
+    expect(help).toHaveLength(1);
+    expect(help[0]).not.toBe(entry);
+    expect(precached()).toContain(help[0]);
+    expect(text(entry)).not.toContain('Raw GPS is noisy.');
+    expect(text(entry)).not.toContain('remarkjs/react-markdown');
+    expect(chunks.some((f) => text(f).includes('remarkjs/react-markdown'))).toBe(true);
+  });
+
   it('caches no API answer: no runtime caching, and navigations under /api reach the server', () => {
     expect(pwaOptions.workbox?.runtimeCaching).toEqual([]);
     expect(precached().some((u) => u.includes('api'))).toBe(false);

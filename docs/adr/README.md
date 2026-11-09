@@ -1,6 +1,6 @@
 # Architecture decision records
 
-This folder is for developers. The guides for drivers are one level up, in [`docs/`](../README.md).
+This folder is for developers. The guides for drivers are in [`docs/help/`](../help/README.md).
 
 Decisions made before 2026-11-09 are indexed in [`DECISIONS.md`](../../DECISIONS.md) at the repository root. They are not copied here.
 

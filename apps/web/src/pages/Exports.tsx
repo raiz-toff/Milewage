@@ -6,6 +6,7 @@ import { PageHeader, Section } from '../ui/layout';
 import { ApiError, describe } from '../api/client';
 import { useApiQuery } from '../api/query';
 import type { Modules } from '../api/client';
+import { HelpLink } from '../help';
 import { useSession, useSettings } from '../session';
 import { DateField, FormError, Picker, SelectField } from '../ui/form';
 import { PERIODS, dateLocale, formatDay, period, todayIn } from '../days';
@@ -236,7 +237,15 @@ export function ExportsPage() {
 
   return (
     <section className="space-y-6">
-      <PageHeader title="Exports" description="Files made from your shifts, trips and expenses." />
+      <PageHeader
+        title="Exports"
+        description={
+          <>
+            Files made from your shifts, trips and expenses.{' '}
+            <HelpLink page="for-your-accountant">What to give your accountant</HelpLink>
+          </>
+        }
+      />
       <Section title={<span id={periodId}>Period</span>}>
         <div className="space-y-2">
           <RadioGroup

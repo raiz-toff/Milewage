@@ -3,6 +3,7 @@ import { cleanup, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Modules } from '../src/api/client';
 import { screens, visibleScreens } from '../src/screens';
+import type { ScreenFlags } from '../src/screens';
 import { ALL_ON, renderApp, settingsFixture, signedIn, DASHBOARD } from './support/kit';
 
 afterEach(cleanup);
@@ -106,6 +107,7 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
       'Odometer',
       'Backups',
       'Settings',
+      'Help',
     ]);
     expect(screen.queryByRole('link', { name: /^Notifications/ })).toBeNull();
   });
@@ -127,6 +129,7 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
       'Devices',
       'Backups',
       'Settings',
+      'Help',
     ]);
     // Notifications is the header bell, not a sidebar entry.
     expect(screen.getByRole('link', { name: /^Notifications/ }).getAttribute('href')).toBe(
@@ -137,11 +140,15 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
   it('the screen registry: a rule exists only for module-owned screens, core has none', () => {
     const core = screens.filter((s) => !s.visible).map((s) => s.label);
     expect(core).toEqual(['Dashboard', 'Shifts', 'Vehicles', 'Odometer', 'Backups', 'Settings']);
-    // Every screen with a rule disappears when all optional modules are off.
+    // Every screen with a rule disappears when all optional modules and switches are off.
+    const on: ScreenFlags = { ...ALL_ON, help: true };
+    const off: ScreenFlags = { ...ALL_OFF, help: false };
     for (const s of screens.filter((x) => x.visible)) {
-      expect(s.visible!(ALL_ON), `${s.label} visible with module on`).toBe(true);
-      expect(visibleScreens(ALL_OFF).includes(s), `${s.label} hidden`).toBe(false);
+      expect(s.visible!(on), `${s.label} visible with module on`).toBe(true);
+      expect(visibleScreens(off).includes(s), `${s.label} hidden`).toBe(false);
     }
+    // Help is the owner's switch, not a module: every module off leaves it on.
+    expect(visibleScreens({ ...ALL_OFF, help: true }).map((s) => s.label)).toContain('Help');
   });
 
   it('devices off: not in the navigation, and its URL leads to the first visible screen', async () => {

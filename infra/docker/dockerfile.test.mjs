@@ -34,3 +34,24 @@ test('the server stays the last stage, so a plain build and the images job produ
   expect(last.stage).toBeUndefined();
   expect(stages.has('caddy')).toBe(true);
 });
+
+test('the web build sees the Help pages and the changelog (ADR 0001): the context keeps them', () => {
+  const ignored = readFileSync(new URL('../../.dockerignore', import.meta.url), 'utf8')
+    .split('\n')
+    .map((l) => l.trim().replace(/^\/|\/$/g, ''))
+    .filter((l) => l && !l.startsWith('#'));
+  for (const kept of [
+    'docs',
+    'docs/help',
+    'docs/*',
+    'docs/help/*',
+    'CHANGELOG.md',
+    '*.md',
+    '**/*.md',
+  ])
+    expect(ignored, kept).not.toContain(kept);
+  // The web stage starts from the build stage, which copied the whole context.
+  expect(dockerfile).toMatch(/^FROM build AS web$/m);
+  expect(dockerfile.indexOf('COPY . .')).toBeGreaterThan(-1);
+  expect(dockerfile.indexOf('COPY . .')).toBeLessThan(dockerfile.indexOf('npm run build:web'));
+});

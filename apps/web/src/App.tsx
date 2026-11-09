@@ -52,7 +52,7 @@ import {
 import { LogoMark } from '@/components/logo';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { InstallCard } from './pwa/Install';
-import { navGroups, visibleScreens } from './screens';
+import { navGroups, screenFlags, visibleScreens } from './screens';
 import type { Screen } from './screens';
 import { Onboarding } from './onboarding/Wizard';
 import { Login } from './pages/Login';
@@ -277,7 +277,7 @@ function ThemeMenu() {
 }
 
 function Shell({ settings }: { settings: Settings }) {
-  const list = visibleScreens(settings.modules);
+  const list = visibleScreens(screenFlags(settings));
   const unread = useUnread(settings.modules.notifications);
   const { pathname } = useLocation();
   const current = list.find((s) => isUnder(pathname, routeOf(s)));

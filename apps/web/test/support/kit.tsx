@@ -180,6 +180,7 @@ export function settingsFixture(
     timezone: 'America/Toronto',
     raw_retention_days: 90,
     stops_enabled: true,
+    help_enabled: true,
     display_name: null,
     region: null,
     logbook: null,

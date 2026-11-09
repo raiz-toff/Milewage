@@ -1,5 +1,9 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { algorithmVersion } from '@milewage/track-engine';
 import { afterEach, beforeEach, expect, test } from 'vitest';
+import { loadMigrations, MIGRATIONS_DIR, migrate, openDatabase } from '../src/index';
 import { harness, type Harness } from './support';
 
 let h: Harness;
@@ -66,6 +70,40 @@ test('PATCH /settings validates and stores; unknown fields and empty bodies are 
     expect((await patch(p)).statusCode).toBe(422);
   }
   expect((await get('/settings')).json().country).toBe('CA');
+});
+
+test('help_enabled: on by default, a PATCH turns it off and it stays off; only a boolean is accepted (ADR 0002)', async () => {
+  expect((await get('/settings')).json().help_enabled).toBe(true);
+  const off = await patch({ help_enabled: false });
+  expect(off.statusCode).toBe(200);
+  expect(off.json().help_enabled).toBe(false);
+  expect((await get('/settings')).json().help_enabled).toBe(false);
+  // The server's validator coerces 0, 1, "true" and "false" as Fastify does for every boolean.
+  for (const p of [{ help_enabled: 'no' }, { help_enabled: { on: true } }]) {
+    expect((await patch(p)).statusCode).toBe(422);
+  }
+  expect((await get('/settings')).json().help_enabled).toBe(false);
+  expect((await patch({ help_enabled: true })).json().help_enabled).toBe(true);
+});
+
+test('the help migration turns Help on for owners who already have settings', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'mw-help-'));
+  const db = openDatabase(join(dir, 'milewage.db'));
+  try {
+    const all = loadMigrations(MIGRATIONS_DIR);
+    migrate(
+      db,
+      all.filter((m) => !(m.module === 'core' && m.id >= '0013')),
+    );
+    db.exec(`INSERT INTO users VALUES (1, 'sam', 'x', 1);
+      INSERT INTO settings (user_id, country, distance_unit, currency, timezone, updated_at)
+        VALUES (1, 'CA', 'km', 'CAD', 'UTC', 1);`);
+    expect(migrate(db, all)).toContain('core/0013_help_pages');
+    expect(db.prepare('SELECT help_enabled FROM settings').get()).toEqual({ help_enabled: 1 });
+  } finally {
+    db.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('verbose diagnostics revert to basic after 7 days', async () => {
