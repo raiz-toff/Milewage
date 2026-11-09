@@ -3,8 +3,13 @@ import type { ApiClient } from '../api/client';
 import type { DeviceSession } from '../pairing/deviceSession';
 import type { Flags } from '../pairing/pairing';
 import { PUMP_LIMIT, type PointFeed } from '../shift/feed';
-import { encode, halvedBatch, send } from '../sync/shiftRequests';
+import { encode, halvedBatch, send } from './shiftRequests';
 import type { Tracker, TrackerPoint } from '../tracker/types';
+
+/*
+ * Internal to the sender (`sender.ts`): the shift's points in batches. Nothing outside `sync/`
+ * imports this file except for the `UploadStats` type the diagnostics window reports.
+ */
 
 /** 08 section 4.2 rules 5 and 7, section 5. */
 export const LIVE_BATCH = 100;
@@ -27,7 +32,7 @@ export type UploadState =
   | 'tracking_off'
   | 'cancelled';
 
-/** What a drain may be told (the backlog drain in `sync/drain.ts` uses all of it). */
+/** What a drain may be told (the sender's backlog round uses all of it). */
 export interface DrainOptions {
   /** Only this shift's points. */
   shift?: string;
@@ -90,7 +95,7 @@ export class Backoff {
   }
 }
 
-export interface WorkerDeps {
+export interface PointsDeps {
   tracker: Tracker;
   feed: PointFeed;
   session: () => Promise<{ client: ApiClient; flags: Flags } | null>;
@@ -99,11 +104,11 @@ export interface WorkerDeps {
   /** Has `POST /shifts` for this shift been acknowledged (08 section 4.2 rule 2)? */
   shiftReady: (clientId: string) => boolean | Promise<boolean>;
   /** The shift's create was refused for good: park its points instead of waiting for it. */
+  shiftParked: (clientId: string) => boolean | Promise<boolean>;
   /** True while eviction must not run (the server was restored from a backup, 15 section 3.2). */
-  evictBlocked?: () => boolean;
-  shiftParked?: (clientId: string) => boolean | Promise<boolean>;
-  /** Drain the outbox (shift create, odometer, end); called on 404 `shift_not_found`. */
-  flushOutbox: () => Promise<unknown>;
+  evictBlocked: () => boolean;
+  /** Sends the queued changes (shift create, odometer, end); called on 404 `shift_not_found`. */
+  flushQueue: () => Promise<unknown>;
   now?: () => number;
   rand?: () => number;
 }
@@ -117,19 +122,24 @@ interface WireBatch {
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
-export class UploadWorker {
+/**
+ * Sends the points still pending on the phone, oldest shift first (08 section 4.2, 4.3): gzip
+ * batches of 100 for the running shift and 500 for a backlog, never more than 500; 413 and 422
+ * halve the batch; a point the server refuses is set aside, never deleted; a shift the server does
+ * not know is tried 3 times, then its points are set aside until the session resumes.
+ */
+export class PointUploader {
   private readonly now: () => number;
   private readonly backoff: Backoff;
   private notFound = new Map<string, number>();
   private parked = new Set<string>();
   private busy = false;
-  private timer: ReturnType<typeof setTimeout> | null = null;
   private hintS = DEFAULT_INTERVAL_S;
   private stats = emptyStats();
+  /** How the last drain ended; `backoff` and `waiting_create` are "offline" on the banner. */
   lastState: UploadState = 'idle';
-  lastSuccessAt: number | null = null;
 
-  constructor(private readonly d: WorkerDeps) {
+  constructor(private readonly d: PointsDeps) {
     this.now = d.now ?? Date.now;
     this.backoff = new Backoff(d.rand);
     d.device.subscribe(() => void this.d.device.halted().then((h) => h === null && this.unpark()));
@@ -167,28 +177,6 @@ export class UploadWorker {
     }
   }
 
-  /** True when no PENDING point of this shift is left (what `shift.end` waits for, 08 4.2 rule 9). */
-  async drainShift(clientId: string): Promise<boolean> {
-    const r = await this.drain();
-    if (r.state === 'not_paired' || r.state === 'tracking_off') return true;
-    return !this.d.feed.readPending(PUMP_LIMIT).some((p) => p.shiftClientId === clientId);
-  }
-
-  /** Runs `drain` now and then on the interval (or the retry delay) until `stop`. */
-  start(): void {
-    if (this.timer !== null) return;
-    const tick = async () => {
-      const r = await this.drain();
-      this.timer = setTimeout(() => void tick(), r.retryInMs ?? this.intervalMs);
-    };
-    this.timer = setTimeout(() => void tick(), 0);
-  }
-
-  stop(): void {
-    if (this.timer !== null) clearTimeout(this.timer);
-    this.timer = null;
-  }
-
   private done(state: UploadState, uploaded: number, rejected: number, retryInMs: number | null) {
     this.lastState = state;
     return { state, uploaded, rejected, retryInMs };
@@ -216,15 +204,15 @@ export class UploadWorker {
             !this.parked.has(p.shiftClientId) && (!opts.shift || p.shiftClientId === opts.shift),
         );
       if (pending.length === 0) {
-        if (!this.d.evictBlocked?.())
+        if (!this.d.evictBlocked())
           this.d.tracker.evictUploaded(this.now() - LOCAL_RAW_DAYS * 86_400_000);
         const parked = this.parked.size > 0;
         return this.done(parked ? 'parked' : 'idle', uploaded, rejected, null);
       }
       const shiftId = pending[0]!.shiftClientId;
       if (!(await this.d.shiftReady(shiftId))) {
-        await this.d.flushOutbox();
-        if (await this.d.shiftParked?.(shiftId)) {
+        await this.d.flushQueue();
+        if (await this.d.shiftParked(shiftId)) {
           this.parked.add(shiftId); // never dropped; the driver sees the shift needs attention
           continue;
         }
@@ -247,7 +235,6 @@ export class UploadWorker {
         batches++;
         this.backoff.reset();
         this.notFound.delete(shiftId);
-        this.lastSuccessAt = this.now();
         this.hintS = clamp(res.upload_hint_s ?? DEFAULT_INTERVAL_S, 10, 300);
       } catch (e) {
         if (!(e instanceof ApiError)) throw e;
@@ -310,7 +297,7 @@ export class UploadWorker {
     if (e.status === 404 && e.code === 'shift_not_found') {
       const n = (this.notFound.get(shiftId) ?? 0) + 1;
       this.notFound.set(shiftId, n);
-      await this.d.flushOutbox();
+      await this.d.flushQueue();
       if (n >= NOT_FOUND_ATTEMPTS && (await this.d.shiftReady(shiftId))) {
         this.parked.add(shiftId); // the server still does not know it: park, never drop
         return { kind: 'rejected', rejected: 0 };

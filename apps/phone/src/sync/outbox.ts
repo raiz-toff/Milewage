@@ -62,9 +62,16 @@ const toItem = (r: Row): OutboxItem =>
   }) as OutboxItem;
 
 /**
+ * What the shift controller and the phone edits do with the queue: add a change, ask whether one
+ * is queued, and drop a shift that never reached the server. Only the sender takes from it.
+ */
+export type ShiftQueue = Pick<Outbox, 'enqueue' | 'has' | 'dropShift'>;
+
+/**
  * The durable FIFO of changes the server has not acknowledged yet (08 section 4.1, 15 section 6.2).
  * Rows are kept until the server answers; a `done` row is deleted at once. Everything in it is
  * idempotent on the server (client ids, upserts), so resending after a kill is always safe.
+ * Producers see it as a `ShiftQueue`; the sender (`sender.ts`) sends from it.
  */
 export class Outbox {
   private inFlight = new Set<number>();
@@ -179,20 +186,6 @@ export class Outbox {
       id,
     );
     this.inFlight.delete(id);
-  }
-
-  /** Puts parked items back in the queue (after the driver fixed the cause), optionally one shift's. */
-  async retryParked(shiftClientId?: string): Promise<number> {
-    const r = shiftClientId
-      ? await this.db.runAsync(
-          "UPDATE outbox SET status = 'pending', last_error = NULL WHERE status = 'parked' AND (entity_key = ? OR entity_key LIKE ?)",
-          shiftClientId,
-          `${shiftClientId}:%`,
-        )
-      : await this.db.runAsync(
-          "UPDATE outbox SET status = 'pending', last_error = NULL WHERE status = 'parked'",
-        );
-    return r.changes;
   }
 
   /** Removes everything queued for a shift (the driver discarded a never-uploaded shift). */

@@ -18,6 +18,7 @@ import type { ScreenProps } from '../navigation';
 import { M_PER_UNIT } from '../format';
 import { cn } from '../lib/utils';
 import type { HaltReason } from '../pairing/deviceSession';
+import type { Progress } from '../sync/sender';
 import { deriveFlags } from '../pairing/pairing';
 import { BATTERY_VISITED, canStartShift, initialLadder } from '../permissions/ladder';
 import { useServices } from '../services';
@@ -39,8 +40,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   const C = useColors();
   const {
     shift: controller,
-    device,
-    sync,
+    sender,
     startDiagnostics,
     diagnosticsWindow,
     autoUpload = true,
@@ -73,7 +73,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
   const [later, setLater] = useState({ always: true, notify: true, battery: true });
   /** Revoked or a sign-in problem: the device session stopped sending. */
   const [halt, setHalt] = useState<HaltReason | null>(null);
-  const [progress, setProgress] = useState(sync.progress);
+  const [progress, setProgress] = useState<Progress | null>(null);
 
   const goSettings = () => navigation.navigate('Settings');
   const goPermissions = () => navigation.navigate('Permissions');
@@ -121,14 +121,14 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
         });
         if (state) {
           await loadVehicles();
-          void controller.sync().then(() => live && setLocalConflict(controller.conflict));
+          void sender.sendNow().then(() => live && setLocalConflict(controller.conflict));
         }
         if (live) setReady(true);
       })();
       return () => {
         live = false;
       };
-    }, [controller, pairing, permissions, plain, loadVehicles]),
+    }, [controller, sender, pairing, permissions, plain, loadVehicles]),
   );
 
   useEffect(() => {
@@ -144,27 +144,30 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
 
   useEffect(() => {
     if (!paired || !autoUpload) return;
-    sync.start();
-    const unsubscribe = sync.subscribe(setProgress);
+    sender.start();
     void startDiagnostics();
     const diagTimer = setInterval(() => void diagnosticsWindow(), DIAG_WINDOW_MS);
     return () => {
-      sync.stop();
-      unsubscribe();
+      sender.stop();
       clearInterval(diagTimer);
     };
-  }, [paired, autoUpload, sync, startDiagnostics, diagnosticsWindow]);
+  }, [paired, autoUpload, sender, startDiagnostics, diagnosticsWindow]);
 
   useEffect(() => {
     let live = true;
-    const read = () => void device.halted().then((h) => live && setHalt(h));
+    const read = () =>
+      void sender.status().then((s) => {
+        if (!live) return;
+        setHalt(s.halt);
+        setProgress(s.progress);
+      });
     read();
-    const off = device.subscribe(read);
+    const off = sender.subscribe(read);
     return () => {
       live = false;
       off();
     };
-  }, [device]);
+  }, [sender]);
 
   /** Metres from the typed reading; null when empty; NaN when it is not a number. */
   const toMeters = (text: string) => {
@@ -199,7 +202,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
       active_local: {
         title: 'The previous shift is still being sent.',
         description: 'Start again when it is on the server.',
-        action: { label: 'Send it now', onPress: () => void controller.sync() },
+        action: { label: 'Send it now', onPress: () => void sender.sendNow() },
       },
     };
     toast.show({ tone: 'error', ...(problems[reason] ?? { title: 'Could not start the shift.' }) });
@@ -298,6 +301,8 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
     try {
       const result = await controller.end();
       if (result.ok) {
+        // The shift is ended and queued whatever happens to the sending.
+        const sent = await sender.sendNow().catch(() => false);
         // Comma's cadence: only once in a while, never during the shift (odometerDue.ts).
         if (id && vehicle !== null) {
           const last = await lastOdometerCheck(shifts, plain, vehicle);
@@ -310,7 +315,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
         toast.show({
           tone: 'success',
           title: 'Shift ended.',
-          description: result.sent ? undefined : 'It will be sent when the server is reachable.',
+          description: sent ? undefined : 'It will be sent when the server is reachable.',
           action: id
             ? {
                 label: 'View shift',
@@ -397,7 +402,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
           </AlertTitle>
         </Alert>
       )}
-      {progress.phase === 'running' && progress.shiftsTotal > 0 && (
+      {progress?.phase === 'running' && progress.shiftsTotal > 0 && (
         <Alert icon={Info}>
           <AlertTitle accessibilityLabel="Sending progress" tabular>
             Sending {progress.pointsSent} of {progress.pointsTotal} points, shift{' '}
@@ -407,7 +412,7 @@ export function HomeScreen({ navigation }: ScreenProps<'Home'>) {
             variant="outline"
             size="sm"
             className="mt-1 self-start"
-            onPress={() => sync.cancel()}
+            onPress={() => sender.cancel()}
           >
             <Text>Stop sending</Text>
           </Button>

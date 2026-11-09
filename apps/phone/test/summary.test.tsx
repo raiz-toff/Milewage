@@ -50,6 +50,33 @@ describe('home summary', () => {
     expect(s.month.deductionCents).toBe(each(10_000) + each(16_000) + each(8_000));
   });
 
+  it('a shift with a personal trip is estimated on its business distance, like the server', () => {
+    const opts = { today: '2025-10-15', country: 'US', vehicleKinds: none };
+    const plain = summarize([row('2025-10-15', 16_000, { sync_state: 'local' })], opts);
+    const mixed = summarize(
+      [row('2025-10-15', 16_000, { sync_state: 'local', personal_m: 6_000 })],
+      opts,
+    );
+    expect(mixed.month.totalM).toBe(16_000); // the distance shown is still the total
+    expect(mixed.month.deductionCents).toBeLessThan(plain.month.deductionCents!);
+    const us = countryModules.get('US')!;
+    expect(mixed.month.deductionCents).toBe(
+      mileageDeduction(us, { totalM: 10_000, priorM: 0, date: '2025-10-15', vehicleKind: 'car' }),
+    );
+    // Canada's tier fills with business metres only.
+    const ca = { today: '2025-03-02', country: 'CA', vehicleKinds: none };
+    const tier = summarize(
+      [row('2025-03-01', 5_000_000, { personal_m: 200_000 }), row('2025-03-02', 100_000)],
+      ca,
+    );
+    const pack = countryModules.get('CA')!;
+    const at = (totalM: number, priorM: number, date: string) =>
+      mileageDeduction(pack, { totalM, priorM, date, vehicleKind: 'car' })!;
+    expect(tier.month.deductionCents).toBe(
+      at(4_800_000, 0, '2025-03-01') + at(100_000, 4_800_000, '2025-03-02'),
+    );
+  });
+
   it("Canada's tier is shared across shifts of the year, and no pack means no value, not zero", () => {
     const s = summarize([row('2025-03-01', 4_900_000), row('2025-03-02', 200_000)], {
       today: '2025-03-02',

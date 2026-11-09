@@ -5,7 +5,7 @@ import { runLocal } from '../shift/endPayload';
 import { PUMP_LIMIT, type PointFeed } from '../shift/feed';
 import type { ShiftRow, ShiftStore } from '../store/shiftStore';
 import type { Tracker } from '../tracker/types';
-import { Backoff, BACKLOG_BATCH } from '../upload/worker';
+import { Backoff, BACKLOG_BATCH } from './points';
 import type { ConnectionMonitor } from './connection';
 import type { Outbox } from './outbox';
 import type { OutboxRunner } from './runner';
@@ -74,6 +74,8 @@ interface Held {
 }
 
 /**
+ * Internal to the sender (`sender.ts`).
+ *
  * Sends again what a server restored from an older backup may have lost (15 section 9.3). The
  * connection monitor writes one `resend:` row per shift the server once acknowledged; this sends
  * each one again, oldest first, the same way a shift is sent the first time (15 section 6.2):
@@ -97,12 +99,12 @@ export class RestoreResend {
     this.backoff = new Backoff(d.rand);
   }
 
-  /** True while shifts are waiting to be sent again (as far as last read). */
-  get active(): boolean {
-    return this.loaded && this.count > 0;
+  /** True while shifts are waiting to be sent again (read now, so it holds after an app restart). */
+  async waiting(): Promise<boolean> {
+    return (await this.list()).length > 0;
   }
 
-  /** For the upload worker: blocked until the rows were read once, then while any is left. */
+  /** For the point uploader: blocked until the rows were read once, then while any is left. */
   blocksEviction(): boolean {
     if (!this.loaded) {
       void this.list().catch(() => undefined);
@@ -112,7 +114,7 @@ export class RestoreResend {
   }
 
   /**
-   * For the outbox runner: nothing of a shift goes out before the server has accepted it again,
+   * For the queue's barrier: nothing of a shift goes out before the server has accepted it again,
    * so an odometer or `end` queued before the restore is not refused for a shift it lost.
    */
   async holds(shiftClientId: string): Promise<boolean> {

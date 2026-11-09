@@ -9,7 +9,7 @@ import {
 import { gzipSync, strToU8 } from 'fflate';
 import { ApiError, type ApiClient } from '../api/client';
 import type { CachedSettings, KeyValueStore } from '../pairing/pairing';
-import type { UploadStats } from '../upload/worker';
+import type { UploadStats } from '../sync/sender';
 import type { ShiftSummary } from './shiftSummary';
 
 export type DiagLevelSetting = 'off' | 'basic' | 'verbose';

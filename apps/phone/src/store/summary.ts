@@ -29,7 +29,13 @@ type Row = Pick<
   ShiftRow,
   'local_date' | 'started_at' | 'status' | 'total_m' | 'vehicle_id' | 'sync_state'
 > &
-  Partial<Pick<ShiftRow, 'server_deduction_cents' | 'server_deduction_known'>>;
+  Partial<Pick<ShiftRow, 'personal_m' | 'server_deduction_cents' | 'server_deduction_known'>>;
+
+/**
+ * The business distance the deduction is worked out on: the total minus the trips marked personal
+ * (ADR 0005, as the server does). Active and deadhead both count; stops play no part.
+ */
+const businessM = (r: Row): number => Math.max(0, r.total_m! - (r.personal_m ?? 0));
 
 /** Monday of the week containing a `YYYY-MM-DD` date. */
 export function weekStart(date: string): string {
@@ -42,8 +48,9 @@ export function weekStart(date: string): string {
 /**
  * Week and month figures from the shifts on this phone (15 section 4: unsynced shifts included,
  * with a count). Same meaning as the web dashboard: only ended or finalized shifts count, the
- * deduction is each shift's value from the country pack (07 section 3) with the business metres
- * already driven in the same rate period, summed over the period; null when no rate applies.
+ * deduction is each shift's value from the country pack (07 section 3) on its business distance
+ * (total minus personal trips), with the business metres already driven in the same rate period,
+ * summed over the period; null when no rate applies. `totalM` stays the total distance.
  * The server's numbers win: a shift the pull feed has sent uses the server's value (which also
  * knows a vehicle deducted through actual expenses has none). Only shifts the server has not sent
  * are estimated here, from the country's rates or, where it has none, the driver's own rate. The
@@ -74,18 +81,19 @@ export function summarize(
     const kind = (opts.vehicleKinds.get(r.vehicle_id) as VehicleKind | undefined) ?? 'car';
     const key = `${kind}|${pack ? periodStart(pack.mileage, r.local_date) : ''}`;
     const before = prior.get(key) ?? 0;
+    const business = businessM(r);
     const local = pack
       ? mileageDeduction(pack, {
-          totalM: r.total_m!,
+          totalM: business,
           priorM: before,
           date: r.local_date,
           vehicleKind: kind,
         })
       : source === 'yours'
-        ? ownRateDeduction(own!, { totalM: r.total_m!, vehicleKind: kind })
+        ? ownRateDeduction(own!, { totalM: business, vehicleKind: kind })
         : null;
     value.set(r, r.server_deduction_known ? (r.server_deduction_cents ?? null) : local);
-    prior.set(key, before + r.total_m!);
+    prior.set(key, before + business);
   }
   const period = (from: string): PeriodSummary => {
     const inside = done.filter((r) => r.local_date >= from && r.local_date <= opts.today);

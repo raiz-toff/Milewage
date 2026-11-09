@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { App } from '../src/App';
-import { json } from './support/mock';
+import { MANUAL_TRIP_PURPOSE } from '../src/store/edits';
+import { json, type Handler } from './support/mock';
 import { drive, ID, server, setup } from './support/shiftKit';
 
 jest.mock(
@@ -10,7 +11,7 @@ jest.mock(
 
 const OVERRIDE = (key: string) => `PUT /shifts/${ID}/trip-overrides/${encodeURIComponent(key)}`;
 
-async function endedShift(extra: Record<string, () => Response> = {}) {
+async function endedShift(extra: Record<string, Handler> = {}) {
   const routes = server({
     [`POST /shifts/${ID}/end`]: () =>
       json(200, {
@@ -28,6 +29,7 @@ async function endedShift(extra: Record<string, () => Response> = {}) {
   drive(ctx.tracker);
   ctx.clock.t = 100_000;
   await ctx.services.shift.end();
+  await ctx.services.sender.sendNow();
   const [trip] = await ctx.services.shifts.trips(ID);
   return { ...ctx, trip: trip! };
 }
@@ -55,11 +57,8 @@ describe('phone edits (15 section 8)', () => {
       distance_m: trip.distance_m,
       sync_state: 'local',
     });
-    expect(
-      (await services.outbox.pending()).filter((i) => i.kind === 'trip.override'),
-    ).toHaveLength(1);
 
-    await services.sync.drain();
+    await services.sender.sendNow();
     const sent = routes.calls.filter((c) => c.path.includes('trip-overrides'));
     expect(sent).toHaveLength(1);
     expect(sent[0]!.body).toEqual({
@@ -70,10 +69,13 @@ describe('phone edits (15 section 8)', () => {
   });
 
   it('edit times carry the GNSS offset when a fresh fix exists', async () => {
-    const { services, tracker, trip } = await endedShift();
+    const { services, tracker, trip, routes } = await endedShift({
+      [OVERRIDE(`${ID}:1000:active`)]: () => json(200, {}),
+    });
     jest.spyOn(tracker, 'gnssOffsetMs').mockReturnValue(-5_000);
     await services.edits.editTrip(trip.trip_key, { purpose: 'x' });
-    expect((await services.outbox.pending()).at(-1)!.body).toMatchObject({
+    await services.sender.sendNow();
+    expect(routes.calls.find((c) => c.path.includes('trip-overrides'))!.body).toMatchObject({
       edited_at: 100_000 - 5_000,
     });
   });
@@ -142,7 +144,7 @@ describe('phone edits (15 section 8)', () => {
       kind: 'active',
     });
     expect((await services.shifts.get(ID))!.total_m).toBe(before + 1500);
-    await services.sync.drain();
+    await services.sender.sendNow();
     const put = routes.calls.find((c) => c.method === 'PUT' && c.path.endsWith(id.toLowerCase()))!;
     expect(put.body).toMatchObject({
       kind: 'active',
@@ -163,50 +165,62 @@ describe('phone edits (15 section 8)', () => {
     expect(await services.shifts.odometer(ID)).toMatchObject([
       { kind: 'shift_end', reading_m: 71_000 },
     ]);
-    await services.sync.drain();
+    await services.sender.sendNow();
     const odo = routes.calls.filter((c) => c.path.endsWith('odometer/shift_end'));
     expect(odo.at(-1)!.body).toMatchObject({ reading_m: 71_000 });
     expect(routes.calls.find((c) => c.method === 'PATCH')!.body).toMatchObject({ notes: 'rain' });
   });
 
-  it('a queued edit that is older than the server row loses on the next pull and is logged', async () => {
-    const key = `${ID}:1000:active`;
+  /** A trip write as the server takes it: a purpose of 1 to 200 characters (`TripCreate`). */
+  const strict = (r: { body: unknown }) => {
+    const purpose = (r.body as { purpose?: string }).purpose ?? '';
+    return purpose.length >= 1 && purpose.length <= 200
+      ? json(200, {})
+      : json(422, { code: 'validation_failed', retryable: false });
+  };
+
+  it('an empty purpose is refused on the phone, before it is queued for a server that would refuse it', async () => {
     const { services, routes, trip } = await endedShift({
-      'GET /sync/changes': () =>
-        json(200, {
-          changes: [
-            {
-              seq: 1,
-              entity: 'trip',
-              op: 'upsert',
-              key,
-              data: {
-                id: 8,
-                shift_id: 5,
-                trip_key: key,
-                kind: 'active',
-                original_kind: 'active',
-                source: 'auto',
-                started_at: 1000,
-                ended_at: 9000,
-                distance_m: trip.distance_m,
-                purpose: 'web',
-                edited_at: 150_000,
-              },
-            },
-          ],
-          next_cursor: 1,
-          has_more: false,
-        }),
+      [OVERRIDE(`${ID}:1000:active`)]: () => json(200, {}),
     });
-    void routes;
-    await services.edits.editTrip(key, { kind: 'personal' }); // stamped at the phone clock, 100_000
-    await services.puller.pull({ force: true });
-    expect((await services.shifts.trips(ID))[0]).toMatchObject({ kind: 'active', purpose: 'web' });
-    expect(
-      (await services.outbox.pending()).filter((i) => i.kind === 'trip.override'),
-    ).toHaveLength(0);
-    expect((await services.shifts.conflicts(ID))[0]!.reason).toBe('superseded_by_server');
+    for (const purpose of ['', '   ']) {
+      expect(await services.edits.editTrip(trip.trip_key, { purpose })).toEqual({
+        ok: false,
+        reason: 'invalid',
+      });
+      expect(
+        await services.edits.addManualTrip(ID, {
+          kind: 'active',
+          startedAt: 10,
+          endedAt: 20,
+          distanceM: 100,
+          purpose,
+        }),
+      ).toEqual({ ok: false, reason: 'invalid' });
+    }
+    expect(await services.shifts.trips(ID)).toEqual([trip]);
+    expect(await services.sender.sendNow()).toBe(true);
+    expect(routes.calls.filter((c) => c.path.includes('/trip'))).toEqual([]);
+    expect((await services.sender.status()).color).toBe('green');
+  });
+
+  it('"Add trip" on the detail screen sends a purpose the server takes; the shift stays on the server', async () => {
+    // The phone's ids are fixed in the test kit, so the manual trip's key is the shift's id.
+    const ctx = await endedShift({ [`PUT /shifts/${ID}/trips/${ID}`]: strict });
+    const { routes } = ctx;
+    render(<App services={ctx.services} />);
+    fireEvent.press(await screen.findByRole('button', { name: 'Shifts' }));
+    fireEvent.press(await screen.findByRole('button', { name: /^Shift / }));
+    fireEvent.changeText(await screen.findByLabelText('Trip distance'), '1.5');
+    fireEvent.press(screen.getByRole('button', { name: 'Add trip' }));
+    expect(await screen.findByText('Trip added.')).toBeTruthy();
+    const manual = (await ctx.services.shifts.trips(ID)).find((t) => t.source === 'manual')!;
+    expect(manual.purpose).toBe(MANUAL_TRIP_PURPOSE);
+    await ctx.services.sender.sendNow();
+    const put = routes.calls.find((c) => c.path === `/shifts/${ID}/trips/${manual.trip_key}`)!;
+    expect(put.body).toMatchObject({ purpose: 'Business driving', distance_m: manual.distance_m });
+    expect((await ctx.services.shifts.get(ID))!.sync_state).not.toBe('needs_attention');
+    expect((await ctx.services.sender.status()).color).toBe('green');
   });
 
   it('the trip row on the detail screen changes type with one tap', async () => {

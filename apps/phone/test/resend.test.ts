@@ -178,6 +178,7 @@ async function record(p: ReturnType<typeof phone>, day: number, points: number, 
   }
   p.clock.t += points * 10_000 + 5_000;
   await p.services.shift.end();
+  await p.services.sender.sendNow();
 }
 
 const states = async (p: ReturnType<typeof phone>) =>
@@ -205,9 +206,8 @@ describe('sending again after the server was restored (15 section 9.3)', () => {
     expect(await states(p)).toEqual({ [sid(0)]: 'on_server', [sid(1)]: 'on_server' });
 
     srv.restore(empty); // the server lost both shifts
-    const r = await p.services.sync.drain();
+    expect(await p.services.sender.sendNow()).toBe(true);
 
-    expect(r.state).toBe('idle');
     expect([...srv.state.shifts.values()].map((s) => [s.client_id, s.status])).toEqual([
       [sid(0), 'ended'],
       [sid(1), 'ended'],
@@ -222,9 +222,7 @@ describe('sending again after the server was restored (15 section 9.3)', () => {
     });
     expect(await states(p)).toEqual({ [sid(0)]: 'on_server', [sid(1)]: 'on_server' });
     expect(await resendRows(p)).toEqual([]);
-    expect(p.services.monitor.restored).toBe(false);
-    expect(p.services.resend.blocksEviction()).toBe(false);
-    expect((await p.services.status()).message).toBeNull();
+    expect((await p.services.sender.status()).message).toBeNull();
   });
 
   it('a shift the restore kept is answered as it is: nothing is doubled', async () => {
@@ -235,7 +233,7 @@ describe('sending again after the server was restored (15 section 9.3)', () => {
     await record(p, 1, 200);
 
     srv.restore(withFirst);
-    await p.services.sync.drain();
+    await p.services.sender.sendNow();
 
     expect(srv.state.shifts.size).toBe(2); // the kept shift was not created a second time
     expect(srv.state.points.get(sid(0))?.size).toBe(400);
@@ -255,20 +253,17 @@ describe('sending again after the server was restored (15 section 9.3)', () => {
     let batches = 0;
     srv.onBatch = () => (++batches === 2 ? problem(503, 'unavailable', true) : undefined);
 
-    const first = await p.services.sync.drain();
-    expect(first.state).toBe('offline');
-    expect(first.retryInMs).toBeGreaterThan(0);
+    expect(await p.services.sender.sendNow()).toBe(false);
     expect(srv.state.points.get(sid(0))?.size).toBe(500);
     expect(await resendRows(p)).toEqual([{ id: sid(0), gen: 2, phase: 'todo', after: 500 }]);
     expect(await states(p)).toEqual({ [sid(0)]: 'local' });
-    // Still held: no eviction, the notice stays, and no `end` before the points.
-    expect(p.services.resend.blocksEviction()).toBe(true);
-    expect((await p.services.status()).message).toMatch(/re-sending the last 14 days/);
+    // Still held: the notice stays, and no `end` before the points.
+    expect((await p.services.sender.status()).message).toMatch(/re-sending the last 14 days/);
     expect(srv.state.shifts.get(sid(0))?.status).toBe('active');
 
     srv.onBatch = null;
     const from = srv.calls.length;
-    await p.services.sync.drain();
+    await p.services.sender.sendNow();
     expect(telemetryFor(srv, sid(0), from)).toBe(700); // only what was not accepted yet
     expect(srv.state.points.get(sid(0))?.size).toBe(1_200);
     expect(srv.state.shifts.get(sid(0))?.status).toBe('ended');
@@ -284,28 +279,22 @@ describe('sending again after the server was restored (15 section 9.3)', () => {
     srv.restore(empty);
     // The restore is seen on the settings answer; then the connection drops.
     await p.services.pairing.refreshSettings((await p.services.pairing.load())!);
-    await p.services.monitor.settled();
-    expect(p.services.monitor.restored).toBe(true);
+    expect((await p.services.sender.status()).message).toMatch(/restored from a backup/);
     srv.down = true;
 
-    const r = await p.services.sync.drain();
-    expect(r.state).toBe('offline');
+    expect(await p.services.sender.sendNow()).toBe(false);
     expect(await states(p)).toEqual({ [sid(0)]: 'local' });
     expect(await resendRows(p)).toEqual([{ id: sid(0), gen: 2, phase: 'todo', after: 0 }]);
 
-    // The app is closed and opened again: the rows are in app.db, so eviction stays blocked and
-    // the notice is back once they are read.
+    // The app is closed and opened again: the rows are in app.db, so the notice is back at once.
     const again = phone(srv, { db: p.db, tracker: p.tracker });
-    expect(again.services.resend.blocksEviction()).toBe(true);
-    expect(again.services.monitor.restored).toBe(false);
-    await again.services.resend.held();
-    expect((await again.services.status()).message).toMatch(/restored from a backup/);
+    expect((await again.services.sender.status()).message).toMatch(/restored from a backup/);
 
     srv.down = false;
-    await again.services.sync.drain();
+    await again.services.sender.sendNow();
     expect(srv.state.points.get(sid(0))?.size).toBe(250);
     expect(await states(again)).toEqual({ [sid(0)]: 'on_server' });
-    expect(again.services.resend.blocksEviction()).toBe(false);
+    expect((await again.services.sender.status()).message).toBeNull();
   });
 
   it('a second restore while sending again starts over, and both shifts end up on the server', async () => {
@@ -324,10 +313,10 @@ describe('sending again after the server was restored (15 section 9.3)', () => {
       srv.restore(empty);
     };
 
-    const r = await p.services.sync.drain();
+    const r = await p.services.sender.sendNow();
 
     expect(restoredTwice).toBe(true);
-    expect(r.state).toBe('idle');
+    expect(r).toBe(true);
     expect(srv.gen).toBe(3);
     expect(srv.state.points.get(sid(0))?.size).toBe(300);
     expect(srv.state.points.get(sid(1))?.size).toBe(900);
@@ -336,7 +325,7 @@ describe('sending again after the server was restored (15 section 9.3)', () => {
     expect(await resendRows(p)).toEqual([]);
   });
 
-  it('the running shift is sent again first; ended shifts wait until it ends (one active shift)', async () => {
+  it('the running shift is sent again first; ended shifts wait until it ends, their points kept meanwhile', async () => {
     const srv = restorableServer();
     const empty = srv.backup();
     const p = phone(srv);
@@ -351,18 +340,21 @@ describe('sending again after the server was restored (15 section 9.3)', () => {
       });
     }
     p.clock.t += 60_000;
-    await p.services.uploader.drain(); // the running shift's points reach the server
+    await p.services.sender.sendNow(); // the running shift's points reach the server
     expect(srv.state.points.get(sid(1))?.size).toBe(50);
 
+    // Weeks later: the phone would let go of points the server acknowledged 14 days ago, but not
+    // while a restore still asks for them.
+    p.clock.t = BASE + 20 * DAY;
     srv.restore(empty);
-    await p.services.sync.drain();
+    await p.services.sender.sendNow();
     expect(srv.state.shifts.get(sid(1))?.status).toBe('active');
     expect(srv.state.points.get(sid(1))?.size).toBe(50);
     expect(srv.state.shifts.has(sid(0))).toBe(false); // waits: it would be a second active shift
     expect(await resendRows(p)).toEqual([{ id: sid(0), gen: 2, phase: 'todo', after: 0 }]);
 
     await p.services.shift.end();
-    await p.services.sync.drain();
+    await p.services.sender.sendNow();
     expect(srv.counts.conflicts).toBe(0);
     expect(srv.state.points.get(sid(0))?.size).toBe(100);
     expect(await states(p)).toEqual({ [sid(0)]: 'on_server', [sid(1)]: 'on_server' });
@@ -383,7 +375,7 @@ describe('sending again after the server was restored (15 section 9.3)', () => {
       BASE - DAY + 3_600_000,
     );
     srv.restore(empty);
-    await p.services.sync.drain();
+    await p.services.sender.sendNow();
     const created = srv.calls
       .filter((c) => c.method === 'POST' && c.path === '/shifts')
       .map((c) => (c.body as { client_id: string }).client_id);
@@ -408,20 +400,22 @@ describe('sending again after the server was restored (15 section 9.3)', () => {
     p.clock.t += 900_000;
     srv.down = true; // ended offline: points, end odometer and `end` stay queued
     await p.services.shift.end({ odometerEndM: 120_050_000 });
+    await p.services.sender.sendNow();
     srv.down = false;
 
     srv.restore(empty);
     await p.services.pairing.refreshSettings((await p.services.pairing.load())!);
-    await p.services.monitor.settled();
-    await p.services.shift.sync(); // the outbox runs outside the drain
-    expect(srv.state.odometer.size).toBe(0);
-    expect((await p.services.outbox.counts()).parked).toBe(0);
-
-    await p.services.sync.drain();
+    const from = srv.calls.length;
+    await p.services.sender.sendNow();
+    // The shift is created again before the reading and the end that waited for it.
+    const sent = srv.calls.slice(from).map((c) => `${c.method} ${c.path}`);
+    expect(sent.indexOf('POST /shifts')).toBeLessThan(
+      sent.indexOf(`PUT /shifts/${sid(0)}/odometer/shift_end`),
+    );
     expect(srv.state.points.get(sid(0))?.size).toBe(80);
     expect(srv.state.odometer.get(`${sid(0)}:shift_end`)).toBe(120_050_000);
     expect(srv.state.shifts.get(sid(0))?.status).toBe('ended');
-    expect((await p.services.outbox.counts()).parked).toBe(0);
+    expect((await p.services.sender.status()).color).toBe('green'); // nothing parked
     expect(await states(p)).toEqual({ [sid(0)]: 'on_server' });
     expect(await resendRows(p)).toEqual([]);
   });

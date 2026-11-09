@@ -32,7 +32,10 @@ export interface PullDeps {
 const CURSOR = 'changes_cursor';
 const PAGE = 200;
 
-/** `GET /sync/changes` into `app.db` (15 sections 6.5, 7, 8). The server's rows win; nothing is dropped silently. */
+/**
+ * `GET /sync/changes` into `app.db` (15 sections 6.5, 7, 8). The server's rows win; nothing is
+ * dropped silently. The sender runs it at the end of a round; its own tests drive it directly.
+ */
 export class ChangePuller {
   private busy = false;
   private last = -Infinity;

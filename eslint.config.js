@@ -92,6 +92,25 @@ export default tseslint.config(
     rules: { 'no-restricted-syntax': countryLiteralRule },
   },
   {
+    // The phone's sender (apps/phone/src/sync/sender.ts) is the one interface for sending to the
+    // server; the queue runner, the points, the restore resend and the change log stay behind it.
+    files: ['apps/phone/src/**/*.{ts,tsx}'],
+    ignores: ['apps/phone/src/sync/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/sync/runner', '**/sync/points', '**/sync/resend', '**/sync/pull'],
+              message: 'Internal to the sender: use sync/sender.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['packages/track-engine/src/**/*.ts'],
     rules: {
       'no-restricted-imports': ['error', { patterns: forbiddenModules }],

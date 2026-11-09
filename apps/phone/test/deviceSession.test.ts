@@ -65,8 +65,8 @@ describe('device session: the one holder of a halt', () => {
   });
 });
 
-describe('device session: every sender obeys it', () => {
-  it('a 403 from one request stops the runner, the upload worker and the change feed', async () => {
+describe('device session: the sender obeys it', () => {
+  it('a 403 from one request stops the queue, the points and the change log', async () => {
     const routes = server({
       [`POST /shifts/${ID}/end`]: () => problem(403, 'scope_forbidden'),
       'GET /sync/changes': () => json(200, { changes: [], next_cursor: 0, has_more: false }),
@@ -75,21 +75,21 @@ describe('device session: every sender obeys it', () => {
     const { services, tracker } = setup(routes);
     await services.shift.start({ vehicleId: 3 });
     tracker.emit({ recordedAt: 2_000, latE7: 1, lonE7: 1 });
-    await services.uploader.drain();
     await services.shift.end();
-    expect(await services.device.halted()).toBe('auth_problem');
-    expect((await services.status()).message).toBe('Sign-in problem. Re-pair this phone.');
+    expect(await services.sender.sendNow()).toBe(false);
+    expect(await services.pairing.device.halted()).toBe('auth_problem');
+    expect((await services.sender.status()).message).toBe('Sign-in problem. Re-pair this phone.');
 
     tracker.start('22222222-2222-4222-8222-222222222222');
     tracker.emit({ recordedAt: 3_000, latE7: 2, lonE7: 2 });
     const from = routes.calls.length;
-    expect((await services.runner.run()).state).toBe('halted');
-    expect((await services.uploader.drain()).state).toBe('halted');
-    expect((await services.puller.pull({ force: true })).state).toBe('halted');
-    expect(routes.calls.length).toBe(from); // nothing went out
+    expect(await services.sender.sendNow()).toBe(false);
+    // Only the settings check goes out: no queued change, no point, no change log.
+    expect(routes.calls.slice(from).map((c) => `${c.method} ${c.path}`)).toEqual(['GET /settings']);
 
-    await services.device.resume(); // "Sync now"
-    expect((await services.puller.pull({ force: true })).state).toBe('ok');
+    routes.routes[`POST /shifts/${ID}/end`] = () => json(200, {});
+    expect(await services.sender.retry()).toBe(true); // "Sync now"
+    expect(routes.calls.slice(from).map((c) => c.path)).toContain('/sync/changes');
   });
 
   it('a revoke reaches the app start gate through pairing, and pairing again lifts it', async () => {
@@ -100,9 +100,9 @@ describe('device session: every sender obeys it', () => {
     const state = (await services.pairing.load())!;
     await services.pairing.refreshSettings(state);
     expect(await services.pairing.status()).toBe('revoked');
-    expect(await services.device.halted()).toBe('repair');
+    expect(await services.pairing.device.halted()).toBe('repair');
     expect(changes).toHaveBeenCalled();
     await services.pairing.unpair();
-    expect(await services.device.halted()).toBeNull();
+    expect(await services.pairing.device.halted()).toBeNull();
   });
 });

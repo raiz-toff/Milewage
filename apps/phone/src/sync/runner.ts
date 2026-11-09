@@ -1,6 +1,6 @@
 import { ApiError, type ApiClient, type ApiResponse } from '../api/client';
 import type { DeviceSession } from '../pairing/deviceSession';
-import { Backoff } from '../upload/worker';
+import { Backoff } from './points';
 import { shiftOf, type Outbox, type OutboxItem } from './outbox';
 import { requestFor, send } from './shiftRequests';
 
@@ -42,6 +42,8 @@ export interface RunnerDeps {
 }
 
 /**
+ * Internal to the sender (`sender.ts`).
+ *
  * Sends outbox items one at a time, oldest first (15 section 6.2 step 4, 08 section 4.1). A
  * network failure or a 5xx stops the run and keeps the item pending (backoff 2/4/8/16/32/60 s);
  * a 4xx parks that item and holds back only the later items of the same shift; while the device

@@ -1,5 +1,5 @@
 import { FakeTracker } from '../../src/tracker/fake';
-import { json, makeServices, mockServer, type Handler } from './mock';
+import { json, makeServices, mockServer, type Handler, type Recorded } from './mock';
 
 export const ID = '11111111-1111-4111-8111-111111111111';
 export const SHIFT = { client_id: ID, vehicle_id: 3, started_at: 1_000 };
@@ -30,18 +30,35 @@ export const drive = (t: FakeTracker, from = 1_000) => {
   }
 };
 
+/**
+ * A paired phone on `routes` with a test clock. Jitter is fixed at the middle (backoff 2 s, 4 s,
+ * 8 s exactly). `net.up = false` makes every request fail as if the phone had no connection.
+ */
 export function setup(
   routes = server(),
   over: Parameters<typeof makeServices>[1] = { paired: true },
 ) {
   const clock = { t: 1_000 };
+  const net = { up: true };
   const tracker = new FakeTracker(() => clock.t);
-  const made = makeServices(routes.fetch, {
-    paired: true,
-    tracker,
-    now: () => clock.t,
-    newId: () => ID,
-    ...over,
-  });
-  return { ...made, routes, clock, tracker };
+  const made = makeServices(
+    (url, init) =>
+      net.up ? routes.fetch(url, init) : Promise.reject(new TypeError('Network request failed')),
+    {
+      paired: true,
+      tracker,
+      now: () => clock.t,
+      newId: () => ID,
+      rand: () => 0.5,
+      ...over,
+    },
+  );
+  return { ...made, routes, clock, tracker, net };
 }
+
+/** `METHOD /path` of each request after the first `from`, reads (GET) left out. */
+export const writes = (calls: Recorded[], from = 0) =>
+  calls
+    .slice(from)
+    .filter((c) => c.method !== 'GET')
+    .map((c) => `${c.method} ${c.path}`);

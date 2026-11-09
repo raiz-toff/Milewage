@@ -1,6 +1,19 @@
+import { ApiClient } from '../src/api/client';
+import { migrate } from '../src/db/appDb';
+import { DeviceSession, haltFor } from '../src/pairing/deviceSession';
+import { deriveFlags, MemoryStore, type CachedSettings } from '../src/pairing/pairing';
 import { describe as d } from '../src/screens/ShiftDetailScreen';
-import { json, makeServices, mockServer, problem, type Handler } from './support/mock';
+import { ShiftStore } from '../src/store/shiftStore';
+import { Outbox } from '../src/sync/outbox';
+import { ChangePuller } from '../src/sync/pull';
+import { DEVICE_TOKEN, json, mockServer, problem, SETTINGS, type Handler } from './support/mock';
+import { openNodeAppDb } from './support/nodeSql';
 import { ID } from './support/shiftKit';
+
+/*
+ * The change log (`GET /sync/changes`) read into app.db. The sender reads it at the end of a
+ * round; these tests drive the puller itself, with the queue it protects, as the sender builds it.
+ */
 
 const shiftData = (over: Record<string, unknown> = {}) => ({
   id: 5,
@@ -57,10 +70,39 @@ function feed(pages: { changes: Entry[]; next_cursor: number; has_more: boolean 
   return { routes, urls, queue };
 }
 
-async function phone(routes: Record<string, Handler>, paired: object | boolean = true) {
+async function phone(
+  routes: Record<string, Handler>,
+  paired: Partial<CachedSettings> | boolean = true,
+  now = () => 50_000,
+) {
   const server = mockServer(routes);
-  const ctx = makeServices(server.fetch, { paired, newId: () => ID, now: () => 50_000 });
-  const { services } = ctx;
+  const db = openNodeAppDb();
+  await migrate(db);
+  const plain = new MemoryStore();
+  const device = new DeviceSession(plain);
+  const client = new ApiClient({
+    baseUrl: 'https://mw.example.net',
+    token: DEVICE_TOKEN,
+    fetch: server.fetch,
+    now,
+    blocked: device.blocked,
+    onProblem: (e) => {
+      const reason = haltFor(e);
+      if (reason) void device.halt(reason);
+    },
+  });
+  const flags = deriveFlags({ ...SETTINGS, ...(typeof paired === 'object' ? paired : {}) });
+  const shifts = new ShiftStore(db, now);
+  const outbox = new Outbox(db, now);
+  const puller = new ChangePuller({
+    db,
+    outbox,
+    session: async () => (paired ? { client, flags } : null),
+    device,
+    onSettings: (st) => plain.set('pairing.settings', JSON.stringify(st)),
+    now,
+  });
+  const services = { shifts, outbox, puller };
   await services.shifts.begin({
     clientId: ID,
     vehicleId: 3,
@@ -69,7 +111,7 @@ async function phone(routes: Record<string, Handler>, paired: object | boolean =
     timeZone: 'UTC',
   });
   await services.shifts.finish({ clientId: ID, endedAt: 9_000, result: null, manifest: null });
-  return { ...ctx, server };
+  return { services, plain, server };
 }
 
 describe('pull (GET /sync/changes)', () => {
@@ -232,6 +274,33 @@ describe('pull (GET /sync/changes)', () => {
         wins ? [] : ['superseded_by_server'],
       );
     }
+  });
+
+  it('a queued trip edit older than the server row loses and is logged', async () => {
+    const key = `${ID}:1000:active`;
+    const f = feed([
+      { changes: [entry(1, 'trip', 'upsert', key, tripData())], next_cursor: 1, has_more: false },
+      {
+        changes: [entry(2, 'trip', 'upsert', key, tripData({ purpose: 'web', edited_at: 150 }))],
+        next_cursor: 2,
+        has_more: false,
+      },
+    ]);
+    const { services } = await phone(f.routes);
+    await services.puller.pull({ force: true });
+    await services.outbox.enqueue({
+      type: 'trip.override',
+      tripKey: key,
+      kind: 'personal',
+      purpose: 'errand',
+      editedAt: 100,
+    });
+    await services.puller.pull({ force: true });
+    expect((await services.shifts.trips(ID))[0]).toMatchObject({ kind: 'active', purpose: 'web' });
+    expect(
+      (await services.outbox.pending()).filter((i) => i.kind === 'trip.override'),
+    ).toHaveLength(0);
+    expect((await services.shifts.conflicts(ID))[0]!.reason).toBe('superseded_by_server');
   });
 
   it('a shift whose end the phone has not sent is not overwritten by the feed', async () => {

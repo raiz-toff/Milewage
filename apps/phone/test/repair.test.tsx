@@ -49,12 +49,10 @@ async function revokedWithQueuedShift(more: Parameters<typeof server>[0] = {}) {
   const made = setup(routes);
   await made.services.shift.start({ vehicleId: 3 }); // the create waits: server down
   mode = 'revoked';
-  await made.services.shift.end(); // create and end queued; the runner meets the revoke
+  await made.services.shift.end(); // create and end queued
+  await made.services.sender.sendNow(); // and the server meets them with the revoke
   expect(await made.services.pairing.status()).toBe('revoked');
-  expect((await made.services.outbox.pending()).map((i) => i.kind)).toEqual([
-    'shift.create',
-    'shift.end',
-  ]);
+  expect((await made.services.sender.status()).unsyncedShifts).toBe(1);
   return { ...made, routes, ok: () => void (mode = 'ok') };
 }
 
@@ -69,11 +67,11 @@ describe('re-pairing lifts every halt', () => {
     fireEvent.press(screen.getByRole('button', { name: 'Connect' }));
     expect(await screen.findByText('Phone connected.')).toBeTruthy();
     const from = routes.calls.length;
-    await services.shift.sync();
+    await services.sender.sendNow();
     expect(sentAfter(routes.calls, from)).toEqual(
       expect.arrayContaining(['POST /shifts', `POST /shifts/${ID}/end`]),
     );
-    expect((await services.outbox.counts()).pending).toBe(0);
+    expect((await services.sender.status()).unsyncedShifts).toBe(0);
   });
 
   it('after pairing again with a link code, the queued create and end are sent', async () => {
@@ -83,11 +81,11 @@ describe('re-pairing lifts every halt', () => {
     ok();
     expect(await services.pairing.pollLink('https://mw.example.net', 'dc')).not.toBeNull();
     const from = routes.calls.length;
-    await services.sync.drain();
+    await services.sender.sendNow();
     expect(sentAfter(routes.calls, from)).toEqual(
       expect.arrayContaining(['POST /shifts', `POST /shifts/${ID}/end`]),
     );
-    expect((await services.outbox.counts()).pending).toBe(0);
+    expect((await services.sender.status()).unsyncedShifts).toBe(0);
     expect(await services.pairing.status()).toBe('paired');
   });
 
@@ -114,18 +112,18 @@ describe('re-pairing lifts every halt', () => {
       }),
     );
     inst = 'inst-B'; // the address now answers as another server
-    await services.sync.drain();
-    expect((await services.status()).message).toMatch(/different MileWage server/);
+    await services.sender.sendNow();
+    expect((await services.sender.status()).message).toMatch(/different MileWage server/);
     const blocked = srv.calls.length;
-    await services.sync.drain();
+    await services.sender.sendNow();
     expect(srv.calls.length).toBe(blocked); // nothing goes out
 
     // "Re-pair to the new server": Settings disconnects, then the phone pairs with a new code.
     await services.pairing.unpair();
     await services.pairing.redeem(parsePairingLink(QR)!);
     const from = srv.calls.length;
-    await services.sync.drain();
+    await services.sender.sendNow();
     expect(sentAfter(srv.calls, from)).toContain('GET /settings');
-    expect((await services.status()).message ?? '').not.toMatch(/different MileWage server/);
+    expect((await services.sender.status()).message ?? '').not.toMatch(/different MileWage server/);
   });
 });

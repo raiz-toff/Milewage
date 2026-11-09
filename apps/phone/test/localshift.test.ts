@@ -2,7 +2,7 @@ import { algorithmVersion, processShift, type ShiftInput } from '@milewage/track
 import fixtures from '../src/conformance/fixtures.json';
 import { toFix } from '../src/shift/feed';
 import { localDate } from '../src/store/shiftStore';
-import { drive, ID, setup, server } from './support/shiftKit';
+import { drive, ID, setup, server, writes } from './support/shiftKit';
 import { json, problem } from './support/mock';
 import { openNodeAppDb } from './support/nodeSql';
 
@@ -40,7 +40,8 @@ const down = () =>
 describe('shift end on the phone (15 section 5)', () => {
   it('offline: stores the totals, trips, stops and route the shared engine gives for a known ride', async () => {
     const { services } = await ride('scenario_delivery_run', down());
-    expect(await services.shift.end({ odometerEndM: 90_000 })).toEqual({ ok: true, sent: false });
+    expect(await services.shift.end({ odometerEndM: 90_000 })).toEqual({ ok: true });
+    expect(await services.sender.sendNow()).toBe(false);
 
     const want = expected('scenario_delivery_run');
     const row = (await services.shifts.get(ID))!;
@@ -72,18 +73,30 @@ describe('shift end on the phone (15 section 5)', () => {
     ]);
   });
 
-  it('queues create, odometer and end in order, with the manifest and phone result', async () => {
-    const { services, tracker } = await ride('ride_straight', down());
+  it('hands over create, odometer and end in order, with the manifest and phone result', async () => {
+    const { services, tracker, routes } = await ride('ride_straight', down());
     await services.shift.setOdometerStart(50_000);
     await services.shift.end({ odometerEndM: 55_000 });
-    const items = await services.outbox.pending();
-    expect(items.map((i) => [i.kind, i.entityKey])).toEqual([
-      ['shift.create', ID],
-      ['odometer.put', `${ID}:shift_start`],
-      ['odometer.put', `${ID}:shift_end`],
-      ['shift.end', ID],
+    expect(await services.sender.sendNow()).toBe(false);
+    const up = server();
+    routes.routes['POST /shifts'] = up.routes['POST /shifts']!;
+    routes.routes['POST /telemetry/batch'] = up.routes['POST /telemetry/batch']!;
+    const from = routes.calls.length;
+    expect(await services.sender.sendNow()).toBe(true);
+    const sent = writes(routes.calls, from).filter((w) => w !== 'POST /telemetry/batch');
+    expect(sent).toEqual([
+      'POST /shifts',
+      `PUT /shifts/${ID}/odometer/shift_start`,
+      `PUT /shifts/${ID}/odometer/shift_end`,
+      `POST /shifts/${ID}/end`,
     ]);
-    const end = items[3]!.body as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    expect(writes(routes.calls, from).indexOf('POST /telemetry/batch')).toBeLessThan(
+      writes(routes.calls, from).indexOf(`POST /shifts/${ID}/end`),
+    );
+    const end = routes.calls.filter((c) => c.path.endsWith('/end')).at(-1)!.body as {
+      manifest: { point_count: number };
+      phone_result: Record<string, unknown>;
+    };
     const rows = tracker.readByShift(ID, 0, 1000);
     const again = processShift({
       shiftClientId: ID,
@@ -110,8 +123,8 @@ describe('shift end on the phone (15 section 5)', () => {
     expect((await services.shifts.trips(ID)).length).toBeGreaterThan(0);
   });
 
-  it('an engine failure still ends and queues the shift; totals stay empty for the server to fill', async () => {
-    const { services, tracker } = await ride('ride_straight', down());
+  it('an engine failure still ends and hands over the shift; totals stay empty for the server to fill', async () => {
+    const { services, tracker, routes } = await ride('ride_straight', down());
     jest.spyOn(tracker, 'readByShift').mockImplementation(() => {
       throw new Error('boom');
     });
@@ -121,10 +134,17 @@ describe('shift end on the phone (15 section 5)', () => {
       total_m: null,
       recon_status: 'pending',
     });
-    expect((await services.outbox.pending()).map((i) => i.kind)).toEqual([
-      'shift.create',
-      'shift.end',
-    ]);
+    routes.routes['POST /shifts'] = server().routes['POST /shifts']!;
+    routes.routes['POST /telemetry/batch'] = server().routes['POST /telemetry/batch']!;
+    expect(await services.sender.sendNow()).toBe(true);
+    expect(
+      writes(routes.calls)
+        .filter((w) => w !== 'POST /telemetry/batch')
+        .slice(-2),
+    ).toEqual(['POST /shifts', `POST /shifts/${ID}/end`]);
+    expect(routes.calls.filter((c) => c.path.endsWith('/end')).at(-1)!.body).toEqual({
+      ended_at: input('ride_straight').endedAt,
+    });
   });
 
   it('with the server back: its numbers replace the phone label and the shift is on the server', async () => {
@@ -141,7 +161,8 @@ describe('shift end on the phone (15 section 5)', () => {
         }),
     });
     const { services } = await ride('ride_straight', routes);
-    expect(await services.shift.end()).toEqual({ ok: true, sent: true });
+    expect(await services.shift.end()).toEqual({ ok: true });
+    expect(await services.sender.sendNow()).toBe(true);
     expect(await services.shifts.get(ID)).toMatchObject({
       server_id: 41,
       calc_source: 'server',
@@ -149,7 +170,7 @@ describe('shift end on the phone (15 section 5)', () => {
       sync_state: 'on_server',
       server_total_m: 5000,
     });
-    expect((await services.outbox.counts()).pending).toBe(0);
+    expect((await services.sender.status()).oldestAt).toBeNull();
   });
 
   it('a different server total is shown as the server number and keeps the phone number in the conflict log', async () => {
@@ -172,6 +193,7 @@ describe('shift end on the phone (15 section 5)', () => {
     });
     const { services } = await ride('ride_straight', routes);
     await services.shift.end();
+    await services.sender.sendNow();
     const row = (await services.shifts.get(ID))!;
     expect(row).toMatchObject({ total_m: 4900, calc_source: 'server', recon_status: 'differs' });
     expect(JSON.parse(row.recon_reasons!)).toEqual(['points_missing']);
@@ -186,9 +208,14 @@ describe('shift end on the phone (15 section 5)', () => {
     });
     const { services } = await ride('ride_straight', routes);
     await services.shift.end();
-    expect((await services.outbox.parked()).map((i) => i.kind)).toContain('shift.create');
+    expect(await services.sender.sendNow()).toBe(false);
     expect((await services.shifts.get(ID))!.sync_state).toBe('needs_attention');
-    expect(await services.shift.isParked(ID)).toBe(true);
+    expect(await services.sender.status()).toMatchObject({
+      color: 'red',
+      message: 'Some items could not be sent. Open the shift to see why.',
+    });
+    // Its points wait with it: none were sent for a shift the server refused.
+    expect(routes.calls.filter((c) => c.path === '/telemetry/batch')).toHaveLength(0);
   });
 
   it('a kill between "End shift" and the hand-off completes on the next start, without a second shift.end', async () => {
@@ -200,14 +227,18 @@ describe('shift end on the phone (15 section 5)', () => {
     await expect(first.services.shift.end()).rejects.toThrow('killed');
     expect((await first.services.shifts.get(ID))!.status).toBe('active');
 
-    const second = setup(down(), { paired: true, openAppDb: async () => db });
+    const second = setup(server(), { paired: true, openAppDb: async () => db });
+    second.net.up = false;
     second.plain.data.set('shift.active', first.plain.data.get('shift.active')!);
     second.tracker.emit({ recordedAt: 0 });
     await second.services.shift.load();
     expect(second.services.shift.current).toBeNull();
     expect((await second.services.shifts.get(ID))!.status).toBe('ended');
-    const kinds = (await second.services.outbox.pending()).map((i) => i.kind);
-    expect(kinds.filter((k) => k === 'shift.end')).toHaveLength(1);
+    second.net.up = true;
+    await second.services.sender.sendNow();
+    expect(writes(second.routes.calls).filter((w) => w.endsWith('/end'))).toEqual([
+      `POST /shifts/${ID}/end`,
+    ]);
   });
 
   it('local dates use the instance time zone, not the device zone', () => {

@@ -1,5 +1,5 @@
 import type { AppSqlDb } from '../db/appDb';
-import type { Outbox } from '../sync/outbox';
+import type { ShiftQueue } from '../sync/outbox';
 import type { ShiftStore, TripRow } from './shiftStore';
 import { newId } from '../shift/uuid';
 import { manualTripOf } from '../sync/shiftRequests';
@@ -10,10 +10,24 @@ export type EditResult =
   | { ok: true }
   | { ok: false; reason: 'no_shift' | 'finalized' | 'no_trip' | 'not_editable' | 'invalid' };
 
+/** The purpose of a trip added on the phone, which has no purpose field (the web asks for one). */
+export const MANUAL_TRIP_PURPOSE = 'Business driving';
+
+/**
+ * A trip's purpose as the server takes it (`TripCreate.purpose`, `TripOverridePut.purpose`: 1 to
+ * 200 characters), trimmed as the web's form does; null when it would be refused. An edit the
+ * server refuses with 422 is parked for good, so it is refused here, before it is queued.
+ */
+const purposeOf = (text: string): string | null => {
+  const p = text.trim();
+  return p.length >= 1 && p.length <= 200 ? p : null;
+};
+
 export interface EditDeps {
   db: AppSqlDb;
   store: ShiftStore;
-  outbox: Outbox;
+  /** Each edit is queued here; the sender sends it. */
+  queue: ShiftQueue;
   /** `tracker.gnssOffsetMs()`: edit times are GNSS-corrected when a fix is fresh (15 section 10). */
   gnssOffsetMs: () => number | null;
   now?: () => number;
@@ -53,8 +67,8 @@ export class PhoneEdits {
     const bad = await this.guard(trip.shift_client_id);
     if (bad) return { ok: false, reason: bad };
     const kind = edit.kind ?? trip.kind;
-    const purpose = edit.purpose ?? trip.purpose;
-    if (!['active', 'deadhead', 'personal'].includes(kind) || purpose.length > 200) {
+    const purpose = purposeOf(edit.purpose ?? trip.purpose);
+    if (!['active', 'deadhead', 'personal'].includes(kind) || purpose === null) {
       return { ok: false, reason: 'invalid' };
     }
     const at = this.stamp();
@@ -68,23 +82,25 @@ export class PhoneEdits {
     if (trip.source === 'manual') {
       await this.queueManual(trip.shift_client_id, { ...trip, kind, purpose }, at);
     } else {
-      await this.d.outbox.enqueue({ type: 'trip.override', tripKey, kind, purpose, editedAt: at });
+      await this.d.queue.enqueue({ type: 'trip.override', tripKey, kind, purpose, editedAt: at });
     }
     await this.move(trip.shift_client_id, trip.kind, kind, trip.distance_m);
     return { ok: true };
   }
 
+  /** Adds a trip by hand. Without a purpose it is `MANUAL_TRIP_PURPOSE`. */
   async addManualTrip(
     clientId: string,
-    t: { kind: TripKind; startedAt: number; endedAt: number; distanceM: number; purpose: string },
+    t: { kind: TripKind; startedAt: number; endedAt: number; distanceM: number; purpose?: string },
   ): Promise<EditResult> {
     const bad = await this.guard(clientId);
     if (bad) return { ok: false, reason: bad };
+    const purpose = purposeOf(t.purpose ?? MANUAL_TRIP_PURPOSE);
     if (
       !Number.isInteger(t.distanceM) ||
       t.distanceM <= 0 ||
       t.endedAt < t.startedAt ||
-      t.purpose.length > 200
+      purpose === null
     ) {
       return { ok: false, reason: 'invalid' };
     }
@@ -99,7 +115,7 @@ export class PhoneEdits {
       started_at: t.startedAt,
       ended_at: t.endedAt,
       distance_m: t.distanceM,
-      purpose: t.purpose,
+      purpose,
       edited_at: at,
       sync_state: 'local',
     } as const;
@@ -131,7 +147,7 @@ export class PhoneEdits {
     if (!Number.isFinite(readingM) || readingM < 0) return { ok: false, reason: 'invalid' };
     const at = this.stamp();
     await this.d.store.setOdometer(clientId, kind, readingM, at);
-    await this.d.outbox.enqueue({
+    await this.d.queue.enqueue({
       type: 'odometer.put',
       clientId,
       reading: kind,
@@ -152,7 +168,7 @@ export class PhoneEdits {
       at,
       clientId,
     );
-    await this.d.outbox.enqueue({ type: 'shift.patch', clientId, notes, updatedAt: at });
+    await this.d.queue.enqueue({ type: 'shift.patch', clientId, notes, updatedAt: at });
     return { ok: true };
   }
 
@@ -161,7 +177,7 @@ export class PhoneEdits {
     t: Pick<TripRow, 'trip_key' | 'kind' | 'started_at' | 'ended_at' | 'distance_m' | 'purpose'>,
     at: number,
   ) {
-    return this.d.outbox.enqueue(manualTripOf(clientId, t, at));
+    return this.d.queue.enqueue(manualTripOf(clientId, t, at));
   }
 
   /**

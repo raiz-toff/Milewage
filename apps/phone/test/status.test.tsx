@@ -133,20 +133,20 @@ describe('wrong server and restore generation', () => {
     );
     await services.shift.start({ vehicleId: 3 });
     await services.shift.end();
+    await services.sender.sendNow();
     inst = 'inst-B'; // the address now answers as another server
-    await services.outbox.enqueue({ type: 'shift.patch', clientId: ID, notes: 'x', updatedAt: 1 });
-    await services.sync.drain();
-    expect(await services.device.halted()).toBe('wrong_server');
+    await services.edits.setNotes(ID, 'x');
+    await services.sender.sendNow();
+    expect((await services.sender.status()).halt).toBe('wrong_server');
     const sent = srv.calls.length;
-    await services.sync.drain();
-    await services.puller.pull({ force: true });
-    expect(srv.calls.length).toBe(sent); // nothing more went out
-    expect((await services.outbox.counts()).pending).toBeGreaterThan(0);
-    expect((await services.status()).message).toMatch(/different MileWage server/);
+    await services.sender.sendNow();
+    expect(srv.calls.length).toBe(sent); // nothing more went out, not even the change log
+    const s = await services.sender.status();
+    expect(s.oldestAt).not.toBeNull(); // the notes still wait
+    expect(s.message).toMatch(/different MileWage server/);
     inst = 'inst-A';
-    await services.device.resume(); // "Check the address"
-    await services.sync.drain();
-    expect(await services.device.halted()).toBeNull();
+    await services.sender.retry(); // "Check the address"
+    expect((await services.sender.status()).halt).toBeNull();
   });
 
   it('an answer without the headers (captive portal) is not a wrong server', async () => {

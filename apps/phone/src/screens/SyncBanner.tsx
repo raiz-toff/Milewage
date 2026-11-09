@@ -7,7 +7,8 @@ import { Text } from '../components/ui/text';
 import { isTailnetAddress } from '../connect/reach';
 import { addressesOf } from '../connect/route';
 import { useServices } from '../services';
-import { REMINDER_SHOWN_KEY, reminderFor, type SyncStatus } from '../sync/status';
+import type { SendStatus } from '../sync/sender';
+import { REMINDER_SHOWN_KEY, reminderFor } from '../sync/status';
 import { useColors } from '../theme/theme';
 
 const DAY = 86_400_000;
@@ -20,10 +21,8 @@ const HINT_AFTER_MS = 10 * 60_000;
  */
 export function SyncBanner({ onSettings }: { onSettings: () => void }) {
   const C = useColors();
-  const { status, sync, device, plain, shift, pairing, net, reminders } = useServices();
-  const [s, setS] = useState<SyncStatus | null>(null);
-  /** Another MileWage server answers at this address (15 section 9.4). */
-  const [wrong, setWrong] = useState(false);
+  const { sender, plain, pairing, net, reminders } = useServices();
+  const [s, setS] = useState<SendStatus | null>(null);
   const [reminder, setReminder] = useState('');
   const [busy, setBusy] = useState(false);
   /** Plan 19 section 3.5: something waiting 10 minutes for a `.ts.net` server, no VPN on. */
@@ -32,9 +31,8 @@ export function SyncBanner({ onSettings }: { onSettings: () => void }) {
   const [awayFromHome, setAwayFromHome] = useState(false);
 
   const refresh = useCallback(async () => {
-    const next = await status();
+    const next = await sender.status();
     setS(next);
-    setWrong((await device.halted()) === 'wrong_server');
     const state = await plain.get(REMINDER_SHOWN_KEY);
     const now = Date.now();
     const cred = (await pairing.load())?.credential;
@@ -57,19 +55,16 @@ export function SyncBanner({ onSettings }: { onSettings: () => void }) {
     }
     // The same reminder as an OS notification for when the app is closed; cancelled once all is sent.
     await reminders.update(next).catch(() => undefined);
-  }, [status, device, plain, pairing, net, reminders]);
+  }, [sender, plain, pairing, net, reminders]);
 
   useEffect(() => {
     void refresh();
-    const offSync = sync.subscribe(() => void refresh());
-    const offDevice = device.subscribe(() => void refresh());
-    return () => {
-      offSync();
-      offDevice();
-    };
-  }, [sync, device, refresh]);
+    return sender.subscribe(() => void refresh());
+  }, [sender, refresh]);
 
   if (!s) return null;
+  /** Another MileWage server answers at this address (15 section 9.4). */
+  const wrong = s.halt === 'wrong_server';
   const days = s.oldestAt === null ? 0 : Math.floor((Date.now() - s.oldestAt) / DAY);
   const label = `Sync status ${s.color}`;
 
@@ -123,7 +118,7 @@ export function SyncBanner({ onSettings }: { onSettings: () => void }) {
             variant="outline"
             size="sm"
             onPress={async () => {
-              await device.resume();
+              await sender.retry();
               await refresh();
             }}
           >
@@ -142,9 +137,7 @@ export function SyncBanner({ onSettings }: { onSettings: () => void }) {
           disabled={busy}
           onPress={async () => {
             setBusy(true);
-            await device.resume();
-            await shift.sync();
-            await sync.drain();
+            await sender.retry();
             setBusy(false);
             await refresh();
           }}

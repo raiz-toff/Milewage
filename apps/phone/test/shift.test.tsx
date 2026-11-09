@@ -35,9 +35,9 @@ describe('ShiftController', () => {
     const r = await services.shift.start({ vehicleId: 3 });
     expect(r.ok && r.shift.created).toBe(false);
     expect(tracker.isTracking()).toBe(true); // recorded even though the server never answered
-    expect(await services.shift.sync()).toBe(false); // still down
+    expect(await services.sender.sendNow()).toBe(false); // still down
     up = true;
-    await services.shift.sync();
+    await services.sender.sendNow();
     expect(services.shift.current?.created).toBe(true);
     const posts = routes.calls.filter((c) => c.method === 'POST');
     expect(posts.map((p) => (p.body as { client_id: string }).client_id)).toEqual([ID, ID, ID]);
@@ -120,7 +120,7 @@ describe('ShiftController', () => {
     expect(total).toBeGreaterThan(430);
     expect(total).toBeLessThan(460);
     // The worker reads through the feed, uploads, marks: the number must not change or reset.
-    const pts = services.feed.readPending(500);
+    const pts = tracker.readPending(500);
     tracker.markUploaded(pts.map((p) => p.seq));
     expect(services.shift.pump()).toBe(total);
     // More driving adds to it.
@@ -137,7 +137,8 @@ describe('ShiftController', () => {
     });
     clock.t = 99_000;
     const r = await services.shift.end({ odometerEndM: 60_000 });
-    expect(r).toEqual({ ok: true, sent: true });
+    expect(r).toEqual({ ok: true });
+    expect(await services.sender.sendNow()).toBe(true);
     expect(tracker.isTracking()).toBe(false);
     expect(routes.calls.find((c) => c.path.endsWith('/end'))!.body).toEqual({ ended_at: 99_000 });
     expect(routes.calls.find((c) => c.path.endsWith('shift_end'))!.body).toMatchObject({
@@ -156,11 +157,10 @@ describe('ShiftController', () => {
     const { services, clock } = setup(routes, { paired: true, openAppDb: async () => db });
     await services.shift.start({ vehicleId: 3 });
     clock.t = 7_000;
-    expect(await services.shift.end()).toEqual({ ok: true, sent: false });
+    expect(await services.shift.end()).toEqual({ ok: true });
     expect(services.shift.current).toBeNull();
-    expect((await services.outbox.pending()).map((i) => [i.kind, i.body])).toEqual([
-      ['shift.end', { ended_at: 7_000 }],
-    ]);
+    expect(await services.sender.sendNow()).toBe(false);
+    expect((await services.sender.status()).unsyncedShifts).toBe(1);
     expect(await services.shifts.get(ID)).toMatchObject({ status: 'ended', ended_at: 7_000 });
 
     // New process: same app.db, new object graph.
@@ -172,7 +172,7 @@ describe('ShiftController', () => {
       openAppDb: async () => db,
     });
     await again.services.shift.load();
-    expect(await again.services.shift.sync()).toBe(true);
+    expect(await again.services.sender.sendNow()).toBe(true);
     const ends = routes.calls.filter((c) => c.path.endsWith('/end'));
     expect(ends.map((c) => c.body)).toEqual([{ ended_at: 7_000 }, { ended_at: 7_000 }]);
   });
@@ -181,7 +181,8 @@ describe('ShiftController', () => {
     const routes = server({ [`POST /shifts/${ID}/end`]: () => problem(409, 'shift_finalized') });
     const { services } = setup(routes);
     await services.shift.start({ vehicleId: 3 });
-    expect(await services.shift.end()).toEqual({ ok: true, sent: true });
+    expect(await services.shift.end()).toEqual({ ok: true });
+    expect(await services.sender.sendNow()).toBe(true);
     expect(services.shift.current).toBeNull();
   });
 
@@ -246,7 +247,7 @@ describe('ShiftController', () => {
       expect((await services.shift.start({ vehicleId: 3 })).ok).toBe(true);
       drive(tracker);
       online();
-      expect(await services.shift.sync()).toBe(false);
+      expect(await services.sender.sendNow()).toBe(false);
       expect(services.shift.current?.clientId).toBe(ID);
       expect(services.shift.conflict).toMatchObject({ client_id: 'other' });
       expect(tracker.isTracking()).toBe(true);
@@ -263,10 +264,10 @@ describe('ShiftController', () => {
       const { services } = setup(routes);
       await services.shift.start({ vehicleId: 3 });
       online();
-      await services.shift.sync();
+      await services.sender.sendNow();
       await services.shift.keepLocalShift();
       expect(services.shift.conflict).toBeNull();
-      await services.shift.sync();
+      await services.sender.sendNow();
       expect(services.shift.conflict).toBeNull();
       expect(services.shift.current?.clientId).toBe(ID);
     });
@@ -276,7 +277,7 @@ describe('ShiftController', () => {
       const { services, tracker } = setup(routes);
       await services.shift.start({ vehicleId: 3 });
       online();
-      await services.shift.sync();
+      await services.sender.sendNow();
       const r = await services.shift.useServerShift();
       expect(r).toMatchObject({
         ok: true,
@@ -305,6 +306,7 @@ describe('ShiftController', () => {
       drive(tracker);
       clock.t = 100_000;
       await services.shift.end();
+      await services.sender.sendNow();
       const [body] = endBody(routes);
       const rows = tracker.readByShift(ID, 0, 100);
       const expected = processShift({
@@ -343,8 +345,9 @@ describe('ShiftController', () => {
       drive(tracker);
       clock.t = 100_000;
       await services.shift.end();
+      await services.sender.sendNow();
       up = true;
-      await services.shift.sync();
+      await services.sender.sendNow();
       const [a, b] = endBody(routes);
       expect(b).toEqual(a);
       expect(a.phone_result).toBeDefined();
@@ -355,12 +358,14 @@ describe('ShiftController', () => {
       const a = setup(none);
       await a.services.shift.start({ vehicleId: 3 });
       await a.services.shift.end();
+      await a.services.sender.sendNow();
       expect(endBody(none)).toEqual([{ ended_at: 1_000 }]);
 
       const off = server();
       const b = setup(off, { paired: { modules: { tracking: false } } });
       await b.services.shift.start({ vehicleId: 3 });
       await b.services.shift.end();
+      await b.services.sender.sendNow();
       expect(endBody(off)).toEqual([{ ended_at: 1_000 }]);
     });
 
@@ -372,7 +377,8 @@ describe('ShiftController', () => {
       jest.spyOn(tracker, 'readByShift').mockImplementation(() => {
         throw new Error('boom');
       });
-      expect(await services.shift.end()).toEqual({ ok: true, sent: true });
+      expect(await services.shift.end()).toEqual({ ok: true });
+      expect(await services.sender.sendNow()).toBe(true);
       expect(endBody(routes)).toEqual([{ ended_at: 1_000 }]);
     });
   });

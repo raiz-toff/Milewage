@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- jest.mock factories must require */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { PermissionsAndroid } from 'react-native';
 import { QrScanner } from '../src/pairing/QrScanner';
 import { ToastProvider } from '../src/ui/Toast';
@@ -38,11 +38,15 @@ const show = (onScanned = jest.fn()) => {
 
 describe('QR scanner (ZXing, no Google)', () => {
   afterEach(() => {
+    jest.useRealTimers();
     jest.restoreAllMocks();
     mockFeed = null;
   });
 
   it('asks for the camera, says so for a stray code, and passes a pairing code on once', async () => {
+    // The stray-code message goes after 2 s of the screen's own timer: fake time, so a busy
+    // machine cannot make the wait race the timer.
+    jest.useFakeTimers();
     const asked = answer(R.GRANTED);
     const onScanned = show();
     expect(await screen.findByText('camera')).toBeTruthy();
@@ -50,9 +54,12 @@ describe('QR scanner (ZXing, no Google)', () => {
     mockFeed!('https://example.com/menu');
     expect(await screen.findByText(/That is not a MileWage pairing code/)).toBeTruthy();
     expect(onScanned).not.toHaveBeenCalled();
-    await waitFor(() => expect(screen.queryByText(/not a MileWage/)).toBeNull(), {
-      timeout: 3000,
-    });
+    act(() => jest.advanceTimersByTime(1_999));
+    expect(screen.queryByText(/not a MileWage/)).toBeTruthy();
+    mockFeed!(QR); // still showing the message: codes are not read yet
+    expect(onScanned).not.toHaveBeenCalled();
+    act(() => jest.advanceTimersByTime(1));
+    expect(screen.queryByText(/not a MileWage/)).toBeNull();
     mockFeed!(QR);
     mockFeed!(QR);
     expect(onScanned).toHaveBeenCalledTimes(1);

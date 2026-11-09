@@ -115,12 +115,14 @@ describe('backlog drain (C8, 15 section 6)', () => {
     const rec = recordingServer(24);
     const { services, tracker, goOnline } = await backlog(24, 600, () => rec.server.fetch);
     expect((await services.shifts.list()).every((s) => s.sync_state === 'local')).toBe(true);
-    expect((await services.outbox.counts()).pending).toBe(24 * 2);
+    expect((await services.sender.status()).unsyncedShifts).toBe(24);
 
     goOnline();
     const seen: string[] = [];
-    services.sync.subscribe((p) => void seen.push(p.phase));
-    expect(await services.sync.drain()).toEqual({ state: 'idle', retryInMs: null });
+    services.sender.subscribe(
+      () => void services.sender.status().then((s) => seen.push(s.progress.phase)),
+    );
+    expect(await services.sender.sendNow()).toBe(true);
 
     // Order: shift 0 completely, then shift 1, and so on.
     const order = rec.log.map((e) => Number(e.split(' ')[1]!.slice(-12)));
@@ -141,8 +143,9 @@ describe('backlog drain (C8, 15 section 6)', () => {
       true,
     );
     expect(rows.every((s) => s.recon_status === 'match')).toBe(true);
-    expect(await services.outbox.counts()).toEqual({ pending: 0, parked: 0, oldestAt: null });
-    expect(services.sync.progress).toMatchObject({
+    const status = await services.sender.status();
+    expect(status).toMatchObject({ color: 'green', unsyncedShifts: 0, oldestAt: null });
+    expect(status.progress).toMatchObject({
       phase: 'done',
       pointsSent: 24 * 600,
       pointsTotal: 24 * 600,
@@ -159,15 +162,15 @@ describe('backlog drain (C8, 15 section 6)', () => {
     let telemetry = 0;
     const original = rec.server.routes['POST /telemetry/batch']!;
     rec.server.routes['POST /telemetry/batch'] = (r) => {
-      if (++telemetry === 4) ctx.services.sync.cancel();
+      if (++telemetry === 4) ctx.services.sender.cancel();
       return original(r);
     };
-    expect((await ctx.services.sync.drain()).state).toBe('cancelled');
-    expect(ctx.services.sync.progress.phase).toBe('cancelled');
+    expect(await ctx.services.sender.sendNow()).toBe(false);
+    expect((await ctx.services.sender.status()).progress.phase).toBe('cancelled');
     expect(rec.log.filter((e) => e.startsWith('points')).length).toBe(4);
     expect(ctx.tracker.readPending(100_000).length).toBeGreaterThan(0);
 
-    expect((await ctx.services.sync.drain()).state).toBe('idle');
+    expect(await ctx.services.sender.sendNow()).toBe(true);
     expect(rec.duplicates).toBe(0);
     expect([...rec.stored.values()].map((s) => s.size)).toEqual([1200, 1200, 1200, 1200]);
     expect(ctx.tracker.readPending(100_000)).toHaveLength(0);
@@ -186,15 +189,14 @@ describe('backlog drain (C8, 15 section 6)', () => {
       }
       return original(r);
     };
-    const first = await ctx.services.sync.drain();
-    expect(first.state).toBe('offline');
-    expect(first.retryInMs).toBeGreaterThan(0);
+    expect(await ctx.services.sender.sendNow()).toBe(false);
+    expect((await ctx.services.sender.status()).progress.phase).toBe('waiting');
     expect(rec.log.some((e) => e.startsWith(`end ${sid(1)}`))).toBe(false);
     expect(rec.log.some((e) => e.includes(sid(2)))).toBe(false);
     expect(rec.log.some((e) => e.startsWith(`end ${sid(0)}`))).toBe(true);
 
     fail = false;
-    expect((await ctx.services.sync.drain()).state).toBe('idle');
+    expect(await ctx.services.sender.sendNow()).toBe(true);
     expect(rec.log.filter((e) => e.startsWith('end')).map((e) => e.slice(4, 40))).toEqual([
       sid(0),
       sid(1),
@@ -212,7 +214,7 @@ describe('backlog drain (C8, 15 section 6)', () => {
         : created(r);
     const ctx = await backlog(3, 300, () => rec.server.fetch);
     ctx.goOnline();
-    expect((await ctx.services.sync.drain()).state).toBe('idle');
+    expect(await ctx.services.sender.sendNow()).toBe(false); // one shift needs attention
     const rows = await ctx.services.shifts.list();
     expect(rows.map((s) => s.sync_state).reverse()).toEqual([
       'on_server',
@@ -249,7 +251,7 @@ describe('backlog drain (C8, 15 section 6)', () => {
     expect(made.ok).toBe(true);
     const liveId = ctx.services.shift.current!.clientId;
     expect(liveId).toBe(sid(2));
-    await ctx.services.sync.drain();
+    await ctx.services.sender.sendNow();
     const points = rec.log.filter((e) => e.startsWith('points'));
     const firstLive = points.findIndex((e) => e.includes(liveId));
     const lastBacklog = points

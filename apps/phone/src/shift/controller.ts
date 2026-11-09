@@ -10,8 +10,8 @@ import {
 import type { KeyValueStore } from '../pairing/pairing';
 import type { Tracker } from '../tracker/types';
 import type { ShiftStore } from '../store/shiftStore';
-import { shiftOf, type Outbox } from '../sync/outbox';
-import type { OutboxRunner } from '../sync/runner';
+import type { ShiftQueue } from '../sync/outbox';
+import type { Recorder } from '../sync/sender';
 import { encode, send, type QueuedChange } from '../sync/shiftRequests';
 import { runLocal } from './endPayload';
 import { PUMP_LIMIT, PointFeed, toFix } from './feed';
@@ -56,7 +56,7 @@ export type StartResult =
   | { ok: false; reason: 'not_paired' | 'active_local' | 'tracker_refused' | 'rejected' }
   | { ok: false; reason: 'server_has_active'; active: ServerShift };
 
-export type EndResult = { ok: true; sent: boolean } | { ok: false; reason: 'no_shift' };
+export type EndResult = { ok: true } | { ok: false; reason: 'no_shift' };
 
 export interface Vehicle {
   id: number;
@@ -69,18 +69,12 @@ export interface ShiftDeps {
   store: KeyValueStore;
   /** Shifts, trips and results on the phone (`app.db`). */
   shifts: ShiftStore;
-  /** What the server has not acknowledged yet, and the engine that sends it. */
-  outbox: Outbox;
-  runner: OutboxRunner;
+  /** Where the ended shift's create, odometer readings and `end` wait for the sender. */
+  queue: ShiftQueue;
   /** The device client and the flags from the cached settings, or null when not paired. */
   session: () => Promise<{ client: ApiClient; flags: Flags } | null>;
   now?: () => number;
   newId?: () => string;
-  /**
-   * Called for each shift whose `shift.end` is queued, before the outbox runs: the place to upload
-   * that shift's points. The barrier itself is the runner's `canSend` (08 section 4.2 rule 9).
-   */
-  beforeEnd?: (clientId: string) => Promise<boolean>;
   /** Battery at shift start and end. Absent or null: no `shift.summary` is sent. */
   battery?: BatteryPort;
   /** Receives the `shift.summary` of a shift once, when its `shift.end` is queued. */
@@ -109,8 +103,12 @@ const K_VEHICLE = 'shift.lastVehicle';
 /** The last vehicle list from the server, for starting a shift offline. */
 const K_VEHICLES = 'shift.vehicles';
 
-/** Start / end shift (09 section 5, 08 section 4.2, 02). Record first, tell the server second. */
-export class ShiftController {
+/**
+ * Start / end shift (09 section 5, 08 section 4.2, 02). Record first, tell the server second.
+ * It sends the running shift's create itself, because the answer decides whether the shift runs;
+ * everything else it hands to the queue at "End shift", and the sender (`sync/sender.ts`) sends it.
+ */
+export class ShiftController implements Recorder {
   private active: ActiveShift | null = null;
   private acc: LiveAccumulator | null = null;
   private unsub: (() => void) | null = null;
@@ -146,19 +144,6 @@ export class ShiftController {
       await this.handOff(); // killed between "End shift" and the hand-off
     }
     return this.active;
-  }
-
-  /** False while the server has not acknowledged this shift's create (live or queued). */
-  async isCreated(clientId: string): Promise<boolean> {
-    if (this.active?.clientId === clientId) return this.active.created;
-    return !(await this.d.outbox.has('shift.create', clientId));
-  }
-
-  /** The shift's create was refused for good (parked): its points must not block other shifts. */
-  async isParked(clientId: string): Promise<boolean> {
-    return (await this.d.outbox.parked()).some(
-      (i) => i.kind === 'shift.create' && i.entityKey === clientId,
-    );
   }
 
   /**
@@ -280,7 +265,7 @@ export class ShiftController {
   /**
    * The driver chose the server's shift over the local unsent one: the local recording is stopped
    * and forgotten (its stored points stay in the buffer, but the server has no such shift, so
-   * they will be parked by the upload worker), then the server's shift is continued.
+   * the sender sets them aside), then the server's shift is continued.
    */
   async useServerShift(): Promise<StartResult> {
     const conflict = this.conflict;
@@ -357,7 +342,7 @@ export class ShiftController {
     });
   }
 
-  /** Edit the start odometer (metres); sent now if possible, else with the next `sync`. */
+  /** Edit the start odometer (metres); sent now if possible, else with the sender's next round. */
   async setOdometerStart(readingM: number): Promise<void> {
     if (!this.active) return;
     this.active = { ...this.active, odometerStartM: Math.round(readingM), odometerSent: false };
@@ -368,7 +353,7 @@ export class ShiftController {
       this.active.odometerStartM!,
       this.active.startedAt,
     );
-    await this.sync();
+    await this.sendRunning();
   }
 
   /** Reads new fixes and returns the approximate running distance in whole metres. */
@@ -393,7 +378,7 @@ export class ShiftController {
       await this.save();
     }
     await this.handOff();
-    return { ok: true, sent: await this.sync() };
+    return { ok: true };
   }
 
   /**
@@ -411,14 +396,14 @@ export class ShiftController {
     const engineFrom = this.now();
     const local = !s || s.flags.tracking ? runLocal(this.d.tracker, { ...shift, endedAt }) : null;
     const engineMs = this.now() - engineFrom;
-    const { outbox, shifts } = this.d;
-    if (!(await outbox.has('shift.end', shift.clientId))) {
-      if (!shift.created) await outbox.enqueue(createOf(shift));
+    const { queue, shifts } = this.d;
+    if (!(await queue.has('shift.end', shift.clientId))) {
+      if (!shift.created) await queue.enqueue(createOf(shift));
       if (shift.odometerStartM !== null && !shift.odometerSent) {
-        await outbox.enqueue(startOdometerOf(shift, shift.odometerStartM));
+        await queue.enqueue(startOdometerOf(shift, shift.odometerStartM));
       }
       if (shift.odometerEndM != null) {
-        await outbox.enqueue({
+        await queue.enqueue({
           type: 'odometer.put',
           clientId: shift.clientId,
           reading: 'shift_end',
@@ -426,7 +411,7 @@ export class ShiftController {
           recordedAt: endedAt,
         });
       }
-      await outbox.enqueue({
+      await queue.enqueue({
         type: 'shift.end',
         clientId: shift.clientId,
         endedAt,
@@ -448,33 +433,17 @@ export class ShiftController {
   }
 
   /**
-   * Finishes anything the server has not acknowledged: the running shift's create and start
-   * odometer, then the outbox (ended shifts: create, odometer, `end`). Returns true when nothing
-   * is left to send. Called at app start, after the network comes back and by `end`.
+   * What sending needs from the recorder (the sender calls it each round, before the running
+   * shift's points): a hand-off cut short by a kill is finished, then the running shift's create
+   * and start odometer are sent. True when none of that is left.
    */
-  async sync(): Promise<boolean> {
+  async sendRunning(): Promise<boolean> {
     if (this.active && this.active.endedAt !== null) await this.handOff();
-    const live = this.active ? await this.syncRunning() : true;
-    return (await this.flushOutbox()) && live;
+    return this.active ? this.syncRunning() : true;
   }
 
-  private async flushOutbox(): Promise<boolean> {
-    const { outbox, runner } = this.d;
-    if (this.d.beforeEnd) {
-      const ending = new Set(
-        (await outbox.pending())
-          .filter((i) => i.kind === 'shift.end')
-          .map((i) => shiftOf(i.entityKey)),
-      );
-      for (const id of ending) await this.d.beforeEnd(id);
-    }
-    await runner.run();
-    const c = await outbox.counts();
-    return c.pending === 0 && c.parked === 0;
-  }
-
-  /** The running shift's create and start odometer (its points go through the upload worker). */
-  async syncRunning(): Promise<boolean> {
+  /** The running shift's create and start odometer (its points go through the sender). */
+  private async syncRunning(): Promise<boolean> {
     let shift = this.active;
     if (!shift) return true;
     const s = await this.d.session();
@@ -571,7 +540,7 @@ export class ShiftController {
     this.acc = null;
     await this.d.store.remove(KEY);
     if (dropRecord && id) {
-      await this.d.outbox.dropShift(id);
+      await this.d.queue.dropShift(id);
       await this.d.shifts.remove(id);
     }
   }

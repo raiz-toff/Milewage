@@ -65,7 +65,7 @@ const KIND = { active: 'Active', deadhead: 'Deadhead', personal: 'Personal' } as
 export function ShiftDetailScreen({ route, navigation }: ScreenProps<'ShiftDetail'>) {
   const C = useColors();
   const { width } = useWindowDimensions();
-  const { shifts, pairing, edits, shift: controller } = useServices();
+  const { shifts, pairing, edits, sender } = useServices();
   const [distance, setDistance] = useState('');
   const [odo, setOdo] = useState('');
   const toast = useToast();
@@ -95,7 +95,7 @@ export function ShiftDetailScreen({ route, navigation }: ScreenProps<'ShiftDetai
   const reload = async () => {
     setShift(await shifts.get(route.params.clientId));
     setTrips(await shifts.trips(route.params.clientId));
-    void controller.sync();
+    void sender.sendNow();
   };
   /** One toast per edit: what happened, and why not when it did not. */
   const saved = (r: { ok: true } | { ok: false; reason: EditFailure }, what: string) => {
@@ -290,7 +290,6 @@ export function ShiftDetailScreen({ route, navigation }: ScreenProps<'ShiftDetai
                       startedAt: shift.ended_at ?? shift.started_at,
                       endedAt: shift.ended_at ?? shift.started_at,
                       distanceM: m,
-                      purpose: '',
                     }),
                     'Trip added.',
                   );

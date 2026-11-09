@@ -20,7 +20,7 @@ import { useToast } from '../ui/Toast';
 /** Every shift this phone has, newest first. Works with no connection: it reads `app.db`. */
 export function ShiftsScreen({ navigation }: ScreenProps<'Shifts'>) {
   const C = useColors();
-  const { shifts, pairing, shift: controller } = useServices();
+  const { shifts, pairing, sender } = useServices();
   const [rows, setRows] = useState<ShiftRow[] | null>(null);
   const [unit, setUnit] = useState<'km' | 'mi'>('km');
   const [zone, setZone] = useState('UTC');
@@ -49,7 +49,7 @@ export function ShiftsScreen({ navigation }: ScreenProps<'Shifts'>) {
   const refresh = async () => {
     setRefreshing(true);
     try {
-      await controller.sync();
+      await sender.sendNow();
     } catch {
       toast.show({
         title: 'Could not reach the server.',

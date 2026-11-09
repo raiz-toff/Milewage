@@ -40,7 +40,7 @@ describe('free storage (15 section 3.4)', () => {
 
     const { services } = makeServices(mockServer({}).fetch, { freeBytes: parts.freeBytes });
     expect(100 * MB).toBeLessThan(LOW_STORAGE_BYTES);
-    const s = await services.status();
+    const s = await services.sender.status();
     expect(s.color).toBe('yellow');
     expect(s.message).toBe(STORAGE_TEXT.low);
   });

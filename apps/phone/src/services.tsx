@@ -17,21 +17,16 @@ import { createFreeBytes } from './storage/freeSpace';
 import { createExpoSecureBackend, SecureKeyValueStore } from './storage/secureStore';
 import { openExpoDb, SqliteKeyValueStore } from './storage/sqliteStore';
 import { ShiftController } from './shift/controller';
-import { PUMP_LIMIT, PointFeed } from './shift/feed';
+import { PointFeed } from './shift/feed';
 import { PhoneEdits } from './store/edits';
-import { ShiftStore, type ServerRecon, type ServerShift } from './store/shiftStore';
-import { SyncDrain } from './sync/drain';
+import { ShiftStore } from './store/shiftStore';
 import { DeviceSession } from './pairing/deviceSession';
 import { ConnectionMonitor } from './sync/connection';
-import { ChangePuller } from './sync/pull';
-import { buildStatus, storageState, type SyncStatus } from './sync/status';
-import { Outbox, shiftOf } from './sync/outbox';
-import { OutboxRunner } from './sync/runner';
-import { RestoreResend } from './sync/resend';
+import { Outbox } from './sync/outbox';
+import { createSender, type Sender } from './sync/sender';
 import { QrScanner as CameraQrScanner } from './pairing/QrScanner';
 import { createLazyNativeTracker, nativeBattery, nativeLocationSwitch } from './tracker/native';
 import type { Tracker } from './tracker/types';
-import { UploadWorker } from './upload/worker';
 
 /** A camera view that reports each decoded QR text. Absent until the camera adapter is wired. */
 export type QrScanner = ComponentType<{ onScanned: (text: string) => void; busy?: boolean }>;
@@ -52,38 +47,28 @@ export interface Services {
   permissions: PermissionsPort;
   /** VPN state and the Tailscale app, for the connection messages (19 section 3.5). */
   net: NetPort;
+  /** Pairing, settings and the device session (`pairing.device`), which holds every halt of sending. */
   pairing: Pairing;
-  /** Holds every halt of sending (revoked, wrong server, sign-in problem); `resume` lifts them all. */
-  device: DeviceSession;
-  feed: PointFeed;
+  /** Records shifts: start, the live distance, "End shift" and the hand-off to the sender. */
   shift: ShiftController;
   /** Shifts, trips and results on the phone (`app.db`). */
   shifts: ShiftStore;
-  outbox: Outbox;
   /** Trip, odometer and notes edits made on the phone. */
   edits: PhoneEdits;
-  runner: OutboxRunner;
-  /** Backlog drain: shifts oldest first, with progress, cancel and the live shift first (15 section 6). */
-  sync: SyncDrain;
-  puller: ChangePuller;
-  monitor: ConnectionMonitor;
-  /** Sends again what a server restored from a backup lost (15 section 9.3). */
-  resend: RestoreResend;
+  /** Sending to the server: the one status the screens show, "Sync now", the send loop. */
+  sender: Sender;
   /** Plain key-value storage (caches, flags). */
   plain: KeyValueStore;
-  /** The numbers behind the home banner. */
-  status: () => Promise<SyncStatus>;
   /** The phone's own OS notifications; do nothing without the notifications permission. */
   notifications: NotificationsPort;
   /** The unsynced reminder as an OS notification (15 section 4.4), kept in step with the banner. */
   reminders: UnsyncedReminders;
-  uploader: UploadWorker;
   diagnostics: PhoneDiagnostics;
   /** Loads the diagnostics ring, applies the cached level and records `app.start` (once). */
   startDiagnostics: () => Promise<void>;
   /** Closes a 10-minute window: `upload.window`, `diag.self`, then sends the ring. */
   diagnosticsWindow: () => Promise<void>;
-  /** Start the upload loop when the home screen opens. Default on; tests turn it off. */
+  /** Start the send loop when the home screen opens. Default on; tests turn it off. */
   autoUpload?: boolean;
   scanner?: QrScanner;
   /** How often the running distance is re-read, ms. */
@@ -156,52 +141,25 @@ export function createServices(p: Parts): Services {
   const feed = new PointFeed(p.tracker);
   const session = () => pairing.session();
   const shifts = new ShiftStore(appDb, p.now);
-  const outbox = new Outbox(appDb, p.now);
+  // The queue between the ones who change shifts (the recorder, the edits) and the sender.
+  const queue = new Outbox(appDb, p.now);
   const edits = new PhoneEdits({
     db: appDb,
     store: shifts,
-    outbox,
+    queue,
     gnssOffsetMs: () => p.tracker.gnssOffsetMs(),
     now: p.now,
     newId: p.newId,
   });
-  const runner = new OutboxRunner({
-    outbox,
-    session,
-    device,
-    rand: p.rand,
-    // shift.end waits until every point of the shift is uploaded or quarantined (15 section 6.2).
-    // After a restore nothing of a shift goes out before the server has it again (15 section 9.3).
-    canSend: async (item): Promise<boolean> =>
-      !(await resend.holds(shiftOf(item.entityKey))) &&
-      (item.kind !== 'shift.end' ||
-        !feed.readPending(PUMP_LIMIT).some((pt) => pt.shiftClientId === shiftOf(item.entityKey))),
-    onSent: async ({ item, outcome, response }) => {
-      if (item.kind !== 'shift.end') return;
-      const id = shiftOf(item.entityKey);
-      const body = response?.data as (ServerShift & { recon?: ServerRecon }) | undefined;
-      if (outcome === 'sent' && typeof body?.id === 'number') {
-        await shifts.applyEnd(id, body, body.recon ?? null);
-      } else {
-        await shifts.setSyncState(id, 'on_server');
-      }
-    },
-    onParked: (item) => shifts.setSyncState(shiftOf(item.entityKey), 'needs_attention'),
-  });
-  // The worker and the shift controller need each other: the worker asks whether a shift is
-  // created and to flush the outbox; the controller waits for the worker before it sends `end`.
-  const late: { uploader?: UploadWorker } = {};
   const shift = new ShiftController({
     tracker: p.tracker,
     feed,
     store: p.plain,
     shifts,
-    outbox,
-    runner,
+    queue,
     session,
     now: p.now,
     newId: p.newId,
-    beforeEnd: (id) => late.uploader!.drainShift(id),
     battery: p.battery,
     onSummary: async (id, summary) => {
       await diagnostics.load();
@@ -209,71 +167,25 @@ export function createServices(p: Parts): Services {
       await diagnostics.persist();
     },
   });
-  const uploader = new UploadWorker({
-    tracker: p.tracker,
-    feed,
-    session,
-    device,
-    shiftReady: (id) => shift.isCreated(id),
-    shiftParked: (id) => shift.isParked(id),
-    evictBlocked: () => monitor.restored || resend.blocksEviction(),
-    flushOutbox: () => shift.sync(),
-    now: p.now,
-    rand: p.rand,
-  });
-  late.uploader = uploader;
-  const resend: RestoreResend = new RestoreResend({
+  const sender = createSender({
     db: appDb,
+    queue,
     store: shifts,
-    outbox,
-    runner,
     tracker: p.tracker,
     feed,
+    recorder: shift,
+    session,
+    device,
     monitor,
-    session,
-    device,
-    now: p.now,
-    rand: p.rand,
-  });
-  const puller = new ChangePuller({
-    db: appDb,
-    outbox,
-    session,
-    device,
-    onSettings: (s) => pairing.storeSettings(s),
-    now: p.now,
-  });
-  const sync = new SyncDrain({
-    pull: (force) => puller.pull({ force }),
     handshake: async () => {
       const st = await pairing.load();
       if (st) await pairing.refreshSettings(st);
     },
-    store: shifts,
-    outbox,
-    runner,
-    uploader,
-    feed,
-    controller: shift,
-    resend,
+    onSettings: (s) => pairing.storeSettings(s),
+    freeBytes: p.freeBytes,
     now: p.now,
+    rand: p.rand,
   });
-
-  const status = async () => {
-    const state = uploader.lastState;
-    const counts = await outbox.counts();
-    const halt = await device.halted();
-    return buildStatus({
-      shifts: await shifts.list(),
-      parkedItems: counts.parked,
-      oldestQueuedAt: counts.oldestAt,
-      wrongServer: halt === 'wrong_server',
-      restored: monitor.restored || resend.active,
-      halted: halt === 'wrong_server' ? null : halt,
-      offline: state === 'backoff' || state === 'waiting_create',
-      storage: storageState((await p.freeBytes?.()) ?? null),
-    });
-  };
 
   const notifications =
     p.notifications ?? createNotifications({ permissions: p.permissions, backend: null });
@@ -298,7 +210,7 @@ export function createServices(p: Parts): Services {
     const pending = p.tracker.readPending(10_000);
     const now = (p.now ?? Date.now)();
     const oldest = pending[0] ? Math.max(0, Math.round((now - pending[0].recordedAt) / 1000)) : 0;
-    diagnostics.recordUploadWindow(uploader.takeStats(), pending.length, oldest);
+    diagnostics.recordUploadWindow(sender.takeUploadStats(), pending.length, oldest);
     diagnostics.recordSelf();
     const s = await session();
     if (s) await diagnostics.flush(s.client);
@@ -310,22 +222,13 @@ export function createServices(p: Parts): Services {
     permissions: p.permissions,
     net: p.net,
     pairing,
-    device,
-    feed,
     shift,
     shifts,
-    outbox,
     edits,
-    runner,
-    sync,
-    puller,
-    monitor,
-    resend,
+    sender,
     plain: p.plain,
-    status,
     notifications,
     reminders,
-    uploader,
     diagnostics,
     startDiagnostics,
     diagnosticsWindow,
