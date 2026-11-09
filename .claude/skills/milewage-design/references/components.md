@@ -20,6 +20,18 @@ files unedited (coverage excludes them for the same reason). Imports use the `@/
 | `StatCard`  | One figure with its label and an optional line under it. Dashboards and the tops of pages.             |
 | `EmptyState`| What a list says when it has nothing in it: what it is and what to do next.                            |
 | `TableBox` + `tableClass` | The bordered, scrollable box around a plain `<table>`; shadcn's table look (muted header, row rules, hover). |
+| `MoreCard` (`ui/MoreCard.tsx`) | Quieter tools folded under their names in one card (a shift's odometer, notes and export; the tax details), so a page is not a column of empty cards. |
+| `Est` (`ui/Est.tsx`) | The asterisk an estimated figure always carries ("Estimated from detected stops"). Totals never do. |
+
+A page file is a screen (or one panel of a screen), never a library: a helper, hook or type that
+another file needs lives in a module (`format.ts`, `days.ts`, `goals.ts`, `vehicles.ts`,
+`notifications.ts`, `pairing/`, `shift/`), and a primitive another screen needs lives in `ui/`.
+
+The shift page reads one record: `useShiftRecord(ref)` (`apps/web/src/shift/record.ts`) gives the
+shift, its trips, stops, route, earnings, odometer readings and vehicle from the cached reads, and
+`view`, the pure `shiftView(record, settings)` (`shift/view.ts`) with every layout flag and header
+figure. Its panels take their part of the record as props and report nothing back up; a new
+layout rule goes into `shiftView` and its table test (`test/shiftview.test.ts`), not the page.
 
 Page error handling: `PageErrorBoundary` keeps the sidebar usable and offers "Try again", which
 drops the cached answers and draws the page again.
@@ -55,7 +67,11 @@ defaults. Money fields show and read minor units through `moneyInput` and `parse
   format, a table with a caption that screen readers always get and a "Show as a table" toggle for
   everyone, and an `EmptyState` when there is nothing. Follow it for any new chart; add no chart
   library.
-- `Qr`: the pairing code.
+- `Qr`: a QR image. `PairingCode` (`apps/web/src/pairing/PairingCode.tsx`) is the pairing QR with its
+  links, addresses and Change address, over `usePairingSession()` (`pairing/session.ts`: `{ code,
+  state, error, busy, renew }`), which mints the code, polls for the phone with `refetchInterval`
+  and replaces a code that runs out. Devices and the setup wizard both use it; a new place that
+  pairs a phone does too.
 
 ## Web: states and feedback
 

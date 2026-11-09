@@ -1,59 +1,50 @@
 import { useState } from 'react';
 import { Section } from '../ui/layout';
 import type { Schemas } from '../api/client';
-import { errorText, useApiQuery, useChange } from '../api/query';
+import { errorText, useChange } from '../api/query';
 import { useSettings } from '../session';
 import { Button, Field, FormError } from '../ui/form';
-import { dayOf } from '../days';
-import { toMetres } from './Odometer';
+import { distanceInput, parseDistance } from '../format';
+import type { ShiftReadings } from '../shift/record';
+import type { Read } from '../shift/view';
 
 type Kind = 'shift_start' | 'shift_end';
 
-const M_PER_MILE = 1609.344;
 const KINDS: { kind: Kind; label: string }[] = [
   { kind: 'shift_start', label: 'Start' },
   { kind: 'shift_end', label: 'End' },
 ];
 
-const inUnit = (m: number, unit: 'km' | 'mi') =>
-  String(Math.round((unit === 'km' ? m / 1000 : m / M_PER_MILE) * 10) / 10);
-
 /** The optional start and end odometer readings of one shift (07 section 2), editable here. */
-export function ShiftOdometer({ shift, bare }: { shift: Schemas['Shift']; bare?: boolean }) {
-  const { distance_unit: unit, timezone } = useSettings();
-  // A shift that runs past midnight can have its end reading on the next local day.
-  const lastDay = shift.ended_at ? dayOf(shift.ended_at, timezone) : shift.local_date;
+export function ShiftOdometer({
+  shift,
+  readings,
+  bare,
+}: {
+  shift: Schemas['Shift'];
+  /** The shift's readings from the shift record. */
+  readings: Read<ShiftReadings>;
+  bare?: boolean;
+}) {
+  const { distance_unit: unit } = useSettings();
   const [edits, setValues] = useState<Record<Kind, string> | null>(null);
   const change = useChange();
   const [saved, setSaved] = useState<Kind | null>(null);
   const locked = shift.status === 'finalized';
-  const readings = (kind: Kind) => ({
-    params: {
-      query: {
-        vehicle_id: shift.vehicle_id,
-        kind,
-        from: shift.local_date,
-        to: lastDay > shift.local_date ? lastDay : shift.local_date,
-      },
-    },
-  });
-  const starts = useApiQuery('/odometer', readings('shift_start'));
-  const ends = useApiQuery('/odometer', readings('shift_end'));
-  const mine = (list: Schemas['OdometerReading'][]) => list.find((r) => r.shift_id === shift.id);
-  const [a, b] = [starts.data && mine(starts.data), ends.data && mine(ends.data)];
+  const held = readings.data;
   // What the driver typed, else what the server holds.
   const values: Record<Kind, string> | null =
     edits ??
-    (starts.data && ends.data
+    (held
       ? {
-          shift_start: a ? inUnit(a.reading_m, unit) : '',
-          shift_end: b ? inUnit(b.reading_m, unit) : '',
+          shift_start: held.start ? distanceInput(held.start.reading_m, unit) : '',
+          shift_end: held.end ? distanceInput(held.end.reading_m, unit) : '',
         }
       : null);
-  const error = errorText(change, starts, ends);
+  const error = errorText(change, readings);
 
   async function save(kind: Kind) {
-    const metres = toMetres(values?.[kind] ?? '', unit);
+    const metres = parseDistance(values?.[kind] ?? '', unit);
     if (metres === null) return change.setError(`Enter the odometer as a number of ${unit}.`);
     setSaved(null);
     const done = await change.run((api) =>

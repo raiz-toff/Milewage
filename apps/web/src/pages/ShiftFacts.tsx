@@ -1,9 +1,9 @@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useApiQuery } from '../api/query';
 import type { Schemas, Settings } from '../api/client';
 import { deductionWord, formatDistance, formatDuration, formatMoney } from '../format';
-import type { PlatformLike } from '../platforms/PlatformBadge';
+import { adviceFor } from '../shift/advice';
+import type { EarnedSummary } from '../shift/view';
 import { Section, StatCard } from '../ui/layout';
 
 type Shift = Schemas['Shift'];
@@ -27,27 +27,6 @@ const FLAG_WORDS: Record<string, string> = {
 };
 export const flagWords = (code: string) => FLAG_WORDS[code] ?? code;
 
-/** What the driver can do about a check; several checks can share one piece of advice. */
-export const PERMISSIONS =
-  'In the MileWage phone app, open Permissions: location “Allow all the time” and battery use “unrestricted”, so the phone keeps recording with the screen off.';
-const ADVICE: Record<string, string> = {
-  low_fix_density: PERMISSIONS,
-  tracking_interrupted: PERMISSIONS,
-  gap_large: PERMISSIONS,
-  gap_dropped: PERMISSIONS,
-  poor_accuracy_share: 'Keep the phone where it can see the sky, for example on the dashboard.',
-  clock_skew: "Set the phone's date and time to automatic.",
-  shift_auto_closed: 'End the shift on the phone when you stop working.',
-  phone_missing:
-    'Open MileWage on the phone while it has a connection, so it can send anything it still holds.',
-};
-
-/** The advice for a shift's checks, each piece once, in the order of the checks. */
-export function adviceFor(shift: Shift, extra: string[] = []): string[] {
-  const codes = [...(shift.flags ?? []).map((f) => f.code), shift.recon_status ?? ''];
-  return [...new Set([...codes.map((c) => ADVICE[c]), ...extra])].filter((a): a is string => !!a);
-}
-
 /** The phone check (recon_status): did the phone's own result match the server's? */
 const RECON_WORDS: Record<NonNullable<Shift['recon_status']>, string> = {
   pending: "Waiting for the phone's result.",
@@ -55,25 +34,6 @@ const RECON_WORDS: Record<NonNullable<Shift['recon_status']>, string> = {
   differs: 'The phone and the server worked out different totals.',
   phone_missing: "The phone's result never arrived.",
 };
-
-/** The name of the shift's vehicle, or null while unknown. */
-export function useVehicleName(id: number): string | null {
-  // The name is a nicety; the page works without it, so a failed request just leaves it out.
-  const list = useApiQuery(
-    '/vehicles',
-    { params: { query: { include_archived: true } } },
-    { enabled: !!id },
-  ).data;
-  return (id && list?.find((v) => v.id === id)?.name) || null;
-}
-
-/** What the earnings block reports up for the figures and the header. */
-export interface EarnedSummary {
-  /** Effective earnings of the shift; null when nothing was entered or labelled. */
-  cents: number | null;
-  /** The platforms with earnings, for the page header. */
-  platforms: PlatformLike[];
-}
 
 /**
  * The shift's key figures. Total distance is never marked estimated; the active and deadhead

@@ -12,39 +12,26 @@ import { describe, unwrap } from '../api/client';
 import type { Schemas, Settings } from '../api/client';
 import { useApiQuery } from '../api/query';
 import { deductionWord, formatDistance, formatDuration, formatMoney, formatTime } from '../format';
-import { RouteView, useShiftRoute } from '../map/RouteView';
+import { RouteView } from '../map/RouteView';
 import { PlatformName } from '../platforms/PlatformBadge';
 import { addDays, dateWords, todayIn, weekOf, weekWords } from '../days';
 import { useSession, useSettings } from '../session';
+import { useShiftRecord } from '../shift/record';
+import { reviewCount, showsSplit } from '../shift/view';
+import type { Picked } from '../shift/view';
 import { FormError } from '../ui/form';
 import { ExportButtons } from './Exports';
 import { AddTrip } from './AddTrip';
 import { ShiftEarnings } from './ShiftEarnings';
-import { ShiftChecks, ShiftFigures, useVehicleName } from './ShiftFacts';
-import type { EarnedSummary } from './ShiftFacts';
+import { ShiftChecks, ShiftFigures } from './ShiftFacts';
 import { ShiftOdometer } from './ShiftOdometer';
-import { InProgressCard, MoreCard, NoRouteCard, ShiftNotes } from './ShiftStates';
+import { InProgressCard, NoRouteCard, ShiftNotes } from './ShiftStates';
+import { Est } from '../ui/Est';
+import { MoreCard } from '../ui/MoreCard';
 import { ShiftTimeline } from './ShiftTimeline';
-import type { Picked } from './ShiftTimeline';
-import { StopsPanel, useShiftStops } from './Stops';
-import { useShiftTrips } from './Trips';
+import { StopsPanel } from './Stops';
 
 type Shift = Schemas['Shift'];
-
-/** The split is shown only while stops are on and only for a shift that was segmented by stops. */
-export const showsSplit = (s: Shift, settings: Settings) =>
-  settings.modules.stops && s.segmenter === 'stops';
-
-const count = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
-
-/** An estimate always carries its marker (05 section 3.1a). Totals never do. */
-export function Est() {
-  return (
-    <abbr title="Estimated from detected stops" className="ml-0.5 cursor-help no-underline">
-      *
-    </abbr>
-  );
-}
 
 const isDate = (d: string | null): d is string => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d);
 
@@ -123,7 +110,7 @@ export function ShiftCard({ shift, settings }: { shift: Shift; settings: Setting
   const unit = settings.distance_unit;
   const tz = settings.timezone;
   const split = showsSplit(shift, settings);
-  const review = shift.flags?.filter((f) => f.severity === 'review').length ?? 0;
+  const review = reviewCount(shift);
   return (
     <Link
       to={`/shifts/${shift.id}`}
@@ -383,56 +370,18 @@ export function ShiftList() {
 export function ShiftDetail() {
   const { ref } = useParams();
   const settings = useSettings();
-  const asked = { path: { ref: ref ?? '' } };
-  const shiftQuery = useApiQuery('/shifts/{ref}', { params: asked });
-  const shift = shiftQuery.data ?? null;
-  const error = shiftQuery.error ? describe(shiftQuery.error) : null;
-  const [earned, setEarned] = useState<EarnedSummary | null>(null);
-  const vehicle = useVehicleName(shift?.vehicle_id ?? 0);
+  const record = useShiftRecord(ref ?? '');
+  const { shift, view, trips, stops } = record;
   const [picked, setPicked] = useState<Picked>(null);
   const [adding, setAdding] = useState(false);
-  const { trips, error: tripsError } = useShiftTrips(shift?.id ?? 0);
-  const stopsData = useShiftStops(shift?.id ?? 0, !!shift && settings.modules.stops);
-  // A running shift has no route yet (worked out when it ends), so it is not asked for.
-  const route = useShiftRoute(
-    shift?.id ?? 0,
-    !!shift && shift.status !== 'active' && settings.modules.replay,
-  );
 
-  if (error && !shift)
+  if (record.error && !shift)
     return (
       <p role="alert" className="text-muted-foreground">
-        {error}
+        {record.error}
       </p>
     );
-  if (!shift) return <p className="text-muted-foreground">Loading</p>;
-  const active = shift.status === 'active';
-  // The split means nothing on a shift with no distance yet (running, or nothing recorded).
-  const split = showsSplit(shift, settings) && !!shift.total_m;
-  const tz = settings.timezone;
-  const replay = settings.modules.replay;
-  const showEarnings = settings.modules.earnings && !active;
-  const review = shift.flags?.filter((f) => f.severity === 'review').length ?? 0;
-  const context = [
-    `${formatTime(shift.started_at, tz)} – ${shift.ended_at ? formatTime(shift.ended_at, tz) : 'now'}`,
-    formatDuration(shift.started_at, shift.ended_at),
-    vehicle,
-  ].filter(Boolean);
-  const platforms = showEarnings ? (earned?.platforms ?? []) : [];
-  const stops = stopsData.stops ?? [];
-  // Nothing was recorded: no trips, no stops and no route points (or no map to ask).
-  const empty =
-    !active && trips?.length === 0 && stops.length === 0 && (!replay || route.points?.length === 0);
-  const orphans = shift.flags?.some((f) => f.code === 'label_orphaned');
-  // Only start and end in the timeline.
-  const sparse = active || empty;
-  // Little to show (also a shift without stops): the quieter tools fold into one "More" card.
-  const folded = sparse || (stopsData.stops?.length === 0 && !orphans);
-  // Label stops only when there is a stop to label, or a label that lost its stop.
-  const showLabels =
-    settings.modules.stops && (stopsData.stops === null || stops.length > 0 || orphans);
-  const exporters = settings.modules.exporters.length > 0 && !active;
-
+  if (!shift || !view) return <p className="text-muted-foreground">Loading</p>;
   const notes = (bare?: boolean) => <ShiftNotes shift={shift} bare={bare} />;
   const exportButtons = <ExportButtons selection={{ shift_id: shift.id }} />;
 
@@ -453,8 +402,8 @@ export function ShiftDetail() {
         })}
         description={
           <span className="tabular-nums">
-            {context.join(' · ')}
-            {platforms.map((p) => (
+            {view.context}
+            {view.platforms.map((p) => (
               <span key={p.slug}>
                 {' · '}
                 <PlatformName platform={p} className="align-middle" />
@@ -464,9 +413,9 @@ export function ShiftDetail() {
         }
       >
         <StatusBadge shift={shift} />
-        {review > 0 ? (
+        {view.review > 0 ? (
           <Badge asChild variant="outline" className="border-primary/60">
-            <a href="#checks">{review} to review</a>
+            <a href="#checks">{view.review} to review</a>
           </Badge>
         ) : null}
       </PageHeader>
@@ -475,11 +424,11 @@ export function ShiftDetail() {
         <ShiftFigures
           shift={shift}
           settings={settings}
-          split={split}
-          earned={showEarnings ? earned : undefined}
+          split={view.split}
+          earned={view.earned}
           est={<Est />}
         />
-        {split ? (
+        {view.split ? (
           <p className="text-xs text-muted-foreground">* estimated from detected stops</p>
         ) : null}
       </div>
@@ -487,21 +436,25 @@ export function ShiftDetail() {
       <div
         className={cn(
           'grid items-start gap-6',
-          (replay || sparse) && '@3xl:grid-cols-[minmax(0,1fr)_22rem]',
+          view.sideBySide && '@3xl:grid-cols-[minmax(0,1fr)_22rem]',
         )}
       >
         <div className="min-w-0">
-          {active ? (
+          {view.main === 'in-progress' ? (
             <InProgressCard earnings={settings.modules.earnings} />
-          ) : empty ? (
+          ) : view.main === 'nothing-recorded' ? (
             <div id="checks" className="scroll-mt-20">
-              <NoRouteCard shift={shift} replay={replay} onAdd={() => setAdding(true)} />
+              <NoRouteCard
+                shift={shift}
+                replay={settings.modules.replay}
+                onAdd={() => setAdding(true)}
+              />
             </div>
-          ) : replay ? (
+          ) : view.main === 'map' ? (
             <RouteView
-              route={route}
-              trips={trips ?? undefined}
-              stops={stopsData.stops ?? undefined}
+              route={record.route}
+              trips={trips.data ?? undefined}
+              stops={stops.data ?? undefined}
               picked={picked}
               onPick={setPicked}
             />
@@ -516,43 +469,29 @@ export function ShiftDetail() {
           title="Timeline"
           action={
             // With nothing recorded, the button sits in the card that explains why (once).
-            shift.status === 'ended' && !adding && !empty ? (
+            view.canAddTrip && !adding ? (
               <UiButton variant="outline" size="sm" onClick={() => setAdding(true)}>
                 Add a trip
               </UiButton>
             ) : undefined
           }
-          description={
-            sparse
-              ? 'Start and end only'
-              : trips
-                ? [count(trips.length, 'trip'), stopsData.stops && count(stops.length, 'stop')]
-                    .filter(Boolean)
-                    .join(' · ')
-                : undefined
-          }
+          description={view.timelineNote}
         >
-          {adding ? (
-            <AddTrip
-              shift={shift}
-              onCancel={() => setAdding(false)}
-              onSaved={() => setAdding(false)}
-            />
-          ) : null}
-          {tripsError ? (
-            <p className="text-muted-foreground">Trips could not be loaded. {tripsError}</p>
-          ) : trips === null ? (
+          {adding ? <AddTrip shift={shift} onClose={() => setAdding(false)} /> : null}
+          {trips.error ? (
+            <p className="text-muted-foreground">Trips could not be loaded. {trips.error}</p>
+          ) : trips.data === null ? (
             <p className="text-muted-foreground">Loading trips</p>
           ) : (
             <div data-timeline-scroll className="@3xl:max-h-[30rem] @3xl:overflow-y-auto">
-              {trips.length === 0 && !sparse ? (
+              {view.noTrips ? (
                 <p className="mb-2 text-muted-foreground">No trips were recorded.</p>
               ) : null}
               <ShiftTimeline
                 shift={shift}
-                trips={trips}
-                stops={stops}
-                split={split}
+                trips={trips.data}
+                stops={stops.data ?? []}
+                split={view.split}
                 est={<Est />}
                 picked={picked}
                 onPick={setPicked}
@@ -562,31 +501,31 @@ export function ShiftDetail() {
         </Section>
       </div>
 
-      {folded ? (
+      {view.folded ? (
         <div
           className={cn(
             'grid items-start gap-6',
-            showEarnings && '@3xl:grid-cols-[minmax(0,1fr)_22rem]',
+            view.showEarnings && '@3xl:grid-cols-[minmax(0,1fr)_22rem]',
           )}
         >
-          {showEarnings ? (
+          {view.showEarnings ? (
             <div className="min-w-0">
-              <ShiftEarnings shift={shift} onSummary={setEarned} />
+              <ShiftEarnings shift={shift} earnings={record.earnings} />
             </div>
           ) : null}
-          <div className={cn('min-w-0 space-y-6', !showEarnings && 'max-w-xl')}>
-            {sparse ? null : (
+          <div className={cn('min-w-0 space-y-6', !view.showEarnings && 'max-w-xl')}>
+            {view.checks ? (
               <div id="checks" className="scroll-mt-20">
                 <ShiftChecks shift={shift} />
               </div>
-            )}
+            ) : null}
             <MoreCard
               rows={[
                 {
                   key: 'odometer',
                   title: 'Odometer',
                   hint: 'Start and end readings, if you noted them',
-                  body: <ShiftOdometer shift={shift} bare />,
+                  body: <ShiftOdometer shift={shift} readings={record.odometer} bare />,
                 },
                 {
                   key: 'notes',
@@ -595,7 +534,7 @@ export function ShiftDetail() {
                   open: !!shift.notes,
                   body: notes(true),
                 },
-                ...(exporters
+                ...(view.exporters
                   ? [
                       {
                         key: 'export',
@@ -612,15 +551,15 @@ export function ShiftDetail() {
       ) : (
         <div className="grid items-start gap-6 @3xl:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="min-w-0 space-y-6">
-            {showEarnings ? <ShiftEarnings shift={shift} onSummary={setEarned} /> : null}
-            <ShiftOdometer shift={shift} />
+            {view.showEarnings ? <ShiftEarnings shift={shift} earnings={record.earnings} /> : null}
+            <ShiftOdometer shift={shift} readings={record.odometer} />
           </div>
           <div className="min-w-0 space-y-6">
             <div id="checks" className="scroll-mt-20">
               <ShiftChecks shift={shift} />
             </div>
             {notes()}
-            {exporters ? (
+            {view.exporters ? (
               <Section label="Export" title="Export this shift">
                 {exportButtons}
               </Section>
@@ -629,13 +568,13 @@ export function ShiftDetail() {
         </div>
       )}
 
-      {showLabels && (!folded || orphans) ? (
+      {view.stopsCard ? (
         <Section
           label="Stops"
           title="Label stops"
           description="Optional. A label corrects the estimate for that stop and adds its payout."
         >
-          <StopsPanel shift={shift} data={stopsData} />
+          <StopsPanel shift={shift} data={stops} />
         </Section>
       ) : null}
     </section>

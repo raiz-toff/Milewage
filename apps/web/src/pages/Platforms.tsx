@@ -9,20 +9,13 @@ import { Button, Field, FormError } from '../ui/form';
 import { PlatformBadge } from '../platforms/PlatformBadge';
 import { RowMenu } from '../ui/RowMenu';
 import type { RowAction } from '../ui/RowMenu';
+import { slugOf } from '../platforms/usePlatforms';
 
 type Platform = Schemas['Platform'];
 
 /** What the server takes for a platform's logo (plan 25 section 7). */
 const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const LOGO_MAX_BYTES = 256 * 1024;
-
-/** The slug of a platform the driver names; empty when the name has no letters or digits. */
-export const slugOf = (name: string) =>
-  name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .slice(0, 32);
 
 /** Settings card of the `platforms` module (18 section 4.2): switch platforms on or off, add your own. */
 export function PlatformsCard() {

@@ -10,7 +10,7 @@ import { useApiQuery } from '../api/query';
 import { formatDistance, formatMoney } from '../format';
 import { useSettings } from '../session';
 import { PERIODS, dateWords, dayOf, weekWords } from '../days';
-import { Est } from './Shifts';
+import { Est } from '../ui/Est';
 
 type Summary = Schemas['Summary'];
 type Range = { from: string; to: string };

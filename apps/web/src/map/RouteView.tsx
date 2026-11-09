@@ -9,7 +9,7 @@ import { useSettings } from '../session';
 import { positionAt, speedIn, timeAt, toPoints } from './route';
 import type { RoutePoint } from './route';
 import type { MapPick, MapStop } from './MapView';
-import type { Picked } from '../pages/ShiftTimeline';
+import type { Picked } from '../shift/view';
 
 const MapView = lazy(() => import('./MapView'));
 const STEPS = 1000;

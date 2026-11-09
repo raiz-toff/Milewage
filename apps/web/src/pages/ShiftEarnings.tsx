@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Section } from '../ui/layout';
 import { Button as UiButton } from '@/components/ui/button';
 import type { FormEvent } from 'react';
 import type { Schemas } from '../api/client';
 import { errorText, put, useApiQuery, useChange } from '../api/query';
 import { formatMoney, parseMoney } from '../format';
+import type { Read } from '../shift/view';
 import { EarningLedger } from './EarningLedger';
-import type { EarnedSummary } from './ShiftFacts';
 import { useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
 import { PlatformBadge, PlatformName } from '../platforms/PlatformBadge';
@@ -22,16 +22,15 @@ type Earnings = Schemas['ShiftEarnings'];
  */
 export function ShiftEarnings({
   shift,
-  onSummary,
+  earnings,
 }: {
   shift: Schemas['Shift'];
-  /** Told the shift's earned total and platform names whenever they change. */
-  onSummary?: (s: EarnedSummary) => void;
+  /** The shift's earnings from the shift record. */
+  earnings: Read<Earnings>;
 }) {
   const { currency, modules } = useSettings();
   const path = { ref: String(shift.id) };
-  const earnings = useApiQuery('/shifts/{ref}/earnings', { params: { path } });
-  const data = earnings.data ?? null;
+  const data = earnings.data;
   const platforms = useApiQuery('/platforms', undefined, { enabled: modules.platforms }).data ?? [];
   const change = useChange();
   const error = errorText(change, earnings);
@@ -93,14 +92,6 @@ export function ShiftEarnings({
   const platformOf = (slug: string): PlatformLike =>
     known.find((p) => p.slug === slug) ?? { slug, label: builtinPlatform(slug)?.label ?? slug };
   const label = (slug: string) => platformOf(slug).label;
-  const shown = JSON.stringify(data?.effective.map((r) => platformOf(r.platform)));
-  useEffect(() => {
-    if (!data) return;
-    onSummary?.({
-      cents: data.effective.length ? data.effective.reduce((t, r) => t + r.total_cents, 0) : null,
-      platforms: JSON.parse(shown) as PlatformLike[],
-    });
-  }, [data, shown, onSummary]);
 
   // Nothing yet: one line says so and how, and the less common lines wait behind a button.
   const none = data?.effective.length === 0;

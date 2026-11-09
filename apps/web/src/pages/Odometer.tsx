@@ -6,22 +6,13 @@ import { Link } from 'react-router-dom';
 import { unwrap } from '../api/client';
 import { apiKey, errorText, useApiQuery, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
-import { formatDateTime, formatDistance } from '../format';
+import { formatDateTime, formatDistance, parseDistance } from '../format';
 import { useSession, useSettings } from '../session';
 import { Button, DateField, Field, FormError, SelectField } from '../ui/form';
 import { dayOf, startOfDay, todayIn } from '../days';
 
 type Reading = Schemas['OdometerReading'];
 type Kind = 'year_start' | 'year_end';
-
-const M_PER_MILE = 1609.344;
-
-/** A typed odometer value in the driver's unit to whole metres; null when it is not a number. */
-export function toMetres(text: string, unit: 'km' | 'mi'): number | null {
-  const t = text.trim().replace(/,/g, '');
-  if (!/^\d+(\.\d+)?$/.test(t)) return null;
-  return Math.round(Number(t) * (unit === 'km' ? 1000 : M_PER_MILE));
-}
 
 const KIND_TEXT: Record<Reading['kind'], string> = {
   year_start: 'Year start',
@@ -65,7 +56,7 @@ export function OdometerPage() {
   const [value, setValue] = useState('');
 
   async function add() {
-    const metres = toMetres(value, unit);
+    const metres = parseDistance(value, unit);
     if (metres === null) return change.setError(`Enter the odometer as a number of ${unit}.`);
     if (date > todayIn(timezone)) return change.setError('The date cannot be in the future.');
     const saved = await change.run((api) =>

@@ -59,7 +59,7 @@ import { Login } from './pages/Login';
 import { RecoveryKey } from './pages/RecoveryKey';
 import { Restore } from './pages/Restore';
 import { Setup } from './pages/Setup';
-import { useUnread } from './pages/Notifications';
+import { useUnread } from './notifications';
 import { PageErrorBoundary } from './ui/ErrorBoundary';
 import { useSession } from './session';
 import { useTheme } from './theme';

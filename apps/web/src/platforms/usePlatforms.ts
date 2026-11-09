@@ -25,3 +25,11 @@ export function usePlatformOf(): (slug: string) => PlatformLike {
   );
 }
 const NONE: Schemas['Platform'][] = [];
+
+/** The slug of a platform the driver names; empty when the name has no letters or digits. */
+export const slugOf = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 32);

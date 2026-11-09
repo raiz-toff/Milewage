@@ -29,32 +29,11 @@ import {
 } from 'lucide-react';
 import { VehicleMaintenance } from './VehicleMaintenance';
 import { VehicleTaxYear } from './VehicleTaxYear';
+import { KINDS, OWNERSHIP, kindLabel, ownershipNote } from '../vehicles';
 
 type Vehicle = Schemas['Vehicle'];
 type Kind = Vehicle['kind'];
-
-export const KINDS: { value: Kind; label: string }[] = [
-  { value: 'car', label: 'Car' },
-  { value: 'van', label: 'Van' },
-  { value: 'motorcycle', label: 'Motorcycle' },
-  { value: 'bicycle', label: 'Bicycle' },
-  { value: 'ebike', label: 'E-bike' },
-  { value: 'scooter', label: 'Scooter' },
-  { value: 'walking', label: 'On foot' },
-];
-const kindLabel = (k: Kind) => KINDS.find((x) => x.value === k)?.label ?? k;
-
 type Ownership = Vehicle['ownership'];
-/** 21 section 3.6c: a record for the driver; no rate or tax rule reads it. */
-export const OWNERSHIP: { value: Ownership; label: string }[] = [
-  { value: 'owned', label: 'Owned' },
-  { value: 'financed', label: 'Financed (loan or hire purchase)' },
-  { value: 'leased', label: 'Leased' },
-  { value: 'rented', label: 'Rented' },
-];
-/** Shown on the card only when the vehicle is not owned outright. */
-const ownershipNote = (o: Ownership) =>
-  o === 'owned' ? '' : (OWNERSHIP.find((x) => x.value === o)?.label ?? '');
 
 const ICONS: Record<Kind, LucideIcon> = {
   car: Car,

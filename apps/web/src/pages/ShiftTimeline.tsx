@@ -5,14 +5,12 @@ import { cn } from '@/lib/utils';
 import type { Schemas } from '../api/client';
 import { formatDistance, formatTime } from '../format';
 import { useSettings } from '../session';
-import { kindOf } from './Trips';
+import { kindOf } from '../shift/view';
+import type { Picked } from '../shift/view';
 
 type Trip = Schemas['Trip'];
 type Stop = Schemas['Stop'];
 type Shift = Schemas['Shift'];
-
-/** The trip or stop chosen in the timeline (W2e: also on the map). */
-export type Picked = { kind: 'trip'; id: number } | { kind: 'stop'; key: string } | null;
 
 export type Entry =
   { kind: 'trip'; at: number; trip: Trip } | { kind: 'stop'; at: number; stop: Stop; n: number };

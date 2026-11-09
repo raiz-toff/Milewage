@@ -19,8 +19,9 @@ import { useApiQuery, useChange } from '../api/query';
 import { levelWord, useCountries } from '../countries';
 import { addDays } from '../days';
 import { settingsPatch, useSettings } from '../session';
-import { valueText } from './Goals';
-import { messageOf } from './Notifications';
+import { valueText } from '../goals';
+import { messageOf } from '../notifications';
+import { reviewCount } from '../shift/view';
 
 const PERIOD_WORD: Record<string, string> = {
   daily: "Today's goal",
@@ -346,8 +347,7 @@ export function Notices({ today }: { today: string }) {
   const c = useCountries().find((x) => x.code === country);
   const from = addDays(today, -29);
   const shifts = useApiQuery('/shifts', { params: { query: { from, to: today, limit: 200 } } });
-  const review =
-    shifts.data?.items.filter((s) => s.flags?.some((f) => f.severity === 'review')).length ?? 0;
+  const review = shifts.data?.items.filter((s) => reviewCount(s) > 0).length ?? 0;
   const unread = useApiQuery(
     '/notifications',
     { params: { query: { unread: true, limit: 50 } } },

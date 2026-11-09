@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { describe } from '../api/client';
 import type { Schemas } from '../api/client';
-import { put, useApiQuery, useChange } from '../api/query';
+import { put, useChange } from '../api/query';
 import { formatTime, minorDigits, moneyInput, parseMoney } from '../format';
 import { useSettings } from '../session';
 import { SortTable } from '../ui/SortTable';
 import type { Column } from '../ui/SortTable';
 import { Button, FormError, Picker } from '../ui/form';
+import type { Read } from '../shift/view';
 
 type Stop = Schemas['Stop'];
 type Shift = Schemas['Shift'];
@@ -68,13 +68,6 @@ const ROLES = [
 const FIELD =
   'w-full min-w-24 h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30';
 
-/** The detected stops of a shift; label saves update the list in place. */
-export function useShiftStops(shiftId: number, on: boolean) {
-  const params = { path: { ref: String(shiftId) } };
-  const q = useApiQuery('/shifts/{ref}/stops', { params }, { enabled: on });
-  return { stops: q.data ?? null, error: q.error ? describe(q.error) : null };
-}
-
 /**
  * Detected stops of a shift with optional labels (module `stops`, web only). A save or a clear
  * recomputes the shift on the server; its answer (the stop and the shift) is shown at once, so
@@ -82,10 +75,11 @@ export function useShiftStops(shiftId: number, on: boolean) {
  */
 export function StopsPanel({
   shift,
-  data: { stops, error },
+  data: { data: stops, error },
 }: {
   shift: Shift;
-  data: ReturnType<typeof useShiftStops>;
+  /** The shift's stops from the shift record. */
+  data: Read<Stop[]>;
 }) {
   const { currency, timezone } = useSettings();
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});

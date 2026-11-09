@@ -4,10 +4,9 @@ import type { FormEvent } from 'react';
 import { dateLocale, formatDay, todayIn } from '../days';
 import type { Schemas } from '../api/client';
 import { errorText, useApiQuery, useChange } from '../api/query';
-import { formatMoney } from '../format';
+import { formatMoney, formatOdometer, parseDistance, parseMoney } from '../format';
 import { useSettings } from '../session';
 import { Button, DateField, Field, FormError, SelectField } from '../ui/form';
-import { parseMoney } from '../format';
 
 type Log = Schemas['MaintenanceLog'];
 const KINDS = [
@@ -38,11 +37,9 @@ export function VehicleMaintenance({ vehicleId, name }: { vehicleId: number; nam
   async function add(e: FormEvent) {
     e.preventDefault();
     const cost = parseMoney(form.cost, currency);
-    const odo =
-      form.odometer.trim() === ''
-        ? null
-        : Math.round(Number(form.odometer) * (unit === 'km' ? 1000 : 1609.344));
-    if (!Number.isFinite(cost) || cost < 0 || (odo !== null && !Number.isFinite(odo))) {
+    const blank = form.odometer.trim() === '';
+    const odo = blank ? null : parseDistance(form.odometer, unit);
+    if (!Number.isFinite(cost) || cost < 0 || (!blank && odo === null)) {
       return change.setError('Cost and odometer must be numbers, zero or more.');
     }
     const saved = await change.run((api) =>
@@ -75,12 +72,7 @@ export function VehicleMaintenance({ vehicleId, name }: { vehicleId: number; nam
               <span>{label(l.kind)}</span>
               {l.cost_cents === null ? null : <span>{formatMoney(l.cost_cents, currency)}</span>}
               {l.odometer_m === null ? null : (
-                <span className="text-muted-foreground">
-                  {Math.round(l.odometer_m / (unit === 'km' ? 1000 : 1609.344)).toLocaleString(
-                    'en-CA',
-                  )}{' '}
-                  {unit}
-                </span>
+                <span className="text-muted-foreground">{formatOdometer(l.odometer_m, unit)}</span>
               )}
               {l.double_counts ? (
                 <span className="text-muted-foreground">covered by the mileage rate</span>

@@ -1,10 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { unwrap } from '../api/client';
-import { useChange } from '../api/query';
+import { useApiQuery, useChange } from '../api/query';
 import type { paths } from '@milewage/shared/generated/api-types';
-import { useSession } from '../session';
 import { Field, FormError } from '../ui/form';
 
 type Waiting =
@@ -18,31 +16,11 @@ export const LINK_POLL_MS = 3000;
  * driver types it here, next to the phone's name and address, so the right phone is linked
  * (RFC 8628, Jellyfin Quick Connect). Not a <form>: the wizard's phone step already sits in one.
  */
-export function LinkAPhone({ onLinked }: { onLinked?: (name: string) => void }) {
-  const { api } = useSession();
-  const [waiting, setWaiting] = useState<Waiting[] | null>(null);
+export function LinkAPhone() {
+  // A failed look is not shown: the list is asked for again on the next tick.
+  const waiting =
+    useApiQuery('/link-requests', undefined, { refetchInterval: LINK_POLL_MS }).data ?? null;
   const [linked, setLinked] = useState<string | null>(null);
-
-  useEffect(() => {
-    let live = true;
-    const look = () =>
-      unwrap(api.GET('/link-requests')).then(
-        (list) => live && setWaiting(list),
-        () => {}, // try again on the next tick
-      );
-    void look();
-    const timer = setInterval(() => void look(), LINK_POLL_MS);
-    return () => {
-      live = false;
-      clearInterval(timer);
-    };
-  }, [api]);
-
-  const done = (name: string, id: number) => {
-    setLinked(name);
-    setWaiting((w) => w?.filter((x) => x.id !== id) ?? null);
-    onLinked?.(name);
-  };
 
   return (
     <div role="region" aria-label="Link a phone on your Wi-Fi" className="space-y-3">
@@ -58,12 +36,7 @@ export function LinkAPhone({ onLinked }: { onLinked?: (name: string) => void }) 
       {waiting?.length ? (
         <ul className="space-y-3">
           {waiting.map((w) => (
-            <WaitingPhone
-              key={w.id}
-              phone={w}
-              onLinked={(name) => done(name, w.id)}
-              onDropped={() => setWaiting((l) => l?.filter((x) => x.id !== w.id) ?? null)}
-            />
+            <WaitingPhone key={w.id} phone={w} onLinked={setLinked} />
           ))}
         </ul>
       ) : waiting && !linked ? (
@@ -75,18 +48,10 @@ export function LinkAPhone({ onLinked }: { onLinked?: (name: string) => void }) 
   );
 }
 
-function WaitingPhone({
-  phone,
-  onLinked,
-  onDropped,
-}: {
-  phone: Waiting;
-  onLinked: (name: string) => void;
-  onDropped: () => void;
-}) {
+function WaitingPhone({ phone, onLinked }: { phone: Waiting; onLinked: (name: string) => void }) {
   const [code, setCode] = useState('');
   const { run, busy, error } = useChange();
-  // Not linking is not an error worth showing: the phone drops out of the list either way.
+  // Not linking is not an error worth showing: an unanswered request runs out on the server.
   const dropping = useChange();
 
   async function link() {
@@ -100,7 +65,6 @@ function WaitingPhone({
     await dropping.run((api) =>
       api.DELETE('/link-requests/{id}', { params: { path: { id: phone.id } } }),
     );
-    onDropped();
   }
 
   return (

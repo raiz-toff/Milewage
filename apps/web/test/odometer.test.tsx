@@ -2,7 +2,6 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startOfDay } from '../src/days';
-import { toMetres } from '../src/pages/Odometer';
 import { renderApp, settingsFixture, signedIn, pick, pickDay, pickDate } from './support/kit';
 import type { Handler } from './support/kit';
 
@@ -203,12 +202,5 @@ describe('odometer logbook', () => {
   it('says so when there is no vehicle', async () => {
     open([], {}, settingsFixture(), []);
     expect(await screen.findByText(/no vehicle yet/)).toBeTruthy();
-  });
-
-  it('pure helpers', () => {
-    expect(toMetres('12,480.5', 'km')).toBe(12_480_500);
-    expect(toMetres('1', 'mi')).toBe(1609);
-    expect(toMetres('-1', 'km')).toBeNull();
-    expect(toMetres('', 'km')).toBeNull();
   });
 });

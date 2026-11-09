@@ -158,6 +158,24 @@ describe('devices page', () => {
     ]);
   });
 
+  it('while the code is shown, the phone that scans it appears in the list by itself', async () => {
+    const shown = [phone()];
+    renderApp(
+      {
+        ...signedIn(),
+        'GET /devices': () => ({ body: shown }),
+        'GET /link-requests': () => ({ body: [] }),
+        'POST /pairing-tokens': () => ({ status: 201, body: code() }),
+      } as never,
+      '/devices',
+    );
+    await screen.findByText('Pixel');
+    fireEvent.click(screen.getByRole('button', { name: 'Pair a phone' }));
+    expect(await screen.findByRole('img', { name: 'Pairing code' })).toBeTruthy();
+    shown.push(phone({ id: 2, name: 'Galaxy S24' })); // the phone redeems the code
+    expect(await screen.findByText('Galaxy S24')).toBeTruthy();
+  });
+
   it('a home address needs no warning; it is explained with the missing away address', async () => {
     server([phone()], false, 'http://192.168.1.20:8080');
     await screen.findByText('Pixel');

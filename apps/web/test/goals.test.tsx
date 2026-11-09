@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { targetInput, targetOf, valueText } from '../src/pages/Goals';
+import { targetInput, targetOf, valueText } from '../src/goals';
 import { renderApp, settingsFixture, signedIn, pick, menu, DASHBOARD } from './support/kit';
 
 afterEach(cleanup);

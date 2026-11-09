@@ -7,7 +7,7 @@ import type { FormEvent } from 'react';
 import { errorText, useApiQuery, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
 import { Button as UiButton } from '@/components/ui/button';
-import { formatMoney, moneyInput, parseMoney } from '../format';
+import { targetInput, targetOf, valueText } from '../goals';
 import { useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
 
@@ -20,44 +20,6 @@ const METRICS = [
 ];
 const PERIODS = ['daily', 'weekly', 'monthly', 'yearly'].map((v) => ({ value: v, label: v }));
 const EMPTY = { label: '', metric: 'earnings', period: 'weekly', target: '' };
-
-/** Target typed by the driver to the stored unit: minor units, minutes, a count or metres. */
-export function targetOf(
-  metric: string,
-  text: string,
-  unit: 'km' | 'mi',
-  currency: string,
-): number {
-  const n = Number(text.replace(',', '.'));
-  if (!Number.isFinite(n) || n <= 0) return NaN;
-  if (metric === 'earnings') return parseMoney(text, currency);
-  if (metric === 'hours') return Math.round(n * 60);
-  if (metric === 'active_distance') return Math.round(n * (unit === 'km' ? 1000 : 1609.344));
-  return Math.round(n);
-}
-
-/** A stored target as the number the form field shows: the inverse of `targetOf`. */
-export function targetInput(
-  metric: string,
-  v: number,
-  unit: 'km' | 'mi',
-  currency: string,
-): string {
-  if (metric === 'earnings') return moneyInput(v, currency);
-  if (metric === 'hours') return String(Math.round((v / 60) * 100) / 100);
-  if (metric === 'active_distance')
-    return String(Math.round((v / (unit === 'km' ? 1000 : 1609.344)) * 1000) / 1000);
-  return String(v);
-}
-
-/** Shows a value in the unit the driver typed it in. */
-export function valueText(metric: string, v: number, unit: 'km' | 'mi', currency: string): string {
-  if (metric === 'earnings') return formatMoney(v, currency);
-  if (metric === 'hours') return `${(v / 60).toFixed(1)} h`;
-  if (metric === 'active_distance')
-    return `${(v / (unit === 'km' ? 1000 : 1609.344)).toFixed(1)} ${unit}`;
-  return String(v);
-}
 
 /** A progress bar, also the "ring" of the dashboard card; null progress is "unknown", not an empty bar. */
 export function GoalBar({ goal }: { goal: Goal }) {

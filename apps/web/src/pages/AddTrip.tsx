@@ -5,7 +5,7 @@ import type { Schemas } from '../api/client';
 import { useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
 import { startOfDay } from '../days';
-import { toMetres } from './Odometer';
+import { parseDistance } from '../format';
 import { Button as UiButton } from '@/components/ui/button';
 
 type Shift = Schemas['Shift'];
@@ -44,12 +44,11 @@ function atTime(text: string, shift: Shift, timeZone: string, after = 0): number
  */
 export function AddTrip({
   shift,
-  onSaved,
-  onCancel,
+  onClose,
 }: {
   shift: Shift;
-  onSaved: () => void;
-  onCancel: () => void;
+  /** Closes the form: after a save, or on Cancel. */
+  onClose: () => void;
 }) {
   const { distance_unit: unit, timezone } = useSettings();
   const from = hhmm(shift.started_at, timezone);
@@ -61,7 +60,7 @@ export function AddTrip({
 
   async function save(e: FormEvent) {
     e.preventDefault();
-    const distance = toMetres(form.distance, unit);
+    const distance = parseDistance(form.distance, unit);
     if (!distance) return setError(`Enter the distance as a number of ${unit} above zero.`);
     // Times left as they were are the shift's own, to the millisecond.
     const started = form.from === from ? shift.started_at : atTime(form.from, shift, timezone);
@@ -90,7 +89,7 @@ export function AddTrip({
       // The answer carries the recomputed shift; its trips are read again.
       (r) => [put('/shifts/{ref}', { path: { ref } }, r.shift)],
     );
-    if (saved) onSaved();
+    if (saved) onClose();
   }
 
   return (
@@ -137,7 +136,7 @@ export function AddTrip({
         <Button type="submit" busy={form.distance.trim() === '' || form.purpose.trim() === ''}>
           Add trip
         </Button>
-        <UiButton type="button" variant="ghost" onClick={onCancel}>
+        <UiButton type="button" variant="ghost" onClick={onClose}>
           Cancel
         </UiButton>
       </div>

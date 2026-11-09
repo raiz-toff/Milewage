@@ -51,7 +51,7 @@ All in `apps/web/src/format.ts` and `apps/web/src/days.ts` (the driver's day); t
 | Day         | `formatDay(iso, dateLocale(country))`| English in the driver's country's order: "Nov 7, 2026" (CA, US), "7 Nov 2026" (GB). `parseDay` accepts typed days in that order. |
 | Date and time | `formatDateTime(ms, timeZone, …)`  | Always the instance time zone (`settings.timezone`), never the browser's.        |
 | Clock time  | `formatTime`, `formatClock`, `hourLabel` | 12h or 24h from Settings > Time format, not the browser language.            |
-| Distance    | `formatDistance(m, unit)`            | Metres to the driver's unit with one decimal; null is a dash, never 0.          |
+| Distance    | `formatDistance(m, unit)`            | Metres to the driver's unit with one decimal; null is a dash, never 0. `toMetres`/`fromMetres` convert numbers, `distanceInput` and `parseDistance` are the field pair (thousands commas allowed), `formatOdometer` shows a dial value ("12,346 mi"). Nothing else writes 1609.344. |
 | Duration    | `formatDuration(startMs, endMs)`     | Hours and minutes.                                                               |
 | Today       | `todayIn(timeZone)`, `dayOf(ms, timeZone)` | The driver's day, for defaults (a new expense, a reading) and period navigation. Never `new Date().toISOString()`, which is the UTC day. |
 | Weeks, periods | `addDays`, `weekOf`, `period`, `PERIODS`, `monthGrid`, `startOfDay` | Day arithmetic on `YYYY-MM-DD` days, weeks from `settings.week_start`. Pages do not write their own. |

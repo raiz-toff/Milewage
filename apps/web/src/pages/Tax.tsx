@@ -7,11 +7,10 @@ import { Button as UiButton } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { errorText, useApiQuery, useChange } from '../api/query';
 import { dateLocale, formatDay, todayIn } from '../days';
-import { formatMoney } from '../format';
+import { formatMoney, parseMoney } from '../format';
 import { useSettings } from '../session';
 import { Button, Field, FormError } from '../ui/form';
-import { MoreCard } from './ShiftStates';
-import { parseMoney } from '../format';
+import { MoreCard } from '../ui/MoreCard';
 
 /** A line of the working: label, figure, and whether it is muted ($0.00 or not estimated). */
 type Line = [string, string, boolean];

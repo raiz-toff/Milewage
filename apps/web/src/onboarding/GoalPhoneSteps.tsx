@@ -1,13 +1,10 @@
 import { useEffect, useState } from 'react';
-import { unwrap } from '../api/client';
-import { useChange } from '../api/query';
 import { formatMoney } from '../format';
 import { LinkAPhone } from '../pairing/LinkAPhone';
-import { PairingCode } from '../pages/Devices';
-import type { Pairing } from '../pages/Devices';
-import { targetOf } from '../pages/Goals';
-import { useSession } from '../session';
-import { Field, FormError } from '../ui/form';
+import { PairingCode } from '../pairing/PairingCode';
+import { usePairingSession } from '../pairing/session';
+import { targetOf } from '../goals';
+import { Field } from '../ui/form';
 import { StepError, StepForm } from './StepForm';
 import type { StepSave } from './StepForm';
 import type { StepProps } from './steps';
@@ -48,38 +45,20 @@ export function GoalStep({ ctx, next }: StepProps) {
   );
 }
 
-/** How often the step asks whether the phone has paired. */
-export const PAIR_POLL_MS = 1500;
-
 /**
- * Pair the phone (module `devices`): the Devices page's pairing code, then the step waits for the
- * phone to appear in `GET /devices`. Kept thin so the pairing code has one home (Devices page).
+ * Pair the phone (module `devices`): the pairing session the Devices page uses too. It shows the
+ * code and waits for the phone (a scanned code or a link code on the Wi-Fi); once one appears, the
+ * wizard reads its data again and the step says which phone is paired.
  */
 export function PairStep({ ctx, next }: StepProps) {
-  const { api } = useSession();
-  const [pairing, setPairing] = useState<Pairing | null>(null);
-  const { run: mint, error } = useChange();
   const paired = ctx.devices;
   const { reload } = ctx;
+  const session = usePairingSession({ start: paired.length === 0 });
+  const found = session.state === 'paired';
 
   useEffect(() => {
-    if (paired.length) return;
-    let live = true;
-    void mint((api) => api.POST('/pairing-tokens')).then((made) => {
-      if (live && made) setPairing(made.data);
-    });
-    const timer = setInterval(() => {
-      unwrap(api.GET('/devices'))
-        .then((list) => {
-          if (live && list.some((d) => d.revoked_at === null)) void reload();
-        })
-        .catch(() => {}); // try again on the next tick
-    }, PAIR_POLL_MS);
-    return () => {
-      live = false;
-      clearInterval(timer);
-    };
-  }, [api, mint, paired.length, reload]);
+    if (found) void reload();
+  }, [found, reload]);
 
   return (
     <StepForm save={async () => {}} next={next} skip={paired.length ? null : 'Pair later'}>
@@ -92,10 +71,9 @@ export function PairStep({ ctx, next }: StepProps) {
           <p className="text-sm text-muted-foreground">
             Pair your phone with this server. The phone records your shifts and sends them here.
           </p>
-          <LinkAPhone onLinked={() => void reload()} />
+          <LinkAPhone />
           <p className="text-sm font-medium">Or scan a code</p>
-          {pairing ? <PairingCode pairing={pairing} onPairing={setPairing} /> : null}
-          <FormError message={error} />
+          <PairingCode session={session} />
           <p role="status" className="text-sm text-muted-foreground">
             Waiting for your phone…
           </p>

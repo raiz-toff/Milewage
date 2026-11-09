@@ -12,6 +12,7 @@ import { PlatformBadge } from '../platforms/PlatformBadge';
 import type { PlatformLike } from '../platforms/PlatformBadge';
 import { usePlatformOf } from '../platforms/usePlatforms';
 import { useSettings } from '../session';
+import { earnedOf, reviewCount } from '../shift/view';
 import { EmptyState, Section } from '../ui/layout';
 import { dateWords } from '../days';
 
@@ -57,16 +58,11 @@ function ShiftRow({
   const route = useApiQuery('/shifts/{ref}/route', path, { enabled: seen && modules.replay }).data;
   /** Effective earnings after app fees (null when nothing was entered) and the platform slugs. */
   const extra = earnings
-    ? {
-        cents: earnings.effective.length
-          ? earnings.effective.reduce((t, r) => t + r.total_cents, 0)
-          : null,
-        platforms: earnings.effective.map((r) => r.platform),
-      }
+    ? { cents: earnedOf(earnings), platforms: earnings.effective.map((r) => r.platform) }
     : null;
 
   const hours = shift.ended_at ? (shift.ended_at - shift.started_at) / 3_600_000 : null;
-  const review = shift.flags?.filter((f) => f.severity === 'review').length ?? 0;
+  const review = reviewCount(shift);
   const cents = extra?.cents ?? null;
   return (
     <Link

@@ -1,5 +1,7 @@
 export type TimeFormat = '12h' | '24h';
 
+const LOCALE = 'en-CA';
+
 /** Date and time in the instance time zone (settings.timezone), never the browser's. */
 export function formatDateTime(
   ms: number,
@@ -30,13 +32,43 @@ export function formatClock(hhmm: string, timeFormat: TimeFormat): string {
   return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
 }
 
-const M_PER_MILE = 1609.344;
+/**
+ * The driver's distance unit (Settings > Distance unit). The server stores every distance in whole
+ * metres (fields end in `_m`); these helpers are the only place that converts.
+ */
+export type DistanceUnit = 'km' | 'mi';
+
+const metresPer = (unit: DistanceUnit) => (unit === 'km' ? 1000 : 1609.344);
+
+/** A distance in the driver's unit to whole metres. */
+export const toMetres = (value: number, unit: DistanceUnit): number =>
+  Math.round(value * metresPer(unit));
+
+/** Metres as a number in the driver's unit, unrounded: the inverse of `toMetres`. */
+export const fromMetres = (m: number, unit: DistanceUnit): number => m / metresPer(unit);
 
 /** Metres in the driver's unit with one decimal; null (not computed yet) is a dash, never 0. */
-export function formatDistance(m: number | null, unit: 'km' | 'mi'): string {
+export function formatDistance(m: number | null, unit: DistanceUnit): string {
   if (m === null) return '—';
-  const v = unit === 'km' ? m / 1000 : m / M_PER_MILE;
-  return `${v.toFixed(1)} ${unit}`;
+  return `${fromMetres(m, unit).toFixed(1)} ${unit}`;
+}
+
+/** An odometer value as the driver reads it on the dial: whole units, grouped ("12,346 mi"). */
+export const formatOdometer = (m: number, unit: DistanceUnit): string =>
+  `${new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 0 }).format(Math.round(fromMetres(m, unit)))} ${unit}`;
+
+/** Metres as the plain number a form field shows ("12480.5"), to `places` decimals at most. */
+export const distanceInput = (m: number, unit: DistanceUnit, places = 1): string =>
+  String(Math.round(fromMetres(m, unit) * 10 ** places) / 10 ** places);
+
+/**
+ * A distance typed by the driver ("12,480.5": thousands commas are allowed) to whole metres; null
+ * when it is blank, negative or not a number.
+ */
+export function parseDistance(text: string, unit: DistanceUnit): number | null {
+  const t = text.trim().replace(/,/g, '');
+  if (!/^\d+(\.\d+)?$/.test(t)) return null;
+  return toMetres(Number(t), unit);
 }
 
 export function formatDuration(startMs: number, endMs: number | null): string {
@@ -44,8 +76,6 @@ export function formatDuration(startMs: number, endMs: number | null): string {
   const mins = Math.max(0, Math.round((endMs - startMs) / 60000));
   return `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, '0')}m`;
 }
-
-const LOCALE = 'en-CA';
 
 /**
  * Digits after the decimal point in a currency's minor unit: JPY 0, USD 2, KWD 3. The server stores

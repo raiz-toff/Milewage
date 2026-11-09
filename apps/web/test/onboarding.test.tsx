@@ -231,7 +231,7 @@ describe('onboarding wizard (plan 23)', () => {
   });
 
   it('pair your phone: shows the pairing code and waits for the phone to appear', async () => {
-    let asked = 0;
+    let scanned = false;
     const phone = { id: 1, name: 'Pixel 8', platform: 'android', created_at: 1 };
     const { calls } = wizard({ region: 'ON' }, '/onboarding/phone', undefined, [], {
       'POST /pairing-tokens': () => ({
@@ -249,9 +249,9 @@ describe('onboarding wizard (plan 23)', () => {
       'GET /app': () => ({
         body: { apk: { size_bytes: 1, updated_at: 1, version: null }, store_url: null },
       }),
-      // The wizard reads the list once; the step's first check finds the phone.
+      // The phone is in the list once it has scanned the code.
       'GET /devices': () => ({
-        body: ++asked > 1 ? [{ ...phone, last_seen_at: 2, revoked_at: null }] : [],
+        body: scanned ? [{ ...phone, last_seen_at: 2, revoked_at: null }] : [],
       }),
     });
     expect(await heading('Pair your phone — Step 6 of 7')).toBeTruthy();
@@ -261,6 +261,8 @@ describe('onboarding wizard (plan 23)', () => {
     expect(await screen.findByRole('img', { name: 'Pairing code' })).toBeTruthy();
     expect(await screen.findByRole('link', { name: 'Get the app' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Pair later' })).toBeTruthy();
+    expect(screen.getByText('Waiting for your phone…')).toBeTruthy();
+    scanned = true;
     expect(await screen.findByText('Paired: Pixel 8.')).toBeTruthy(); // one PAIR_POLL_MS later
     expect(screen.queryByRole('button', { name: 'Pair later' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));

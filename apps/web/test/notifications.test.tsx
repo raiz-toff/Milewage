@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { messageOf } from '../src/pages/Notifications';
+import { messageOf } from '../src/notifications';
 import { renderApp, settingsFixture, signedIn, menu, openMenu } from './support/kit';
 
 afterEach(cleanup);
