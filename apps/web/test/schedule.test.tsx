@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { monthGrid } from '../src/pages/Schedule';
+import { todayIn } from '../src/days';
 import { formatClock, formatTime } from '../src/format';
 import { pick, renderApp, settingsFixture, signedIn, DASHBOARD } from './support/kit';
 
 afterEach(cleanup);
 
-const today = new Date().toISOString().slice(0, 10);
+// The page plans in the driver's zone (the fixture's Toronto), not in UTC.
+const today = todayIn('America/Toronto');
 const entry = (over: object = {}) => ({
   id: 1,
   planned_on: today,
@@ -120,16 +121,5 @@ describe('schedule screen (module schedule)', () => {
     expect(await screen.findByRole('heading', { name: DASHBOARD })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Schedule' })).toBeNull();
     expect(s.calls.some((c) => c.path.startsWith('/schedule'))).toBe(false);
-  });
-
-  it('monthGrid pads to whole weeks and starts on the chosen day', () => {
-    const mon = monthGrid(2027, 2, 1); // 1 Feb 2027 is a Monday
-    expect(mon[0]![0]).toBe('2027-02-01');
-    expect(mon).toHaveLength(4); // 28 days from a Monday: exactly four weeks
-    expect(mon.at(-1)!.at(-1)).toBe('2027-02-28');
-    const sun = monthGrid(2027, 2, 0);
-    expect(sun[0]!.slice(0, 2)).toEqual([null, '2027-02-01']);
-    expect(sun.at(-1)!.at(-1)).toBeNull();
-    expect(sun.flat().filter(Boolean)).toHaveLength(28);
   });
 });

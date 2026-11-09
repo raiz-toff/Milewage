@@ -1,11 +1,10 @@
-import { useState } from 'react';
 import { EmptyState, PageHeader } from '../ui/layout';
 import { Mail, MailOpen, X } from 'lucide-react';
 import { RowMenu } from '../ui/RowMenu';
 import { ShowMore } from '../ui/ShowMore';
-import { describe, unwrap } from '../api/client';
+import { unwrap } from '../api/client';
 import { usePagedList } from '../api/paged';
-import { useApiQuery, useInvalidate, useSetApiData } from '../api/query';
+import { errorText, put, useApiQuery, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
 import { Switch } from '@/components/ui/switch';
 import { formatDateTime } from '../format';
@@ -67,29 +66,14 @@ export function NotificationsPage() {
     ),
   );
   const items = asked.items;
-  const invalidate = useInvalidate();
-  // The unread count in the header is read again with the list.
-  const load = () => invalidate('/notifications');
-  const [failed, setError] = useState<string | null>(null);
-  const error = failed ?? (asked.error ? describe(asked.error) : null);
-
-  async function act(run: () => Promise<unknown>) {
-    setError(null);
-    try {
-      await run();
-      await load();
-    } catch (e) {
-      setError(describe(e));
-    }
-  }
+  const change = useChange();
+  const error = errorText(change, asked);
   const read = (n: Item) =>
-    act(() =>
-      unwrap(
-        api.PATCH('/notifications/{id}', {
-          params: { path: { id: n.id } },
-          body: { read: n.read_at === null },
-        }),
-      ),
+    change.run((api) =>
+      api.PATCH('/notifications/{id}', {
+        params: { path: { id: n.id } },
+        body: { read: n.read_at === null },
+      }),
     );
 
   return (
@@ -131,10 +115,8 @@ export function NotificationsPage() {
                     icon: X,
                     destructive: true,
                     onSelect: () =>
-                      void act(() =>
-                        unwrap(
-                          api.DELETE('/notifications/{id}', { params: { path: { id: n.id } } }),
-                        ),
+                      void change.run((api) =>
+                        api.DELETE('/notifications/{id}', { params: { path: { id: n.id } } }),
                       ),
                   },
                 ]}
@@ -159,21 +141,16 @@ const LABELS: [keyof Prefs, string][] = [
 
 /** Settings card with the toggles of the module. */
 export function AlertsCard() {
-  const { api } = useSession();
   const asked = useApiQuery('/notifications/prefs');
   const prefs = asked.data ?? null;
-  const setData = useSetApiData();
-  const setPrefs = (next: Prefs) => setData('/notifications/prefs', undefined, next);
-  const [failed, setError] = useState<string | null>(null);
-  const error = failed ?? (asked.error ? describe(asked.error) : null);
-  async function toggle(key: keyof Prefs, value: boolean) {
-    setError(null);
-    try {
-      setPrefs(await unwrap<Prefs>(api.PATCH('/notifications/prefs', { body: { [key]: value } })));
-    } catch (e) {
-      setError(describe(e));
-    }
-  }
+  const change = useChange();
+  const error = errorText(change, asked);
+  // The answer is the new preferences: shown at once, not asked for again.
+  const toggle = (key: keyof Prefs, value: boolean) =>
+    change.run(
+      (api) => api.PATCH('/notifications/prefs', { body: { [key]: value } }),
+      (next) => [put('/notifications/prefs', undefined, next)],
+    );
   return (
     <section aria-label="Alerts" className="space-y-3">
       <h3 className="text-base leading-snug font-medium">Tell me about</h3>

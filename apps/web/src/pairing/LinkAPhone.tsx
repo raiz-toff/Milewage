@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { describe, unwrap } from '../api/client';
+import { unwrap } from '../api/client';
+import { useChange } from '../api/query';
 import type { paths } from '@milewage/shared/generated/api-types';
 import { useSession } from '../session';
 import { Field, FormError } from '../ui/form';
@@ -83,30 +84,21 @@ function WaitingPhone({
   onLinked: (name: string) => void;
   onDropped: () => void;
 }) {
-  const { api } = useSession();
   const [code, setCode] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { run, busy, error } = useChange();
+  // Not linking is not an error worth showing: the phone drops out of the list either way.
+  const dropping = useChange();
 
   async function link() {
     if (busy || !code.trim()) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const ok = await unwrap(
-        api.POST('/link-requests/approve', { body: { user_code: code.trim() } }),
-      );
-      onLinked(ok.device_name);
-    } catch (e) {
-      setError(describe(e));
-    } finally {
-      setBusy(false);
-    }
+    const user_code = code.trim();
+    const ok = await run((api) => api.POST('/link-requests/approve', { body: { user_code } }));
+    if (ok) onLinked(ok.data.device_name);
   }
 
   async function drop() {
-    await unwrap(api.DELETE('/link-requests/{id}', { params: { path: { id: phone.id } } })).catch(
-      () => {},
+    await dropping.run((api) =>
+      api.DELETE('/link-requests/{id}', { params: { path: { id: phone.id } } }),
     );
     onDropped();
   }

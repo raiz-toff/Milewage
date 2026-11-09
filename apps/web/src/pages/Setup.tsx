@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Button as UiButton } from '@/components/ui/button';
 import type { FormEvent } from 'react';
-import { describe, unwrap } from '../api/client';
+import { useChange } from '../api/query';
 import { useCountries } from '../countries';
-import { useSession } from '../session';
 import { Button, Card, Field, FormError, SelectField } from '../ui/form';
 import { RecoveryKey } from './RecoveryKey';
 
@@ -11,7 +10,6 @@ const browserZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'U
 
 /** First run: create the owner, then show the recovery key once and ask for its last 6. */
 export function Setup({ onRestore }: { onRestore?: () => void } = {}) {
-  const { api } = useSession();
   const countries = useCountries();
   const [form, setForm] = useState({
     username: '',
@@ -22,8 +20,7 @@ export function Setup({ onRestore }: { onRestore?: () => void } = {}) {
     timezone: browserZone(),
   });
   const [key, setKey] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const { run, busy, error } = useChange();
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
 
   if (key) return <RecoveryKey recoveryKey={key} />;
@@ -35,16 +32,8 @@ export function Setup({ onRestore }: { onRestore?: () => void } = {}) {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const done = await unwrap(api.POST('/setup', { body: form }));
-      setKey(done.recovery_key);
-    } catch (err) {
-      setError(describe(err));
-    } finally {
-      setBusy(false);
-    }
+    const done = await run((api) => api.POST('/setup', { body: form }));
+    if (done) setKey(done.data.recovery_key);
   }
 
   return (

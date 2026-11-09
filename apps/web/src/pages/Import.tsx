@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { describe, unwrap } from '../api/client';
+import { useChange } from '../api/query';
 import type { Schemas } from '../api/client';
-import { useSession, useSettings } from '../session';
+import { useSettings } from '../session';
 import { Button as UiButton } from '@/components/ui/button';
 import { Button, Field, FormError, SelectField } from '../ui/form';
 
@@ -14,7 +14,6 @@ const FIRST = 10;
 
 /** Settings card of the `import` module (18 section 12): preview first, then confirm; nothing is written by surprise. */
 export function ImportCard() {
-  const { api } = useSession();
   const { modules } = useSettings();
   const [kind, setKind] = useState<Kind>(modules.expenses ? 'expenses' : 'shifts');
   const [text, setText] = useState<string | null>(null);
@@ -23,19 +22,22 @@ export function ImportCard() {
   const [mapping, setMapping] = useState<Record<string, string | null>>({});
   const [result, setResult] = useState<Result | null>(null);
   const [allProblems, setAllProblems] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const change = useChange();
+  const { error, setError } = change;
 
+  /** The file goes as the raw CSV body, with the column mapping in the query. */
   const send = <T,>(
     path: '/imports/{kind}/preview' | '/imports/{kind}',
     map: Record<string, string | null>,
   ) =>
-    unwrap<T>(
-      api.POST(path, {
-        params: { path: { kind }, query: { mapping: JSON.stringify(map) } },
-        body: text as never,
-        bodySerializer: (b: unknown) => b as never,
-        headers: { 'Content-Type': 'text/csv' },
-      } as never) as never,
+    change.run<T>(
+      (api) =>
+        api.POST(path, {
+          params: { path: { kind }, query: { mapping: JSON.stringify(map) } },
+          body: text as never,
+          bodySerializer: (b: unknown) => b as never,
+          headers: { 'Content-Type': 'text/csv' },
+        } as never) as never,
     );
 
   async function pick(file: File | undefined) {
@@ -55,25 +57,18 @@ export function ImportCard() {
     );
   }
   async function run(map: Record<string, string | null>) {
-    setError(null);
-    try {
-      const p = await send<Preview>('/imports/{kind}/preview', map);
-      setPreview(p);
-      setMapping(p.mapping);
-      setAllProblems(false);
-    } catch (e) {
-      setError(describe(e));
-    }
+    const p = await send<Preview>('/imports/{kind}/preview', map);
+    if (!p) return;
+    setPreview(p.data);
+    setMapping(p.data.mapping);
+    setAllProblems(false);
   }
   async function commit() {
-    setError(null);
-    try {
-      setResult(await send<Result>('/imports/{kind}', mapping));
-      setPreview(null);
-      setText(null);
-    } catch (e) {
-      setError(describe(e));
-    }
+    const r = await send<Result>('/imports/{kind}', mapping);
+    if (!r) return;
+    setResult(r.data);
+    setPreview(null);
+    setText(null);
   }
 
   // A preview lists at most 1000 problem rows; the count covers them all.

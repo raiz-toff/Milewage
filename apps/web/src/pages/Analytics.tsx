@@ -5,7 +5,16 @@ import { Button as UiButton } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
-import { dateLocale, dateToIso, isoToDate } from '../dateText';
+import {
+  dateLocale,
+  dateToIso,
+  isoToDate,
+  period,
+  periodOffset,
+  rangeText,
+  todayIn,
+} from '../days';
+import type { PeriodKind } from '../days';
 import { EmptyState, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
 import { HourBars } from '../ui/HourBars';
 import { describe, unwrap } from '../api/client';
@@ -15,44 +24,8 @@ import { useSession, useSettings } from '../session';
 import { FormError } from '../ui/form';
 import { PlatformName } from '../platforms/PlatformBadge';
 import { usePlatformOf } from '../platforms/usePlatforms';
-import { localDate } from './Dashboard';
 
-type Mode = 'week' | 'month' | 'year';
-const DAY = 86_400_000;
-const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
-
-/** The local dates of the week, month or year `offset` periods from the one containing `today`. */
-export function rangeOf(mode: Mode, offset: number, today: string, weekStart: number) {
-  const t = Date.parse(`${today}T00:00:00Z`);
-  const [y, m] = today.split('-').map(Number) as [number, number];
-  if (mode === 'week') {
-    const start = t - ((new Date(t).getUTCDay() - weekStart + 7) % 7) * DAY + offset * 7 * DAY;
-    return { from: iso(start), to: iso(start + 6 * DAY) };
-  }
-  if (mode === 'month') {
-    return { from: iso(Date.UTC(y, m - 1 + offset, 1)), to: iso(Date.UTC(y, m + offset, 0)) };
-  }
-  return { from: `${y + offset}-01-01`, to: `${y + offset}-12-31` };
-}
-
-/** How many periods from the one containing `today` to the one containing `day` (≤ 0 in the past). */
-export function offsetOf(mode: Mode, day: string, today: string, weekStart: number): number {
-  const [y, m] = day.split('-').map(Number) as [number, number];
-  const [ty, tm] = today.split('-').map(Number) as [number, number];
-  if (mode === 'year') return y - ty;
-  if (mode === 'month') return (y - ty) * 12 + (m - tm);
-  const start = (d: string) => Date.parse(rangeOf('week', 0, d, weekStart).from);
-  return Math.round((start(day) - start(today)) / (7 * DAY));
-}
-
-/** "Nov 2 – 8, 2026" in the driver's country's order (Intl formatRange). */
-export function rangeText(from: string, to: string, locale: string): string {
-  const at = (d: string) => Date.parse(`${d}T00:00:00Z`);
-  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }).formatRange(
-    at(from),
-    at(to),
-  );
-}
+type Mode = PeriodKind;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Data = Record<string, any>;
@@ -79,10 +52,10 @@ export function AnalyticsPage() {
   const platformOf = usePlatformOf();
   const [mode, setMode] = useState<Mode>('week');
   const [offset, setOffset] = useState(0);
-  const today = localDate(Date.now(), timezone);
-  const range = rangeOf(mode, offset, today, weekStart);
+  const today = todayIn(timezone);
+  const range = period(mode, today, weekStart, offset);
   const [picking, setPicking] = useState(false);
-  const period = rangeText(range.from, range.to, dateLocale(country));
+  const periodText = rangeText(range.from, range.to, dateLocale(country));
   const money = (c: number | null | undefined) =>
     c == null ? 'not available' : formatMoney(c, currency);
 
@@ -177,11 +150,11 @@ export function AnalyticsPage() {
                 type="button"
                 variant="ghost"
                 size="sm"
-                aria-label={`Period: ${period}`}
+                aria-label={`Period: ${periodText}`}
                 className="font-normal text-muted-foreground tabular-nums"
               >
                 <CalendarIcon />
-                {period}
+                {periodText}
               </UiButton>
             </PopoverTrigger>
             <PopoverContent aria-label="Pick a period" align="center" className="w-auto p-0">
@@ -201,7 +174,7 @@ export function AnalyticsPage() {
                   range_end: isoToDate(range.to)!,
                 }}
                 onSelect={(d) => {
-                  if (d) setOffset(offsetOf(mode, dateToIso(d), today, weekStart));
+                  if (d) setOffset(periodOffset(mode, dateToIso(d), today, weekStart));
                   setPicking(false);
                 }}
               />

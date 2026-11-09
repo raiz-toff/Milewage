@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useChange } from '../api/query';
 import { ChevronLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import type { Country } from '../countries';
-import { useSession, useSettings } from '../session';
+import { settingsPatch, useSession, useSettings } from '../session';
 import { STEPS } from './steps';
 import type { OnboardingCtx } from './steps';
 
@@ -25,18 +25,14 @@ interface WizardData {
  * per step; the URL names the step, so the browser's Back works and a reload resumes there.
  */
 export function Onboarding() {
-  const { api, setSettings } = useSession();
+  const { api } = useSession();
+  const { run } = useChange();
   const settings = useSettings();
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
   const heading = useRef<HTMLHeadingElement>(null);
   const [data, setData] = useState<WizardData | null>(null);
   const { platforms: withPlatforms, goals: withGoals, devices: withDevices } = settings.modules;
-  // The wizard saves vehicles, goals, apps and devices itself, so on leaving it every cached
-  // answer is out of date: the screens read them again.
-  const queries = useQueryClient();
-  useEffect(() => () => void queries.invalidateQueries(), [queries]);
-
   // What the steps decide from; read again after each saved answer (a region can change the apps).
   const reload = useCallback(async () => {
     const or = <T,>(p: Promise<T>, fallback: T) => p.catch(() => fallback);
@@ -77,9 +73,8 @@ export function Onboarding() {
   const step = visible[index];
 
   const finish = useCallback(async () => {
-    setSettings(await unwrap(api.PATCH('/settings', { body: { onboarded: true } })));
-    navigate('/dashboard', { replace: true });
-  }, [api, navigate, setSettings]);
+    if (await run(...settingsPatch({ onboarded: true }))) navigate('/dashboard', { replace: true });
+  }, [navigate, run]);
 
   // No step in the URL (or one that does not apply): resume at the first unfinished step;
   // `/onboarding/start` ("Run setup again") opens the first step.

@@ -42,7 +42,7 @@ want to know what happened to their miles and money and what to do next. Nothing
 
 ## Formats (use the helpers, never `toLocaleString()` alone)
 
-All in `apps/web/src/format.ts` and `apps/web/src/dateText.ts`; the phone has its own mirrors.
+All in `apps/web/src/format.ts` and `apps/web/src/days.ts` (the driver's day); the phone has its own mirrors.
 
 | What        | Helper                               | Rule                                                                             |
 | ----------- | ------------------------------------ | -------------------------------------------------------------------------------- |
@@ -53,7 +53,8 @@ All in `apps/web/src/format.ts` and `apps/web/src/dateText.ts`; the phone has it
 | Clock time  | `formatTime`, `formatClock`, `hourLabel` | 12h or 24h from Settings > Time format, not the browser language.            |
 | Distance    | `formatDistance(m, unit)`            | Metres to the driver's unit with one decimal; null is a dash, never 0.          |
 | Duration    | `formatDuration(startMs, endMs)`     | Hours and minutes.                                                               |
-| Today       | `todayIn(timeZone)`                  | For defaults and period navigation.                                              |
+| Today       | `todayIn(timeZone)`, `dayOf(ms, timeZone)` | The driver's day, for defaults (a new expense, a reading) and period navigation. Never `new Date().toISOString()`, which is the UTC day. |
+| Weeks, periods | `addDays`, `weekOf`, `period`, `PERIODS`, `monthGrid`, `startOfDay` | Day arithmetic on `YYYY-MM-DD` days, weeks from `settings.week_start`. Pages do not write their own. |
 
 Dashboards count the week from `settings.week_start` (the calendar's first weekday too). Period tabs are
 named plainly and briefly: Today, Week, Month, Year, 30 days; the dashboard opens on Week.

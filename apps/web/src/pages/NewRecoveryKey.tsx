@@ -10,9 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { describe, unwrap } from '../api/client';
-import { useInvalidate } from '../api/query';
-import { useSession } from '../session';
+import { useChange } from '../api/query';
 import { Button, Field, FormError } from '../ui/form';
 import { Section } from '../ui/layout';
 
@@ -45,45 +43,25 @@ export function NewRecoveryKey() {
 }
 
 function NewKeyDialog({ onClose }: { onClose: () => void }) {
-  const { api } = useSession();
-  const invalidate = useInvalidate();
   const [step, setStep] = useState<Step>({ name: 'password' });
   const [password, setPassword] = useState('');
   const [last6, setLast6] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const { run, busy, error } = useChange();
   const [copied, setCopied] = useState(false);
 
   async function make(e: FormEvent) {
     e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const made = await unwrap(api.POST('/backups/recovery-key', { body: { password } }));
-      setPassword('');
-      setStep({ name: 'show', key: made.recovery_key });
-    } catch (err) {
-      setError(describe(err));
-    } finally {
-      setBusy(false);
-    }
+    const made = await run((api) => api.POST('/backups/recovery-key', { body: { password } }));
+    if (!made) return;
+    setPassword('');
+    setStep({ name: 'show', key: made.data.recovery_key });
   }
 
   async function confirm(e: FormEvent) {
     e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const done = await unwrap(
-        api.POST('/backups/recovery-key/confirm', { body: { last6: last6.trim() } }),
-      );
-      setStep({ name: 'done', backedUp: done.backup !== null });
-      void invalidate('/backups', '/system/status');
-    } catch (err) {
-      setError(describe(err));
-    } finally {
-      setBusy(false);
-    }
+    const body = { last6: last6.trim() };
+    const done = await run((api) => api.POST('/backups/recovery-key/confirm', { body }));
+    if (done) setStep({ name: 'done', backedUp: done.data.backup !== null });
   }
 
   return (

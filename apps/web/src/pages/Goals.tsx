@@ -4,12 +4,11 @@ import { EmptyState, PageHeader, Section } from '../ui/layout';
 import { Pause, Pencil, Play, Trash2 } from 'lucide-react';
 import { RowMenu } from '../ui/RowMenu';
 import type { FormEvent } from 'react';
-import { describe, unwrap } from '../api/client';
-import { useApiQuery, useInvalidate } from '../api/query';
+import { errorText, useApiQuery, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
 import { Button as UiButton } from '@/components/ui/button';
 import { formatMoney, moneyInput, parseMoney } from '../format';
-import { useSession, useSettings } from '../session';
+import { useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
 
 type Goal = Schemas['Goal'];
@@ -93,21 +92,17 @@ export function GoalBar({ goal }: { goal: Goal }) {
 
 /** Goals (module `goals`, 18 section 8.1). */
 export function GoalsPage() {
-  const { api } = useSession();
   const { distance_unit: unit, currency } = useSettings();
   const asked = useApiQuery('/goals');
   const goals = asked.data ?? null;
-  const invalidate = useInvalidate();
-  // The dashboard's goal ring and the progress page read goals too.
-  const load = () => invalidate('/goals', '/progress');
-  const [failed, setError] = useState<string | null>(null);
-  const error = failed ?? (asked.error ? describe(asked.error) : null);
+  const change = useChange();
+  const error = errorText(change, asked);
   const [form, setForm] = useState(EMPTY);
   // The id of the goal the form edits; null while it adds one. The same form serves both.
   const [editing, setEditing] = useState<number | null>(null);
 
   function edit(g: Goal) {
-    setError(null);
+    change.setError(null);
     setEditing(g.id);
     setForm({
       label: g.label,
@@ -125,8 +120,7 @@ export function GoalsPage() {
   async function save(e: FormEvent) {
     e.preventDefault();
     const target = targetOf(form.metric, form.target, unit, currency);
-    if (!Number.isFinite(target)) return setError('Enter a target above zero.');
-    setError(null);
+    if (!Number.isFinite(target)) return change.setError('Enter a target above zero.');
     const body = {
       ...form,
       label: form.label.trim(),
@@ -134,26 +128,15 @@ export function GoalsPage() {
       metric: form.metric as Goal['metric'],
       period: form.period as Goal['period'],
     };
-    try {
-      if (editing === null) {
-        await unwrap(api.POST('/goals', { body }));
+    if (editing === null) {
+      if (await change.run((api) => api.POST('/goals', { body })))
         setForm({ ...form, label: '', target: '' });
-      } else {
-        await unwrap(api.PATCH('/goals/{id}', { params: { path: { id: editing } }, body }));
-        cancel();
-      }
-      await load();
-    } catch (err) {
-      setError(describe(err));
-    }
-  }
-  async function act(run: () => Promise<unknown>) {
-    setError(null);
-    try {
-      await run();
-      await load();
-    } catch (err) {
-      setError(describe(err));
+    } else if (
+      await change.run((api) =>
+        api.PATCH('/goals/{id}', { params: { path: { id: editing } }, body }),
+      )
+    ) {
+      cancel();
     }
   }
 
@@ -223,13 +206,11 @@ export function GoalsPage() {
                       label: g.active ? 'Pause' : 'Resume',
                       icon: g.active ? Pause : Play,
                       onSelect: () =>
-                        void act(() =>
-                          unwrap(
-                            api.PATCH('/goals/{id}', {
-                              params: { path: { id: g.id } },
-                              body: { active: !g.active },
-                            }),
-                          ),
+                        void change.run((api) =>
+                          api.PATCH('/goals/{id}', {
+                            params: { path: { id: g.id } },
+                            body: { active: !g.active },
+                          }),
                         ),
                     },
                     {
@@ -239,8 +220,8 @@ export function GoalsPage() {
                       onSelect: () => {
                         // The form must not go on editing a goal that is gone.
                         if (editing === g.id) cancel();
-                        void act(() =>
-                          unwrap(api.DELETE('/goals/{id}', { params: { path: { id: g.id } } })),
+                        void change.run((api) =>
+                          api.DELETE('/goals/{id}', { params: { path: { id: g.id } } }),
                         );
                       },
                     },

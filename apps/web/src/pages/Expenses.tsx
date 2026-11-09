@@ -16,10 +16,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { FormEvent } from 'react';
-import { describe, unwrap } from '../api/client';
+import { fileBody, unwrap } from '../api/client';
 import { usePagedList } from '../api/paged';
-import { useApiQuery, useInvalidate } from '../api/query';
+import { errorText, useApiQuery, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
+import { addDays, todayIn } from '../days';
 import { formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
 import { Button, DateField, Field, FormError, SelectField } from '../ui/form';
@@ -28,7 +29,6 @@ import { moneyInput, parseMoney } from '../format';
 type Expense = Schemas['Expense'];
 type Category = Schemas['ExpenseCategory'];
 
-const DAY = 86_400_000;
 const PICKS = [25, 50, 75, 100];
 /** Common driving costs, offered as one tap until the driver's own most used take their place. */
 const COMMON = ['fuel', 'parking', 'tolls', 'phone', 'wash'];
@@ -98,7 +98,8 @@ export function bodyOf(d: Draft, currency: string): Schemas['ExpenseCreate'] {
  */
 export function ExpensesPage() {
   const { api } = useSession();
-  const { currency, modules, default_vehicle_id } = useSettings();
+  const { currency, modules, default_vehicle_id, timezone } = useSettings();
+  const today = todayIn(timezone);
   // Vehicle costs go on the driver's default vehicle unless they choose another.
   const auto = default_vehicle_id === null ? '' : String(default_vehicle_id);
   const [filter, setFilter] = useState({ category: '', deductible: '' });
@@ -123,29 +124,28 @@ export function ExpensesPage() {
   const cats = catsQuery.data ?? [];
   const vehiclesQuery = useApiQuery('/vehicles');
   const vehicles = vehiclesQuery.data ?? [];
-  const invalidate = useInvalidate();
-  const load = () => invalidate('/expenses');
   // `?new` (the dashboard's Add expense) opens the form at once.
   const [params] = useSearchParams();
   const [draft, setDraft] = useState<Draft | null>(() =>
-    params.has('new') ? blank(new Date().toISOString().slice(0, 10), auto) : null,
+    params.has('new') ? blank(today, auto) : null,
   );
   // Merchant, deductible share, vehicle, shift, repeats and notes wait behind "More details".
   const [more, setMore] = useState(false);
   const ids = useId();
   const [editing, setEditing] = useState<number | null>(null);
-  const [failed, setError] = useState<string | null>(null);
-  const loadError = [list, totalsQuery, dueQuery, catsQuery, vehiclesQuery].find((q) => q.error);
-  const error = failed ?? (loadError ? describe(loadError.error) : null);
+  const change = useChange();
+  const error = errorText(change, list, totalsQuery, dueQuery, catsQuery, vehiclesQuery);
 
   // Shifts within 7 days of the expense date are offered as a link (Comma behaviour).
   const date = draft?.spent_on;
   const dated = !!date && /^\d{4}-\d{2}-\d{2}$/.test(date);
-  const t = dated ? Date.parse(`${date}T00:00:00Z`) : 0;
-  const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
   const near = useApiQuery(
     '/shifts',
-    { params: { query: { from: day(t - 7 * DAY), to: day(t + 7 * DAY) } } },
+    {
+      params: {
+        query: { from: dated ? addDays(date, -7) : '', to: dated ? addDays(date, 7) : '' },
+      },
+    },
     { enabled: dated },
   ).data;
   const shifts = (dated && near?.items) || [];
@@ -190,43 +190,25 @@ export function ExpensesPage() {
     if (!draft) return;
     const body = bodyOf(draft, currency);
     if (!Number.isFinite(body.amount_cents) || body.amount_cents < 1) {
-      return setError('Enter an amount above zero.');
+      return change.setError('Enter an amount above zero.');
     }
-    setError(null);
-    try {
-      if (editing === null) await unwrap(api.POST('/expenses', { body }));
-      else await unwrap(api.PATCH('/expenses/{id}', { params: { path: { id: editing } }, body }));
+    const saved = await change.run((api) =>
+      editing === null
+        ? api.POST('/expenses', { body })
+        : api.PATCH('/expenses/{id}', { params: { path: { id: editing } }, body }),
+    );
+    if (saved) {
       setDraft(null);
       setEditing(null);
-      await load();
-    } catch (err) {
-      setError(describe(err));
     }
   }
 
-  async function act(run: () => Promise<unknown>) {
-    setError(null);
-    try {
-      await run();
-      await load();
-    } catch (err) {
-      setError(describe(err));
-    }
-  }
   async function attach(id: number, file: File) {
-    if (file.size > 10 * 1024 * 1024) return setError('A receipt can be 10 MB at most.');
-    await act(() =>
-      unwrap(
-        api.PUT('/expenses/{id}/receipt', {
-          params: { path: { id } },
-          body: file as never,
-          bodySerializer: (b: unknown) => b as never,
-          headers: { 'Content-Type': file.type },
-        } as never),
-      ),
+    if (file.size > 10 * 1024 * 1024) return change.setError('A receipt can be 10 MB at most.');
+    await change.run((api) =>
+      api.PUT('/expenses/{id}/receipt', { params: { path: { id } }, ...fileBody(file) }),
     );
   }
-  const today = new Date().toISOString().slice(0, 10);
   const money = (c: number) => formatMoney(c, currency);
 
   return (
@@ -273,13 +255,11 @@ export function ExpensesPage() {
                 size="sm"
                 className="h-auto px-0"
                 onClick={() =>
-                  void act(() =>
-                    unwrap(
-                      api.POST('/expenses/{id}/occurrences', {
-                        params: { path: { id: d.id } },
-                        body: { spent_on: d.next_due ?? today },
-                      }),
-                    ),
+                  void change.run((api) =>
+                    api.POST('/expenses/{id}/occurrences', {
+                      params: { path: { id: d.id } },
+                      body: { spent_on: d.next_due ?? today },
+                    }),
                   )
                 }
               >
@@ -290,13 +270,11 @@ export function ExpensesPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() =>
-                  void act(() =>
-                    unwrap(
-                      api.PUT('/expenses/{id}/snooze', {
-                        params: { path: { id: d.id } },
-                        body: { until: new Date(Date.now() + 7 * DAY).toISOString().slice(0, 10) },
-                      }),
-                    ),
+                  void change.run((api) =>
+                    api.PUT('/expenses/{id}/snooze', {
+                      params: { path: { id: d.id } },
+                      body: { until: addDays(today, 7) },
+                    }),
                   )
                 }
               >
@@ -612,12 +590,10 @@ export function ExpensesPage() {
                                   icon: FileX,
                                   destructive: true,
                                   onSelect: () =>
-                                    void act(() =>
-                                      unwrap(
-                                        api.DELETE('/expenses/{id}/receipt', {
-                                          params: { path: { id: x.id } },
-                                        }),
-                                      ),
+                                    void change.run((api) =>
+                                      api.DELETE('/expenses/{id}/receipt', {
+                                        params: { path: { id: x.id } },
+                                      }),
                                     ),
                                 },
                               ]
@@ -627,10 +603,8 @@ export function ExpensesPage() {
                             icon: Trash2,
                             destructive: true,
                             onSelect: () =>
-                              void act(() =>
-                                unwrap(
-                                  api.DELETE('/expenses/{id}', { params: { path: { id: x.id } } }),
-                                ),
+                              void change.run((api) =>
+                                api.DELETE('/expenses/{id}', { params: { path: { id: x.id } } }),
                               ),
                           },
                         ]}

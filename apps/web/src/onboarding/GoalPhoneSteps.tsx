@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { describe, unwrap } from '../api/client';
+import { unwrap } from '../api/client';
+import { useChange } from '../api/query';
 import { formatMoney } from '../format';
 import { LinkAPhone } from '../pairing/LinkAPhone';
 import { PairingCode } from '../pages/Devices';
@@ -8,22 +9,23 @@ import { targetOf } from '../pages/Goals';
 import { useSession } from '../session';
 import { Field, FormError } from '../ui/form';
 import { StepError, StepForm } from './StepForm';
+import type { StepSave } from './StepForm';
 import type { StepProps } from './steps';
 
 /** A weekly earnings goal (module `goals`); the dashboard shows the progress. Optional. */
 export function GoalStep({ ctx, next }: StepProps) {
-  const { api } = useSession();
   const { currency, distance_unit } = ctx.settings;
   const [amount, setAmount] = useState('');
-  const save = async () => {
+  const save: StepSave = async (run) => {
     if (!amount.trim()) return; // left empty: the same as skipping
     const target = targetOf('earnings', amount, distance_unit, currency);
     if (!(target > 0)) throw new StepError('Enter an amount above 0, for example 800.');
-    await unwrap(
+    const made = await run((api) =>
       api.POST('/goals', {
         body: { label: 'Weekly earnings', metric: 'earnings', period: 'weekly', target },
       }),
     );
+    if (!made) return false;
     await ctx.reload();
   };
   const goal = ctx.goals[0];
@@ -56,17 +58,16 @@ export const PAIR_POLL_MS = 1500;
 export function PairStep({ ctx, next }: StepProps) {
   const { api } = useSession();
   const [pairing, setPairing] = useState<Pairing | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { run: mint, error } = useChange();
   const paired = ctx.devices;
   const { reload } = ctx;
 
   useEffect(() => {
     if (paired.length) return;
     let live = true;
-    unwrap(api.POST('/pairing-tokens')).then(
-      (p) => live && setPairing(p),
-      (e: unknown) => live && setError(describe(e)),
-    );
+    void mint((api) => api.POST('/pairing-tokens')).then((made) => {
+      if (live && made) setPairing(made.data);
+    });
     const timer = setInterval(() => {
       unwrap(api.GET('/devices'))
         .then((list) => {
@@ -78,7 +79,7 @@ export function PairStep({ ctx, next }: StepProps) {
       live = false;
       clearInterval(timer);
     };
-  }, [api, paired.length, reload]);
+  }, [api, mint, paired.length, reload]);
 
   return (
     <StepForm save={async () => {}} next={next} skip={paired.length ? null : 'Pair later'}>
@@ -93,14 +94,7 @@ export function PairStep({ ctx, next }: StepProps) {
           </p>
           <LinkAPhone onLinked={() => void reload()} />
           <p className="text-sm font-medium">Or scan a code</p>
-          {pairing ? (
-            <PairingCode
-              pairing={pairing}
-              remake={async (base_url) =>
-                setPairing(await unwrap(api.POST('/pairing-tokens', { body: { base_url } })))
-              }
-            />
-          ) : null}
+          {pairing ? <PairingCode pairing={pairing} onPairing={setPairing} /> : null}
           <FormError message={error} />
           <p role="status" className="text-sm text-muted-foreground">
             Waiting for your phone…

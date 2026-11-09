@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { describe, unwrap } from '../api/client';
+import { describe } from '../api/client';
 import type { Schemas } from '../api/client';
-import { apiKey, useApiQuery } from '../api/query';
+import { put, useApiQuery, useChange } from '../api/query';
 import { formatTime, minorDigits, moneyInput, parseMoney } from '../format';
-import { useSession, useSettings } from '../session';
+import { useSettings } from '../session';
 import { SortTable } from '../ui/SortTable';
 import type { Column } from '../ui/SortTable';
 import { Button, FormError, Picker } from '../ui/form';
@@ -71,59 +70,61 @@ const FIELD =
 
 /** The detected stops of a shift; label saves update the list in place. */
 export function useShiftStops(shiftId: number, on: boolean) {
-  const queries = useQueryClient();
   const params = { path: { ref: String(shiftId) } };
   const q = useApiQuery('/shifts/{ref}/stops', { params }, { enabled: on });
-  const setStops = (change: (old: Stop[] | null) => Stop[]) =>
-    queries.setQueryData<Stop[]>(apiKey('/shifts/{ref}/stops', params), (old) =>
-      change(old ?? null),
-    );
-  return { stops: q.data ?? null, setStops, error: q.error ? describe(q.error) : null };
+  return { stops: q.data ?? null, error: q.error ? describe(q.error) : null };
 }
 
 /**
  * Detected stops of a shift with optional labels (module `stops`, web only). A save or a clear
- * recomputes the shift on the server; the new shift goes to `onShift` so the split above
- * and the trips below show the new estimate.
+ * recomputes the shift on the server; its answer (the stop and the shift) is shown at once, so
+ * the split above shows the new estimate, and the trips below are read again.
  */
 export function StopsPanel({
   shift,
-  onShift,
-  data: { stops, setStops, error },
+  data: { stops, error },
 }: {
   shift: Shift;
-  onShift: (shift: Shift) => void;
   data: ReturnType<typeof useShiftStops>;
 }) {
-  const { api } = useSession();
   const { currency, timezone } = useSettings();
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
-  const [rowError, setRowError] = useState<Record<string, string>>({});
-  const [busy, setBusy] = useState<string | null>(null);
+  // One change for the panel; its error and busy flag show on the row it was about.
+  const change = useChange();
+  const [row, setRow] = useState<string | null>(null);
+  const busy = change.busy ? row : null;
+  const rowError = (key: string) => (row === key ? change.error : null);
 
-  function apply(key: string, stop: Stop | null, next: Shift) {
-    setStops((old) => (old ?? []).flatMap((s) => (s.stop_key !== key ? [s] : stop ? [stop] : [])));
+  const ref = String(shift.id);
+  const answered =
+    (key: string) =>
+    ({ stop, shift: next }: { stop: Stop | null; shift: Shift }) => [
+      put('/shifts/{ref}', { path: { ref } }, next),
+      put('/shifts/{ref}/stops', { path: { ref } }, (old) =>
+        (old ?? []).flatMap((s) => (s.stop_key !== key ? [s] : stop ? [stop] : [])),
+      ),
+    ];
+  const saved = (key: string, stop: Stop | null) => {
     if (stop) setDrafts((d) => ({ ...d, [key]: draftOf(stop, currency) }));
-    onShift(next);
-  }
+  };
 
   async function save(s: Stop) {
     const d = drafts[s.stop_key];
     if (!d || d.role === '') return;
+    const role = d.role;
     const payout = toMinor(d.payout, currency);
     const tip = toMinor(d.tip, currency);
+    setRow(s.stop_key);
     if (payout === null || tip === null) {
-      setRowError((e) => ({ ...e, [s.stop_key]: 'Enter an amount such as 12.50.' }));
+      change.setError('Enter an amount such as 12.50.');
       return;
     }
-    setBusy(s.stop_key);
-    setRowError((e) => ({ ...e, [s.stop_key]: '' }));
-    try {
-      const r = await unwrap(
+    const r = await change.run(
+      (api) =>
         api.PUT('/shifts/{ref}/stop-labels/{stop_key}', {
-          params: { path: { ref: String(shift.id), stop_key: s.stop_key } },
+          params: { path: { ref, stop_key: s.stop_key } },
           body: {
-            role: d.role,
+            role,
             platform: d.platform.trim() === '' ? null : d.platform.trim(),
             place: d.place.trim() === '' ? null : d.place.trim(),
             payout_cents: payout,
@@ -132,30 +133,21 @@ export function StopsPanel({
             edited_at: Date.now(),
           },
         }),
-      );
-      apply(s.stop_key, r.stop, r.shift);
-    } catch (e) {
-      setRowError((x) => ({ ...x, [s.stop_key]: describe(e) }));
-    } finally {
-      setBusy(null);
-    }
+      answered(s.stop_key),
+    );
+    if (r) saved(s.stop_key, r.data.stop);
   }
 
   async function clear(s: Stop) {
-    setBusy(s.stop_key);
-    setRowError((e) => ({ ...e, [s.stop_key]: '' }));
-    try {
-      const r = await unwrap(
+    setRow(s.stop_key);
+    const r = await change.run(
+      (api) =>
         api.DELETE('/shifts/{ref}/stop-labels/{stop_key}', {
-          params: { path: { ref: String(shift.id), stop_key: s.stop_key } },
+          params: { path: { ref, stop_key: s.stop_key } },
         }),
-      );
-      apply(s.stop_key, r.stop, r.shift);
-    } catch (e) {
-      setRowError((x) => ({ ...x, [s.stop_key]: describe(e) }));
-    } finally {
-      setBusy(null);
-    }
+      answered(s.stop_key),
+    );
+    if (r) saved(s.stop_key, r.data.stop);
   }
 
   const columns = ((): Column<Stop>[] => {
@@ -274,7 +266,7 @@ export function StopsPanel({
                 </Button>
               ) : null}
             </div>
-            <FormError message={rowError[s.stop_key] || null} />
+            <FormError message={rowError(s.stop_key)} />
           </div>
         ),
       },

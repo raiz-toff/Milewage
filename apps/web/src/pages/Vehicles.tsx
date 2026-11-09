@@ -6,10 +6,9 @@ import { Button as UiButton } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { FormEvent } from 'react';
-import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
-import { useApiMutation, useApiQuery, useInvalidate } from '../api/query';
-import { useSession, useSettings } from '../session';
+import { errorText, useApiQuery, useChange } from '../api/query';
+import { settingsPatch, useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
 import { RowMenu } from '../ui/RowMenu';
 import type { LucideIcon } from 'lucide-react';
@@ -87,11 +86,11 @@ type Draft = {
  * One vehicle as a card (a GOV.UK summary card): its type icon, name and quiet details, the
  * card's actions in the "..." menu, and below a rule this year's deduction and the service log.
  */
-function VehicleCard({ vehicle, onChanged }: { vehicle: Vehicle; onChanged: () => void }) {
-  const { api, setSettings } = useSession();
+function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
   const saved = useSettings();
   const [edit, setEdit] = useState<Draft | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const change = useChange();
+  const { error } = change;
   const [service, setService] = useState(false);
   const titleId = useId();
   const archived = vehicle.archived_at !== null;
@@ -100,25 +99,11 @@ function VehicleCard({ vehicle, onChanged }: { vehicle: Vehicle; onChanged: () =
   const showTax = saved.modules.tax && !archived;
   const showService = saved.modules.maintenance && !archived;
 
-  async function makeDefault() {
-    setError(null);
-    try {
-      setSettings(
-        await unwrap(api.PATCH('/settings', { body: { default_vehicle_id: vehicle.id } })),
-      );
-    } catch (e) {
-      setError(describe(e));
-    }
-  }
+  const makeDefault = () => change.run(...settingsPatch({ default_vehicle_id: vehicle.id }));
   async function act(body: Schemas['VehicleCreate'] | { archived: boolean }) {
-    setError(null);
-    try {
-      await unwrap(api.PATCH('/vehicles/{id}', { params: { path: { id: vehicle.id } }, body }));
+    const path = { id: vehicle.id };
+    if (await change.run((api) => api.PATCH('/vehicles/{id}', { params: { path }, body })))
       setEdit(null);
-      onChanged();
-    } catch (e) {
-      setError(describe(e));
-    }
   }
   function save(e: FormEvent) {
     e.preventDefault();
@@ -317,18 +302,13 @@ export function VehiclesPage() {
     { placeholderData: keepPreviousData },
   );
   const vehicles = list.data ?? null;
-  const invalidate = useInvalidate();
-  const create = useApiMutation(
-    (api, body: Schemas['VehicleCreate']) => unwrap(api.POST('/vehicles', { body })),
-    { invalidates: ['/vehicles'] },
-  );
-  const [failed, setError] = useState<string | null>(null);
-  const error = failed ?? (list.error ? describe(list.error) : null);
+  const create = useChange();
+  const error = errorText(create, list);
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
   const [kind, setKind] = useState<Kind>('car');
   const [ownership, setOwnership] = useState<Ownership>('owned');
-  const busy = create.isPending;
+  const busy = create.busy;
 
   function open() {
     setName('');
@@ -338,13 +318,8 @@ export function VehiclesPage() {
   }
   async function add(e: FormEvent) {
     e.preventDefault();
-    setError(null);
-    try {
-      await create.mutateAsync({ name: name.trim(), kind, ownership });
-      setAdding(false);
-    } catch (err) {
-      setError(describe(err));
-    }
+    const body = { name: name.trim(), kind, ownership };
+    if (await create.run((api) => api.POST('/vehicles', { body }))) setAdding(false);
   }
 
   const addButton = (
@@ -412,7 +387,7 @@ export function VehiclesPage() {
       ) : (
         <ul aria-label="Vehicles" className="grid gap-3">
           {vehicles.map((v) => (
-            <VehicleCard key={v.id} vehicle={v} onChanged={() => void invalidate('/vehicles')} />
+            <VehicleCard key={v.id} vehicle={v} />
           ))}
         </ul>
       )}

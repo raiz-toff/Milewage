@@ -1,41 +1,29 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { describe, unwrap } from '../api/client';
-import { useSession } from '../session';
+import { useChange } from '../api/query';
 import { Button, Field, FormError } from '../ui/form';
 
 const MIN = 10;
 
 /** Password change (08 section 2.5). The server ends the owner's other sessions; this one stays. */
 export function Account() {
-  const { api } = useSession();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [again, setAgain] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const { run, busy, error, setError } = useChange();
   const [note, setNote] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
   async function save(e: FormEvent) {
     e.preventDefault();
     setNote(null);
     if (next.length < MIN) return setError(`The new password needs at least ${MIN} characters.`);
     if (next !== again) return setError('The two new passwords differ.');
-    setBusy(true);
-    setError(null);
-    try {
-      await unwrap(
-        api.POST('/auth/password', { body: { current_password: current, new_password: next } }),
-      );
-      setCurrent('');
-      setNext('');
-      setAgain('');
-      setNote('Password changed. Other signed-in browsers were signed out.');
-    } catch (err) {
-      setError(describe(err));
-    } finally {
-      setBusy(false);
-    }
+    const body = { current_password: current, new_password: next };
+    if (!(await run((api) => api.POST('/auth/password', { body })))) return;
+    setCurrent('');
+    setNext('');
+    setAgain('');
+    setNote('Password changed. Other signed-in browsers were signed out.');
   }
 
   return (

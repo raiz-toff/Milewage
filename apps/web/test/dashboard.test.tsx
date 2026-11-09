@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { PERIODS, localDate } from '../src/pages/Dashboard';
 import { renderApp, settingsFixture, signedIn } from './support/kit';
 
 beforeEach(() => {
@@ -167,12 +166,5 @@ describe('dashboard', () => {
     open(summary(), settingsFixture({ modules: { expenses: false } }));
     await screen.findByRole('region', { name: 'Earned' });
     expect(screen.queryByRole('link', { name: 'Add expense' })).toBeNull();
-  });
-
-  it('computes period bounds in the given zone', () => {
-    const now = Date.parse('2026-03-01T03:00:00Z'); // still 28 Feb in Toronto
-    expect(localDate(now, 'America/Toronto')).toBe('2026-02-28');
-    const month = PERIODS.find((p) => p.id === 'month')!;
-    expect(month.range(now, 'America/Toronto')).toEqual({ from: '2026-02-01', to: '2026-02-28' });
   });
 });

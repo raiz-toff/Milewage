@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { Section } from '../ui/layout';
-import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
-import { useApiQuery, useInvalidate } from '../api/query';
-import { useSession, useSettings } from '../session';
+import { errorText, useApiQuery, useChange } from '../api/query';
+import { useSettings } from '../session';
 import { Button, Field, FormError } from '../ui/form';
-import { localDate } from './Dashboard';
+import { dayOf } from '../days';
 import { toMetres } from './Odometer';
 
 type Kind = 'shift_start' | 'shift_end';
@@ -21,14 +20,12 @@ const inUnit = (m: number, unit: 'km' | 'mi') =>
 
 /** The optional start and end odometer readings of one shift (07 section 2), editable here. */
 export function ShiftOdometer({ shift, bare }: { shift: Schemas['Shift']; bare?: boolean }) {
-  const { api } = useSession();
   const { distance_unit: unit, timezone } = useSettings();
   // A shift that runs past midnight can have its end reading on the next local day.
-  const lastDay = shift.ended_at ? localDate(shift.ended_at, timezone) : shift.local_date;
+  const lastDay = shift.ended_at ? dayOf(shift.ended_at, timezone) : shift.local_date;
   const [edits, setValues] = useState<Record<Kind, string> | null>(null);
-  const [failed, setError] = useState<string | null>(null);
+  const change = useChange();
   const [saved, setSaved] = useState<Kind | null>(null);
-  const invalidate = useInvalidate();
   const locked = shift.status === 'finalized';
   const readings = (kind: Kind) => ({
     params: {
@@ -53,26 +50,19 @@ export function ShiftOdometer({ shift, bare }: { shift: Schemas['Shift']; bare?:
           shift_end: b ? inUnit(b.reading_m, unit) : '',
         }
       : null);
-  const loadError = starts.error ?? ends.error;
-  const error = failed ?? (loadError ? describe(loadError) : null);
+  const error = errorText(change, starts, ends);
 
   async function save(kind: Kind) {
     const metres = toMetres(values?.[kind] ?? '', unit);
-    if (metres === null) return setError(`Enter the odometer as a number of ${unit}.`);
-    setError(null);
+    if (metres === null) return change.setError(`Enter the odometer as a number of ${unit}.`);
     setSaved(null);
-    try {
-      await unwrap(
-        api.PUT('/shifts/{ref}/odometer/{kind}', {
-          params: { path: { ref: String(shift.id), kind } },
-          body: { reading_m: metres, recorded_at: Date.now() },
-        }),
-      );
-      setSaved(kind);
-      void invalidate('/odometer');
-    } catch (e) {
-      setError(describe(e));
-    }
+    const done = await change.run((api) =>
+      api.PUT('/shifts/{ref}/odometer/{kind}', {
+        params: { path: { ref: String(shift.id), kind } },
+        body: { reading_m: metres, recorded_at: Date.now() },
+      }),
+    );
+    if (done) setSaved(kind);
   }
 
   if (values === null) return error ? <FormError message={error} /> : null;

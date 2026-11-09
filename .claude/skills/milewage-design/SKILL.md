@@ -79,8 +79,13 @@ from the Comma web app.
    `DateField`, `TimeField`, `Picker` or `SelectField`, with `FormError` under the form. A dialog is
    for a confirmation or a short, dangerous step (the new recovery key), not for a form.
 6. Lists longer than one page end with `ShowMore` (`usePagedList` in `apps/web/src/api/paged.ts`).
-7. Data comes through TanStack Query (`useApiQuery`, `invalidate`); money is in minor units of the
-   instance currency, dates in the instance time zone, never the browser's. Use the helpers.
+7. Data comes through TanStack Query (`apps/web/src/api/query.ts`): reads with `useApiQuery`,
+   every write with `useChange()`, which gives `{ run, busy, error, setError }`. `run((api) =>
+   api.POST(…))` never throws; after a change succeeds every cached read is asked again, so a page
+   keeps no list of what to refresh. The form's one error line is `errorText(change, ...reads)`.
+   Settings are read with `useSettings()` and changed only with `run(...settingsPatch(p))`.
+   Money is in minor units of the instance currency, dates in the instance time zone, never the
+   browser's. Use the helpers.
 8. Check light and dark, a 360 px wide phone browser and a desktop. Then write the test next to the
    page's existing tests (`apps/web/test/*.test.tsx`): they find things by role and name, so give
    controls real names.

@@ -2,13 +2,12 @@ import { useEffect, useState } from 'react';
 import { Section } from '../ui/layout';
 import { Button as UiButton } from '@/components/ui/button';
 import type { FormEvent } from 'react';
-import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
-import { useApiQuery, useInvalidate, useSetApiData } from '../api/query';
+import { errorText, put, useApiQuery, useChange } from '../api/query';
 import { formatMoney, parseMoney } from '../format';
 import { EarningLedger } from './EarningLedger';
 import type { EarnedSummary } from './ShiftFacts';
-import { useSession, useSettings } from '../session';
+import { useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
 import { PlatformBadge, PlatformName } from '../platforms/PlatformBadge';
 import type { PlatformLike } from '../platforms/PlatformBadge';
@@ -29,21 +28,15 @@ export function ShiftEarnings({
   /** Told the shift's earned total and platform names whenever they change. */
   onSummary?: (s: EarnedSummary) => void;
 }) {
-  const { api } = useSession();
   const { currency, modules } = useSettings();
   const path = { ref: String(shift.id) };
   const earnings = useApiQuery('/shifts/{ref}/earnings', { params: { path } });
   const data = earnings.data ?? null;
   const platforms = useApiQuery('/platforms', undefined, { enabled: modules.platforms }).data ?? [];
-  const [failed, setError] = useState<string | null>(null);
-  const error = failed ?? (earnings.error ? describe(earnings.error) : null);
-  const setApiData = useSetApiData();
-  const invalidate = useInvalidate();
-  /** A save answers with the shift's earnings: show them; totals elsewhere are read again. */
-  const setData = (next: Earnings) => {
-    setApiData('/shifts/{ref}/earnings', { path }, next);
-    void invalidate('/summary', '/analytics');
-  };
+  const change = useChange();
+  const error = errorText(change, earnings);
+  /** A save answers with the shift's earnings: shown at once; every other figure is read again. */
+  const answered = (next: Earnings) => [put('/shifts/{ref}/earnings', { path }, next)];
   const [ledger, setLedger] = useState(false);
   const [form, setForm] = useState({
     platform: 'other',
@@ -69,43 +62,32 @@ export function ShiftEarnings({
       parseMoney(t, currency),
     );
     if ([gross, tips, bonus].some((n) => !Number.isFinite(n) || n! < 0)) {
-      return setError('Amounts must be zero or more.');
+      return change.setError('Amounts must be zero or more.');
     }
-    setError(null);
-    try {
-      setData(
-        await unwrap<Earnings>(
-          api.PUT('/shifts/{ref}/earnings/{platform}', {
-            params: { path: { ...path, platform } },
-            body: {
-              gross_cents: gross!,
-              tips_cents: tips!,
-              bonus_cents: bonus!,
-              orders: form.orders.trim() === '' ? null : Number(form.orders),
-            },
-          }),
-        ),
-      );
-      setForm({ ...form, gross: '', tips: '', bonus: '', orders: '' });
-    } catch (err) {
-      setError(describe(err));
-    }
+    const saved = await change.run(
+      (api) =>
+        api.PUT('/shifts/{ref}/earnings/{platform}', {
+          params: { path: { ...path, platform } },
+          body: {
+            gross_cents: gross!,
+            tips_cents: tips!,
+            bonus_cents: bonus!,
+            orders: form.orders.trim() === '' ? null : Number(form.orders),
+          },
+        }),
+      answered,
+    );
+    if (saved) setForm({ ...form, gross: '', tips: '', bonus: '', orders: '' });
   }
 
-  async function remove(platform: string) {
-    setError(null);
-    try {
-      setData(
-        await unwrap<Earnings>(
-          api.DELETE('/shifts/{ref}/earnings/{platform}', {
-            params: { path: { ...path, platform } },
-          }),
-        ),
-      );
-    } catch (err) {
-      setError(describe(err));
-    }
-  }
+  const remove = (platform: string) =>
+    change.run(
+      (api) =>
+        api.DELETE('/shifts/{ref}/earnings/{platform}', {
+          params: { path: { ...path, platform } },
+        }),
+      answered,
+    );
 
   /** A platform by slug: the driver's list, else the built-in name, else the slug itself. */
   const platformOf = (slug: string): PlatformLike =>
@@ -209,7 +191,7 @@ export function ShiftEarnings({
           Add a cash trip, fee or payout line
         </UiButton>
       ) : (
-        <EarningLedger shiftId={shift.id} data={data} options={options} onChange={setData} />
+        <EarningLedger shiftId={shift.id} data={data} options={options} />
       )}
     </Section>
   );

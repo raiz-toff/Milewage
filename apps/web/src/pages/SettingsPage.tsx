@@ -16,11 +16,11 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { describe, unwrap } from '../api/client';
+import { useChange } from '../api/query';
 import { levelWord, useCountries } from '../countries';
 import type { Schemas, Settings } from '../api/client';
 import { parseRate, rateInput } from '../format';
-import { useSession, useSettings } from '../session';
+import { settingsPatch, useSettings } from '../session';
 import { Button, Field, FormError, PrivacyLink, SelectField } from '../ui/form';
 import { PageHeader } from '../ui/layout';
 import { Account } from './Account';
@@ -396,12 +396,10 @@ function SettingsCard({ children }: { children: ReactNode }) {
 
 /** The saved preferences and the unsaved draft, shared by the Profile, Units and Tracking pages. */
 function usePrefs() {
-  const { api, setSettings } = useSession();
   const saved = useSettings();
   const [draft, setDraft] = useState<Draft>(() => draftOf(saved));
-  const [error, setError] = useState<string | null>(null);
+  const { run, busy, error, setError } = useChange();
   const [note, setNote] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
   const patch = changes(saved, draft);
   const was = draftOf(saved);
   const edited = (Object.keys(draft) as (keyof Draft)[]).filter((k) => draft[k] !== was[k]);
@@ -426,18 +424,10 @@ function usePrefs() {
     },
     async save(e: FormEvent) {
       e.preventDefault();
-      setBusy(true);
-      setError(null);
-      try {
-        const next = await unwrap(api.PATCH('/settings', { body: patch }));
-        setSettings(next);
-        setDraft(draftOf(next));
-        setNote('Saved.');
-      } catch (err) {
-        setError(describe(err));
-      } finally {
-        setBusy(false);
-      }
+      const done = await run(...settingsPatch(patch));
+      if (!done) return;
+      setDraft(draftOf(done.data));
+      setNote('Saved.');
     },
   };
 }

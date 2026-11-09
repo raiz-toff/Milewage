@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Button as UiButton } from '@/components/ui/button';
-import { describe, unwrap } from '../api/client';
+import { put, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
 import { formatMoney, parseMoney } from '../format';
-import { useSession, useSettings } from '../session';
+import { useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
 import type { PickOption } from '../ui/form';
 
@@ -35,16 +35,14 @@ export function EarningLedger({
   shiftId,
   data,
   options,
-  onChange,
 }: {
   shiftId: number;
   data: Earnings;
   options: PickOption[];
-  onChange: (d: Earnings) => void;
 }) {
-  const { api } = useSession();
   const { currency } = useSettings();
-  const [error, setError] = useState<string | null>(null);
+  const change = useChange();
+  const { error } = change;
   const [form, setForm] = useState({
     platform: '',
     type: 'commission' as EntryType,
@@ -58,42 +56,35 @@ export function EarningLedger({
     ? form.platform
     : options[0]!.value;
 
-  async function call(run: () => Promise<Earnings>) {
-    setError(null);
-    try {
-      onChange(await run());
-      return true;
-    } catch (err) {
-      setError(describe(err));
-      return false;
-    }
-  }
+  // Each change answers with the shift's earnings: shown at once, the rest is read again.
+  const ref = String(shiftId);
+  const shown = (next: Earnings) => [put('/shifts/{ref}/earnings', { path: { ref } }, next)];
   async function add(e: FormEvent) {
     e.preventDefault();
     const cents = parseMoney(form.amount, currency);
-    if (!Number.isFinite(cents) || cents <= 0) return setError('Type an amount above zero.');
+    if (!Number.isFinite(cents) || cents <= 0) return change.setError('Type an amount above zero.');
     const plus = form.type === 'adjustment' ? form.adds === 'yes' : PLUS.includes(form.type);
-    const ok = await call(() =>
-      unwrap<Earnings>(
+    const ok = await change.run(
+      (api) =>
         api.POST('/shifts/{ref}/earnings/{platform}/entries', {
-          params: { path: { ref: String(shiftId), platform } },
+          params: { path: { ref, platform } },
           body: {
             type: form.type,
             amount_cents: plus ? cents : -cents,
             ...(form.note.trim() === '' ? {} : { note: form.note.trim() }),
           },
         }),
-      ),
+      shown,
     );
     if (ok) setForm({ ...form, amount: '', note: '' });
   }
   const remove = (p: string, id: number) =>
-    void call(() =>
-      unwrap<Earnings>(
+    void change.run(
+      (api) =>
         api.DELETE('/shifts/{ref}/earnings/{platform}/entries/{id}', {
-          params: { path: { ref: String(shiftId), platform: p, id } },
+          params: { path: { ref, platform: p, id } },
         }),
-      ),
+      shown,
     );
 
   const rows = data.entries.filter((r) => r.ledger.some((x) => !PAY.includes(x.type)));

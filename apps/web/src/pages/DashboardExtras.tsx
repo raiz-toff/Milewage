@@ -14,11 +14,11 @@ import { Link } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
-import { useApiQuery } from '../api/query';
+import { useApiQuery, useChange } from '../api/query';
 import { levelWord, useCountries } from '../countries';
-import { useSession, useSettings } from '../session';
+import { addDays } from '../days';
+import { settingsPatch, useSettings } from '../session';
 import { valueText } from './Goals';
 import { messageOf } from './Notifications';
 
@@ -137,7 +137,8 @@ function storeHidden(hidden: boolean) {
  * the card back (W8).
  */
 export function SetupChecklist() {
-  const { api, setSettings } = useSession();
+  // Keeping a step is quiet: a failure only means it is kept on a later visit.
+  const { run } = useChange();
   const { modules, setup_done: kept } = useSettings();
   const vehicles = useApiQuery('/vehicles').data;
   const goals = useApiQuery('/goals', undefined, { enabled: modules.goals }).data;
@@ -194,15 +195,14 @@ export function SetupChecklist() {
   const [hidden, setHidden] = useState(storedHidden);
   const [showDone, setShowDone] = useState(false);
 
-  const keep = (ids: SetupStep[]) =>
-    unwrap(api.PATCH('/settings', { body: { setup_done: ids } })).then(setSettings);
+  const keep = (ids: SetupStep[]) => run(...settingsPatch({ setup_done: ids }));
   // Steps done now but not yet kept are kept, so they stay done whatever happens later.
   const fresh = (live ?? [])
     .filter((i) => i.done && !kept.includes(i.id as SetupStep))
     .map((i) => i.id as SetupStep);
   const freshKey = fresh.join();
   useEffect(() => {
-    if (freshKey) keep(freshKey.split(',') as SetupStep[]).catch(() => undefined);
+    if (freshKey) void keep(freshKey.split(',') as SetupStep[]);
   }, [freshKey]);
 
   if (!state || state.every((i) => i.done)) return null;
@@ -284,7 +284,7 @@ export function SetupChecklist() {
                   size="sm"
                   className="mr-1 text-muted-foreground"
                   aria-label={`Skip: ${i.text}`}
-                  onClick={() => void keep([i.id as SetupStep]).catch(() => undefined)}
+                  onClick={() => void keep([i.id as SetupStep])}
                 >
                   Skip
                 </Button>
@@ -344,9 +344,7 @@ function Notice({ icon, children }: { icon: ReactNode; children: ReactNode }) {
 export function Notices({ today }: { today: string }) {
   const { country, region, modules } = useSettings();
   const c = useCountries().find((x) => x.code === country);
-  const from = new Date(Date.parse(`${today}T00:00:00Z`) - 29 * 86_400_000)
-    .toISOString()
-    .slice(0, 10);
+  const from = addDays(today, -29);
   const shifts = useApiQuery('/shifts', { params: { query: { from, to: today, limit: 200 } } });
   const review =
     shifts.data?.items.filter((s) => s.flags?.some((f) => f.severity === 'review')).length ?? 0;

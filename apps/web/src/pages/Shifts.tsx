@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { PageHeader, Section, StatCard } from '../ui/layout';
 import { Link, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -10,13 +10,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { describe, unwrap } from '../api/client';
 import type { Schemas, Settings } from '../api/client';
-import { underPath, useApiQuery, useInvalidate, useSetApiData } from '../api/query';
+import { useApiQuery } from '../api/query';
 import { deductionWord, formatDistance, formatDuration, formatMoney, formatTime } from '../format';
 import { RouteView, useShiftRoute } from '../map/RouteView';
 import { PlatformName } from '../platforms/PlatformBadge';
+import { addDays, dateWords, todayIn, weekOf, weekWords } from '../days';
 import { useSession, useSettings } from '../session';
 import { FormError } from '../ui/form';
-import { localDate } from './Dashboard';
 import { ExportButtons } from './Exports';
 import { AddTrip } from './AddTrip';
 import { ShiftEarnings } from './ShiftEarnings';
@@ -46,30 +46,7 @@ export function Est() {
   );
 }
 
-const DAY_MS = 86_400_000;
-const utcMs = (d: string) => Date.parse(`${d}T00:00:00Z`);
 const isDate = (d: string | null): d is string => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d);
-
-export const addDays = (d: string, n: number) =>
-  new Date(utcMs(d) + n * DAY_MS).toISOString().slice(0, 10);
-
-/** The first day of the week holding `d`, with the driver's week start (0 Sunday, 1 Monday). */
-export const weekOf = (d: string, weekStart: number) =>
-  addDays(d, -((new Date(utcMs(d)).getUTCDay() - weekStart + 7) % 7));
-
-/** A calendar date as words; the date is already local, so it is formatted as UTC. */
-export const dateWords = (d: string, opts: Intl.DateTimeFormatOptions) =>
-  new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', ...opts }).format(utcMs(d));
-
-/** "Nov 13 – 19, 2023", or "Oct 30 – Nov 5, 2023" when the week spans two months. */
-export const weekWords = (from: string, to: string) => {
-  const start = dateWords(from, { month: 'short', day: 'numeric' });
-  const end =
-    from.slice(0, 7) === to.slice(0, 7)
-      ? String(Number(to.slice(8)))
-      : dateWords(to, { month: 'short', day: 'numeric' });
-  return `${start} – ${end}, ${to.slice(0, 4)}`;
-};
 
 type Summary = Schemas['Summary'];
 interface DayBucket {
@@ -201,7 +178,7 @@ export function ShiftList() {
   const unit = settings.distance_unit;
   const currency = settings.currency;
   const [params, setParams] = useSearchParams();
-  const today = localDate(Date.now(), settings.timezone);
+  const today = todayIn(settings.timezone);
   const thisWeek = weekOf(today, settings.week_start);
   const asked = params.get('week');
   const from = weekOf(isDate(asked) ? asked : today, settings.week_start);
@@ -406,27 +383,10 @@ export function ShiftList() {
 export function ShiftDetail() {
   const { ref } = useParams();
   const settings = useSettings();
-  const queries = useQueryClient();
-  const invalidate = useInvalidate();
-  const setData = useSetApiData();
   const asked = { path: { ref: ref ?? '' } };
   const shiftQuery = useApiQuery('/shifts/{ref}', { params: asked });
   const shift = shiftQuery.data ?? null;
   const error = shiftQuery.error ? describe(shiftQuery.error) : null;
-  /** A save answered with the new shift: show it, and have every other view of it read again. */
-  const setShift = (next: Shift) => {
-    const recomputed = next.calculated_at !== shift?.calculated_at;
-    setData('/shifts/{ref}', asked, next);
-    // The week, the dashboard and the totals are read again when they are next shown.
-    void queries.invalidateQueries({
-      predicate: (q) =>
-        q.queryKey[0] === '/shifts' ||
-        ['/summary', '/analytics'].some((p) => underPath(p)(q.queryKey)),
-      refetchType: 'none',
-    });
-    // A recompute rebuilds the trips; the stops panel updates its own row in place.
-    if (recomputed) void invalidate('/shifts/{ref}/trips');
-  };
   const [earned, setEarned] = useState<EarnedSummary | null>(null);
   const vehicle = useVehicleName(shift?.vehicle_id ?? 0);
   const [picked, setPicked] = useState<Picked>(null);
@@ -473,7 +433,7 @@ export function ShiftDetail() {
     settings.modules.stops && (stopsData.stops === null || stops.length > 0 || orphans);
   const exporters = settings.modules.exporters.length > 0 && !active;
 
-  const notes = (bare?: boolean) => <ShiftNotes shift={shift} onShift={setShift} bare={bare} />;
+  const notes = (bare?: boolean) => <ShiftNotes shift={shift} bare={bare} />;
   const exportButtons = <ExportButtons selection={{ shift_id: shift.id }} />;
 
   return (
@@ -576,10 +536,7 @@ export function ShiftDetail() {
             <AddTrip
               shift={shift}
               onCancel={() => setAdding(false)}
-              onSaved={(s) => {
-                setAdding(false);
-                setShift(s);
-              }}
+              onSaved={() => setAdding(false)}
             />
           ) : null}
           {tripsError ? (
@@ -678,7 +635,7 @@ export function ShiftDetail() {
           title="Label stops"
           description="Optional. A label corrects the estimate for that stop and adds its payout."
         >
-          <StopsPanel shift={shift} onShift={setShift} data={stopsData} />
+          <StopsPanel shift={shift} data={stopsData} />
         </Section>
       ) : null}
     </section>

@@ -3,8 +3,7 @@ import { Ban, Pencil, Smartphone } from 'lucide-react';
 import { RowMenu } from '../ui/RowMenu';
 import { EmptyState, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
 import { Button as UiButton } from '@/components/ui/button';
-import { describe, unwrap } from '../api/client';
-import { useApiQuery, useInvalidate } from '../api/query';
+import { errorText, useApiQuery, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
 import type { paths } from '@milewage/shared/generated/api-types';
 import { formatDateTime, formatTime } from '../format';
@@ -30,36 +29,30 @@ const SOURCE: Record<Pairing['base_url_source'], string> = {
  * carries the `https://<server>/pair#…` link any camera opens; "Open in the MileWage app" and
  * "Get the app" sit beside it (plan 24 section 4.3). The address inside it is shown with
  * Change address, and a warning comes first when the phone app cannot use it (plan 19 section 3.3).
- * `remake` asks for a new code with the driver's address.
+ * Change address asks for a new code with the driver's address and hands it to `onPairing`.
  */
 export function PairingCode({
   pairing,
-  remake,
+  onPairing,
 }: {
   pairing: Pairing;
-  remake: (baseUrl: string) => Promise<void>;
+  onPairing: (pairing: Pairing) => void;
 }) {
   const { api } = useSession();
   const { timezone } = useSettings();
   const available = useAppAvailable(api);
   const problem = addressProblem(pairing.base_url);
   const [address, setAddress] = useState<string | null>(null); // non-null while changing
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { run, busy, error } = useChange();
 
   // Not a <form>: the wizard's phone step already sits inside one.
   async function change() {
     if (busy || !address?.trim()) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await remake(address!.trim());
-      setAddress(null);
-    } catch (err) {
-      setError(describe(err));
-    } finally {
-      setBusy(false);
-    }
+    const base_url = address.trim();
+    const made = await run((api) => api.POST('/pairing-tokens', { body: { base_url } }));
+    if (!made) return;
+    onPairing(made.data);
+    setAddress(null);
   }
 
   return (
@@ -178,24 +171,18 @@ function Addresses({ pairing }: { pairing: Pairing }) {
   );
 }
 
-function DeviceRow({ device, onChanged }: { device: Device; onChanged: () => void }) {
-  const { api } = useSession();
+function DeviceRow({ device }: { device: Device }) {
   const { timezone } = useSettings();
   const [name, setName] = useState<string | null>(null); // non-null while renaming
   const [confirming, setConfirming] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const change = useChange();
+  const { error } = change;
   const revoked = device.revoked_at !== null;
 
-  async function act(run: () => Promise<unknown>) {
-    setError(null);
-    try {
-      await run();
-      setName(null);
-      setConfirming(false);
-      onChanged();
-    } catch (e) {
-      setError(describe(e));
-    }
+  async function act(send: Parameters<typeof change.run>[0]) {
+    if (!(await change.run(send))) return;
+    setName(null);
+    setConfirming(false);
   }
 
   return (
@@ -228,8 +215,8 @@ function DeviceRow({ device, onChanged }: { device: Device; onChanged: () => voi
                 variant="destructive"
                 size="sm"
                 onClick={() =>
-                  void act(() =>
-                    unwrap(api.DELETE('/devices/{id}', { params: { path: { id: device.id } } })),
+                  void act((api) =>
+                    api.DELETE('/devices/{id}', { params: { path: { id: device.id } } }),
                   )
                 }
               >
@@ -267,13 +254,11 @@ function DeviceRow({ device, onChanged }: { device: Device; onChanged: () => voi
               className="h-auto px-0"
               disabled={!name.trim()}
               onClick={() =>
-                void act(() =>
-                  unwrap(
-                    api.PATCH('/devices/{id}', {
-                      params: { path: { id: device.id } },
-                      body: { name: name.trim() },
-                    }),
-                  ),
+                void act((api) =>
+                  api.PATCH('/devices/{id}', {
+                    params: { path: { id: device.id } },
+                    body: { name: name.trim() },
+                  }),
                 )
               }
             >
@@ -291,25 +276,16 @@ function DeviceRow({ device, onChanged }: { device: Device; onChanged: () => voi
 
 /** Module `devices`: pair a phone with a one-time QR code, rename, revoke. */
 export function Devices() {
-  const { api } = useSession();
   const asked = useApiQuery('/devices');
   const devices = asked.data ?? null;
-  const invalidate = useInvalidate();
-  const load = () => invalidate('/devices');
   const [pairing, setPairing] = useState<Pairing | null>(null);
-  const [failed, setError] = useState<string | null>(null);
-  const error = failed ?? (asked.error ? describe(asked.error) : null);
+  const change = useChange();
+  const error = errorText(change, asked);
 
   async function pair() {
-    setError(null);
-    try {
-      setPairing(await unwrap(api.POST('/pairing-tokens')));
-    } catch (e) {
-      setError(describe(e));
-    }
+    const made = await change.run((api) => api.POST('/pairing-tokens'));
+    if (made) setPairing(made.data);
   }
-  const remake = async (base_url: string) =>
-    setPairing(await unwrap(api.POST('/pairing-tokens', { body: { base_url } })));
 
   return (
     <section className="space-y-6">
@@ -324,11 +300,11 @@ export function Devices() {
         </Button>
       </PageHeader>
       <Section title="Link a phone on your Wi-Fi">
-        <LinkAPhone onLinked={() => void load()} />
+        <LinkAPhone />
       </Section>
       {pairing || error ? (
         <Section title="Pair a phone with a code">
-          {pairing ? <PairingCode pairing={pairing} remake={remake} /> : null}
+          {pairing ? <PairingCode pairing={pairing} onPairing={setPairing} /> : null}
           <FormError message={error} />
         </Section>
       ) : null}
@@ -351,7 +327,7 @@ export function Devices() {
               </thead>
               <tbody>
                 {devices.map((d) => (
-                  <DeviceRow key={d.id} device={d} onChanged={() => void load()} />
+                  <DeviceRow key={d.id} device={d} />
                 ))}
               </tbody>
             </table>

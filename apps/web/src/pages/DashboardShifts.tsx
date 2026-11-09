@@ -13,7 +13,7 @@ import type { PlatformLike } from '../platforms/PlatformBadge';
 import { usePlatformOf } from '../platforms/usePlatforms';
 import { useSettings } from '../session';
 import { EmptyState, Section } from '../ui/layout';
-import { dateWords } from './Shifts';
+import { dateWords } from '../days';
 
 type Shift = Schemas['Shift'];
 

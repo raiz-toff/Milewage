@@ -2,7 +2,8 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { renderApp, settingsFixture, signedIn, pick, DASHBOARD } from './support/kit';
-import { formatDay } from '../src/dateText';
+import { createQueryClient } from '../src/api/query';
+import { formatDay } from '../src/days';
 
 afterEach(cleanup);
 
@@ -248,6 +249,45 @@ describe('tax screen (module tax)', () => {
     expect(await screen.findByRole('heading', { name: DASHBOARD })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Tax' })).toBeNull();
     expect(s.calls.some((c) => c.path.startsWith('/tax'))).toBe(false);
+  });
+
+  it('shows the new estimate after an expense is added on the Expenses page', async () => {
+    // The server works the estimate out from expenses; a cache that keeps answers, as the
+    // browser's does, would otherwise show the old figure for 30 s.
+    let current = report();
+    renderApp(
+      {
+        ...signedIn(),
+        [`GET /tax/${YEAR}`]: () => ({ body: current }),
+        [`GET /tax/${YEAR}/jar`]: () => ({ body: jar() }),
+        'GET /expenses': () => ({ body: { items: [], next_cursor: null } }),
+        'GET /expenses/totals': () => ({
+          body: { year: YEAR, total_cents: 0, deductible_cents: 0, double_counts_cents: 0 },
+        }),
+        'GET /expenses/due': () => ({ body: [] }),
+        'GET /expenses/categories': () => ({ body: [] }),
+        'GET /vehicles': () => ({ body: [] }),
+        'GET /shifts': () => ({ body: { items: [], next_cursor: null } }),
+        'POST /expenses': () => {
+          current = report({
+            estimate: { ...report().estimate, total_set_aside_cents: 150_000 },
+          });
+          return { status: 201, body: {} };
+        },
+      },
+      '/tax',
+      createQueryClient({ retry: false }),
+    );
+    const hero = await screen.findByRole('region', { name: 'Estimate' });
+    expect(hero.textContent).toContain('$1,575.00');
+    fireEvent.click(screen.getByRole('link', { name: 'Expenses' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add expense' }));
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save expense' }));
+    await waitFor(() => expect(screen.queryByText('New expense')).toBeNull());
+    fireEvent.click(screen.getByRole('link', { name: 'Tax' }));
+    const again = await screen.findByRole('region', { name: 'Estimate' });
+    await waitFor(() => expect(again.textContent).toContain('$1,500.00'));
   });
 });
 

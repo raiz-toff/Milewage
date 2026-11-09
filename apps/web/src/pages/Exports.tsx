@@ -8,8 +8,8 @@ import { useApiQuery } from '../api/query';
 import type { Modules } from '../api/client';
 import { useSession, useSettings } from '../session';
 import { DateField, FormError, Picker, SelectField } from '../ui/form';
-import { dateLocale, formatDay } from '../dateText';
-import { localDate } from './Dashboard';
+import { PERIODS, dateLocale, formatDay, period, todayIn } from '../days';
+import type { Range } from '../days';
 
 type Format = Modules['exporters'][number];
 
@@ -142,22 +142,16 @@ const GROUPS: { title: string; description?: string; formats: Format[] }[] = [
 ];
 
 /** Ready-made periods, each within the 366-day limit; "Custom" shows the two date pickers. */
-const PRESETS: { id: string; label: string; range?: (today: string) => [string, string] }[] = [
-  { id: 'month', label: 'This month', range: (t) => [`${t.slice(0, 7)}-01`, t] },
-  {
-    id: 'last-month',
-    label: 'Last month',
-    range: (t) => {
-      const end = new Date(Date.parse(`${t.slice(0, 7)}-01`) - DAY).toISOString().slice(0, 10);
-      return [`${end.slice(0, 7)}-01`, end];
-    },
-  },
-  { id: 'year', label: 'This year', range: (t) => [`${t.slice(0, 4)}-01-01`, t] },
-  {
-    id: 'last-year',
-    label: 'Last year',
-    range: (t) => [`${Number(t.slice(0, 4)) - 1}-01-01`, `${Number(t.slice(0, 4)) - 1}-12-31`],
-  },
+const soFar = (id: string) => PERIODS.find((p) => p.id === id)!.range;
+const PRESETS: {
+  id: string;
+  label: string;
+  range?: (today: string, weekStart: number) => Range;
+}[] = [
+  { id: 'month', label: 'This month', range: soFar('month') },
+  { id: 'last-month', label: 'Last month', range: (t, ws) => period('month', t, ws, -1) },
+  { id: 'year', label: 'This year', range: soFar('year') },
+  { id: 'last-year', label: 'Last year', range: (t, ws) => period('year', t, ws, -1) },
   { id: 'custom', label: 'Custom' },
 ];
 
@@ -166,8 +160,8 @@ const PRESETS: { id: string; label: string; range?: (today: string) => [string, 
  * then each file under what it is for, with its own Download button.
  */
 export function ExportsPage() {
-  const { timezone, country, modules } = useSettings();
-  const today = localDate(Date.now(), timezone);
+  const { timezone, country, modules, week_start: weekStart } = useSettings();
+  const today = todayIn(timezone);
   const [preset, setPreset] = useState('year');
   const [custom, setCustom] = useState<[string, string]>([today, today]);
   // The vehicle filter is offered only when the list could be read.
@@ -176,7 +170,8 @@ export function ExportsPage() {
   const [level, setLevel] = useState<'trip' | 'shift'>('trip');
   const periodId = useId();
 
-  const [from, to] = PRESETS.find((p) => p.id === preset)?.range?.(today) ?? custom;
+  const chosen = PRESETS.find((p) => p.id === preset)?.range?.(today, weekStart);
+  const [from, to] = chosen ? [chosen.from, chosen.to] : custom;
   const { busy, error, run } = useExport(
     { from, to },
     vehicle ? Number(vehicle) : undefined,

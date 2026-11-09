@@ -2,11 +2,10 @@ import { useState } from 'react';
 import { DatabaseBackup } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState, PageHeader, Section, StatCard, TableBox, tableClass } from '../ui/layout';
-import { describe, unwrap } from '../api/client';
-import { useApiQuery, useInvalidate, useSetApiData } from '../api/query';
+import { errorText, put, useApiQuery, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
 import { formatDateTime } from '../format';
-import { useSession, useSettings } from '../session';
+import { useSettings } from '../session';
 import { Button, FormError } from '../ui/form';
 import { NewRecoveryKey } from './NewRecoveryKey';
 
@@ -38,7 +37,6 @@ const mb = (n: number) => `${(n / 1_000_000).toFixed(1)} MB`;
  * toggled; only the download link follows `modules.backup_download`.
  */
 export function Backups() {
-  const { api } = useSession();
   const { timezone, modules } = useSettings();
   const list = useApiQuery('/backups');
   const system = useApiQuery('/system/status');
@@ -46,40 +44,21 @@ export function Backups() {
   const both = list.data && system.data;
   const backups = both ? list.data! : null;
   const status = both ? system.data! : null;
-  const setData = useSetApiData();
-  const invalidate = useInvalidate();
-  const load = () => invalidate('/backups', '/system/status');
-  const [failed, setError] = useState<string | null>(null);
-  const loadError = list.error ?? system.error;
-  const error = failed ?? (loadError ? describe(loadError) : null);
-  const [busy, setBusy] = useState(false);
+  const change = useChange();
+  const { busy } = change;
+  const error = errorText(change, list, system);
   // The server resets the reminder when a file is handed out; show that without a reload.
   const [downloaded, setDownloaded] = useState(false);
 
-  async function run() {
-    setBusy(true);
-    setError(null);
-    try {
-      await unwrap(api.POST('/backups'));
-      await load();
-    } catch (e) {
-      setError(describe(e));
-    } finally {
-      setBusy(false);
-    }
-  }
+  const run = () => change.run((api) => api.POST('/backups'));
 
   async function acknowledge(synced: boolean) {
-    setError(null);
-    try {
-      const offsite = await unwrap(
-        api.PUT('/backups/offsite-ack', { body: { synced_elsewhere: synced } }),
-      );
-      if (system.data) setData('/system/status', undefined, { ...system.data, offsite });
-      setDownloaded(false);
-    } catch (e) {
-      setError(describe(e));
-    }
+    const done = await change.run(
+      (api) => api.PUT('/backups/offsite-ack', { body: { synced_elsewhere: synced } }),
+      // The answer is the status's offsite part: shown at once, not asked for again.
+      (offsite) => [put('/system/status', undefined, (old) => old && { ...old, offsite })],
+    );
+    if (done) setDownloaded(false);
   }
 
   const warnings = status

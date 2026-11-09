@@ -267,6 +267,29 @@ describe('expenses screen (module expenses)', () => {
     });
   });
 
+  it("a new expense and a snooze count from the driver's day, not the browser's UTC day", async () => {
+    // 23:30 on 15 March in Toronto (the fixture's zone) is already 16 March in UTC.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-03-16T03:30:00Z'));
+    const s = open(
+      [expense()],
+      [expense({ id: 9, recurrence: 'monthly', next_due: '2026-03-15' })],
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Add expense' }));
+    expect(screen.getByRole('button', { name: /^Date / }).textContent).toMatch(/Mar 15, 2026/);
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save expense' }));
+    await waitFor(() => expect(s.calls.some((c) => c.method === 'POST')).toBe(true));
+    expect(s.calls.find((c) => c.method === 'POST')?.body).toMatchObject({
+      spent_on: '2026-03-15',
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Remind me in a week/ }));
+    await waitFor(() => expect(s.calls.some((c) => c.path === '/expenses/9/snooze')).toBe(true));
+    expect(s.calls.find((c) => c.path === '/expenses/9/snooze')?.body).toEqual({
+      until: '2026-03-22',
+    });
+  });
+
   it('refuses an empty amount without calling the server', async () => {
     const s = open();
     await screen.findByText('Shell');

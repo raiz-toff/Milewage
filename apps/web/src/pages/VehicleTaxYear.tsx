@@ -1,10 +1,9 @@
-import { useId, useState } from 'react';
+import { useId } from 'react';
 import { notAutomobile } from '@milewage/shared';
-import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
-import { useApiQuery, useInvalidate, useSetApiData } from '../api/query';
-import { useSession, useSettings } from '../session';
-import { localDate } from './Dashboard';
+import { put, useApiQuery, useChange } from '../api/query';
+import { useSettings } from '../session';
+import { todayIn } from '../days';
 import { Picker } from '../ui/form';
 
 type Row = Schemas['VehicleTaxYear'];
@@ -22,35 +21,22 @@ export function VehicleTaxYear({
   name: string;
   kind: Schemas['Vehicle']['kind'];
 }) {
-  const { api } = useSession();
   const { timezone, distance_unit: unit } = useSettings();
   const id = useId();
-  const year = Number(localDate(Date.now(), timezone).slice(0, 4));
+  const year = Number(todayIn(timezone).slice(0, 4));
   const path = { id: vehicleId, year };
   const asked = useApiQuery('/vehicles/{id}/tax-years/{year}', { params: { path } });
   const row = asked.data ?? null;
-  const setData = useSetApiData();
-  const invalidate = useInvalidate();
-  const setRow = (next: Row) => {
-    setData('/vehicles/{id}/tax-years/{year}', { path }, next);
-    // The method changes the deduction, so the totals are read again.
-    void invalidate('/summary', '/tax');
-  };
-  const [failed, setError] = useState<string | null>(null);
-  const error = failed ?? (asked.error ? 'The tax year could not be loaded.' : null);
+  const change = useChange();
+  const error = change.error ?? (asked.error ? 'The tax year could not be loaded.' : null);
 
-  async function choose(method: Row['method']) {
-    setError(null);
-    try {
-      setRow(
-        await unwrap<Row>(
-          api.PUT('/vehicles/{id}/tax-years/{year}', { params: { path }, body: { method } }),
-        ),
-      );
-    } catch (e) {
-      setError(describe(e));
-    }
-  }
+  // The answer is the year's row: shown at once. The method changes the deduction, so the
+  // totals are read again with every other figure.
+  const choose = (method: Row['method']) =>
+    change.run(
+      (api) => api.PUT('/vehicles/{id}/tax-years/{year}', { params: { path }, body: { method } }),
+      (next) => [put('/vehicles/{id}/tax-years/{year}', { path }, next)],
+    );
   const why = notAutomobile(kind)
     ? 'No mileage rate applies to this type, so its expenses count either way.'
     : `Mileage rate: a set amount for each business ${unit === 'km' ? 'km' : 'mile'}. Actual expenses: what you spend running it.`;

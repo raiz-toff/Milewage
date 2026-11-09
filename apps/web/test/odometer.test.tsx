@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { startOfLocalDay, toMetres } from '../src/pages/Odometer';
+import { startOfDay } from '../src/days';
+import { toMetres } from '../src/pages/Odometer';
 import { renderApp, settingsFixture, signedIn, pick, pickDay, pickDate } from './support/kit';
 import type { Handler } from './support/kit';
 
@@ -108,7 +109,7 @@ describe('odometer logbook', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add reading' }));
     await waitFor(() => expect(calls.some((c) => c.method === 'POST')).toBe(true));
     expect(calls.find((c) => c.method === 'POST')!.body).toMatchObject({
-      recorded_at: startOfLocalDay('2026-03-02', 'America/Toronto'),
+      recorded_at: startOfDay('2026-03-02', 'America/Toronto'),
     });
   });
 
@@ -209,13 +210,5 @@ describe('odometer logbook', () => {
     expect(toMetres('1', 'mi')).toBe(1609);
     expect(toMetres('-1', 'km')).toBeNull();
     expect(toMetres('', 'km')).toBeNull();
-    expect(startOfLocalDay('2026-01-01', 'America/Toronto')).toBe(JAN_1);
-    // Across a daylight-saving change (Toronto 2026-03-08, offset -5 to -4).
-    expect(startOfLocalDay('2026-03-09', 'America/Toronto')).toBe(
-      Date.parse('2026-03-09T04:00:00Z'),
-    );
-    expect(startOfLocalDay('2026-03-09', 'Pacific/Auckland')).toBe(
-      Date.parse('2026-03-08T11:00:00Z'),
-    );
   });
 });

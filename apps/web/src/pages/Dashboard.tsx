@@ -2,63 +2,12 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { dayOf } from '../days';
 import { useSettings } from '../session';
 import { GoalRing, Notices, SetupChecklist } from './DashboardExtras';
 import { PageHeader } from '../ui/layout';
 import { DashboardHero } from './DashboardHero';
 import { RecentShifts } from './DashboardShifts';
-
-const DAY = 86_400_000;
-
-/** A calendar date YYYY-MM-DD in the instance time zone. */
-export function localDate(ms: number, timeZone: string): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone, dateStyle: 'short' }).format(new Date(ms));
-}
-
-export interface Period {
-  id: string;
-  label: string;
-  range: (now: number, timeZone: string, weekStart?: number) => { from: string; to: string };
-}
-
-export const PERIODS: Period[] = [
-  {
-    id: '30d',
-    label: '30 days',
-    range: (now, tz) => ({ from: localDate(now - 29 * DAY, tz), to: localDate(now, tz) }),
-  },
-  {
-    id: 'month',
-    label: 'Month',
-    range: (now, tz) => {
-      const to = localDate(now, tz);
-      return { from: `${to.slice(0, 7)}-01`, to };
-    },
-  },
-  {
-    id: 'today',
-    label: 'Today',
-    range: (now, tz) => ({ from: localDate(now, tz), to: localDate(now, tz) }),
-  },
-  {
-    id: 'week',
-    label: 'Week',
-    range: (now, tz, weekStart = 1) => {
-      const to = localDate(now, tz);
-      const t = Date.parse(`${to}T00:00:00Z`);
-      const back = (new Date(t).getUTCDay() - weekStart + 7) % 7;
-      return { from: new Date(t - back * DAY).toISOString().slice(0, 10), to };
-    },
-  },
-  {
-    id: 'year',
-    label: 'Year',
-    range: (now, tz) => {
-      const to = localDate(now, tz);
-      return { from: `${to.slice(0, 4)}-01-01`, to };
-    },
-  },
-];
 
 /**
  * "Good afternoon, Sam" and the date, both in the driver's time zone (Comma's header), with the
@@ -109,7 +58,7 @@ export function Dashboard({ now }: { now?: number }) {
     <section ref={ref} className="space-y-6">
       <Greeting now={at} />
       <div className="space-y-3 empty:hidden">
-        <Notices today={localDate(at, settings.timezone)} />
+        <Notices today={dayOf(at, settings.timezone)} />
       </div>
       {wide ? (
         // Wide: setup and goal form a side column; without either the main column takes it all.

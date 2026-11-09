@@ -56,7 +56,9 @@ describe('import card (module import)', () => {
     ).toBeTruthy();
     expect(screen.getByText('Row 3: amount is not a positive amount')).toBeTruthy();
     expect(s.calls.some((c) => c.path === '/imports/expenses')).toBe(false); // nothing written yet
-    expect(s.calls[s.calls.length - 1]?.contentType).toBe('text/csv');
+    // The preview went as the raw CSV (after it, the shown reads are asked again).
+    const preview = s.calls.find((c) => c.path === '/imports/expenses/preview');
+    expect(preview?.contentType).toBe('text/csv');
     pick(screen.getByLabelText('Column for merchant'), 'Date');
     fireEvent.click(screen.getByRole('button', { name: 'Import 2 rows' }));
     expect(await screen.findByRole('status')).toBeTruthy();

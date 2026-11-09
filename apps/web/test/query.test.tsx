@@ -2,9 +2,9 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, createApi, unwrap } from '../src/api/client';
-import { createQueryClient, shouldRetry, useApiMutation, useApiQuery } from '../src/api/query';
-import { SessionProvider } from '../src/session';
+import { ApiError, createApi } from '../src/api/client';
+import { createQueryClient, shouldRetry, useApiQuery, useChange } from '../src/api/query';
+import { SessionProvider, settingsPatch, useSession } from '../src/session';
 import { fakeServer, renderApp, settingsFixture, signedIn, testQueryClient } from './support/kit';
 import type { Handler } from './support/kit';
 
@@ -67,63 +67,6 @@ describe('useApiQuery', () => {
   });
 });
 
-function GoalList() {
-  const goals = useApiQuery('/goals');
-  const vehicles = useApiQuery('/vehicles');
-  const add = useApiMutation(
-    (api, label: string) =>
-      unwrap(
-        api.POST('/goals', {
-          body: { label, metric: 'earnings', period: 'weekly', target: 10_000 },
-        }),
-      ),
-    { invalidates: ['/goals'] },
-  );
-  return (
-    <>
-      <ul aria-label="Goals">
-        {goals.data?.map((g) => (
-          <li key={g.id}>{g.label}</li>
-        ))}
-      </ul>
-      <p>{vehicles.data ? `${vehicles.data.length} vehicles` : null}</p>
-      <button type="button" onClick={() => add.mutate('Rent')}>
-        Add
-      </button>
-    </>
-  );
-}
-
-describe('useApiMutation', () => {
-  it('reads the list again after a change, and only that list', async () => {
-    const goals = [{ id: 1, label: 'Fuel' }];
-    const server = fakeServer({
-      'GET /goals': () => ({ body: goals }),
-      'GET /vehicles': () => ({ body: [] }),
-      'POST /goals': ({ body }) => {
-        goals.push({ id: 2, label: (body as { label: string }).label });
-        return { status: 201, body: goals[1] };
-      },
-    });
-    render(
-      <QueryClientProvider client={testQueryClient()}>
-        <SessionProvider api={server.api}>
-          <GoalList />
-        </SessionProvider>
-      </QueryClientProvider>,
-    );
-    const list = await screen.findByRole('list', { name: 'Goals' });
-    await within(list).findByText('Fuel');
-    await screen.findByText('0 vehicles');
-    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    expect(await within(list).findByText('Rent')).toBeTruthy();
-    const gets = (path: string) =>
-      server.calls.filter((c) => c.method === 'GET' && c.path === path).length;
-    expect(gets('/goals')).toBe(2);
-    expect(gets('/vehicles')).toBe(1);
-  });
-});
-
 // The Progress page draws until the test makes it fail.
 const progress = vi.hoisted(() => ({ fail: false }));
 vi.mock('../src/pages/Progress', () => ({
@@ -164,6 +107,32 @@ describe('page error boundary', () => {
   });
 });
 
+/** A signed-in screen that shows a setting and a figure the server works out from it. */
+function RateForm() {
+  const { state } = useSession();
+  const { run } = useChange();
+  const summary = useApiQuery('/summary', {
+    params: { query: { from: '2026-01-01', to: '2026-01-31' } },
+  });
+  if (state.status !== 'ready' || !summary.data) return <p>Loading</p>;
+  return (
+    <>
+      <p>
+        Rate: {state.settings.own_mileage_rate?.cents_per_unit ?? 'none'}; deduction{' '}
+        {summary.data.deduction_cents}
+      </p>
+      <button
+        type="button"
+        onClick={() =>
+          void run(...settingsPatch({ own_mileage_rate: { cents_per_unit: 70, unit: 'km' } }))
+        }
+      >
+        Save
+      </button>
+    </>
+  );
+}
+
 describe('the cache and the session', () => {
   // A cache that keeps answers, as in the browser (tests otherwise drop them at once).
   const keeping = () => createQueryClient({ retry: false });
@@ -181,6 +150,39 @@ describe('the cache and the session', () => {
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Sign out' }));
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeTruthy();
     expect(queryClient.getQueryCache().getAll()).toEqual([]);
+  });
+
+  it('a settings change is kept in the cache and the figures computed from settings are read again', async () => {
+    let current = settingsFixture({ own_mileage_rate: null });
+    const table: Record<string, Handler> = {
+      ...signedIn(current),
+      'GET /settings': () => ({ body: current }),
+      'PATCH /settings': ({ body }) => {
+        current = { ...current, ...(body as object) };
+        return { body: current };
+      },
+      // The server works the deduction out with the driver's own rate: 100 km at the rate.
+      'GET /summary': () => ({
+        body: { deduction_cents: (current.own_mileage_rate?.cents_per_unit ?? 0) * 100 },
+      }),
+    };
+    const server = fakeServer(table);
+    render(
+      <QueryClientProvider client={testQueryClient()}>
+        <SessionProvider api={server.api}>
+          <RateForm />
+        </SessionProvider>
+      </QueryClientProvider>,
+    );
+    await screen.findByText('Rate: none; deduction 0');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    // The session shows the saved answer, and the summary worked out from it is read again.
+    expect(await screen.findByText('Rate: 70; deduction 7000')).toBeTruthy();
+    const gets = (path: string) =>
+      server.calls.filter((c) => c.method === 'GET' && c.path === path).length;
+    expect(gets('/summary')).toBe(2);
+    // The answer of the PATCH is the new settings: they are not asked for again.
+    expect(gets('/settings')).toBe(1);
   });
 
   it('leaving the setup wizard has the screens read their answers again', async () => {

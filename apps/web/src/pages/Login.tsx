@@ -1,28 +1,19 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { describe, unwrap } from '../api/client';
+import { useChange } from '../api/query';
 import { useSession } from '../session';
 import { Button, Card, Field, FormError } from '../ui/form';
 
 export function Login() {
-  const { api, refresh } = useSession();
+  const { refresh } = useSession();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const { run, busy, error } = useChange();
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      await unwrap(api.POST('/auth/login', { body: { username, password } }));
-      await refresh();
-    } catch (err) {
-      setError(describe(err));
-    } finally {
-      setBusy(false);
-    }
+    const body = { username, password };
+    if (await run((api) => api.POST('/auth/login', { body }))) await refresh();
   }
 
   return (

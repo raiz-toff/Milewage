@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Button as UiButton } from '@/components/ui/button';
-import { describe, unwrap } from '../api/client';
-import { useApiQuery, useInvalidate } from '../api/query';
+import { errorText, useApiQuery, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
 import type { paths } from '@milewage/shared/generated/api-types';
 import { formatDateTime } from '../format';
-import { useSession, useSettings } from '../session';
+import { useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
 import { EmptyState, Section, TableBox, tableClass } from '../ui/layout';
 
@@ -88,23 +87,16 @@ function MadeToken({ made, onDone }: { made: Made; onDone: () => void }) {
   );
 }
 
-function TokenRow({ t, onChanged }: { t: Token; onChanged: () => void }) {
-  const { api } = useSession();
+function TokenRow({ t }: { t: Token }) {
   const { timezone } = useSettings();
   const [confirming, setConfirming] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { run, error } = useChange();
   const at = (ms: number | null, none: string) =>
     ms === null ? none : formatDateTime(ms, timezone);
   const expired = t.expires_at !== null && t.expires_at <= Date.now();
   const state = t.revoked_at !== null ? 'revoked' : expired ? 'expired' : 'active';
-  async function revoke() {
-    try {
-      await unwrap(api.DELETE('/mcp/tokens/{id}', { params: { path: { id: t.id } } }));
-      onChanged();
-    } catch (e) {
-      setError(describe(e));
-    }
-  }
+  const revoke = () =>
+    run((api) => api.DELETE('/mcp/tokens/{id}', { params: { path: { id: t.id } } }));
   return (
     <tr>
       <td className={state === 'active' ? '' : 'text-muted-foreground line-through'}>
@@ -139,7 +131,6 @@ function TokenRow({ t, onChanged }: { t: Token; onChanged: () => void }) {
 const NO_CHANGES: Change[] = [];
 
 export function AssistantsCard() {
-  const { api } = useSession();
   const { timezone } = useSettings();
   const tokenList = useApiQuery('/mcp/tokens');
   const audit = useApiQuery('/mcp/audit');
@@ -147,35 +138,25 @@ export function AssistantsCard() {
   const both = tokenList.data && audit.data;
   const tokens = both ? tokenList.data! : null;
   const changes = both ? audit.data! : NO_CHANGES;
-  const invalidate = useInvalidate();
-  const load = () => invalidate('/mcp');
   const [made, setMade] = useState<Made | null>(null);
   const [name, setName] = useState('');
   const [scope, setScope] = useState('read');
   const [expiry, setExpiry] = useState('90');
-  const [failed, setError] = useState<string | null>(null);
-  const loadError = tokenList.error ?? audit.error;
-  const error = failed ?? (loadError ? describe(loadError) : null);
-  const [busy, setBusy] = useState(false);
+  const change = useChange();
+  const { busy } = change;
+  const error = errorText(change, tokenList, audit);
 
   async function make(e: FormEvent) {
     e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const body = {
-        name: name.trim(),
-        scope: scope as Token['scope'],
-        expires_in_days: expiry === 'never' ? null : (Number(expiry) as 30 | 90 | 365),
-      };
-      setMade(await unwrap(api.POST('/mcp/tokens', { body })));
-      setName('');
-      await load();
-    } catch (err) {
-      setError(describe(err));
-    } finally {
-      setBusy(false);
-    }
+    const body = {
+      name: name.trim(),
+      scope: scope as Token['scope'],
+      expires_in_days: expiry === 'never' ? null : (Number(expiry) as 30 | 90 | 365),
+    };
+    const done = await change.run((api) => api.POST('/mcp/tokens', { body }));
+    if (!done) return;
+    setMade(done.data);
+    setName('');
   }
 
   return (
@@ -225,7 +206,7 @@ export function AssistantsCard() {
               </thead>
               <tbody>
                 {tokens.map((t) => (
-                  <TokenRow key={t.id} t={t} onChanged={() => void load()} />
+                  <TokenRow key={t.id} t={t} />
                 ))}
               </tbody>
             </table>

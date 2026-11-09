@@ -13,9 +13,9 @@ const MAX = 200;
 
 /**
  * A list read with the server's `cursor` / `next_cursor`, shown as one list that grows by a page
- * on `showMore`. Like the week of Shifts, it is one query that follows the cursors itself: its
- * key is `[path, params, { pages }]`, so `invalidate(path)` reads every shown row again after a
- * change, and another `params` (a new filter) starts again at one page. The shown rows stay
+ * on `showMore`. Like the week of Shifts, it is one query that follows the cursors itself, keyed
+ * `[path, params, { pages }]`: after a change (every read is invalidated) every shown row is read
+ * again, and another `params` (a new filter) starts again at one page. The shown rows stay
  * while the next page is read.
  */
 export function usePagedList<T>(

@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { offsetOf, rangeOf, rangeText } from '../src/pages/Analytics';
 import { hourLabel } from '../src/ui/HourBars';
 import { renderApp, settingsFixture, signedIn, DASHBOARD } from './support/kit';
 
@@ -233,22 +232,6 @@ describe('analytics screen (module analytics)', () => {
       '12 PM',
       '23:00',
     ]);
-  });
-
-  it('offsetOf and rangeText: the period of a day, and a short range in the local order', () => {
-    expect(offsetOf('week', '2027-01-04', '2027-01-15', 1)).toBe(-1);
-    expect(offsetOf('week', '2027-01-11', '2027-01-15', 1)).toBe(0);
-    expect(offsetOf('month', '2026-11-30', '2027-01-15', 1)).toBe(-2);
-    expect(offsetOf('year', '2024-06-01', '2027-01-15', 1)).toBe(-3);
-    expect(rangeText('2026-11-02', '2026-11-08', 'en-CA')).toBe('Nov 2–8, 2026');
-    expect(rangeText('2026-11-02', '2026-11-08', 'en-GB')).toBe('2–8 Nov 2026');
-  });
-
-  it('rangeOf: weeks follow the start day, months and years are calendar ones', () => {
-    expect(rangeOf('week', 0, '2027-01-15', 1)).toEqual({ from: '2027-01-11', to: '2027-01-17' });
-    expect(rangeOf('week', -1, '2027-01-15', 0)).toEqual({ from: '2027-01-03', to: '2027-01-09' });
-    expect(rangeOf('month', -1, '2027-01-15', 1)).toEqual({ from: '2026-12-01', to: '2026-12-31' });
-    expect(rangeOf('year', 0, '2027-07-04', 1)).toEqual({ from: '2027-01-01', to: '2027-12-31' });
   });
 
   it('is absent when the module is off', async () => {

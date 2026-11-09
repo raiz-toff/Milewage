@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { dateLocale, dateToIso, formatDay, isoToDate, todayIn } from '../dateText';
+import { dateLocale, dateToIso, formatDay, isoToDate, todayIn } from '../days';
 import { useSession } from '../session';
 
 /** A labelled input. The label wraps the control, so it is the accessible name; the hint is its description. */

@@ -9,8 +9,8 @@ import type { Schemas, Settings } from '../api/client';
 import { useApiQuery } from '../api/query';
 import { formatDistance, formatMoney } from '../format';
 import { useSettings } from '../session';
-import { PERIODS } from './Dashboard';
-import { Est, dateWords, weekWords } from './Shifts';
+import { PERIODS, dateWords, dayOf, weekWords } from '../days';
+import { Est } from './Shifts';
 
 type Summary = Schemas['Summary'];
 type Range = { from: string; to: string };
@@ -169,8 +169,8 @@ export function DashboardHero({
   onPeriod: (id: string) => void;
 }) {
   const settings = useSettings();
-  const rangeOf = (id: string) =>
-    PERIODS.find((p) => p.id === id)!.range(now, settings.timezone, settings.week_start);
+  const day = dayOf(now, settings.timezone);
+  const rangeOf = (id: string) => PERIODS.find((p) => p.id === id)!.range(day, settings.week_start);
   const chosen = rangeOf(period);
   const today = rangeOf('today');
   const week = rangeOf('week');

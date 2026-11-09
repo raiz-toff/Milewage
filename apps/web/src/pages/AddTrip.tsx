@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { describe, unwrap } from '../api/client';
+import { put, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
-import { useSession, useSettings } from '../session';
+import { useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
-import { startOfLocalDay, toMetres } from './Odometer';
+import { startOfDay } from '../days';
+import { toMetres } from './Odometer';
 import { Button as UiButton } from '@/components/ui/button';
 
 type Shift = Schemas['Shift'];
@@ -33,8 +34,7 @@ export function uuid(): string {
 function atTime(text: string, shift: Shift, timeZone: string, after = 0): number | null {
   const m = /^(\d{2}):(\d{2})$/.exec(text);
   if (!m) return null;
-  const at =
-    startOfLocalDay(shift.local_date, timeZone) + Number(m[1]) * 60 * MIN + Number(m[2]) * MIN;
+  const at = startOfDay(shift.local_date, timeZone) + Number(m[1]) * 60 * MIN + Number(m[2]) * MIN;
   return at < after ? at + 24 * 60 * MIN : at;
 }
 
@@ -48,15 +48,15 @@ export function AddTrip({
   onCancel,
 }: {
   shift: Shift;
-  onSaved: (s: Shift) => void;
+  onSaved: () => void;
   onCancel: () => void;
 }) {
-  const { api } = useSession();
   const { distance_unit: unit, timezone } = useSettings();
   const from = hhmm(shift.started_at, timezone);
   const to = hhmm(shift.ended_at ?? shift.started_at, timezone);
   const [form, setForm] = useState({ from, to, distance: '', kind: 'active', purpose: '' });
-  const [error, setError] = useState<string | null>(null);
+  const change = useChange();
+  const { error, setError } = change;
   const set = (k: keyof typeof form) => (v: string) => setForm({ ...form, [k]: v });
 
   async function save(e: FormEvent) {
@@ -73,11 +73,11 @@ export function AddTrip({
           : atTime(form.to, shift, timezone, started);
     if (started === null || ended === null)
       return setError('Enter the times as hours and minutes.');
-    setError(null);
-    try {
-      const r = await unwrap(
+    const ref = String(shift.id);
+    const saved = await change.run(
+      (api) =>
         api.PUT('/shifts/{ref}/trips/{client_id}', {
-          params: { path: { ref: String(shift.id), client_id: uuid() } },
+          params: { path: { ref, client_id: uuid() } },
           body: {
             kind: form.kind as Schemas['TripKind'],
             started_at: started,
@@ -87,11 +87,10 @@ export function AddTrip({
             edited_at: Date.now(),
           },
         }),
-      );
-      onSaved(r.shift);
-    } catch (err) {
-      setError(describe(err));
-    }
+      // The answer carries the recomputed shift; its trips are read again.
+      (r) => [put('/shifts/{ref}', { path: { ref } }, r.shift)],
+    );
+    if (saved) onSaved();
   }
 
   return (

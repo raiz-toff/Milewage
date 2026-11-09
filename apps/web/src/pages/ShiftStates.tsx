@@ -2,9 +2,8 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Button as UiButton } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
-import { describe, unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
-import { useSession } from '../session';
+import { put, useChange } from '../api/query';
 import { Button, FormError } from '../ui/form';
 import { Section } from '../ui/layout';
 import { AdviceList, CheckList, PERMISSIONS, adviceFor } from './ShiftFacts';
@@ -133,34 +132,24 @@ export function MoreCard({
 }
 
 /** The shift's notes, saved with the shift. */
-export function ShiftNotes({
-  shift,
-  onShift,
-  bare,
-}: {
-  shift: Shift;
-  onShift: (s: Shift) => void;
-  bare?: boolean;
-}) {
-  const { api } = useSession();
+export function ShiftNotes({ shift, bare }: { shift: Shift; bare?: boolean }) {
   const [notes, setNotes] = useState(shift.notes ?? '');
   const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const change = useChange();
+  const { error } = change;
 
   async function save() {
-    setError(null);
-    try {
-      const s = await unwrap(
+    const path = { ref: String(shift.id) };
+    const done = await change.run(
+      (api) =>
         api.PATCH('/shifts/{ref}', {
-          params: { path: { ref: String(shift.id) } },
+          params: { path },
           body: { notes: notes.trim() === '' ? null : notes },
         }),
-      );
-      onShift(s);
-      setSaved(true);
-    } catch (e) {
-      setError(describe(e));
-    }
+      // The answer is the shift: shown at once; the week and the totals are read again.
+      (next) => [put('/shifts/{ref}', { path }, next)],
+    );
+    if (done) setSaved(true);
   }
 
   return (

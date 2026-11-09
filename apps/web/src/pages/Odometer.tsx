@@ -3,13 +3,13 @@ import { useQueries } from '@tanstack/react-query';
 import { EmptyState, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
 import { Button as UiButton } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { describe, unwrap } from '../api/client';
-import { apiKey, useApiQuery, useInvalidate } from '../api/query';
+import { unwrap } from '../api/client';
+import { apiKey, errorText, useApiQuery, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
 import { formatDateTime, formatDistance } from '../format';
 import { useSession, useSettings } from '../session';
 import { Button, DateField, Field, FormError, SelectField } from '../ui/form';
-import { localDate } from './Dashboard';
+import { dayOf, startOfDay, todayIn } from '../days';
 
 type Reading = Schemas['OdometerReading'];
 type Kind = 'year_start' | 'year_end';
@@ -21,28 +21,6 @@ export function toMetres(text: string, unit: 'km' | 'mi'): number | null {
   const t = text.trim().replace(/,/g, '');
   if (!/^\d+(\.\d+)?$/.test(t)) return null;
   return Math.round(Number(t) * (unit === 'km' ? 1000 : M_PER_MILE));
-}
-
-/** The instant a local calendar date begins in a time zone (the date reads back the same). */
-export function startOfLocalDay(date: string, timeZone: string): number {
-  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
-  let guess = Date.UTC(y, m - 1, d);
-  for (let i = 0; i < 3; i++) {
-    const shown = new Intl.DateTimeFormat('en-CA', {
-      timeZone,
-      hourCycle: 'h23',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-      .formatToParts(new Date(guess))
-      .reduce<Record<string, number>>((a, p) => ({ ...a, [p.type]: Number(p.value) }), {});
-    const asUtc = Date.UTC(shown.year!, shown.month! - 1, shown.day!, shown.hour, shown.minute);
-    guess -= asUtc - Date.UTC(y, m - 1, d);
-  }
-  return guess;
 }
 
 const KIND_TEXT: Record<Reading['kind'], string> = {
@@ -79,52 +57,32 @@ export function OdometerPage() {
   const readings = lists.every((q) => q.data)
     ? lists.flatMap((q) => q.data!).sort((x, y) => y.recorded_at - x.recorded_at)
     : null;
-  const invalidate = useInvalidate();
-  const load = () => invalidate('/odometer');
-  const [failed, setError] = useState<string | null>(null);
-  const loadError = vehiclesQuery.error ?? lists.find((q) => q.error)?.error;
-  const error = failed ?? (loadError ? describe(loadError) : null);
+  const change = useChange();
+  const { busy } = change;
+  const error = errorText(change, vehiclesQuery, ...lists);
   const [kind, setKind] = useState<Kind>('year_start');
-  const [date, setDate] = useState(() => localDate(Date.now(), timezone));
+  const [date, setDate] = useState(() => todayIn(timezone));
   const [value, setValue] = useState('');
-  const [busy, setBusy] = useState(false);
 
   async function add() {
     const metres = toMetres(value, unit);
-    if (metres === null) return setError(`Enter the odometer as a number of ${unit}.`);
-    if (date > localDate(Date.now(), timezone))
-      return setError('The date cannot be in the future.');
-    setBusy(true);
-    setError(null);
-    try {
-      await unwrap(
-        api.POST('/odometer', {
-          body: {
-            vehicle_id: Number(vehicleId),
-            kind,
-            reading_m: metres,
-            recorded_at: startOfLocalDay(date, timezone),
-          },
-        }),
-      );
-      setValue('');
-      await load();
-    } catch (e) {
-      setError(describe(e));
-    } finally {
-      setBusy(false);
-    }
+    if (metres === null) return change.setError(`Enter the odometer as a number of ${unit}.`);
+    if (date > todayIn(timezone)) return change.setError('The date cannot be in the future.');
+    const saved = await change.run((api) =>
+      api.POST('/odometer', {
+        body: {
+          vehicle_id: Number(vehicleId),
+          kind,
+          reading_m: metres,
+          recorded_at: startOfDay(date, timezone),
+        },
+      }),
+    );
+    if (saved) setValue('');
   }
 
-  async function remove(r: Reading) {
-    setError(null);
-    try {
-      await unwrap(api.DELETE('/odometer/{id}', { params: { path: { id: r.id } } }));
-      await load();
-    } catch (e) {
-      setError(describe(e));
-    }
-  }
+  const remove = (r: Reading) =>
+    change.run((api) => api.DELETE('/odometer/{id}', { params: { path: { id: r.id } } }));
 
   if (vehicles === null)
     return error ? <FormError message={error} /> : <p className="text-muted-foreground">Loading</p>;
@@ -136,13 +94,13 @@ export function OdometerPage() {
       </section>
     );
 
-  const year = localDate(Date.now(), timezone).slice(0, 4);
+  const year = todayIn(timezone).slice(0, 4);
   const yearReadings = (readings ?? []).filter((r) => r.kind.startsWith('year_'));
   const shiftReadings = (readings ?? []).filter((r) => r.kind.startsWith('shift_'));
   const missingStart =
     readings !== null &&
     !yearReadings.some(
-      (r) => r.kind === 'year_start' && localDate(r.recorded_at, timezone).startsWith(year),
+      (r) => r.kind === 'year_start' && dayOf(r.recorded_at, timezone).startsWith(year),
     );
 
   return (

@@ -4,42 +4,23 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { PageHeader, Section } from '../ui/layout';
 import { Button as UiButton } from '@/components/ui/button';
 import type { FormEvent } from 'react';
-import { describe, unwrap } from '../api/client';
-import { useApiQuery, useInvalidate } from '../api/query';
-import { useSession, useSettings } from '../session';
+import { errorText, useApiQuery, useChange } from '../api/query';
+import { useSettings } from '../session';
 import { formatClock } from '../format';
 import { Button, Field, FormError, TimeField } from '../ui/form';
-import { localDate } from './Dashboard';
+import { monthGrid, period, todayIn } from '../days';
 
 const NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; // bit 0 is Monday (18 section 9)
-const DAY = 86_400_000;
-const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
-
-/** The weeks of a month as rows of dates (`null` pads before and after), starting on `weekStart`. */
-export function monthGrid(year: number, month: number, weekStart: number): (string | null)[][] {
-  const first = Date.UTC(year, month - 1, 1);
-  const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const pad = (new Date(first).getUTCDay() - weekStart + 7) % 7;
-  const cells: (string | null)[] = [
-    ...Array<null>(pad).fill(null),
-    ...Array.from({ length: days }, (_, i) => iso(first + i * DAY)),
-  ];
-  while (cells.length % 7 !== 0) cells.push(null);
-  return Array.from({ length: cells.length / 7 }, (_, w) => cells.slice(w * 7, w * 7 + 7));
-}
-
 /** Schedule (module `schedule`, off by default): plan shifts ahead, repeating templates, off days. A plan is not a record. */
 export function SchedulePage() {
-  const { api } = useSession();
   const { timezone, week_start: weekStart, time_format: timeFormat } = useSettings();
-  const today = localDate(Date.now(), timezone);
+  const today = todayIn(timezone);
   const [ym, setYm] = useState({ y: Number(today.slice(0, 4)), m: Number(today.slice(5, 7)) });
   const [day, setDay] = useState<string | null>(null);
   const [times, setTimes] = useState({ start: '17:00', end: '22:00' });
   const [tpl, setTpl] = useState({ label: '', days: 0, ...{ start: '17:00', end: '22:00' } });
   const grid = monthGrid(ym.y, ym.m, weekStart);
-  const from = `${ym.y}-${String(ym.m).padStart(2, '0')}-01`;
-  const to = iso(Date.UTC(ym.y, ym.m, 0));
+  const { from, to } = period('month', `${ym.y}-${String(ym.m).padStart(2, '0')}-01`, weekStart);
 
   // The month shown stays while the next one is read.
   const asked = useApiQuery(
@@ -48,35 +29,21 @@ export function SchedulePage() {
     { placeholderData: keepPreviousData },
   );
   const data = asked.data ?? null;
-  const invalidate = useInvalidate();
-  const load = () => invalidate('/schedule');
-  const [failed, setError] = useState<string | null>(null);
-  const error = failed ?? (asked.error ? describe(asked.error) : null);
-
-  async function act(run: () => Promise<unknown>) {
-    setError(null);
-    try {
-      await run();
-      await load();
-    } catch (e) {
-      setError(describe(e));
-    }
-  }
+  const change = useChange();
+  const error = errorText(change, asked);
   const addEntry = (e: FormEvent) => {
     e.preventDefault();
     if (day)
-      void act(() =>
-        unwrap(
-          api.POST('/schedule/entries', {
-            body: { planned_on: day, start_time: times.start, end_time: times.end },
-          }),
-        ),
+      void change.run((api) =>
+        api.POST('/schedule/entries', {
+          body: { planned_on: day, start_time: times.start, end_time: times.end },
+        }),
       );
   };
   const addTemplate = (e: FormEvent) => {
     e.preventDefault();
-    void act(() =>
-      unwrap(
+    void change
+      .run((api) =>
         api.POST('/schedule/templates', {
           body: {
             label: tpl.label.trim(),
@@ -85,8 +52,8 @@ export function SchedulePage() {
             end_time: tpl.end,
           },
         }),
-      ),
-    ).then(() => setTpl({ ...tpl, label: '' }));
+      )
+      .then(() => setTpl({ ...tpl, label: '' }));
   };
   const offOn = new Set(data?.off_days.map((d) => d.off_on));
   const shift = (n: number) =>
@@ -129,7 +96,7 @@ export function SchedulePage() {
             variant="outline"
             size="sm"
             onClick={() =>
-              void act(() => unwrap(api.POST('/schedule/expand', { body: { from, to } })))
+              void change.run((api) => api.POST('/schedule/expand', { body: { from, to } }))
             }
           >
             Fill this month from templates
@@ -181,12 +148,10 @@ export function SchedulePage() {
                                 type="button"
                                 aria-label={`Remove ${d} ${x.start_time}`}
                                 onClick={() =>
-                                  void act(() =>
-                                    unwrap(
-                                      api.DELETE('/schedule/entries/{id}', {
-                                        params: { path: { id: x.id } },
-                                      }),
-                                    ),
+                                  void change.run((api) =>
+                                    api.DELETE('/schedule/entries/{id}', {
+                                      params: { path: { id: x.id } },
+                                    }),
                                   )
                                 }
                               >
@@ -224,19 +189,15 @@ export function SchedulePage() {
               variant="outline"
               size="sm"
               onClick={() =>
-                void act(() =>
+                void change.run(async (api) =>
                   offOn.has(day)
-                    ? unwrap(
-                        api.DELETE('/schedule/off-days/{date}', {
-                          params: { path: { date: day } },
-                        }),
-                      )
-                    : unwrap(
-                        api.PUT('/schedule/off-days/{date}', {
-                          params: { path: { date: day } },
-                          body: {},
-                        }),
-                      ),
+                    ? await api.DELETE('/schedule/off-days/{date}', {
+                        params: { path: { date: day } },
+                      })
+                    : await api.PUT('/schedule/off-days/{date}', {
+                        params: { path: { date: day } },
+                        body: {},
+                      }),
                 )
               }
             >
@@ -259,10 +220,8 @@ export function SchedulePage() {
                 variant="ghost"
                 size="sm"
                 onClick={() =>
-                  void act(() =>
-                    unwrap(
-                      api.DELETE('/schedule/templates/{id}', { params: { path: { id: t.id } } }),
-                    ),
+                  void change.run((api) =>
+                    api.DELETE('/schedule/templates/{id}', { params: { path: { id: t.id } } }),
                   )
                 }
               >

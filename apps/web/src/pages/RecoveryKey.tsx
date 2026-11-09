@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { describe, unwrap } from '../api/client';
+import { useChange } from '../api/query';
 import { useSession } from '../session';
 import { Button, Card, Field, FormError } from '../ui/form';
 
@@ -10,23 +10,14 @@ import { Button, Card, Field, FormError } from '../ui/form';
  * confirming; the driver then types the end of the key they saved.
  */
 export function RecoveryKey({ recoveryKey }: { recoveryKey?: string }) {
-  const { api, refresh } = useSession();
+  const { refresh } = useSession();
   const [last6, setLast6] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const { run, busy, error } = useChange();
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      await unwrap(api.POST('/setup/confirm', { body: { last6: last6.trim() } }));
-      await refresh();
-    } catch (err) {
-      setError(describe(err));
-    } finally {
-      setBusy(false);
-    }
+    const body = { last6: last6.trim() };
+    if (await run((api) => api.POST('/setup/confirm', { body }))) await refresh();
   }
 
   return (

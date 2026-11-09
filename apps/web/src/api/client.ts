@@ -16,6 +16,18 @@ export function createApi(fetchImpl?: typeof fetch) {
   });
 }
 
+/**
+ * The request options that send a file as the raw body with its own content type (a receipt, a
+ * platform logo), instead of as JSON. The routes declare a binary body, which the generated types
+ * cannot express for a `File`, hence the casts.
+ */
+export const fileBody = (file: File) =>
+  ({
+    body: file as never,
+    bodySerializer: (b: unknown) => b as never,
+    headers: { 'Content-Type': file.type },
+  }) as const;
+
 /** An error response (RFC 9457 problem document, 08 section 7.1) or a transport failure. */
 export class ApiError extends Error {
   constructor(

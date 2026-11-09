@@ -1,30 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { dateToIso, formatDay, isoToDate, parseDay } from '../src/dateText';
 import { dateButton, pickDate, renderApp, settingsFixture, signedIn } from './support/kit';
-
-describe('typed days (dateText)', () => {
-  it('reads ISO, the locale order and month names, and refuses what is not a day', () => {
-    expect(parseDay('2026-11-07', 'en-CA')).toBe('2026-11-07');
-    expect(parseDay('Nov 7, 2026', 'en-CA')).toBe('2026-11-07');
-    expect(parseDay('7 November 2026', 'en-GB')).toBe('2026-11-07');
-    expect(parseDay('sept 3rd 2026', 'en-US')).toBe('2026-09-03');
-    expect(parseDay('11/7/2026', 'en-US')).toBe('2026-11-07');
-    expect(parseDay('7/11/2026', 'en-GB')).toBe('2026-11-07');
-    for (const bad of ['2026-02-30', '11/7/26', 'Nov 2026', 'Foo 7 2026', '', 'tomorrow']) {
-      expect(parseDay(bad, 'en-CA')).toBeNull();
-    }
-  });
-
-  it('formats for the locale and keeps the day across daylight-saving changes', () => {
-    expect(formatDay('2026-11-07', 'en-CA')).toBe('Nov 7, 2026');
-    expect(formatDay('2026-11-07', 'en-GB')).toBe('7 Nov 2026');
-    for (const d of ['2026-03-08', '2026-03-29', '2026-11-01', '2026-01-01', '2026-12-31']) {
-      expect(dateToIso(isoToDate(d)!)).toBe(d);
-    }
-  });
-});
 
 describe('date field (shadcn Date Picker: a button and a Calendar in a Popover)', () => {
   beforeEach(() => {

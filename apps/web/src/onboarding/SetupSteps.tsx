@@ -1,17 +1,16 @@
 import { useState } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
 import { slugOf } from '../pages/Platforms';
 import { PlatformBadge } from '../platforms/PlatformBadge';
 import type { PlatformLike } from '../platforms/PlatformBadge';
 import { KINDS, OWNERSHIP } from '../pages/Vehicles';
 import { parseRate, rateInput } from '../format';
-import { useSession } from '../session';
+import { settingsPatch } from '../session';
 import { Field, SelectField } from '../ui/form';
-import { useSaveSettings } from './AboutSteps';
 import { StepError, StepForm } from './StepForm';
+import type { StepSave } from './StepForm';
 import type { OnboardingCtx, StepProps } from './steps';
 
 type Kind = Schemas['Vehicle']['kind'];
@@ -50,7 +49,6 @@ function Tick({
 
 /** The apps of the driver's country and region, plus their own (plan 23 step 3). */
 export function AppsStep({ ctx, next }: StepProps) {
-  const { api } = useSession();
   const listed = listedApps(ctx);
   // Not answered yet: nothing ticked, rather than every app the country lists.
   const [on, setOn] = useState(() =>
@@ -58,17 +56,17 @@ export function AppsStep({ ctx, next }: StepProps) {
   );
   const [other, setOther] = useState(false);
   const [name, setName] = useState('');
-  const put = (slug: string, body: Schemas['PlatformPut']) =>
-    unwrap(api.PUT('/platforms/{slug}', { params: { path: { slug } }, body }));
-
-  const save = async () => {
+  const save: StepSave = async (run) => {
+    const put = (slug: string, body: Schemas['PlatformPut']) =>
+      run((api) => api.PUT('/platforms/{slug}', { params: { path: { slug } }, body }));
     const own = other ? name.trim() : '';
     if (other && !slugOf(own)) throw new StepError('Enter the name of the other app.');
     if (!on.length && !own) return; // nothing ticked: the same as skipping
     for (const p of listed) {
-      if (on.includes(p.slug) !== p.active) await put(p.slug, { active: on.includes(p.slug) });
+      if (on.includes(p.slug) !== p.active && !(await put(p.slug, { active: on.includes(p.slug) })))
+        return false;
     }
-    if (own) await put(slugOf(own), { label: own });
+    if (own && !(await put(slugOf(own), { label: own }))) return false;
     await ctx.reload();
   };
   return (
@@ -117,8 +115,6 @@ export function rateLine(kind: Kind, country: OnboardingCtx['country']) {
 
 /** The vehicle (plan 23 step 4): a shift needs one, so it is skippable only once one exists. */
 export function VehicleStep({ ctx, next }: StepProps) {
-  const { api } = useSession();
-  const saveSettings = useSaveSettings();
   const { settings, country, vehicles } = ctx;
   const [name, setName] = useState('');
   const [kind, setKind] = useState<Kind>('car');
@@ -129,20 +125,27 @@ export function VehicleStep({ ctx, next }: StepProps) {
   const [rate, setRate] = useState(was);
   const ownRate = country?.supports.mileage === false && !NO_RATE.includes(kind);
 
-  const save = async () => {
+  const save: StepSave = async (run) => {
     if (!name.trim() && !vehicles.length) throw new StepError('Enter a name for your vehicle.');
     if (ownRate && rate !== was) {
       const n = Number(rate);
       if (rate !== '' && !(n > 0)) throw new StepError('Enter your rate as a number above 0.');
-      await saveSettings({
-        own_mileage_rate:
-          rate === ''
-            ? null
-            : { cents_per_unit: parseRate(rate, settings.currency), unit: settings.distance_unit },
-      });
+      const rated = await run(
+        ...settingsPatch({
+          own_mileage_rate:
+            rate === ''
+              ? null
+              : {
+                  cents_per_unit: parseRate(rate, settings.currency),
+                  unit: settings.distance_unit,
+                },
+        }),
+      );
+      if (!rated) return false;
     }
     if (name.trim()) {
-      await unwrap(api.POST('/vehicles', { body: { name: name.trim(), kind, ownership } }));
+      const body = { name: name.trim(), kind, ownership };
+      if (!(await run((api) => api.POST('/vehicles', { body })))) return false;
       await ctx.reload();
     }
   };

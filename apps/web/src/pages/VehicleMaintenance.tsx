@@ -1,14 +1,12 @@
 import { useState } from 'react';
 import { Button as UiButton } from '@/components/ui/button';
 import type { FormEvent } from 'react';
-import { describe, unwrap } from '../api/client';
-import { dateLocale, formatDay } from '../dateText';
+import { dateLocale, formatDay, todayIn } from '../days';
 import type { Schemas } from '../api/client';
-import { useApiQuery, useInvalidate } from '../api/query';
+import { errorText, useApiQuery, useChange } from '../api/query';
 import { formatMoney } from '../format';
-import { useSession, useSettings } from '../session';
+import { useSettings } from '../session';
 import { Button, DateField, Field, FormError, SelectField } from '../ui/form';
-import { localDate } from './Dashboard';
 import { parseMoney } from '../format';
 
 type Log = Schemas['MaintenanceLog'];
@@ -22,19 +20,16 @@ const label = (k: string) => KINDS.find((x) => x.value === k)?.label ?? k;
 
 /** The service record of one vehicle (module `maintenance`, 18 section 6). */
 export function VehicleMaintenance({ vehicleId, name }: { vehicleId: number; name: string }) {
-  const { api } = useSession();
   const { currency, distance_unit: unit, timezone, modules, country } = useSettings();
   // The day as other dates are written ("Oct 1, 2026", or "1 Oct 2026" in GB).
   const day = (iso: string) => formatDay(iso, dateLocale(country)) || iso;
   const list = useApiQuery('/vehicles/{id}/maintenance', { params: { path: { id: vehicleId } } });
   const logs = list.data ?? null;
-  const invalidate = useInvalidate();
-  const load = () => invalidate('/vehicles/{id}/maintenance');
-  const [failed, setError] = useState<string | null>(null);
-  const error = failed ?? (list.error ? describe(list.error) : null);
+  const change = useChange();
+  const error = errorText(change, list);
   const [form, setForm] = useState({
     kind: 'oil_change',
-    date: localDate(Date.now(), timezone),
+    date: todayIn(timezone),
     cost: '',
     odometer: '',
     notes: '',
@@ -48,36 +43,24 @@ export function VehicleMaintenance({ vehicleId, name }: { vehicleId: number; nam
         ? null
         : Math.round(Number(form.odometer) * (unit === 'km' ? 1000 : 1609.344));
     if (!Number.isFinite(cost) || cost < 0 || (odo !== null && !Number.isFinite(odo))) {
-      return setError('Cost and odometer must be numbers, zero or more.');
+      return change.setError('Cost and odometer must be numbers, zero or more.');
     }
-    setError(null);
-    try {
-      await unwrap(
-        api.POST('/vehicles/{id}/maintenance', {
-          params: { path: { id: vehicleId } },
-          body: {
-            kind: form.kind as Log['kind'],
-            serviced_on: form.date,
-            cost_cents: cost > 0 ? cost : null,
-            odometer_m: odo,
-            notes: form.notes.trim() === '' ? null : form.notes.trim(),
-          },
-        }),
-      );
-      setForm({ ...form, cost: '', odometer: '', notes: '' });
-      await load();
-    } catch (err) {
-      setError(describe(err));
-    }
+    const saved = await change.run((api) =>
+      api.POST('/vehicles/{id}/maintenance', {
+        params: { path: { id: vehicleId } },
+        body: {
+          kind: form.kind as Log['kind'],
+          serviced_on: form.date,
+          cost_cents: cost > 0 ? cost : null,
+          odometer_m: odo,
+          notes: form.notes.trim() === '' ? null : form.notes.trim(),
+        },
+      }),
+    );
+    if (saved) setForm({ ...form, cost: '', odometer: '', notes: '' });
   }
-  async function remove(id: number) {
-    try {
-      await unwrap(api.DELETE('/maintenance/{id}', { params: { path: { id } } }));
-      await load();
-    } catch (err) {
-      setError(describe(err));
-    }
-  }
+  const remove = (id: number) =>
+    change.run((api) => api.DELETE('/maintenance/{id}', { params: { path: { id } } }));
 
   return (
     <section aria-label={`Maintenance of ${name}`} className="mt-2 space-y-2 rounded-lg border p-3">

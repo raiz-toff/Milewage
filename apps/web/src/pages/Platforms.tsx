@@ -1,11 +1,10 @@
 import { useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { describe, unwrap } from '../api/client';
-import { useApiQuery, useInvalidate } from '../api/query';
+import { fileBody } from '../api/client';
+import { errorText, useApiQuery, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
 import { ImageMinus, ImageUp, Trash2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { useSession } from '../session';
 import { Button, Field, FormError } from '../ui/form';
 import { PlatformBadge } from '../platforms/PlatformBadge';
 import { RowMenu } from '../ui/RowMenu';
@@ -27,64 +26,37 @@ export const slugOf = (name: string) =>
 
 /** Settings card of the `platforms` module (18 section 4.2): switch platforms on or off, add your own. */
 export function PlatformsCard() {
-  const { api } = useSession();
   const asked = useApiQuery('/platforms', { params: { query: { include_inactive: true } } });
   const list = asked.data ?? null;
-  const invalidate = useInvalidate();
-  // Every platform list (pickers, badges, the dashboard) is read again after a change.
-  const load = () => invalidate('/platforms');
-  const [failed, setError] = useState<string | null>(null);
-  const error = failed ?? (asked.error ? describe(asked.error) : null);
+  const change = useChange();
+  const error = errorText(change, asked);
   const [name, setName] = useState('');
   const picker = useRef<HTMLInputElement>(null);
   const logoFor = useRef<string | null>(null);
 
-  async function put(slug: string, body: Schemas['PlatformPut']) {
-    setError(null);
-    try {
-      await unwrap(api.PUT('/platforms/{slug}', { params: { path: { slug } }, body }));
-      await load();
-    } catch (e) {
-      setError(describe(e));
-    }
-  }
+  const put = (slug: string, body: Schemas['PlatformPut']) =>
+    change.run((api) => api.PUT('/platforms/{slug}', { params: { path: { slug } }, body }));
 
   async function add(e: FormEvent) {
     e.preventDefault();
     const slug = slugOf(name);
-    if (!slug) return setError('Use letters or digits in the name.');
+    if (!slug) return change.setError('Use letters or digits in the name.');
     await put(slug, { label: name.trim() });
     setName('');
   }
 
-  async function act(run: () => Promise<unknown>) {
-    setError(null);
-    try {
-      await run();
-      await load();
-    } catch (e) {
-      setError(describe(e));
-    }
-  }
   const remove = (slug: string) =>
-    act(() => unwrap(api.DELETE('/platforms/{slug}', { params: { path: { slug } } })));
+    change.run((api) => api.DELETE('/platforms/{slug}', { params: { path: { slug } } }));
 
   /** The driver's own logo: the raw file with its type, as receipts are sent. */
   async function upload(file: File) {
     const slug = logoFor.current;
     if (!slug) return;
     if (!LOGO_TYPES.includes(file.type) || file.size > LOGO_MAX_BYTES) {
-      return setError('Use a PNG, JPEG or WebP under 256 KB.');
+      return change.setError('Use a PNG, JPEG or WebP under 256 KB.');
     }
-    await act(() =>
-      unwrap(
-        api.PUT('/platforms/{slug}/logo', {
-          params: { path: { slug } },
-          body: file as never,
-          bodySerializer: (b: unknown) => b as never,
-          headers: { 'Content-Type': file.type },
-        } as never),
-      ),
+    await change.run((api) =>
+      api.PUT('/platforms/{slug}/logo', { params: { path: { slug } }, ...fileBody(file) }),
     );
   }
   const pickLogo = (slug: string) => {
@@ -103,10 +75,8 @@ export function PlatformsCard() {
             label: 'Remove logo',
             icon: ImageMinus,
             onSelect: () =>
-              void act(() =>
-                unwrap(
-                  api.DELETE('/platforms/{slug}/logo', { params: { path: { slug: p.slug } } }),
-                ),
+              void change.run((api) =>
+                api.DELETE('/platforms/{slug}/logo', { params: { path: { slug: p.slug } } }),
               ),
           },
         ]

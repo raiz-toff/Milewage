@@ -5,11 +5,10 @@ import { PageHeader, Section } from '../ui/layout';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { describe, unwrap } from '../api/client';
-import { useApiQuery, useInvalidate } from '../api/query';
-import { dateLocale, formatDay, todayIn } from '../dateText';
+import { errorText, useApiQuery, useChange } from '../api/query';
+import { dateLocale, formatDay, todayIn } from '../days';
 import { formatMoney } from '../format';
-import { useSession, useSettings } from '../session';
+import { useSettings } from '../session';
 import { Button, Field, FormError } from '../ui/form';
 import { MoreCard } from './ShiftStates';
 import { parseMoney } from '../format';
@@ -26,7 +25,6 @@ const TOTAL = 'Set aside in total';
  * working, the settings and the jar's entries are folded below it (progressive disclosure).
  */
 export function TaxPage() {
-  const { api } = useSession();
   const { currency, timezone, country } = useSettings();
   const today = todayIn(timezone);
   const thisYear = Number(today.slice(0, 4));
@@ -51,30 +49,16 @@ export function TaxPage() {
   useEffect(() => {
     if (report) setRate(String(report.set_aside_bp / 100));
   }, [report]);
-  const invalidate = useInvalidate();
-  const load = () => invalidate('/tax');
-  const [failed, setError] = useState<string | null>(null);
-  const loadError = asked.error ?? jarQuery.error;
-  const error = failed ?? (loadError ? describe(loadError) : null);
+  const change = useChange();
+  const error = errorText(change, asked, jarQuery);
   const money = (c: number | null | undefined) => (c == null ? '—' : formatMoney(c, currency));
   const day = (iso: string | undefined) => formatDay(iso ?? '', dateLocale(country));
 
-  async function act(run: () => Promise<unknown>) {
-    setError(null);
-    try {
-      await run();
-      await load();
-    } catch (e) {
-      setError(describe(e));
-    }
-  }
   const putYear = (body: { set_aside_bp?: number; sales_tax_registered?: boolean }) =>
-    act(() => unwrap(api.PUT('/tax/{year}', { params: { path: { year } }, body })));
+    change.run((api) => api.PUT('/tax/{year}', { params: { path: { year } }, body }));
   const addJar = (cents: number) =>
-    act(() =>
-      unwrap(
-        api.POST('/tax/{year}/jar', { params: { path: { year } }, body: { amount_cents: cents } }),
-      ),
+    change.run((api) =>
+      api.POST('/tax/{year}/jar', { params: { path: { year } }, body: { amount_cents: cents } }),
     );
 
   if (!report) return <FormError message={error} />;
@@ -224,8 +208,8 @@ export function TaxPage() {
                       size="sm"
                       aria-label={`Delete jar entry ${e.entered_on} ${money(e.amount_cents)}`}
                       onClick={() =>
-                        void act(() =>
-                          unwrap(api.DELETE('/tax/jar/{id}', { params: { path: { id: e.id } } })),
+                        void change.run((api) =>
+                          api.DELETE('/tax/jar/{id}', { params: { path: { id: e.id } } }),
                         )
                       }
                     >

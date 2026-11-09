@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { PERIODS } from '../src/pages/Dashboard';
 import { renderApp, settingsFixture, signedIn, DASHBOARD } from './support/kit';
 import type { Schemas } from '../src/api/client';
 
@@ -323,8 +322,5 @@ describe('dashboard checklist and goal ring (18 section 13)', () => {
     const asked = s.calls.filter((c) => c.path === '/summary').map((c) => c.query);
     expect(asked).toContain('?from=2027-01-11&to=2027-01-15');
     expect(asked).toContain('?from=2027-01-15&to=2027-01-15');
-    expect(
-      PERIODS.find((p) => p.id === 'week')!.range(Date.parse('2027-01-17T12:00:00Z'), 'UTC', 0),
-    ).toEqual({ from: '2027-01-17', to: '2027-01-17' });
   });
 });

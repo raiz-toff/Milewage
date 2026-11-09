@@ -61,7 +61,10 @@ defaults. Money fields show and read minor units through `moneyInput` and `parse
 
 - Loading: shadcn `Skeleton` in the shape of what is coming, never a spinner alone.
 - Errors from the API are problem details (`describe`, `unwrap` in `apps/web/src/api/client.ts`);
-  show the server's sentence, never a bare code.
+  show the server's sentence, never a bare code. A write made with `useChange()` already has it as
+  `error`; a page's own check goes on the same line with `setError('Enter …')`, and
+  `errorText(change, ...reads)` adds the reads' failures, for the one `FormError` under the form.
+  Use `busy` to disable the button that sent the change.
 - Dialogs (shadcn `Dialog`) are for confirmations and short dangerous steps. When a secret is on
   screen (a recovery key) the dialog does not close on an outside click.
 - Toasts are not used on the web; messages sit in the page near what they are about.

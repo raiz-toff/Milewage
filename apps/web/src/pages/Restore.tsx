@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button as UiButton } from '@/components/ui/button';
 import type { FormEvent } from 'react';
-import { describe, unwrap } from '../api/client';
+import { useChange } from '../api/query';
 import type { Schemas } from '../api/client';
 import { useSession } from '../session';
 import { Button, Card, Field, FormError } from '../ui/form';
@@ -14,36 +14,26 @@ type Verification = Schemas['RestoreVerification'];
  * the driver can compare it with what they remember before signing in.
  */
 export function Restore({ onBack }: { onBack: () => void }) {
-  const { api, refresh } = useSession();
+  const { refresh } = useSession();
   const [file, setFile] = useState<File | null>(null);
   const [key, setKey] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { run, busy, error } = useChange();
   const [done, setDone] = useState<Verification | null>(null);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!file) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const form = new FormData();
-      form.append('file', file);
-      form.append('recovery_key', key.trim());
-      setDone(
-        await unwrap(
-          api.POST('/setup/restore', {
-            // The generated body type models the file as a string; a multipart body is sent as is.
-            body: form as never,
-            bodySerializer: (b: unknown) => b as FormData,
-          }),
-        ),
-      );
-    } catch (err) {
-      setError(describe(err));
-    } finally {
-      setBusy(false);
-    }
+    const form = new FormData();
+    form.append('file', file);
+    form.append('recovery_key', key.trim());
+    const restored = await run((api) =>
+      api.POST('/setup/restore', {
+        // The generated body type models the file as a string; a multipart body is sent as is.
+        body: form as never,
+        bodySerializer: (b: unknown) => b as FormData,
+      }),
+    );
+    if (restored) setDone(restored.data);
   }
 
   if (done) {
