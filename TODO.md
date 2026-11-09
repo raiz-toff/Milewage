@@ -14,7 +14,9 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
       `config/secrets.json`). Z1 takes it out of the index, but every commit from `cada039` on
       still holds it. Origin is a private git server on the LAN. A rewrite changes the hash of every
       commit since `cada039` (32 on 2026-11-08) and needs a force push.
-- [ ] **Release workflow on GitHub Actions** (owner, 2026-11-08). The GitLab `images` and
+- [x] **Release workflow on GitHub Actions** (owner, 2026-11-08). Images done 2026-11-09
+      (`.github/workflows/release.yml`, GHCR, pr-Z18); the APK is still built on the owner's
+      machine with the keystore and attached to the release by hand. The GitLab `images` and
       `phone-apk` jobs were removed with GitLab. Decide the registry (GitHub Container Registry,
       `ghcr.io/raiz-toff/milewage`, is the natural one) and how the upload keystore reaches the
       runner (an encrypted Actions secret holding `keystore.env` and the keystore file). Then the

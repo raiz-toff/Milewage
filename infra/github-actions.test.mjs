@@ -5,6 +5,9 @@ import { parse } from 'yaml';
 import { describe, expect, test } from 'vitest';
 
 const wf = parse(readFileSync(new URL('../.github/workflows/verify.yml', import.meta.url), 'utf8'));
+const rel = parse(
+  readFileSync(new URL('../.github/workflows/release.yml', import.meta.url), 'utf8'),
+);
 
 describe('.github/workflows/verify.yml', () => {
   test('runs on every pull request and on pushes to main only', () => {
@@ -40,5 +43,40 @@ describe('.github/workflows/verify.yml', () => {
       group: 'verify-${{ github.ref }}',
       'cancel-in-progress': true,
     });
+  });
+});
+
+describe('.github/workflows/release.yml', () => {
+  test('runs on v* tags, or by hand with a tag name', () => {
+    expect(rel.on.push).toEqual({ tags: ['v*'] });
+    expect(rel.on.workflow_dispatch.inputs.tag.required).toBe(true);
+  });
+
+  test('may write packages and only read the repository', () => {
+    expect(rel.permissions).toEqual({ contents: 'read', packages: 'write' });
+  });
+
+  test('checks the tag against VERSION, then pushes both images for amd64 and arm64 to ghcr.io', () => {
+    const steps = rel.jobs.images.steps;
+    expect(steps.find((s) => s.name === 'The tag must be the VERSION file').run).toMatch(/VERSION/);
+    const login = steps.find((s) => String(s.uses ?? '').startsWith('docker/login-action@'));
+    expect(login.with.registry).toBe('ghcr.io');
+    const builds = steps.filter((s) =>
+      String(s.uses ?? '').startsWith('docker/build-push-action@'),
+    );
+    expect(builds).toHaveLength(2);
+    for (const b of builds) {
+      expect(b.with.file).toBe('infra/docker/Dockerfile');
+      expect(b.with.platforms).toBe('linux/amd64,linux/arm64');
+      expect(b.with.push).toBe(true);
+      expect(b.with.labels).toContain('org.opencontainers.image.source=');
+    }
+    expect(builds[0].with.target).toBeUndefined();
+    expect(builds[0].with.tags).toContain('/server:${{ env.TAG }}');
+    expect(builds[0].with.tags).toContain('/server:latest');
+    expect(builds[1].with.target).toBe('caddy');
+    expect(builds[1].with.tags).toContain('/caddy:${{ env.TAG }}');
+    expect(builds[1].with.tags).toContain('/caddy:latest');
+    expect(rel.jobs.images.env.IMAGE_REPO).toBe('ghcr.io/${{ github.repository_owner }}/milewage');
   });
 });

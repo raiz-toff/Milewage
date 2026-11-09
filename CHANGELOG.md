@@ -6,6 +6,11 @@ All notable changes to MileWage are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A release workflow: on every `v*` tag GitHub builds the server and Caddy images for amd64 and
+  arm64 and publishes them as packages (`ghcr.io/raiz-toff/milewage/server` and `/caddy`).
+
 ## [0.1.0] - 2026-11-09
 
 First tagged version. It is a complete first build, but it has not been tried in the real world.

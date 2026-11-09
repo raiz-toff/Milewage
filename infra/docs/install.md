@@ -61,7 +61,7 @@ There are two compose files in `infra/docker/`, with the same services, settings
 The release file needs two settings, in `infra/docker/.env` next to the ones `install.sh` wrote:
 
 ```bash
-MILEWAGE_IMAGE_REPO=<registry>/<group>/<project>   # your container registry path, for example ghcr.io/<owner>/milewage
+MILEWAGE_IMAGE_REPO=ghcr.io/raiz-toff/milewage          # the images GitHub builds on each release tag
 MILEWAGE_VERSION=v0.1.0                             # pin a release; latest is only the fallback
 ```
 
@@ -72,7 +72,7 @@ docker compose --env-file infra/docker/.env -f infra/docker/docker-compose.relea
 docker compose --env-file infra/docker/.env -f infra/docker/docker-compose.release.yml up -d --wait
 ```
 
-Without `MILEWAGE_IMAGE_REPO` the file refuses to start ("set to your registry path"). **Not usable yet:** the images exist only once a release workflow builds them on a `v*` tag (not set up on GitHub yet, see `TODO.md`); until then the owner leaves `MILEWAGE_IMAGE_REPO` unset and builds locally. The volumes have the same names in both files, so switching from one to the other keeps your data; do not run both at once.
+Without `MILEWAGE_IMAGE_REPO` the file refuses to start ("set to your registry path"). The images are built by `.github/workflows/release.yml` on every `v*` tag (amd64 and arm64) and published as packages of the GitHub repository; the first ones are `v0.1.0`.
 
 ## 3. Reach it from the phone: Tailscale on the host
 
