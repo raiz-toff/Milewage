@@ -61,7 +61,8 @@ export const prefsOf = (db: Db, userId: number): Record<PrefName, boolean> => {
 export interface NotifyContext {
   db: Db;
   now: () => number;
-  emit?: () => EventEmit | undefined;
+  /** `bus.emit`, to announce `notification.created`; without it nothing is announced. */
+  emit?: EventEmit;
 }
 
 /** One inbox row per dedupe key, and none while the matching toggle is off. Returns true when a row was added. */
@@ -80,7 +81,7 @@ export function notify(
     )
     .run(userId, kind, dedupeKey, bodyKey, c.now());
   if (info.changes === 0) return false;
-  c.emit?.()?.('notification.created', { notificationId: String(info.lastInsertRowid), kind });
+  c.emit?.('notification.created', { notificationId: String(info.lastInsertRowid), kind });
   return true;
 }
 

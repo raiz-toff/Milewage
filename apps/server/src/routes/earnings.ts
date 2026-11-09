@@ -1,4 +1,4 @@
-import type { ModuleRegistry, RouteHost } from '@milewage/shared';
+import type { ModuleRegistry } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import {
@@ -122,8 +122,7 @@ export function earningsRoutes({
   authn: Authenticator;
   policy: (registry: ModuleRegistry) => EarningsPolicy;
 }) {
-  return (host: RouteHost) => {
-    const { app, registry, bus } = host as ServerRouteHost;
+  return ({ app, registry, bus }: ServerRouteHost) => {
     const repo = createEarningsRepository(db);
     const read = shiftReader(db, now);
     /** The shift, when earnings may be written to it for this platform. */

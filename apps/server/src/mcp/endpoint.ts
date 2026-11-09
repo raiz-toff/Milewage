@@ -2,7 +2,6 @@ import { randomBytes } from 'node:crypto';
 import { Readable } from 'node:stream';
 import type { FastifyRequest } from 'fastify';
 import { createMcpHandler, McpServer, type AuthInfo } from '@modelcontextprotocol/server';
-import type { RouteHost } from '@milewage/shared';
 import { API_PREFIX, type ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import type { Db } from '../db';
@@ -77,8 +76,7 @@ export function mcpEndpoint({
   now: () => number;
   authn: Authenticator;
 }) {
-  return (routeHost: RouteHost) => {
-    const { app, registry } = routeHost as ServerRouteHost;
+  return ({ app, registry }: ServerRouteHost) => {
     const tokens = createMcpTokenRepository(db);
     const guard = createWriteGuard(db, now);
 

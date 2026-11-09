@@ -1,4 +1,4 @@
-import type { ModuleRegistry, RouteHost } from '@milewage/shared';
+import type { ModuleRegistry } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import {
@@ -87,8 +87,7 @@ export function goalsRoutes({
   authn: Authenticator;
   override?: 'replace' | 'sum';
 }) {
-  return (host: RouteHost) => {
-    const { app, registry, bus } = host as ServerRouteHost;
+  return ({ app, registry, bus }: ServerRouteHost) => {
     const repo = createGoalRepository(db);
 
     const view = goalViewer({ db, now, registry, override });

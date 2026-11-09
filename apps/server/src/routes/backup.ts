@@ -1,5 +1,4 @@
 import { createReadStream, statSync } from 'node:fs';
-import type { RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import { FailureLimiter } from '../auth/limiter';
@@ -43,9 +42,7 @@ export function backupRoutes({
   /** `backup.download`: the download route and the off-site acknowledgement (10 section 3.1). */
   download?: boolean;
 }) {
-  return (host: RouteHost) => {
-    const { app } = host as ServerRouteHost;
-
+  return ({ app }: ServerRouteHost) => {
     app.get('/backups', async (req) => {
       authn.authenticate(req, 'S');
       return service.list().map(toBackup);

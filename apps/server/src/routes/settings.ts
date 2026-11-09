@@ -21,21 +21,6 @@ import { str, strictObject, type AuthFn } from './util';
 /** The dashboard's "Finish setting up" steps; a listed step stays done (finished or skipped). */
 export const SETUP_STEPS = ['vehicle', 'goal', 'phone', 'backup'] as const;
 
-/** Driver admin modules (18): each is a flag in `modules` so the web can hide its screen. */
-export const COMMA_MODULES = [
-  'platforms',
-  'earnings',
-  'expenses',
-  'receipts',
-  'tax',
-  'goals',
-  'analytics',
-  'maintenance',
-  'import',
-  'notifications',
-  'schedule',
-  'progress',
-];
 const VERBOSE_MS = 7 * 24 * 60 * 60 * 1000;
 
 const validZone = (tz: string) => {
@@ -75,12 +60,12 @@ export function moduleFlags(
   backupDownload = false,
   exporters: string[] = [],
 ) {
-  const on = (name: string) => reg.isEnabled(name);
-  const flag = (names: string[]) => Object.fromEntries(names.map((n) => [n, on(n)]));
+  // Every module the owner can switch off; core and backup always run, so they have no flag.
+  const fixed = new Set(reg.enabled.filter((m) => m.toggleable === false).map((m) => m.name));
+  const flags = Object.entries(reg.flags()).filter(([name]) => !fixed.has(name));
   return {
-    ...flag(['sync', 'devices', 'tracking', 'replay', 'diagnostics', 'capture', 'mcp']),
-    ...flag(COMMA_MODULES),
-    stops: on('stops') && stopsEnabled,
+    ...Object.fromEntries(flags),
+    stops: reg.isEnabled('stops') && stopsEnabled,
     // The engine is always on; this flag is the `backup.download` toggle and its routes.
     backup_download: backupDownload,
     exporters,

@@ -1,4 +1,3 @@
-import type { RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import { type Db } from '../db';
@@ -18,12 +17,11 @@ export function progressRoutes({
   override?: 'replace' | 'sum';
   challengeTargetCents: number;
 }) {
-  return (host: RouteHost) => {
-    const { app, registry, bus } = host as ServerRouteHost;
+  return ({ app, registry, bus }: ServerRouteHost) => {
     app.get('/progress', async (req) => {
       const { userId } = authn.authenticate(req, 'S');
       return evaluateProgress(
-        { db, now, registry, override, challengeTargetCents, emit: () => bus.emit },
+        { db, now, registry, override, challengeTargetCents, emit: bus.emit },
         userId,
       );
     });

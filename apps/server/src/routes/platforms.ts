@@ -1,10 +1,4 @@
-import {
-  builtinPlatform,
-  countryModules,
-  CUSTOM_SLUG,
-  resolvePlace,
-  type RouteHost,
-} from '@milewage/shared';
+import { builtinPlatform, countryModules, CUSTOM_SLUG, resolvePlace } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import { createPlatformRepository, createSettingsRepository, type Db } from '../db';
@@ -46,8 +40,7 @@ export function platformsRoutes({
   authn: Authenticator;
   now: () => number;
 }) {
-  return (host: RouteHost) => {
-    const { app } = host as ServerRouteHost;
+  return ({ app }: ServerRouteHost) => {
     const repo = createPlatformRepository(db);
     const settings = createSettingsRepository(db);
 

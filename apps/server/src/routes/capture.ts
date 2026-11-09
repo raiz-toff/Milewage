@@ -1,4 +1,4 @@
-import type { ModuleJob, RouteHost } from '@milewage/shared';
+import type { ModuleJob } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import { createShiftRepository, type Db } from '../db';
@@ -121,9 +121,7 @@ export function captureModuleParts({
   const invalid = (path: string, message: string) =>
     new ProblemError('validation_failed', 'The request is not valid.', [{ path, message }]);
 
-  const routes = (host: RouteHost) => {
-    const { app } = host as ServerRouteHost;
-
+  const routes = ({ app }: ServerRouteHost) => {
     app.post(
       '/diagnostics/capture-sessions',
       { schema: { body: createBody } },

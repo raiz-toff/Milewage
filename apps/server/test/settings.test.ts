@@ -1,7 +1,5 @@
-import { defineModule } from '@milewage/shared';
 import { algorithmVersion } from '@milewage/track-engine';
 import { afterEach, beforeEach, expect, test } from 'vitest';
-import { buildApp, createServerModules } from '../src/index';
 import { harness, type Harness } from './support';
 
 let h: Harness;
@@ -26,15 +24,10 @@ test('GET /settings returns the preferences, engine version and diagnostics', as
 
 test('the modules object follows the registry: registered is true, absent is false', async () => {
   const flagsOf = async (capture: boolean) => {
-    const modules = [
-      ...createServerModules({ db: h.db, now: () => h.clock.t }).filter(
-        (m) => m.name !== 'capture',
-      ),
-      defineModule({ name: 'capture', dependsOn: ['core'] }),
-    ];
-    const app = buildApp({ modules, enabled: { core: true, capture }, logLevel: 'silent' });
-    const res = await app.fastify.inject({ url: '/api/v1/settings', headers: { cookie } });
-    await app.fastify.close();
+    const other = harness({ capture });
+    const { cookie } = await other.signUp();
+    const res = await other.call('GET', '/settings', undefined, { cookie });
+    await other.close();
     return res.json().modules;
   };
   expect((await flagsOf(true)).capture).toBe(true);

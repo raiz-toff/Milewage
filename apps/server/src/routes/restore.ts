@@ -3,7 +3,6 @@ import { createWriteStream, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { randomBytes } from 'node:crypto';
-import type { RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import { FailureLimiter } from '../auth/limiter';
 import type { RestoreService } from '../backup/restore';
@@ -25,8 +24,7 @@ export function restoreRoutes({
   uploadDir: string;
   now: () => number;
 }) {
-  return (host: RouteHost) => {
-    const { app } = host as ServerRouteHost;
+  return ({ app }: ServerRouteHost) => {
     // Wrong keys are the only thing worth guessing at here: 5 failures per 15 minutes per client.
     const failures = new FailureLimiter(5, 15 * 60 * 1000, now);
     void app.register(multipart, {

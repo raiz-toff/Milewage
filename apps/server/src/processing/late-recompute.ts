@@ -6,8 +6,7 @@ import type { ShiftProcessor } from './shift-processor';
 export interface LateRecomputeOptions {
   db: Db;
   processor: ShiftProcessor;
-  /** Set once the routes are registered (the bus belongs to the host). */
-  emit: () => EventEmit | undefined;
+  emit: EventEmit;
   stopsOn: () => boolean;
   /** Debounce of 08 section 5 step 6: 5 seconds unless a test shortens it. */
   delayMs?: number;
@@ -40,8 +39,8 @@ export function createLateRecompute({
       const shift = shifts.byId(shiftId);
       if (!shift || shift.status !== 'ended') return;
       processor.run(shift, { latePoints: true, reason: 'late_points' });
-      emit()?.('shift.updated', { shiftId: String(shiftId) });
-      if (stopsOn()) emit()?.('stops.derived', { shiftId: String(shiftId) });
+      emit('shift.updated', { shiftId: String(shiftId) });
+      if (stopsOn()) emit('stops.derived', { shiftId: String(shiftId) });
     } catch (e) {
       log?.('late-point recompute failed', { shiftId, error: (e as Error).message });
     }

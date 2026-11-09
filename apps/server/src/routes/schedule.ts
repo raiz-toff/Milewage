@@ -1,4 +1,3 @@
-import type { RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import { createVehicleRepository, type Db } from '../db';
@@ -45,8 +44,7 @@ const TPL = 'id, label, weekdays, start_time, end_time, platform, vehicle_id, ac
 
 /** Module `schedule` (18 section 9), off by default. The server stores the plan; the phone fires reminders itself. */
 export function scheduleRoutes({ db, authn }: { db: Db; authn: Authenticator }) {
-  return (host: RouteHost) => {
-    const { app, registry } = host as ServerRouteHost;
+  return ({ app, registry }: ServerRouteHost) => {
     const vehicles = createVehicleRepository(db);
 
     const bad = (path: string, message: string) =>

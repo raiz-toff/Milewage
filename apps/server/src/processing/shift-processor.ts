@@ -84,8 +84,8 @@ export interface ShiftProcessorOptions {
   now: () => number;
   /** Whether the `stops` module is on; stops and labels are only read and written then. */
   stopsOn: () => boolean;
-  /** The event bus, once the routes exist; the diagnostics module listens to what is announced here. */
-  emit?: () => EventEmit | undefined;
+  /** `bus.emit`; the diagnostics and sync modules listen to what is announced here. */
+  emit: EventEmit;
 }
 
 export type ShiftProcessor = ReturnType<typeof createShiftProcessor>;
@@ -118,11 +118,9 @@ export function createShiftProcessor({ db, now, stopsOn, emit }: ShiftProcessorO
     recon: Recon | undefined,
     stored: { calcVersion: number; inputDigest: string } | undefined,
   ) => {
-    const bus = emit?.();
-    if (!bus) return;
     const id = String(shift.id);
     const reason = phone.reason ?? (phone.latePoints ? 'late_points' : 'recalc');
-    bus('engine.ran', {
+    emit('engine.ran', {
       shiftId: id,
       reason,
       ms,
@@ -139,7 +137,7 @@ export function createShiftProcessor({ db, now, stopsOn, emit }: ShiftProcessorO
     });
     const theirs = phone.result ?? stored;
     if (recon && theirs) {
-      bus('shift.reconciled', {
+      emit('shift.reconciled', {
         shiftId: id,
         status: recon.status,
         reasons: recon.reasons,
@@ -149,7 +147,7 @@ export function createShiftProcessor({ db, now, stopsOn, emit }: ShiftProcessorO
         serverCalcV: result.algorithmVersion,
       });
     } else if (!recon && reason === 'shift_end' && shift.reconStatus === 'phone_missing') {
-      bus('shift.reconciled', {
+      emit('shift.reconciled', {
         shiftId: id,
         status: 'phone_missing',
         reasons: [],

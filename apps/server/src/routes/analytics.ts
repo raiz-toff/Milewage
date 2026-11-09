@@ -1,4 +1,3 @@
-import type { RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import {
@@ -65,8 +64,7 @@ export function analyticsRoutes({
   authn: Authenticator;
   override?: 'replace' | 'sum';
 }) {
-  return (host: RouteHost) => {
-    const { app, registry } = host as ServerRouteHost;
+  return ({ app, registry }: ServerRouteHost) => {
     const settings = createSettingsRepository(db);
     const processing = createProcessingRepository(db);
 

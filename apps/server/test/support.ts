@@ -2,17 +2,16 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  buildApp,
-  createInstanceReader,
+  assembleServer,
   createDiskMonitor,
   createServerState,
-  createServerModules,
+  loadConfig,
   openAndMigrate,
-  type AppOptions,
-  type Db,
+  serverExporters,
+  type ServerConfig,
+  type ServerTuning,
 } from '../src/index';
-import type { CommaOptions } from '../src/comma-options';
-import type { ExporterRegistry } from '../src/exporters/registry';
+import { COMMA_DEFAULTS, type CommaOptions } from '../src/comma-options';
 
 export const owner = {
   username: 'sam',
@@ -24,28 +23,26 @@ export const owner = {
 };
 const site = { host: 'mw.test', origin: 'http://mw.test' };
 
-/** A server on a throwaway database with an injectable clock. Call `close()` in afterEach. */
+/** Settings a test may change; each is the `ServerConfig` field of the same meaning. */
+type TestConfig = Partial<
+  Pick<ServerConfig, 'publicUrl' | 'homeUrl' | 'httpAddressAllowed' | 'appStoreUrl' | 'trustProxy'>
+> & {
+  comma?: Partial<CommaOptions>;
+  /** `backup.on_shift_end`; off unless a test asks: a real backup after every shift end would race with the teardown. */
+  backupOnShiftEnd?: boolean;
+  backupDownload?: boolean;
+  diagnosticsBundle?: boolean;
+  /** `modules.export_<format>`: only these formats are switched on. */
+  enabledExportFormats?: () => readonly string[];
+};
+
+/**
+ * The production server (`assembleServer`) on a throwaway folder and database, with an injectable
+ * clock and a pretend disk. Call `close()` in afterEach.
+ */
 export function harness(
   enabled: Record<string, boolean> = {},
-  extra: Partial<AppOptions> & {
-    restoreVerify?: (db: Db) => void;
-    lateRecomputeMs?: number;
-    archiveEveryMs?: number;
-    diagnosticsSampleMs?: number;
-    diagnosticsBundle?: boolean;
-    captureHousekeepingMs?: number;
-    backupOnShiftEnd?: boolean;
-    backupDownload?: boolean;
-    exporters?: ExporterRegistry;
-    comma?: Partial<CommaOptions>;
-    diagnosticsHousekeepingMs?: number;
-    mcpHousekeepingMs?: number;
-    enabledExportFormats?: () => readonly string[];
-    publicUrl?: string | null;
-    homeUrl?: string | null;
-    httpAddressAllowed?: boolean;
-    appStoreUrl?: string | null;
-  } = {},
+  extra: TestConfig & ServerTuning = {},
 ) {
   const dir = mkdtempSync(join(tmpdir(), 'mw-test-'));
   const db = openAndMigrate(join(dir, 'milewage.db'));
@@ -65,55 +62,59 @@ export function harness(
     statfs: () => ({ free: volume.free, total: volume.total }),
     dbBytes: () => volume.db ?? 1024 * 1024,
   });
-  const modules = createServerModules({
-    state,
-    disk,
-    restoreVerify: extra.restoreVerify,
-    lateRecomputeMs: extra.lateRecomputeMs,
-    archiveEveryMs: extra.archiveEveryMs,
-    diagnosticsSampleMs: extra.diagnosticsSampleMs,
-    diagnosticsBundle: extra.diagnosticsBundle,
-    captureHousekeepingMs: extra.captureHousekeepingMs,
-    // Off unless a test asks: a real backup after every shift end would race with the teardown.
-    backupOnShiftEnd: extra.backupOnShiftEnd ?? false,
-    backupDownload: extra.backupDownload,
-    exporters: extra.exporters,
-    comma: extra.comma,
-    diagnosticsHousekeepingMs: extra.diagnosticsHousekeepingMs,
-    mcpHousekeepingMs: extra.mcpHousekeepingMs,
-    enabledExportFormats: extra.enabledExportFormats,
-    db,
-    now: () => clock.t,
-    diagnosticsPath: join(dir, 'diagnostics.db'),
-    backupDir: join(dir, 'backups'),
-    configDir: join(dir, 'config'),
-    apkPath: join(dir, 'config', 'milewage.apk'),
-    publicUrl: extra.publicUrl,
-    homeUrl: extra.homeUrl,
-    httpAddressAllowed: extra.httpAddressAllowed,
-    appStoreUrl: extra.appStoreUrl,
+  const {
+    comma,
+    backupOnShiftEnd,
+    backupDownload,
+    diagnosticsBundle,
+    enabledExportFormats,
+    publicUrl,
+    homeUrl,
+    httpAddressAllowed,
+    appStoreUrl,
+    trustProxy,
+    ...tuning
+  } = extra;
+  const exporters = tuning.exporters ?? serverExporters();
+  const formatsOn = enabledExportFormats?.();
+  // Every folder inside the throwaway one; the rest is what an empty settings.json gives.
+  const base = loadConfig({
+    MILEWAGE_DATA_DIR: dir,
+    MILEWAGE_CONFIG_DIR: join(dir, 'config'),
+    MILEWAGE_BACKUP_DIR: join(dir, 'backups'),
+    MILEWAGE_LOG_LEVEL: 'silent',
   });
-  let app: ReturnType<typeof buildApp>['fastify'];
-  let bus: ReturnType<typeof buildApp>['bus'];
+  const config: ServerConfig = {
+    ...base,
+    publicUrl: publicUrl ?? base.publicUrl,
+    homeUrl: homeUrl ?? base.homeUrl,
+    httpAddressAllowed: httpAddressAllowed ?? base.httpAddressAllowed,
+    appStoreUrl: appStoreUrl ?? base.appStoreUrl,
+    trustProxy: trustProxy ?? base.trustProxy,
+    settings: {
+      modules: {
+        core: true,
+        ...enabled,
+        ...(formatsOn &&
+          Object.fromEntries(
+            exporters.formats().map((f) => [`export_${f}`, formatsOn.includes(f)]),
+          )),
+      },
+    },
+    comma: { ...COMMA_DEFAULTS, ...comma },
+    backup: { onShiftEnd: backupOnShiftEnd ?? false, download: backupDownload ?? true },
+    diagnostics: { bundle: diagnosticsBundle ?? true },
+  };
+  let built: ReturnType<typeof assembleServer>;
   try {
-    const built = buildApp({
-      modules,
-      enabled: { core: true, ...enabled },
-      logLevel: 'silent',
-      now: () => clock.t,
-      identity: createInstanceReader(db),
-      state,
-      disk: () => disk.state(),
-      ...extra,
-    });
-    app = built.fastify;
-    bus = built.bus;
+    built = assembleServer({ db, config, now: () => clock.t, state, disk, tuning });
   } catch (e) {
     // An invalid module configuration is refused at start; do not leak the throwaway files.
     db.close();
     rmSync(dir, { recursive: true, force: true });
     throw e;
   }
+  const { fastify: app, bus } = built;
   const call = (method: string, url: string, payload?: object, headers: object = {}) =>
     app.inject({
       method: method as 'GET',

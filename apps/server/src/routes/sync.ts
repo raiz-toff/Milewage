@@ -1,4 +1,4 @@
-import type { EventSubscriptions, ModuleJob, RouteHost } from '@milewage/shared';
+import type { EventSubscriptions, ModuleJob } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import {
@@ -33,7 +33,7 @@ export interface SyncOptions {
   now: () => number;
   authn: Authenticator;
   /** Core service: the `Settings` response for a user. */
-  readSettings: (host: ServerRouteHost) => (userId: number) => object;
+  readSettings: (userId: number) => object;
 }
 
 /**
@@ -114,10 +114,7 @@ export function createSync({ db, now, authn, readSettings }: SyncOptions) {
       ),
   };
 
-  const routes = (routeHost: RouteHost) => {
-    const host = routeHost as ServerRouteHost;
-    const settings = readSettings(host);
-
+  const routes = ({ app }: ServerRouteHost) => {
     /** The entity in its API shape, or null when it no longer exists (reported as a delete). */
     const dataOf = (userId: number, row: ChangeRow): object | null => {
       switch (row.entity) {
@@ -144,7 +141,7 @@ export function createSync({ db, now, authn, readSettings }: SyncOptions) {
             : null;
         }
         case 'settings':
-          return settings(userId);
+          return readSettings(userId);
         default:
           return null;
       }
@@ -165,7 +162,7 @@ export function createSync({ db, now, authn, readSettings }: SyncOptions) {
       return undefined;
     };
 
-    host.app.get('/sync/changes', { schema: { querystring: query } }, async (req) => {
+    app.get('/sync/changes', { schema: { querystring: query } }, async (req) => {
       const p = authn.authenticate(req, 'SD');
       const q = req.query as { after?: number; limit?: number };
       const after = q.after ?? 0;

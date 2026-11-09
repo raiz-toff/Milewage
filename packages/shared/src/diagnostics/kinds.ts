@@ -37,12 +37,19 @@ const ENGINE_STATS = [
   'gap_m',
 ];
 
+/** The modules whose switches a diagnostics event carries (`server.start`, `settings.applied`, the debug bundle). */
+export const DIAGNOSED_MODULES = [
+  'devices',
+  'tracking',
+  'stops',
+  'replay',
+  'sync',
+  'exporters',
+  'diagnostics',
+  'capture',
+] as const;
 // Module flags as bools; a module that does not exist in a build is simply absent.
-const MODULE_FLAGS: Shape = Object.fromEntries(
-  ['devices', 'tracking', 'stops', 'replay', 'sync', 'exporters', 'diagnostics', 'capture'].map(
-    (m) => [m, bool(true)],
-  ),
-);
+const MODULE_FLAGS: Shape = Object.fromEntries(DIAGNOSED_MODULES.map((m) => [m, bool(true)]));
 const DISK_STATES = ['ok', 'warning', 'backup_skipped', 'writes_blocked'];
 const SIGNED = int(-1_000_000_000, 1_000_000_000);
 

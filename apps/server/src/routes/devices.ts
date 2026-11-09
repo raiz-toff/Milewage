@@ -1,6 +1,6 @@
 import { createReadStream, readFileSync, statSync } from 'node:fs';
 import type { FastifyRequest } from 'fastify';
-import { isHomeAddress, type RouteHost } from '@milewage/shared';
+import { isHomeAddress } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import { hashToken, newToken, type Authenticator } from '../auth/authenticator';
 import { FailureLimiter } from '../auth/limiter';
@@ -64,7 +64,7 @@ export interface DevicesContext {
   now: () => number;
   authn: Authenticator;
   /** Core service: the `Settings` response, returned to a phone when it pairs. */
-  readSettings: (host: ServerRouteHost) => (userId: number) => object;
+  readSettings: (userId: number) => object;
   /** The phone app file, served by `GET /app/android.apk` when it exists (plan 24 Q2). */
   apkPath?: string;
   /** `MILEWAGE_PUBLIC_URL`: the address phones are given; null or absent to use the request's. */
@@ -89,13 +89,10 @@ export function devicesRoutes({
   httpAddressAllowed = process.env.NODE_ENV !== 'production',
   appStoreUrl = null,
 }: DevicesContext) {
-  return (routeHost: RouteHost) => {
-    const host = routeHost as ServerRouteHost;
-    const { app } = host;
+  return ({ app }: ServerRouteHost) => {
     const auth = authn.authenticate;
     const repo = createDeviceRepository(db);
     const limiter = new FailureLimiter(10, 15 * 60 * 1000, now);
-    const settings = readSettings(host);
 
     const skews = new Map<number, number>(); // device id -> last phone-minus-server clock difference, in memory only
     authn.useDeviceBranch((tokenHash, request) => {
@@ -151,7 +148,7 @@ export function devicesRoutes({
       return {
         device_id: device.id,
         device_token: credential,
-        settings: settings(device.userId),
+        settings: readSettings(device.userId),
         // Both addresses, so a phone linked at home learns the away one and the other way round.
         home_url: home,
         away_url: away,

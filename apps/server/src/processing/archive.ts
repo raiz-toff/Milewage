@@ -54,7 +54,7 @@ export function simplifyKeeping(points: readonly PointRow[], keepTimes: readonly
 export interface ArchiverOptions {
   db: Db;
   now: () => number;
-  emit: () => EventEmit | undefined;
+  emit: EventEmit;
   /** How often the job runs (a day unless a test shortens it). */
   everyMs?: number;
   log?: (message: string, fields?: object) => void;
@@ -105,7 +105,7 @@ export function createArchiver({ db, now, emit, everyMs = DAY, log }: ArchiverOp
             : { code: 'archived_unfinalized', detail: JSON.stringify({ at: null, detail: null }) },
         );
         done++;
-        if (!finalized) emit()?.('shift.updated', { shiftId: String(c.id) });
+        if (!finalized) emit('shift.updated', { shiftId: String(c.id) });
       } catch (e) {
         log?.('route archive failed', { shiftId: c.id, error: (e as Error).message });
       }

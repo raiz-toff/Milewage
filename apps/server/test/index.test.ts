@@ -1,59 +1,36 @@
 import { describe, expect, test } from 'vitest';
-import {
-  defineModule,
-  moduleMatrix,
-  ModuleConfigError,
-  type ModuleDefinition,
-} from '@milewage/shared';
-import {
-  buildApp,
-  ConfigError,
-  coreModule,
-  loadConfig,
-  serverModules,
-  type ServerRouteHost,
-} from '../src/index';
+import type { FastifyInstance } from 'fastify';
+import { buildHttpApp, ConfigError, loadConfig, type HttpOptions } from '../src/index';
 
+// The HTTP shell under the modules: health, the error model and logging. The modules themselves are
+// tested through the assembled server (assembly.test.ts, matrix.test.ts).
 const silent = { logLevel: 'silent' };
-const only = { modules: serverModules, enabled: { core: true }, ...silent };
-
-function stub(name: string, dependsOn: string[] = ['core']) {
-  return defineModule({
-    name,
-    dependsOn,
-    routes: (host) => host.route('GET', `/${name}/ping`, () => ({ module: name })),
-  });
-}
+const shell = (options: HttpOptions = {}, mount: (api: FastifyInstance) => void = () => {}) =>
+  buildHttpApp({ ...silent, ...options }, mount);
 
 describe('health', () => {
   test('GET /healthz returns only {"ok":true}, outside /api/v1', async () => {
-    const { fastify } = buildApp(only);
+    const fastify = shell();
     const res = await fastify.inject('/healthz');
     expect(res.json()).toEqual({ ok: true });
     expect((await fastify.inject('/api/v1/healthz')).statusCode).toBe(404);
   });
 
   test('503 when the probe fails', async () => {
-    const res = await buildApp({ ...only, isHealthy: () => false }).fastify.inject('/healthz');
+    const res = await shell({ isHealthy: () => false }).inject('/healthz');
     expect([res.statusCode, res.json()]).toEqual([503, { ok: false }]);
   });
 });
 
 describe('error model (08 section 7.1)', () => {
-  const mod = defineModule({
-    name: 'core',
-    dependsOn: [],
-    toggleable: false,
-    routes: (host) => {
-      const { app } = host as ServerRouteHost;
+  const build = () =>
+    shell({}, (app) => {
       app.get('/boom', () => {
         throw new Error('secret SELECT * FROM users at /app/data');
       });
       const body = { type: 'object', required: ['n'], properties: { n: { type: 'integer' } } };
       app.post('/typed', { schema: { body } }, () => ({}));
-    },
-  });
-  const build = () => buildApp({ modules: [mod], enabled: { core: true }, ...silent }).fastify;
+    });
   const post = (payload: string, type = 'application/json') =>
     build().inject({
       method: 'POST',
@@ -96,11 +73,7 @@ describe('error model (08 section 7.1)', () => {
 describe('logging', () => {
   test('secrets are redacted in JSON log lines', () => {
     const lines: string[] = [];
-    const { fastify } = buildApp({
-      ...only,
-      logLevel: 'info',
-      logStream: { write: (l) => void lines.push(l) },
-    });
+    const fastify = shell({ logLevel: 'info', logStream: { write: (l) => void lines.push(l) } });
     fastify.log.info(
       {
         req: { headers: { authorization: 'Bearer SECRET-A', cookie: 'mw_session=SECRET-B' } },
@@ -112,29 +85,6 @@ describe('logging', () => {
     expect(JSON.parse(lines[0] as string).msg).toBe('probe');
     expect(out).toContain('[redacted]');
     expect(out).not.toMatch(/SECRET-[ABCD]/);
-  });
-});
-
-describe('module matrix', () => {
-  const set: ModuleDefinition[] = [
-    coreModule,
-    stub('devices'),
-    stub('tracking'),
-    stub('stops', ['core', 'tracking']),
-  ];
-
-  test.each(moduleMatrix(set).map((c) => [c.label, c] as const))('%s', async (_label, c) => {
-    if (c.expectRefusal) {
-      expect(() => buildApp({ modules: set, enabled: c.enabled, ...silent })).toThrow(
-        ModuleConfigError,
-      );
-      return;
-    }
-    const { fastify } = buildApp({ modules: set, enabled: c.enabled, ...silent });
-    for (const m of set.filter((x) => x.name !== 'core')) {
-      const res = await fastify.inject(`/api/v1/${m.name}/ping`);
-      expect(res.statusCode).toBe(c.enabled[m.name] ? 200 : 404);
-    }
   });
 });
 

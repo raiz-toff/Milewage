@@ -1,4 +1,3 @@
-import type { RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import {
@@ -64,8 +63,7 @@ export function taxRoutes({
   countries: readonly string[];
   override?: 'replace' | 'sum';
 }) {
-  return (host: RouteHost) => {
-    const { app, registry } = host as ServerRouteHost;
+  return ({ app, registry }: ServerRouteHost) => {
     const repo = createTaxRepository(db);
     const vehicles = createVehicleRepository(db);
     const settings = createSettingsRepository(db);

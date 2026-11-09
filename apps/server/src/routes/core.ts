@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { countryModules, type ModuleRegistry, type RouteHost } from '@milewage/shared';
+import { countryModules, type ModuleRegistry } from '@milewage/shared';
 import { API_PREFIX, type ServerRouteHost } from '../app';
 import { generateRecoveryKey, keyTail, tailCheck } from '../backup/age';
 import { fileSecrets, type SecretsStore } from '../backup/secrets';
@@ -94,14 +94,13 @@ export function coreRoutes(
   }: CoreContext,
   authn: Authenticator,
 ) {
-  return (host: RouteHost) => {
-    const { app, registry } = host as ServerRouteHost;
+  return ({ app, registry, bus }: ServerRouteHost) => {
     const users = createUserRepository(db);
     const sessions = createSessionRepository(db);
     const limiter = new FailureLimiter(5, 15 * 60 * 1000, now);
     const dummy = hashPassword('no-such-user');
     const auth = authn.authenticate;
-    const emit = (host as ServerRouteHost).bus.emit;
+    const emit = bus.emit;
     settingsRoutes(app, {
       db,
       now,

@@ -1,5 +1,4 @@
-import type { EventBus } from './events';
-import type { ModuleDefinition, RouteHost } from './module';
+import type { ModuleDefinition } from './module';
 
 export class ModuleConfigError extends Error {
   override name = 'ModuleConfigError';
@@ -7,21 +6,20 @@ export class ModuleConfigError extends Error {
 
 export type EnabledMap = Readonly<Record<string, boolean>>;
 
-export interface ModuleRegistry {
-  readonly enabled: readonly Readonly<ModuleDefinition>[];
+export interface ModuleRegistry<M extends ModuleDefinition = ModuleDefinition> {
+  /** The modules that are on, dependencies first. */
+  readonly enabled: readonly Readonly<M>[];
   isEnabled(name: string): boolean;
+  /** Every module's switch, by name, dependencies first. */
   flags(): Record<string, boolean>;
-  registerRoutes(host: RouteHost): void;
-  attachSubscriptions(bus: EventBus): () => void;
-  startJobs(): () => void;
 }
 
 /** Builds the graph; throws ModuleConfigError on duplicates, unknown deps, cycles, or an enabled module with a disabled dependency. */
-export function buildRegistry(
-  modules: readonly ModuleDefinition[],
+export function buildRegistry<M extends ModuleDefinition>(
+  modules: readonly M[],
   enabledMap: EnabledMap,
-): ModuleRegistry {
-  const byName = new Map<string, ModuleDefinition>();
+): ModuleRegistry<M> {
+  const byName = new Map<string, M>();
   for (const m of modules) {
     if (byName.has(m.name)) throw new ModuleConfigError(`Module "${m.name}" is registered twice.`);
     byName.set(m.name, m);
@@ -56,29 +54,13 @@ export function buildRegistry(
     enabled,
     isEnabled: (name) => byName.has(name) && on(name),
     flags: () => Object.fromEntries(order.map((m) => [m.name, on(m.name)])),
-    registerRoutes(host) {
-      for (const m of enabled) m.routes?.(host);
-    },
-    attachSubscriptions(bus) {
-      const detach: (() => void)[] = [];
-      for (const m of enabled) {
-        for (const [event, handler] of Object.entries(m.subscriptions ?? {})) {
-          detach.push(bus.on(event as never, handler as never));
-        }
-      }
-      return () => detach.forEach((d) => d());
-    },
-    startJobs() {
-      const stops = enabled.flatMap((m) => (m.jobs ?? []).map((j) => j.start()));
-      return () => stops.forEach((s) => s());
-    },
   };
 }
 
-function topoSort(byName: Map<string, ModuleDefinition>): ModuleDefinition[] {
+function topoSort<M extends ModuleDefinition>(byName: Map<string, M>): M[] {
   const done = new Set<string>();
   const visiting: string[] = [];
-  const out: ModuleDefinition[] = [];
+  const out: M[] = [];
   const visit = (name: string) => {
     if (done.has(name)) return;
     const at = visiting.indexOf(name);
@@ -88,7 +70,7 @@ function topoSort(byName: Map<string, ModuleDefinition>): ModuleDefinition[] {
       );
     }
     visiting.push(name);
-    const m = byName.get(name) as ModuleDefinition;
+    const m = byName.get(name) as M;
     m.dependsOn.forEach(visit);
     visiting.pop();
     done.add(name);

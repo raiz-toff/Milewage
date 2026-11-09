@@ -1,4 +1,3 @@
-import type { RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import { createExpenseRepository, createVehicleRepository, type Db } from '../db';
@@ -45,8 +44,7 @@ export function maintenanceRoutes({
   now: () => number;
   authn: Authenticator;
 }) {
-  return (host: RouteHost) => {
-    const { app, registry } = host as ServerRouteHost;
+  return ({ app, registry }: ServerRouteHost) => {
     const vehicles = createVehicleRepository(db);
     const expenses = createExpenseRepository(db);
     const log = (userId: number, id: number) =>

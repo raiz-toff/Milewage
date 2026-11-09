@@ -8,7 +8,6 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
-import type { RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import { createExpenseRepository, type Db } from '../db';
@@ -46,8 +45,7 @@ export function receiptsRoutes({
   now: () => number;
   authn: Authenticator;
 }) {
-  return (host: RouteHost) => {
-    const { app } = host as ServerRouteHost;
+  return ({ app }: ServerRouteHost) => {
     const dir = receiptsDirOf(db);
     const expenses = createExpenseRepository(db);
     // Binary bodies: the global limit is 64 KiB, so these types carry their own.

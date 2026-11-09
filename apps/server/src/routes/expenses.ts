@@ -1,4 +1,4 @@
-import { EXPENSE_CATEGORIES, expenseCategory, type RouteHost } from '@milewage/shared';
+import { EXPENSE_CATEGORIES, expenseCategory } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import {
@@ -70,8 +70,7 @@ export function expensesRoutes({
   now: () => number;
   authn: Authenticator;
 }) {
-  return (host: RouteHost) => {
-    const { app, bus } = host as ServerRouteHost;
+  return ({ app, bus }: ServerRouteHost) => {
     const repo = createExpenseRepository(db);
     const settings = createSettingsRepository(db);
     const vehicles = createVehicleRepository(db);

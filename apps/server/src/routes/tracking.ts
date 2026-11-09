@@ -1,4 +1,3 @@
-import type { RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import { createShiftRepository, createTelemetryRepository, type Db, type NewPoint } from '../db';
@@ -56,8 +55,7 @@ export function trackingRoutes({
   authn: Authenticator;
   processor?: ShiftProcessor;
 }) {
-  return (host: RouteHost) => {
-    const { app, bus } = host as ServerRouteHost;
+  return ({ app, bus }: ServerRouteHost) => {
     const shifts = createShiftRepository(db);
     const telemetry = createTelemetryRepository(db);
     if (processor) {

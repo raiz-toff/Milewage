@@ -1,6 +1,5 @@
 import { asc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
-import type { RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import { createArchiveRepository, telemetryPoints, type Db } from '../db';
@@ -19,8 +18,7 @@ export function replayRoutes({
   now: () => number;
   authn: Authenticator;
 }) {
-  return (host: RouteHost) => {
-    const { app } = host as ServerRouteHost;
+  return ({ app }: ServerRouteHost) => {
     const orm = drizzle(db);
     const read = shiftReader(db, now);
     const archives = createArchiveRepository(db);

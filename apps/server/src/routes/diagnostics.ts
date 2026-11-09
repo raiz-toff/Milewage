@@ -1,5 +1,4 @@
-import type { RouteHost } from '@milewage/shared';
-import { validateEvent } from '@milewage/shared';
+import { DIAGNOSED_MODULES, validateEvent } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import { createSettingsRepository, type Db } from '../db';
@@ -73,8 +72,7 @@ export function diagnosticsRoutes({
   /** Installs the request counters of `api.window` on the app. */
   observe?: (app: ServerRouteHost['app']) => void;
 }) {
-  return (host: RouteHost) => {
-    const { app } = host as ServerRouteHost;
+  return ({ app, registry }: ServerRouteHost) => {
     const settings = createSettingsRepository(db);
     observe?.(app);
 
@@ -248,18 +246,7 @@ export function diagnosticsRoutes({
               sqlite: String(db.prepare('SELECT sqlite_version()').pluck().get()),
               node: process.versions.node,
             },
-            modules: Object.fromEntries(
-              [
-                'devices',
-                'tracking',
-                'stops',
-                'replay',
-                'sync',
-                'exporters',
-                'diagnostics',
-                'capture',
-              ].map((m) => [m, (host as ServerRouteHost).registry.isEnabled(m)]),
-            ),
+            modules: Object.fromEntries(DIAGNOSED_MODULES.map((m) => [m, registry.isEnabled(m)])),
             health: healthOf(p),
           });
           return reply

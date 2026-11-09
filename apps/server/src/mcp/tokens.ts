@@ -1,5 +1,4 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import type { RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import { hashToken, type Authenticator } from '../auth/authenticator';
 import type { Db } from '../db';
@@ -106,8 +105,7 @@ export function mcpTokenRoutes({
   now: () => number;
   authn: Authenticator;
 }) {
-  return (routeHost: RouteHost) => {
-    const { app } = routeHost as ServerRouteHost;
+  return ({ app }: ServerRouteHost) => {
     const repo = createMcpTokenRepository(db);
 
     app.get('/mcp/tokens', async (req) =>

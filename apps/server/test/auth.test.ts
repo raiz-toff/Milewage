@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
-import { buildApp, createServerModules, openAndMigrate, type Db } from '../src/index';
+import { assembleServer, loadConfig, openAndMigrate, type Db } from '../src/index';
 
 const DAY = 24 * 60 * 60 * 1000;
 const owner = {
@@ -17,13 +17,23 @@ const owner = {
 let dir: string;
 let db: Db;
 let t: number;
-let app: ReturnType<typeof buildApp>['fastify'];
+let app: ReturnType<typeof assembleServer>['fastify'];
+/** The server with its default modules on this test's database and clock. */
+const serve = (trustProxy?: string[]) => {
+  const config = loadConfig({
+    MILEWAGE_DATA_DIR: dir,
+    MILEWAGE_CONFIG_DIR: join(dir, 'config'),
+    MILEWAGE_BACKUP_DIR: join(dir, 'backups'),
+    MILEWAGE_LOG_LEVEL: 'silent',
+  });
+  return assembleServer({ db, now: () => t, config: { ...config, trustProxy: trustProxy ?? [] } })
+    .fastify;
+};
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'mw-auth-'));
   db = openAndMigrate(join(dir, 'milewage.db'));
   t = 1_800_000_000_000;
-  const modules = createServerModules({ db, now: () => t, configDir: join(dir, 'config') });
-  app = buildApp({ modules, enabled: { core: true }, logLevel: 'silent' }).fastify;
+  app = serve();
 });
 afterEach(async () => {
   await app.close();
@@ -96,13 +106,7 @@ test('the session cookie is Secure when the page is https, and only then (plan 2
 });
 
 test('behind the trusted proxy, X-Forwarded-Proto https makes the cookie Secure', async () => {
-  const modules = createServerModules({ db, now: () => t, configDir: join(dir, 'config') });
-  const proxied = buildApp({
-    modules,
-    enabled: { core: true },
-    logLevel: 'silent',
-    trustProxy: ['172.29.88.0/24'],
-  }).fastify;
+  const proxied = serve(['172.29.88.0/24']);
   await signUp();
   const login = (ip: string) =>
     proxied.inject({

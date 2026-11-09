@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { expenseCategory, EXPENSE_CATEGORIES, type RouteHost } from '@milewage/shared';
+import { expenseCategory, EXPENSE_CATEGORIES } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import {
@@ -68,8 +68,7 @@ export function importsRoutes({
   now: () => number;
   authn: Authenticator;
 }) {
-  return (host: RouteHost) => {
-    const { app, registry, bus } = host as ServerRouteHost;
+  return ({ app, registry, bus }: ServerRouteHost) => {
     const settings = createSettingsRepository(db);
     const vehicles = createVehicleRepository(db);
     const expenses = createExpenseRepository(db);

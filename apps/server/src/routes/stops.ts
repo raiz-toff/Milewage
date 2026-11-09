@@ -1,4 +1,3 @@
-import type { RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import {
@@ -54,8 +53,7 @@ export function stopsRoutes({
   /** With the platforms module on: whether a slug is a built-in or the driver's own (18 section 4.2). */
   platformOk?: (userId: number, slug: string) => boolean;
 }) {
-  return (host: RouteHost) => {
-    const { app, bus } = host as ServerRouteHost;
+  return ({ app, bus }: ServerRouteHost) => {
     const repo = createProcessingRepository(db);
     const settings = createSettingsRepository(db);
     const read = shiftReader(db, now);

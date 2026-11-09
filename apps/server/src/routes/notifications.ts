@@ -1,4 +1,3 @@
-import type { RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import { type Db } from '../db';
@@ -53,9 +52,7 @@ export function notificationsRoutes({
   taxCountries: readonly string[];
   override?: 'replace' | 'sum';
 }) {
-  return (host: RouteHost) => {
-    const { app, registry } = host as ServerRouteHost;
-
+  return ({ app, registry }: ServerRouteHost) => {
     app.get('/notifications', { schema: { querystring: listQuery } }, async (req) => {
       const { userId } = authn.authenticate(req, 'SD');
       evaluate({ db, now, registry, taxCountries, override }, userId);

@@ -6,8 +6,6 @@ import {
   ModuleConfigError,
   moduleMatrix,
   resolveModuleConfig,
-  type ModuleDefinition,
-  type RouteHost,
 } from '../src/index';
 
 const sample = () => [
@@ -16,14 +14,6 @@ const sample = () => [
   def({ name: 'tracking', dependsOn: ['core', 'devices'] }),
   def({ name: 'replay', dependsOn: ['tracking'] }),
 ];
-
-/** In-memory router: unregistered paths answer 404. */
-function memoryHost() {
-  const table = new Map<string, unknown>();
-  const host: RouteHost = { route: (m, p, h) => void table.set(`${m} ${p}`, h({})) };
-  const status = (m: string, p: string) => (table.has(`${m} ${p}`) ? 200 : 404);
-  return { host, status };
-}
 
 describe('graph validation', () => {
   test('detects cycles with a readable path', () => {
@@ -54,42 +44,8 @@ describe('graph validation', () => {
   });
 });
 
-describe('routes, jobs, events', () => {
-  const start = vi.fn(() => vi.fn());
-  const mods = (): ModuleDefinition[] => [
-    def({
-      name: 'core',
-      dependsOn: [],
-      toggleable: false,
-      routes: (h) => h.route('GET', '/healthz', () => 1),
-    }),
-    def({
-      name: 'replay',
-      dependsOn: ['core'],
-      routes: (h) => h.route('GET', '/route', () => 2),
-      jobs: [{ name: 'j', start }],
-    }),
-  ];
-
-  test('a disabled module has no routes (404) and runs no jobs', () => {
-    const off = memoryHost();
-    const reg = buildRegistry(mods(), { replay: false });
-    reg.registerRoutes(off.host);
-    reg.startJobs();
-    expect([off.status('GET', '/healthz'), off.status('GET', '/route')]).toEqual([200, 404]);
-    expect(start).not.toHaveBeenCalled();
-  });
-
-  test('an enabled module registers routes and starts then stops jobs', () => {
-    const on = memoryHost();
-    const reg = buildRegistry(mods(), {});
-    reg.registerRoutes(on.host);
-    reg.startJobs()();
-    expect(on.status('GET', '/route')).toBe(200);
-    expect(start).toHaveBeenCalledTimes(1);
-    expect(start.mock.results[0]?.value).toHaveBeenCalledTimes(1);
-  });
-
+// Routes, jobs and subscriptions of modules that are on or off are the server's (apps/server/test/assembly.test.ts).
+describe('event bus', () => {
   test('events reach subscribers; publishers need no knowledge of them', () => {
     const bus = createEventBus();
     const seen: string[] = [];
@@ -112,18 +68,6 @@ describe('routes, jobs, events', () => {
     expect(() => bus.emit('shift.started', { shiftId: 's' })).not.toThrow();
     expect(ok).toHaveBeenCalled();
     expect(errors).toHaveLength(1);
-  });
-
-  test('only enabled modules get their subscriptions attached', () => {
-    const [a, b] = [vi.fn(), vi.fn()];
-    const m = [
-      def({ name: 'core', dependsOn: [], subscriptions: { 'shift.ended': a } }),
-      def({ name: 'backup', dependsOn: ['core'], subscriptions: { 'shift.ended': b } }),
-    ];
-    const bus = createEventBus();
-    buildRegistry(m, { backup: false }).attachSubscriptions(bus);
-    bus.emit('shift.ended', { shiftId: 's' });
-    expect([a.mock.calls.length, b.mock.calls.length]).toEqual([1, 0]);
   });
 });
 

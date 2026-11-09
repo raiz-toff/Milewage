@@ -1,13 +1,5 @@
 import Fastify, { type FastifyInstance } from 'fastify';
-import {
-  buildRegistry,
-  createEventBus,
-  type EnabledMap,
-  type EventBus,
-  type ModuleDefinition,
-  type ModuleRegistry,
-  type RouteHost,
-} from '@milewage/shared';
+import type { EventBus, ModuleRegistry } from '@milewage/shared';
 import { gunzipRequest } from './gzip';
 import { installHooks, type InstanceIdentity } from './hooks';
 import { SERVER_VERSION } from './version';
@@ -17,20 +9,19 @@ import { newRequestId, ProblemError, sendProblem, toProblem } from './errors';
 
 export const API_PREFIX = '/api/v1';
 
-/** The host modules see: RouteHost plus the Fastify scope, for routes that need replies, cookies or schemas. */
-export interface ServerRouteHost extends RouteHost {
+/** What a module's routes are registered on: the `/api/v1` Fastify scope, the module registry and the event bus. */
+export interface ServerRouteHost {
   readonly app: FastifyInstance;
   readonly registry: ModuleRegistry;
   /** The in-process event bus (08 section 16.4); modules emit facts, other modules subscribe. */
   readonly bus: EventBus;
 }
 
-export interface AppOptions {
-  modules: readonly ModuleDefinition[];
-  enabled: EnabledMap;
+/** The HTTP side of the server: everything but the modules. */
+export interface HttpOptions {
   logLevel?: string;
   logStream?: { write(line: string): void };
-  /** GET /healthz probe; the database check is added with the DB layer. */
+  /** GET /healthz probe. */
   isHealthy?: () => boolean;
   /** The `instance` row, sent as `X-MileWage-Instance` and `-Restore-Gen`. */
   identity?: () => InstanceIdentity | undefined;
@@ -44,12 +35,6 @@ export interface AppOptions {
   disk?: () => DiskState;
 }
 
-export interface App {
-  fastify: FastifyInstance;
-  registry: ModuleRegistry;
-  bus: EventBus;
-}
-
 export const REDACT_PATHS = [
   'req.headers.authorization',
   'req.headers.cookie',
@@ -60,9 +45,15 @@ export const REDACT_PATHS = [
   '*.recovery_key',
 ];
 
-/** Builds the Fastify app. Throws ModuleConfigError for an invalid module configuration. */
-export function buildApp(options: AppOptions): App {
-  const registry = buildRegistry(options.modules, options.enabled);
+/**
+ * Builds the Fastify instance: hooks, the error model, `/healthz` and the `/api/v1` scope, in which
+ * `mount` registers the module routes when the instance loads. The server's only caller is
+ * `assembleServer`.
+ */
+export function buildHttpApp(
+  options: HttpOptions,
+  mount: (api: FastifyInstance) => void,
+): FastifyInstance {
   const fastify = Fastify({
     genReqId: () => newRequestId(),
     bodyLimit: 64 * 1024,
@@ -75,8 +66,6 @@ export function buildApp(options: AppOptions): App {
       ...(options.logStream ? { stream: options.logStream } : {}),
     },
   });
-  const bus = createEventBus();
-
   installHooks(fastify, {
     apiPrefix: API_PREFIX,
     now: options.now ?? Date.now,
@@ -101,26 +90,6 @@ export function buildApp(options: AppOptions): App {
   });
 
   // Module routes live under /api/v1; a disabled module registers nothing, so its paths 404.
-  void fastify.register(
-    async (api) => {
-      const host: ServerRouteHost = {
-        app: api,
-        registry,
-        bus,
-        route(method, path, handler) {
-          api.route({
-            method: method as never,
-            url: path,
-            handler: async (request) => handler(request),
-          });
-        },
-      };
-      registry.registerRoutes(host);
-    },
-    { prefix: API_PREFIX },
-  );
-  registry.attachSubscriptions(bus);
-  const stopJobs = registry.startJobs();
-  fastify.addHook('onClose', () => stopJobs());
-  return { fastify, registry, bus };
+  void fastify.register(async (api) => mount(api), { prefix: API_PREFIX });
+  return fastify;
 }

@@ -1,5 +1,4 @@
 import { Readable } from 'node:stream';
-import type { RouteHost } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import {
@@ -76,8 +75,7 @@ export function exportsRoutes({
   taxReport,
   now = Date.now,
 }: ExportsOptions) {
-  return (host: RouteHost) => {
-    const { app, registry } = host as ServerRouteHost;
+  return ({ app, registry }: ServerRouteHost) => {
     const processing = createProcessingRepository(db);
     const settings = createSettingsRepository(db);
     const shiftRepo = createShiftRepository(db);
