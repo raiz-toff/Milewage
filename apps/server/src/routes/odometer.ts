@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import {
   createOdometerRepository,
-  createSettingsRepository,
   createShiftRepository,
   createVehicleRepository,
   type Db,
@@ -10,6 +9,7 @@ import {
 import { ProblemError } from '../errors';
 import type { EventEmit } from '../events';
 import { localDate } from '../time';
+import type { DriverContexts } from '../driver-context';
 import { idParams, snakeKeys, strictObject, type AuthFn } from './util';
 
 const date = { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' };
@@ -38,12 +38,18 @@ export const odometerView = (r: OdometerRow) => snakeKeys(r, 'userId');
 /** The odometer review and the fiscal-year readings the CRA asks for (08 section 3, 07 section 2.2). Web session only. */
 export function odometerRoutes(
   app: FastifyInstance,
-  { db, now, auth, emit = () => {} }: { db: Db; now: () => number; auth: AuthFn; emit?: EventEmit },
+  {
+    db,
+    now,
+    auth,
+    drivers,
+    emit = () => {},
+  }: { db: Db; now: () => number; auth: AuthFn; drivers: DriverContexts; emit?: EventEmit },
 ) {
   const readings = createOdometerRepository(db);
   const vehicles = createVehicleRepository(db);
   const shifts = createShiftRepository(db);
-  const zone = (userId: number) => createSettingsRepository(db).get(userId)?.timezone ?? 'UTC';
+  const zone = (userId: number) => drivers.of(userId).timeZone;
 
   app.get('/odometer', { schema: { querystring: query } }, async (req) => {
     const { userId } = auth(req, 'S');

@@ -1,12 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ModuleRegistry } from '@milewage/shared';
-import {
-  countryModules,
-  mileageRateSource,
-  resolvePlace,
-  WORK_KINDS,
-  type OwnRate,
-} from '@milewage/shared';
+import { countryModules, resolvePlace, WORK_KINDS } from '@milewage/shared';
 import { algorithmVersion } from '@milewage/track-engine';
 import {
   createSettingsRepository,
@@ -14,6 +8,11 @@ import {
   type Db,
   type SettingsRow,
 } from '../db';
+import {
+  offeredWorkKinds as offered,
+  type DriverContext,
+  type DriverContexts,
+} from '../driver-context';
 import { ProblemError } from '../errors';
 import type { EventEmit } from '../events';
 import { str, strictObject, type AuthFn } from './util';
@@ -55,7 +54,8 @@ export function checkPrefs(
 /** The read-only `modules` object: what this server runs, derived from the registry (08 section 16.1). */
 export function moduleFlags(
   reg: ModuleRegistry,
-  stopsEnabled: boolean,
+  /** The driver's stop detection (`DriverContext.stopsOn`). */
+  stopsOn: boolean,
   countries: readonly string[],
   backupDownload = false,
   exporters: string[] = [],
@@ -65,7 +65,7 @@ export function moduleFlags(
   const flags = Object.entries(reg.flags()).filter(([name]) => !fixed.has(name));
   return {
     ...Object.fromEntries(flags),
-    stops: reg.isEnabled('stops') && stopsEnabled,
+    stops: stopsOn,
     // The engine is always on; this flag is the `backup.download` toggle and its routes.
     backup_download: backupDownload,
     exporters,
@@ -106,7 +106,7 @@ const patchSchema = strictObject(
 type Patch = Partial<Record<string, string | number | boolean | object | null>>;
 
 type ReaderContext = {
-  db: Db;
+  drivers: DriverContexts;
   now: () => number;
   registry: ModuleRegistry;
   countries: readonly string[];
@@ -119,45 +119,23 @@ type ReaderContext = {
 };
 
 /** The odometer note of the driver's place (plan 21 `logbook` slot), or null. */
-function logbookOf(country: string, region: string | null) {
-  const c = countryModules.get(country);
-  const l = c && resolvePlace(c, region).data.logbook;
+function logbookOf(d: DriverContext) {
+  const l = d.pack && resolvePlace(d.pack, d.region).data.logbook;
   return l ? { readings: l.readings, notes: [...l.notes] } : null;
-}
-
-/** The driver's own mileage rate from the settings row, or null. */
-export function ownRateOf(row: SettingsRow | undefined): OwnRate | null {
-  return row?.ownRateHundredths && row.ownRateUnit
-    ? { centsPerUnit: row.ownRateHundredths / 100, unit: row.ownRateUnit }
-    : null;
-}
-
-/** Work kinds the country offers (plan 21 section 3.6a); none for an unknown country. */
-const offered = (country: string): readonly string[] => countryModules.get(country)?.work ?? [];
-
-/**
- * The driver's work kinds: the chosen ones the country offers, or, when none is chosen and the
- * country offers only one, that one (plan 23 rule 1: a question with one answer is not asked).
- */
-export function workKindsOf(country: string, chosen: readonly string[] | null): string[] {
-  const kinds = offered(country);
-  const mine = (chosen ?? []).filter((k) => kinds.includes(k));
-  return mine.length || kinds.length !== 1 ? mine : [...kinds];
 }
 
 /** The `Settings` response for a user. Also returned to a phone when it pairs. */
 export function settingsReader(ctx: ReaderContext) {
-  const repo = createSettingsRepository(ctx.db);
   return (userId: number, deviceId?: number) => {
-    const row = repo.get(userId);
-    if (!row) throw new ProblemError('not_found', 'No settings for this user.');
+    const d = ctx.drivers.of(userId);
+    const row = d.settings;
     const verbose = row.diagnosticsLevel === 'verbose';
     const expired = verbose && (row.diagnosticsVerboseUntil ?? 0) <= ctx.now();
-    const own = ownRateOf(row);
+    const own = d.ownRate;
     return {
       modules: moduleFlags(
         ctx.registry,
-        row.stopsEnabled === 1,
+        d.stopsOn,
         ctx.countries,
         ctx.backupDownload,
         ctx.exportFormats?.(ctx.registry),
@@ -171,13 +149,13 @@ export function settingsReader(ctx: ReaderContext) {
       stops_enabled: row.stopsEnabled === 1,
       display_name: row.displayName,
       region: row.region,
-      logbook: logbookOf(row.country, row.region),
+      logbook: logbookOf(d),
       own_mileage_rate: own && { cents_per_unit: own.centsPerUnit, unit: own.unit },
-      mileage_rate: mileageRateSource(countryModules.get(row.country), own),
+      mileage_rate: d.rateSource,
       week_start: row.weekStart,
       time_format: row.timeFormat,
       default_vehicle_id: row.defaultVehicleId,
-      work_kinds: workKindsOf(row.country, row.workKinds),
+      work_kinds: d.workKinds,
       onboarded_at: row.onboardedAt,
       setup_done: row.setupDone ?? [],
       diagnostics: {
@@ -191,7 +169,7 @@ export function settingsReader(ctx: ReaderContext) {
 
 export function settingsRoutes(
   app: FastifyInstance,
-  ctx: ReaderContext & { auth: AuthFn; emit?: EventEmit },
+  ctx: ReaderContext & { db: Db; auth: AuthFn; emit?: EventEmit },
 ) {
   const repo = createSettingsRepository(ctx.db);
   const read = settingsReader(ctx);

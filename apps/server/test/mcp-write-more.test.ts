@@ -1,21 +1,11 @@
 import { afterEach, expect, test } from 'vitest';
-import { epochOf } from '../src/mcp/write-tools';
+import { localInstant } from '../src/time';
 import { connect, mcpHarness, resultOf } from './mcp-support';
 import type { Harness } from './support';
 
 let h: Harness | undefined;
 afterEach(() => h?.close());
 const textOf = (r: unknown) => (r as { content: { text: string }[] }).content[0]!.text;
-
-test('local wall-clock times become the right instant, across a DST change', () => {
-  expect(epochOf('2027-01-14T09:30', 'America/Chicago')).toBe(Date.UTC(2027, 0, 14, 15, 30));
-  expect(epochOf('2027-07-14T09:30', 'America/Chicago')).toBe(Date.UTC(2027, 6, 14, 14, 30));
-  expect(epochOf('2027-03-14T03:30', 'America/Chicago')).toBe(Date.UTC(2027, 2, 14, 8, 30));
-  // The skipped spring hour lands an hour earlier; the repeated autumn hour takes the first one.
-  expect(epochOf('2027-03-14T02:30', 'America/Chicago')).toBe(Date.UTC(2027, 2, 14, 7, 30));
-  expect(epochOf('2027-11-07T01:30', 'America/Chicago')).toBe(Date.UTC(2027, 10, 7, 6, 30));
-  expect(epochOf('2027-01-14T09:30', 'Europe/London')).toBe(Date.UTC(2027, 0, 14, 9, 30));
-});
 
 test('shift notes, odometer readings in miles and a hand-made trip, each audited', async () => {
   const m = await mcpHarness();
@@ -81,7 +71,7 @@ test('shift notes, odometer readings in miles and a hand-made trip, each audited
   expect(trips).toEqual([
     expect.objectContaining({
       distance_m: Math.round(4.2 * 1609.344),
-      started_at: epochOf(startLocal, 'America/Chicago'),
+      started_at: localInstant('2027-01-14', 23 * 60 + 30, 'America/Chicago'),
       purpose: 'DoorDash order',
     }),
   ]);

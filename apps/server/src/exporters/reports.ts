@@ -1,8 +1,6 @@
 import { expenseCategory } from '@milewage/shared';
-import { createExpenseRepository, createProcessingRepository } from '../db';
-import { deductionMethodFor } from '../deduction-method';
-import { deductibleCents, doubleCounts } from '../expense-math';
-import { deductionOfShift } from '../processing/presenter';
+import { createExpenseRepository } from '../db';
+import { deductibleCents } from '../expense-math';
 import { cell, money } from './csv';
 import type { ExportContext, Exporter } from './registry';
 
@@ -18,7 +16,7 @@ export const expensesExporter: Exporter = {
   extension: 'csv',
   requires: ['expenses'],
   *run(c: ExportContext) {
-    const year = c.query.year ?? Number(c.today.slice(0, 4));
+    const year = c.query.year ?? Number(c.driver.today().slice(0, 4));
     const from = c.query.from ?? `${year}-01-01`;
     const to = c.query.to ?? `${year}-12-31`;
     yield row([
@@ -42,7 +40,7 @@ export const expensesExporter: Exporter = {
       .pluck();
     for (const e of createExpenseRepository(c.db).between(c.userId, from, to)) {
       if (c.query.category && e.category !== c.query.category) continue;
-      const covered = doubleCounts(c.db, c.userId, e);
+      const covered = c.deduction.doubleCounts(c.userId, e);
       yield row([
         e.spentOn,
         expenseCategory(e.category)?.label ?? e.category,
@@ -75,7 +73,7 @@ export const taxSummaryExporter: Exporter = {
       ? { contentType: 'application/json; charset=utf-8', extension: 'json' }
       : { contentType: 'text/csv; charset=utf-8', extension: 'csv' },
   *run(c: ExportContext) {
-    const year = c.query.year ?? Number((c.query.from ?? c.today).slice(0, 4));
+    const year = c.query.year ?? Number((c.query.from ?? c.driver.today()).slice(0, 4));
     const report = c.taxReport!(year);
     const from = `${year}-01-01`;
     const to = `${year}-12-31`;
@@ -83,22 +81,18 @@ export const taxSummaryExporter: Exporter = {
     const byCategory = new Map<string, number>();
     if (c.enabled('expenses')) {
       for (const e of createExpenseRepository(c.db).between(c.userId, from, to)) {
-        if (doubleCounts(c.db, c.userId, e)) continue;
+        if (c.deduction.doubleCounts(c.userId, e)) continue;
         byCategory.set(e.category, (byCategory.get(e.category) ?? 0) + deductibleCents(e));
       }
     }
-    const mileage = new Map<number, number>();
-    for (const s of createProcessingRepository(c.db).shiftsInPeriod(c.userId, from, to)) {
-      const v = deductionOfShift(c.db, s);
-      if (v !== null) mileage.set(s.vehicleId, (mileage.get(s.vehicleId) ?? 0) + v);
-    }
+    const mileage = c.deduction.ofPeriod(c.userId, from, to).byVehicle;
     const vehicles = [...c.vehicles.values()]
       .filter(
         (v) => mileage.has(v.id) || report.deductions?.vehicles.some((x) => x.vehicle_id === v.id),
       )
       .map((v) => ({
         vehicle: v.name,
-        method: deductionMethodFor(c.db, c.userId, v.id, year),
+        method: c.deduction.method(c.userId, v.id, year),
         mileage_deduction_cents: mileage.get(v.id) ?? null,
       }));
     const expenses_by_category = [...byCategory].map(([category, deductible_cents]) => ({

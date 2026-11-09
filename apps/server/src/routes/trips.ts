@@ -1,6 +1,5 @@
 import type { FastifyInstance } from 'fastify';
 import {
-  createArchiveRepository,
   createProcessingRepository,
   createShiftRepository,
   type Db,
@@ -9,14 +8,11 @@ import {
 } from '../db';
 import { ProblemError } from '../errors';
 import type { EventEmit } from '../events';
-import { presentShift } from '../processing/presenter';
-import type { ShiftProcessor } from '../processing/shift-processor';
+import type { ShiftPresenter } from '../processing/presenter';
+import type { ShiftBook } from '../processing/shift-book';
 import { tripView } from './shifts';
-import { idParams, str, strictObject, type AuthFn, type Principal } from './util';
+import { idParams, refParam as ref, str, strictObject, type AuthFn, type Principal } from './util';
 
-const DAY = 24 * 60 * 60 * 1000;
-const UUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
-const ref = { type: 'string', pattern: `^([0-9]+|${UUID})$` };
 const ms = { type: 'integer', minimum: 0 };
 const kind = { enum: ['active', 'deadhead', 'personal'] };
 const purpose = str(1, 200);
@@ -47,83 +43,45 @@ export interface TripRouteDeps {
   db: Db;
   now: () => number;
   auth: AuthFn;
-  processor: ShiftProcessor;
+  present: ShiftPresenter;
+  /** Records the change's recomputation and announces it. */
+  book: ShiftBook;
+  /** For the overwrite log. */
   emit: EventEmit;
   trackingOn: () => boolean;
 }
 
-/** What every trip edit shares: find the shift, refuse a finalized one, recompute, announce. */
-function tripEdits({ db, now, processor, emit, trackingOn }: TripRouteDeps) {
+/** What every trip edit shares: the trip and its shift as the principal may see them, open for edits. */
+function tripEdits({ db, now, book }: TripRouteDeps) {
   const shifts = createShiftRepository(db);
   const repo = createProcessingRepository(db);
-  const archiveRepo = createArchiveRepository(db);
-  const since = (p: Principal) => (p.kind === 'device' ? now() - 14 * DAY : undefined);
-  const archived = (row: ShiftRow) => archiveRepo.hasArchive(row.id);
-  const touch = (p: Principal): Partial<ShiftRow> =>
-    p.kind === 'device' ? { deviceTouchedAt: now() } : {};
-  const shiftOf = (p: Principal, r: string) => {
-    const row = shifts.byRef(p.userId, r, since(p));
-    if (!row) throw new ProblemError('shift_not_found', 'No such shift.');
-    return row;
-  };
-  const open = (row: ShiftRow) => {
-    if (row.status === 'finalized')
-      throw new ProblemError('shift_finalized', 'This shift is finalized.');
-    return row;
-  };
-  /** Totals follow the edit. An active shift is computed at its end, so nothing runs yet. */
-  const recompute = (p: Principal, row: ShiftRow) => {
-    if (row.status === 'active') return row;
-    const done = trackingOn() && !archived(row) ? processor.run(row).shift : processor.retotal(row);
-    const mark = touch(p);
-    return (p.kind === 'device' && shifts.update(done.id, mark)) || done;
-  };
-  const announce = (row: ShiftRow, tripId?: number, extra: object = {}) => {
-    if (tripId !== undefined) {
-      emit('trip.updated', { shiftId: String(row.id), tripId: String(tripId), ...extra });
-    }
-    emit('shift.updated', { shiftId: String(row.id) });
+  /** A trip by id; its shift must be in the principal's read window and not finalized. */
+  const tripOf = (p: Principal, id: number) => {
+    const trip = repo.tripById(p.userId, id);
+    const shift = trip && shifts.byRef(p.userId, String(trip.shiftId), book.since(p));
+    if (!trip || !shift) throw new ProblemError('not_found', 'No such trip.');
+    return { trip, shift: book.find(p, String(shift.id), { editable: true }) };
   };
   const device = (p: Principal) => (p.kind === 'device' ? String(p.deviceId) : undefined);
   const notFuture = (path: string, at: number) => {
     if (at > now() + 5 * 60 * 1000)
       throw invalid(path, 'must not be more than 5 minutes in the future');
   };
-  return {
-    processor,
-    shifts,
-    repo,
-    since,
-    touch,
-    shiftOf,
-    open,
-    recompute,
-    announce,
-    device,
-    notFuture,
-  };
+  return { repo, tripOf, device, notFuture };
 }
 
 /** Core: reclassify or re-describe a trip, add or delete a manual trip (08 section 3, 07 section 3 rule 8). */
 export function tripRoutes(app: FastifyInstance, deps: TripRouteDeps) {
-  const { auth, db, now, emit, trackingOn } = deps;
+  const { auth, now, emit, trackingOn, present, book } = deps;
   const t = tripEdits(deps);
   const result = (shift: ShiftRow, trip: TripRow | undefined) => ({
     trip: trip ? tripView(trip) : null,
-    shift: presentShift(db, shift),
+    shift: present.one(shift),
   });
 
   app.patch('/trips/:id', { schema: { params: idParams, body: patchBody } }, async (req) => {
     const p = auth(req, 'SD');
-    const trip = t.repo.tripById(p.userId, (req.params as { id: number }).id);
-    const shift = trip && t.shifts.byId(trip.shiftId);
-    if (
-      !trip ||
-      !shift ||
-      (p.kind === 'device' && !t.shifts.byRef(p.userId, String(shift.id), t.since(p)))
-    )
-      throw new ProblemError('not_found', 'No such trip.');
-    t.open(shift);
+    const { trip, shift } = t.tripOf(p, (req.params as { id: number }).id);
     const b = req.body as { kind?: Kind; purpose?: string };
     const at = now();
     if (trip.source === 'manual') {
@@ -134,7 +92,7 @@ export function tripRoutes(app: FastifyInstance, deps: TripRouteDeps) {
       });
     } else {
       // Stored apart from the derived trip so a recompute cannot erase it (07 section 2.7).
-      t.processor.assertRecomputable(shift);
+      book.needsEngine(shift);
       if (!trackingOn())
         throw new ProblemError(
           'trip_not_editable',
@@ -160,22 +118,22 @@ export function tripRoutes(app: FastifyInstance, deps: TripRouteDeps) {
         deviceId: p.kind === 'device' ? p.deviceId : null,
       });
     }
-    const saved = t.recompute(p, shift);
-    t.announce(shift, trip.id);
+    const saved = book.recompute(p, shift, { cause: 'trip', tripId: trip.id });
     return result(saved, t.repo.tripById(p.userId, trip.id));
   });
 
   app.delete('/trips/:id', { schema: { params: idParams } }, async (req, reply) => {
     const p = auth(req, 'S');
-    const trip = t.repo.tripById(p.userId, (req.params as { id: number }).id);
-    const shift = trip && t.shifts.byId(trip.shiftId);
-    if (!trip || !shift) throw new ProblemError('not_found', 'No such trip.');
-    t.open(shift);
+    const { trip, shift } = t.tripOf(p, (req.params as { id: number }).id);
     if (trip.source !== 'manual')
       throw new ProblemError('trip_not_editable', 'Only manual trips can be deleted.');
     t.repo.deleteTrip(trip.id);
-    t.recompute(p, shift);
-    t.announce(shift, trip.id, { tripKey: trip.tripKey, deleted: true });
+    book.recompute(p, shift, {
+      cause: 'trip',
+      tripId: trip.id,
+      tripKey: trip.tripKey,
+      deleted: true,
+    });
     return reply.status(204).send();
   });
 
@@ -189,7 +147,7 @@ export function tripRoutes(app: FastifyInstance, deps: TripRouteDeps) {
     async (req, reply) => {
       const p = auth(req, 'SD');
       const params = req.params as { ref: string; client_id: string };
-      const shift = t.open(t.shiftOf(p, params.ref));
+      const shift = book.find(p, params.ref, { editable: true });
       const clientId = params.client_id.toLowerCase();
       const b = req.body as {
         kind: Kind;
@@ -241,8 +199,7 @@ export function tripRoutes(app: FastifyInstance, deps: TripRouteDeps) {
             endLatE7: null,
             endLonE7: null,
           });
-      const updated = t.recompute(p, shift);
-      t.announce(shift, saved?.id);
+      const updated = book.recompute(p, shift, { cause: 'trip', tripId: saved?.id });
       return reply.header('X-MileWage-Applied', 'true').send(result(updated, saved));
     },
   );
@@ -250,7 +207,7 @@ export function tripRoutes(app: FastifyInstance, deps: TripRouteDeps) {
 
 /** Tracking: the idempotent override of an auto trip by its deterministic key (14 section 6.4). */
 export function overrideRoutes(app: FastifyInstance, deps: TripRouteDeps) {
-  const { auth, db, emit } = deps;
+  const { auth, emit, present, book } = deps;
   const t = tripEdits(deps);
   const params = strictObject({ ref, trip_key: { type: 'string', minLength: 1, maxLength: 200 } }, [
     'ref',
@@ -262,8 +219,8 @@ export function overrideRoutes(app: FastifyInstance, deps: TripRouteDeps) {
     async (req, reply) => {
       const p = auth(req, 'SD');
       const path = req.params as { ref: string; trip_key: string };
-      const shift = t.open(t.shiftOf(p, path.ref));
-      t.processor.assertRecomputable(shift);
+      const shift = book.find(p, path.ref, { editable: true });
+      book.needsEngine(shift);
       const key = path.trip_key;
       const b = req.body as { kind: Kind; purpose: string; edited_at: number };
       t.notFuture('/edited_at', b.edited_at);
@@ -271,7 +228,7 @@ export function overrideRoutes(app: FastifyInstance, deps: TripRouteDeps) {
       const old = t.repo.findOverride(shift.id, key);
       const out = (row: ShiftRow) => ({
         trip: ((x) => (x?.shiftId === shift.id ? tripView(x) : null))(current()),
-        shift: presentShift(db, row),
+        shift: present.one(row),
       });
       if (old && b.edited_at <= old.editedAt) {
         return reply.header('X-MileWage-Applied', 'false').send(out(shift));
@@ -295,8 +252,7 @@ export function overrideRoutes(app: FastifyInstance, deps: TripRouteDeps) {
         deviceId: p.kind === 'device' ? p.deviceId : null,
       });
       // An override whose trip does not exist is kept and reported as `override_orphaned` by the run.
-      const updated = t.recompute(p, shift);
-      t.announce(updated);
+      const updated = book.recompute(p, shift, { cause: 'override' });
       return reply.header('X-MileWage-Applied', 'true').send(out(updated));
     },
   );

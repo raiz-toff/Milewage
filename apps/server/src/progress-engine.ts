@@ -1,9 +1,9 @@
 import { BADGES, type ModuleRegistry } from '@milewage/shared';
-import { createEarningsRepository, createSettingsRepository, totalOf, type Db } from './db';
+import { createEarningsRepository, totalOf, type Db } from './db';
+import type { DriverContexts } from './driver-context';
 import { notify } from './notifications';
 import { periodRange } from './goal-progress';
 import { createEarningsPolicy } from './routes/earnings';
-import { localDate } from './time';
 
 const DAY = 86_400_000;
 const utc = (d: string) => Date.parse(`${d}T00:00:00Z`);
@@ -12,6 +12,7 @@ const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 export interface ProgressContext {
   db: Db;
   now: () => number;
+  drivers: DriverContexts;
   registry: ModuleRegistry;
   override?: 'replace' | 'sum';
   /** Weekly "earn" challenge target in minor units (`comma.challenge_target_cents`). */
@@ -37,8 +38,8 @@ interface Shift {
  * a second call with the same data records nothing new. Everything else is derived.
  */
 export function evaluateProgress(c: ProgressContext, userId: number) {
-  const prefs = createSettingsRepository(c.db).get(userId)!;
-  const today = localDate(c.now(), prefs.timezone);
+  const driver = c.drivers.of(userId);
+  const today = driver.today();
   const shifts = c.db
     .prepare(
       `SELECT id, local_date AS localDate, started_at AS startedAt, coalesce(ended_at, started_at) - started_at AS ms, coalesce(total_m, 0) AS totalM
@@ -52,7 +53,7 @@ export function evaluateProgress(c: ProgressContext, userId: number) {
   };
 
   // Earnings and labelled drop-offs: only from entered or labelled figures; none means unknown.
-  const policy = createEarningsPolicy(c.db, c.registry, c.override);
+  const policy = createEarningsPolicy(c.drivers, c.registry, c.override);
   const rows = policy.any(userId)
     ? createEarningsRepository(c.db).effective(
         userId,
@@ -62,14 +63,13 @@ export function evaluateProgress(c: ProgressContext, userId: number) {
       )
     : [];
   const earnedCents = rows.length === 0 ? null : rows.reduce((a, r) => a + totalOf(r), 0);
-  const labelled =
-    c.registry.isEnabled('stops') && prefs.stopsEnabled === 1
-      ? (c.db
-          .prepare(
-            "SELECT l.shift_id AS shiftId, s.local_date AS localDate FROM stop_labels l JOIN shifts s ON s.id = l.shift_id WHERE s.user_id = ? AND l.role = 'dropoff'",
-          )
-          .all(userId) as { shiftId: number; localDate: string }[])
-      : [];
+  const labelled = driver.stopsOn
+    ? (c.db
+        .prepare(
+          "SELECT l.shift_id AS shiftId, s.local_date AS localDate FROM stop_labels l JOIN shifts s ON s.id = l.shift_id WHERE s.user_id = ? AND l.role = 'dropoff'",
+        )
+        .all(userId) as { shiftId: number; localDate: string }[])
+    : [];
 
   // Longest run of consecutive shift days, ignoring freezes (a badge is about what was done).
   const sorted = [...days].sort();
@@ -81,7 +81,7 @@ export function evaluateProgress(c: ProgressContext, userId: number) {
   });
 
   // Challenges of the current week.
-  const week = periodRange('weekly', today, prefs.weekStart);
+  const week = periodRange('weekly', today, driver.weekStart);
   const inWeek = (d: string) => d >= week.from && d <= week.to;
   const weekRows = rows.filter((r) => inWeek(r.localDate));
   const challenges = [
@@ -120,7 +120,7 @@ export function evaluateProgress(c: ProgressContext, userId: number) {
       (s) =>
         Number(
           new Intl.DateTimeFormat('en-GB', {
-            timeZone: prefs.timezone,
+            timeZone: driver.timeZone,
             hour: '2-digit',
             hourCycle: 'h23',
           }).format(s.startedAt),

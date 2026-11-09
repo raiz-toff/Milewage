@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-import { overrideDeductionMethod } from '../src/deduction-method';
 import { addInterval } from '../src/time';
 import { harness, type Harness } from './support';
 
@@ -216,11 +215,12 @@ describe('double counting with the standard mileage rate', () => {
     expect(t).toMatchObject({ deductible_cents: 10_000 + 5000, double_counts_cents: 5000 });
   });
 
-  test('the method comes from the core seam, so an actual-expense vehicle is not flagged', async () => {
+  test('the method comes from the tax module, so an actual-expense vehicle is not flagged', async () => {
     await send('POST', '/vehicles', { name: 'Civic', kind: 'car' });
-    overrideDeductionMethod(h.db, () => 'actual_expenses');
+    await send('PUT', '/vehicles/1/tax-years/2027', { method: 'actual_expenses' });
     expect((await add({ vehicle_id: 1 })).double_counts).toBe(false);
-    overrideDeductionMethod(h.db, undefined);
+    // The method is per tax year: the year before is still by the mileage rate.
+    expect((await add({ vehicle_id: 1, spent_on: '2026-12-31' })).double_counts).toBe(true);
   });
 });
 

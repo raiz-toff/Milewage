@@ -3,7 +3,6 @@ import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import {
   createProcessingRepository,
-  createSettingsRepository,
   createShiftRepository,
   createArchiveRepository,
   createVehicleRepository,
@@ -13,10 +12,10 @@ import {
 } from '../db';
 import { ProblemError } from '../errors';
 import type { ExportContext, ExporterRegistry } from '../exporters/registry';
-import { deductionOfShift } from '../processing/presenter';
+import type { MileageDeduction } from '../mileage-deduction';
 import type { EarningsPolicy } from './earnings';
 import type { TaxReport } from '../tax-report';
-import { localDate } from '../time';
+import type { DriverContexts } from '../driver-context';
 import { strictObject } from './util';
 
 const date = { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' };
@@ -43,12 +42,13 @@ const bad = (path: string, message: string) =>
 
 export interface ExportsOptions {
   db: Db;
+  drivers: DriverContexts;
+  deduction: MileageDeduction;
   authn: Authenticator;
   exporters: ExporterRegistry;
   /** Formats switched on (`modules.export_<format>`); default every registered one. */
   formats?: () => readonly string[];
   earnings?: (registry: ServerRouteHost['registry']) => EarningsPolicy;
-  now?: () => number;
   /** Builds the tax report of a year; supplied when the `tax` module exists. */
   taxReport?: (registry: ServerRouteHost['registry'], userId: number, year: number) => TaxReport;
 }
@@ -68,16 +68,16 @@ export function availableFormats(
 /** `GET /exports/{format}` (08 section 11): a streamed file from a registered exporter. Web session only. */
 export function exportsRoutes({
   db,
+  drivers,
+  deduction,
   authn,
   exporters,
   formats,
   earnings,
   taxReport,
-  now = Date.now,
 }: ExportsOptions) {
   return ({ app, registry }: ServerRouteHost) => {
     const processing = createProcessingRepository(db);
-    const settings = createSettingsRepository(db);
     const shiftRepo = createShiftRepository(db);
 
     app.get('/exports/:format', { schema: { querystring: query } }, async (req, reply) => {
@@ -98,8 +98,7 @@ export function exportsRoutes({
         category?: string;
         format?: string;
       };
-      const prefs = settings.get(userId);
-      if (!prefs) throw new ProblemError('setup_incomplete', 'Finish setup first.');
+      const driver = drivers.of(userId);
 
       let shifts: ShiftRow[];
       let name: string;
@@ -142,20 +141,23 @@ export function exportsRoutes({
       const points = db.prepare(
         'SELECT recorded_at AS t, lat_e7 AS latE7, lon_e7 AS lonE7, speed_dmps AS speedDmps, altitude_m AS altitudeM FROM telemetry_points WHERE shift_id = ? ORDER BY recorded_at, seq',
       );
+      // Every selected shift's deduction in one go, on first use (only the CSV asks).
+      let deductions: Map<number, number | null> | undefined;
+      const deductionOf = (s: ShiftRow) => {
+        deductions ??= new Map(deduction.ofShifts(shifts).map((v, i) => [shifts[i]!.id, v]));
+        return deductions.has(s.id) ? deductions.get(s.id)! : deduction.ofShifts([s])[0]!;
+      };
       const context: ExportContext = {
         db,
         userId,
         shifts,
         vehicles,
-        unit: prefs.distanceUnit,
-        currency: prefs.currency,
-        timeZone: prefs.timezone,
+        driver,
+        deduction,
         level: q.level ?? 'trip',
         query: { from: q.from, to: q.to, year: q.year, category: q.category, format: q.format },
-        today: localDate(now(), prefs.timezone),
         enabled: (m) => registry.isEnabled(m),
         taxReport: taxReport && ((y) => taxReport(registry, userId, y)),
-        stopsOn: prefs.stopsEnabled === 1 && registry.isEnabled('stops'),
         readers: {
           trips: processing.tripsOf,
           stops: processing.stopsOf,
@@ -185,7 +187,7 @@ export function exportsRoutes({
             }));
           },
           simplified: (id) => archive.hasArchive(id),
-          deduction: (s) => deductionOfShift(db, s),
+          deduction: deductionOf,
           earnings: (s) =>
             earnings
               ? createEarningsRepository(db)

@@ -69,7 +69,7 @@ function* geojson(c: ExportContext) {
         simplified: c.readers.simplified(s.id),
       },
     });
-    if (!c.stopsOn) continue;
+    if (!c.driver.stopsOn) continue;
     for (const p of c.readers.stops(s.id)) {
       yield feature({
         type: 'Feature',

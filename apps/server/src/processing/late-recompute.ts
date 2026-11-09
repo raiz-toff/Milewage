@@ -1,13 +1,10 @@
 import type { EventSubscriptions, ModuleJob } from '@milewage/shared';
 import { createShiftRepository, type Db } from '../db';
-import type { EventEmit } from '../events';
-import type { ShiftProcessor } from './shift-processor';
+import type { ShiftBook } from './shift-book';
 
 export interface LateRecomputeOptions {
   db: Db;
-  processor: ShiftProcessor;
-  emit: EventEmit;
-  stopsOn: () => boolean;
+  book: ShiftBook;
   /** Debounce of 08 section 5 step 6: 5 seconds unless a test shortens it. */
   delayMs?: number;
   /** A burst never postpones the run beyond this long after the first point (default 30 s). */
@@ -23,9 +20,7 @@ export interface LateRecomputeOptions {
  */
 export function createLateRecompute({
   db,
-  processor,
-  emit,
-  stopsOn,
+  book,
   delayMs = 5000,
   maxWaitMs = 30_000,
   log,
@@ -36,11 +31,7 @@ export function createLateRecompute({
   const fire = (shiftId: number) => {
     timers.delete(shiftId);
     try {
-      const shift = shifts.byId(shiftId);
-      if (!shift || shift.status !== 'ended') return;
-      processor.run(shift, { latePoints: true, reason: 'late_points' });
-      emit('shift.updated', { shiftId: String(shiftId) });
-      if (stopsOn()) emit('stops.derived', { shiftId: String(shiftId) });
+      book.latePoints(shiftId);
     } catch (e) {
       log?.('late-point recompute failed', { shiftId, error: (e as Error).message });
     }
@@ -58,6 +49,7 @@ export function createLateRecompute({
   const subscriptions: EventSubscriptions = {
     'telemetry.accepted'(p) {
       const id = Number(p.shiftId);
+      // Only an ended shift is computed again (the book checks once more when the timer fires).
       if (shifts.byId(id)?.status === 'ended') schedule(id);
     },
   };

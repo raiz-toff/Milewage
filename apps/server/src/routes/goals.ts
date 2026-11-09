@@ -5,14 +5,13 @@ import {
   createEarningsRepository,
   createGoalRepository,
   createProcessingRepository,
-  createSettingsRepository,
   totalOf,
   type Db,
   type GoalRow,
 } from '../db';
 import { ProblemError } from '../errors';
 import { goalProgress } from '../goal-progress';
-import { localDate } from '../time';
+import type { DriverContexts } from '../driver-context';
 import { createEarningsPolicy } from './earnings';
 import { idParams, str, strictObject } from './util';
 
@@ -29,39 +28,33 @@ const patchBody = strictObject(fields, [], { minProperties: 1 });
 /** A goal with its progress now (also used by the notification triggers). */
 export function goalViewer({
   db,
-  now,
+  drivers,
   registry,
   override,
 }: {
   db: Db;
-  now: () => number;
+  drivers: DriverContexts;
   registry: ModuleRegistry;
   override?: 'replace' | 'sum';
 }) {
-  const settings = createSettingsRepository(db);
   const processing = createProcessingRepository(db);
   const earnings = createEarningsRepository(db);
   return (userId: number, g: GoalRow) => {
-    const prefs = settings.get(userId);
-    const policy = createEarningsPolicy(db, registry, override);
-    const progress = goalProgress(
-      g,
-      localDate(now(), prefs?.timezone ?? 'UTC'),
-      prefs?.weekStart ?? 1,
-      {
-        earningsCents: (from, to) => {
-          if (!policy.any(userId)) return null;
-          const rows = earnings.effective(userId, from, to, policy.options(userId));
-          return rows.length === 0 ? null : rows.reduce((a, r) => a + totalOf(r), 0);
-        },
-        shifts: (from, to) =>
-          processing.shiftsInPeriod(userId, from, to).map((s) => ({
-            ms: (s.endedAt ?? s.startedAt) - s.startedAt,
-            activeM: s.activeM,
-            segmenter: s.segmenter,
-          })),
+    const driver = drivers.of(userId);
+    const policy = createEarningsPolicy(drivers, registry, override);
+    const progress = goalProgress(g, driver.today(), driver.weekStart, {
+      earningsCents: (from, to) => {
+        if (!policy.any(userId)) return null;
+        const rows = earnings.effective(userId, from, to, policy.options(userId));
+        return rows.length === 0 ? null : rows.reduce((a, r) => a + totalOf(r), 0);
       },
-    );
+      shifts: (from, to) =>
+        processing.shiftsInPeriod(userId, from, to).map((s) => ({
+          ms: (s.endedAt ?? s.startedAt) - s.startedAt,
+          activeM: s.activeM,
+          segmenter: s.segmenter,
+        })),
+    });
     return {
       id: g.id,
       label: g.label,
@@ -78,11 +71,13 @@ export function goalViewer({
 /** Module `goals` (18 section 8.1). A device may read goals (the ring on the phone, later); only the web changes them. */
 export function goalsRoutes({
   db,
+  drivers,
   now,
   authn,
   override,
 }: {
   db: Db;
+  drivers: DriverContexts;
   now: () => number;
   authn: Authenticator;
   override?: 'replace' | 'sum';
@@ -90,7 +85,7 @@ export function goalsRoutes({
   return ({ app, registry, bus }: ServerRouteHost) => {
     const repo = createGoalRepository(db);
 
-    const view = goalViewer({ db, now, registry, override });
+    const view = goalViewer({ db, drivers, registry, override });
     const mine = (userId: number, id: number) => {
       const g = repo.find(userId, id);
       if (!g) throw new ProblemError('not_found', 'No such goal.');

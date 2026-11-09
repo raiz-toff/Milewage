@@ -110,25 +110,3 @@ export function toMinutes(text: string): number | undefined {
   const [h, min] = [Number(m[1]), Number(m[2])];
   return h < 24 && min < 60 ? h * 60 + min : undefined;
 }
-
-/** The UTC instant of a local date and minute-of-day in an IANA zone (the zone's own offset, found by iteration). */
-export function zonedInstant(date: string, minutes: number, timeZone: string): number {
-  const wall = Date.parse(`${date}T00:00:00Z`) + minutes * 60_000;
-  const offset = (at: number) => {
-    const p = new Intl.DateTimeFormat('en-CA', {
-      timeZone,
-      hourCycle: 'h23',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    }).formatToParts(at);
-    const g = (t: string) => Number(p.find((x) => x.type === t)!.value);
-    return Date.UTC(g('year'), g('month') - 1, g('day'), g('hour'), g('minute'), g('second')) - at;
-  };
-  let t = wall - offset(wall);
-  t = wall - offset(t);
-  return t;
-}

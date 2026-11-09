@@ -1,6 +1,3 @@
-import { countryModules, mileageRateSource } from '@milewage/shared';
-import { createSettingsRepository } from '../db';
-import { ownRateOf } from '../routes/settings';
 import { localDate } from '../time';
 import { createOdometerChecks } from './odometer';
 import type { ExportContext, Exporter } from './registry';
@@ -50,8 +47,8 @@ function* tripLevel(c: ExportContext) {
     'source',
   ]);
   for (const s of c.shifts) {
-    const labels = c.stopsOn ? c.readers.labels(s.id) : [];
-    const stops = c.stopsOn ? c.readers.stops(s.id) : [];
+    const labels = c.driver.stopsOn ? c.readers.labels(s.id) : [];
+    const stops = c.driver.stopsOn ? c.readers.stops(s.id) : [];
     for (const t of c.readers.trips(s.id)) {
       // The platform of the stop that opened an active segment: the stop the rider left when it began.
       const opener = stops.find((p) => p.endedAt === t.startedAt || p.startedAt === t.startedAt);
@@ -60,17 +57,17 @@ function* tripLevel(c: ExportContext) {
       // Under the stop-based segmenter the active/deadhead split is an estimate (14 section 6).
       const estimated = s.segmenter === 'stops' && t.source === 'auto' && t.editedAt === null;
       yield row([
-        localDate(t.startedAt, c.timeZone),
-        timeOf(t.startedAt, c.timeZone),
-        timeOf(t.endedAt, c.timeZone),
+        localDate(t.startedAt, c.driver.timeZone),
+        timeOf(t.startedAt, c.driver.timeZone),
+        timeOf(t.endedAt, c.driver.timeZone),
         c.vehicles.get(s.vehicleId)?.name ?? '',
         estimated && t.kind !== 'personal' ? `${t.kind} (estimated)` : t.kind,
         platform ?? '',
         t.purpose,
         place(t.startLatE7, t.startLonE7),
         place(t.endLatE7, t.endLonE7),
-        distance(t.distanceM, c.unit),
-        c.unit,
+        distance(t.distanceM, c.driver.unit),
+        c.driver.unit,
         t.source,
       ]);
     }
@@ -78,10 +75,9 @@ function* tripLevel(c: ExportContext) {
 }
 
 function* shiftLevel(c: ExportContext) {
-  const u = c.unit === 'mi' ? 'Miles' : 'Km';
+  const u = c.driver.unit === 'mi' ? 'Miles' : 'Km';
   // A value at the driver's own rate is labelled as theirs, never as an official deduction (Q5).
-  const s = createSettingsRepository(c.db).get(c.userId);
-  const yours = mileageRateSource(s && countryModules.get(s.country), ownRateOf(s)) === 'yours';
+  const yours = c.driver.rateSource === 'yours';
   yield row([
     'Date',
     'Shift_ID',
@@ -107,7 +103,7 @@ function* shiftLevel(c: ExportContext) {
     'Bonus',
     'Imported',
   ]);
-  const odometer = createOdometerChecks(c.db, c.userId, c.timeZone);
+  const odometer = createOdometerChecks(c.db, c.userId, c.driver.timeZone);
   // A shift made from a CSV file has a typed distance, not a tracked one; every export says so (18 section 12).
   const imported = new Map(
     (
@@ -119,7 +115,7 @@ function* shiftLevel(c: ExportContext) {
   );
   for (const s of c.shifts) {
     const trips = c.readers.trips(s.id);
-    const labels = c.stopsOn ? c.readers.labels(s.id) : [];
+    const labels = c.driver.stopsOn ? c.readers.labels(s.id) : [];
     // Money and counts come only from the driver's labels; with none they stay blank, never 0.
     const earned = c.readers.earnings(s);
     const paid = earned.length > 0;
@@ -138,22 +134,22 @@ function* shiftLevel(c: ExportContext) {
       s.localDate,
       s.id,
       s.vehicleId,
-      timeOf(s.startedAt, c.timeZone),
-      s.endedAt === null ? '' : timeOf(s.endedAt, c.timeZone),
+      timeOf(s.startedAt, c.driver.timeZone),
+      s.endedAt === null ? '' : timeOf(s.endedAt, c.driver.timeZone),
       place(first?.startLatE7 ?? null, first?.startLonE7 ?? null),
       place(last?.endLatE7 ?? null, last?.endLonE7 ?? null),
       platforms,
       orders ?? (labels.length > 0 ? labels.filter((l) => l.role === 'dropoff').length : ''),
       paid ? money(sum((r) => r.grossCents)) : '',
       paid ? money(sum((r) => r.tipsCents)) : '',
-      s.activeM === null ? '' : distance(s.activeM, c.unit),
-      s.deadheadM === null ? '' : distance(s.deadheadM, c.unit),
-      s.totalM === null ? '' : distance(s.totalM, c.unit),
+      s.activeM === null ? '' : distance(s.activeM, c.driver.unit),
+      s.deadheadM === null ? '' : distance(s.deadheadM, c.driver.unit),
+      s.totalM === null ? '' : distance(s.totalM, c.driver.unit),
       dv === null ? '' : money(dv),
       s.segmenter === 'stops' ? 'yes' : 'no',
       s.notes,
-      odo.startM === null ? '' : distance(odo.startM, c.unit),
-      odo.endM === null ? '' : distance(odo.endM, c.unit),
+      odo.startM === null ? '' : distance(odo.startM, c.driver.unit),
+      odo.endM === null ? '' : distance(odo.endM, c.driver.unit),
       odo.check,
       odometer.year(s),
       paid ? money(sum((r) => r.bonusCents)) : '',

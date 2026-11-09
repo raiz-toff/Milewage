@@ -1,11 +1,9 @@
-import { randomUUID } from 'node:crypto';
 import { expenseCategory, EXPENSE_CATEGORIES } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import {
   createEarningsRepository,
   createExpenseRepository,
-  createSettingsRepository,
   createVehicleRepository,
   type Db,
   type NewExpense,
@@ -19,10 +17,10 @@ import {
   toCents,
   toDate,
   toMinutes,
-  zonedInstant,
   type ImportKind,
 } from '../imports/csv';
-import { localDate } from '../time';
+import type { DriverContexts } from '../driver-context';
+import type { ShiftBook } from '../processing/shift-book';
 import { platformKnown } from './platforms';
 import { strictObject } from './util';
 
@@ -63,13 +61,17 @@ export function importsRoutes({
   db,
   now,
   authn,
+  drivers,
+  book,
 }: {
   db: Db;
   now: () => number;
   authn: Authenticator;
+  drivers: DriverContexts;
+  /** Imported shifts are recorded and announced like any other, so they reach the phone's pull. */
+  book: ShiftBook;
 }) {
   return ({ app, registry, bus }: ServerRouteHost) => {
-    const settings = createSettingsRepository(db);
     const vehicles = createVehicleRepository(db);
     const expenses = createExpenseRepository(db);
     const earnings = createEarningsRepository(db);
@@ -173,11 +175,12 @@ export function importsRoutes({
     }
 
     function planShifts(userId: number, t: ReturnType<typeof read>): Planned<ShiftPlan>[] {
-      const prefs = settings.get(userId)!;
+      const driver = drivers.of(userId);
       const all = vehicles.list(userId, false);
       const fallback =
-        all.find((v) => v.id === prefs.defaultVehicleId) ?? (all.length === 1 ? all[0] : undefined);
-      const unitM = prefs.distanceUnit === 'km' ? 1000 : 1609.344;
+        all.find((v) => v.id === driver.settings.defaultVehicleId) ??
+        (all.length === 1 ? all[0] : undefined);
+      const unitM = driver.unit === 'km' ? 1000 : 1609.344;
       const seen = new Set(
         db
           .prepare(
@@ -229,7 +232,7 @@ export function importsRoutes({
             return { row, status: 'error', message: `${platform} is not one of your platforms` };
           }
         }
-        const startedAt = zonedInstant(date, start, prefs.timezone);
+        const startedAt = driver.instantOf(date, start);
         const totalM = Math.round(distance * unitM);
         const key = `${vehicle.id}|${startedAt}|${totalM}`;
         if (seen.has(key)) return { row, status: 'duplicate' };
@@ -241,7 +244,7 @@ export function importsRoutes({
             vehicleId: vehicle.id,
             startedAt,
             endedAt: startedAt + minutes * 60_000,
-            localDate: localDate(startedAt, prefs.timezone),
+            localDate: driver.dateOf(startedAt),
             totalM,
             notes: c('notes') || null,
             platform,
@@ -315,72 +318,33 @@ export function importsRoutes({
           (req.query as { mapping?: string }).mapping,
         );
         const ok = planned.filter((p) => p.status === 'ok');
-        const created: number[] = [];
-        db.transaction(() => {
-          for (const p of ok) {
-            if (kind === 'expenses') {
-              created.push(expenses.create(p.value as NewExpense, now()).id);
-              continue;
-            }
-            const s = p.value as ShiftPlan;
-            const id = Number(
-              db
-                .prepare(
-                  `INSERT INTO shifts (user_id, client_id, vehicle_id, status, started_at, ended_at, local_date, total_m, active_m,
-                   deadhead_m, personal_m, segmenter, notes, updated_at)
-                 VALUES (?, ?, ?, 'finalized', ?, ?, ?, ?, ?, 0, 0, 'whole_shift', ?, ?)`,
-                )
-                .run(
-                  userId,
-                  randomUUID(),
-                  s.vehicleId,
-                  s.startedAt,
-                  s.endedAt,
-                  s.localDate,
-                  s.totalM,
-                  s.totalM,
-                  s.notes,
-                  now(),
-                ).lastInsertRowid,
-            );
-            db.prepare(
-              `INSERT INTO trips (user_id, shift_id, trip_key, kind, original_kind, source, started_at, ended_at, distance_m, purpose, edited_at)
-             VALUES (?, ?, ?, 'active', 'active', 'manual', ?, ?, ?, 'Imported', ?)`,
-            ).run(userId, id, `import-${id}`, s.startedAt, s.endedAt, s.totalM, now());
-            db.prepare(
-              "INSERT INTO shift_flags (user_id, shift_id, code, severity, detail, created_at) VALUES (?, ?, 'imported', 'info', ?, ?)",
-            ).run(
+        let created: number[];
+        if (kind === 'expenses') {
+          created = db.transaction(() =>
+            ok.map((p) => expenses.create(p.value as NewExpense, now()).id),
+          )();
+          for (const id of created) bus.emit('expense.changed', { expenseId: String(id) });
+        } else {
+          const plans = ok.map((p) => p.value as ShiftPlan);
+          // One transaction: every shift with its trip and flag, and its earnings row.
+          const rows = book.importShifts(userId, plans, (shift, i) => {
+            const s = plans[i]!;
+            if (s.gross + s.tips + s.bonus === 0) return;
+            earnings.put({
               userId,
-              id,
-              JSON.stringify({
-                at: null,
-                detail: 'imported from a CSV file; the distance was typed, not tracked',
-              }),
-              now(),
-            );
-            if (s.gross + s.tips + s.bonus > 0) {
-              earnings.put({
-                userId,
-                shiftId: id,
-                platform: s.platform,
-                grossCents: s.gross,
-                tipsCents: s.tips,
-                bonusCents: s.bonus,
-                orders: null,
-                onlineMin: null,
-                notes: null,
-                source: 'import',
-                editedAt: now(),
-              });
-            }
-            created.push(id);
-          }
-        })();
-        for (const id of created) {
-          bus.emit(
-            kind === 'expenses' ? 'expense.changed' : 'shift.updated',
-            kind === 'expenses' ? { expenseId: String(id) } : { shiftId: String(id) },
-          );
+              shiftId: shift.id,
+              platform: s.platform,
+              grossCents: s.gross,
+              tipsCents: s.tips,
+              bonusCents: s.bonus,
+              orders: null,
+              onlineMin: null,
+              notes: null,
+              source: 'import',
+              editedAt: now(),
+            });
+          });
+          created = rows.map((r) => r.id);
         }
         return {
           kind,

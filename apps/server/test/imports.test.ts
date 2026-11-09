@@ -1,6 +1,6 @@
 import { gzipSync } from 'node:zlib';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-import { parseCsv, toCents, zonedInstant } from '../src/imports/csv';
+import { parseCsv, toCents } from '../src/imports/csv';
 import { harness, type Harness } from './support';
 
 // 18 section 12: the generic CSV import. The owner of the test harness is in Chicago and uses miles.
@@ -43,7 +43,7 @@ const SHIFTS = [
 ].join('\n');
 
 describe('reading', () => {
-  test('quotes, doubled quotes, line endings, a byte-order mark, amounts and zone arithmetic', () => {
+  test('quotes, doubled quotes, line endings, a byte-order mark and amounts', () => {
     expect(parseCsv('﻿a,b\r\n"x, y","say ""hi"""\n\n1,2')).toEqual([
       ['a', 'b'],
       ['x, y', 'say "hi"'],
@@ -55,12 +55,6 @@ describe('reading', () => {
       NaN,
       NaN,
     ]);
-    expect(new Date(zonedInstant('2027-01-10', 570, 'America/Chicago')).toISOString()).toBe(
-      '2027-01-10T15:30:00.000Z',
-    );
-    expect(new Date(zonedInstant('2027-07-10', 570, 'America/Chicago')).toISOString()).toBe(
-      '2027-07-10T14:30:00.000Z',
-    ); // daylight time
   });
 });
 

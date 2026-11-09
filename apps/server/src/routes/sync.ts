@@ -13,7 +13,8 @@ import {
 } from '../db';
 import { ProblemError } from '../errors';
 import { odometerView } from './odometer';
-import { presentShift } from '../processing/presenter';
+import type { ShiftPresenter } from '../processing/presenter';
+import type { ShiftBook } from '../processing/shift-book';
 import { tripView } from './shifts';
 import { strictObject } from './util';
 import { vehicleView } from './vehicles';
@@ -32,6 +33,9 @@ export interface SyncOptions {
   db: Db;
   now: () => number;
   authn: Authenticator;
+  present: ShiftPresenter;
+  /** The device read window. */
+  book: Pick<ShiftBook, 'since'>;
   /** Core service: the `Settings` response for a user. */
   readSettings: (userId: number) => object;
 }
@@ -42,7 +46,7 @@ export interface SyncOptions {
  * carries no data and a later change to the same key replaces an earlier one. With the module off
  * nothing here exists and the phone is upload-only.
  */
-export function createSync({ db, now, authn, readSettings }: SyncOptions) {
+export function createSync({ db, now, authn, present, book, readSettings }: SyncOptions) {
   const log = createSyncRepository(db);
   const shifts = createShiftRepository(db);
   const processing = createProcessingRepository(db);
@@ -120,7 +124,7 @@ export function createSync({ db, now, authn, readSettings }: SyncOptions) {
       switch (row.entity) {
         case 'shift': {
           const s = shifts.byClientId(userId, row.key);
-          return s ? presentShift(db, s) : null;
+          return s ? present.one(s) : null;
         }
         case 'trip': {
           const t = processing.tripByKey(userId, row.key);
@@ -173,7 +177,7 @@ export function createSync({ db, now, authn, readSettings }: SyncOptions) {
           'The change log was pruned or the server was restored. Pull the whole window again.',
         );
       }
-      const since = p.kind === 'device' ? now() - 14 * DAY : undefined;
+      const since = book.since(p);
       const visible = (row: ChangeRow) => {
         const client = since === undefined ? undefined : shiftOf(p.userId, row);
         if (client === undefined || shifts.byRef(p.userId, client, since) !== undefined)

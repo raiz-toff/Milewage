@@ -1,7 +1,8 @@
-import { builtinPlatform, countryModules, CUSTOM_SLUG, resolvePlace } from '@milewage/shared';
+import { builtinPlatform, CUSTOM_SLUG, resolvePlace } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
-import { createPlatformRepository, createSettingsRepository, type Db } from '../db';
+import { createPlatformRepository, type Db } from '../db';
+import type { DriverContexts } from '../driver-context';
 import { ProblemError } from '../errors';
 import { deleteLogo, logoVersion, platformLogoRoutes } from './platform-logos';
 import { strictObject } from './util';
@@ -33,16 +34,17 @@ export function platformKnown(db: Db, userId: number, slug: string): boolean {
 /** Module `platforms` (18 section 4.2): the registry merged with the driver's overrides. */
 export function platformsRoutes({
   db,
+  drivers,
   authn,
   now,
 }: {
   db: Db;
+  drivers: DriverContexts;
   authn: Authenticator;
   now: () => number;
 }) {
   return ({ app }: ServerRouteHost) => {
     const repo = createPlatformRepository(db);
-    const settings = createSettingsRepository(db);
 
     const view = (slug: string, userId: number, order: number) => {
       const built = builtinPlatform(slug);
@@ -70,11 +72,12 @@ export function platformsRoutes({
 
     app.get('/platforms', { schema: { querystring: query } }, async (req) => {
       const { userId } = authn.authenticate(req, 'SD');
-      const s = settings.get(userId);
+      const driver = drivers.of(userId);
       const all = (req.query as { include_inactive?: boolean }).include_inactive === true;
       // The country's list for the driver's region (a region may add or remove an app), then their own.
-      const country = s?.country ? countryModules.get(s.country) : undefined;
-      const offered = country ? (resolvePlace(country, s?.region).data.platforms ?? []) : [];
+      const offered = driver.pack
+        ? (resolvePlace(driver.pack, driver.region).data.platforms ?? [])
+        : [];
       const slugs = [...offered.map((p) => p.slug), ...repo.list(userId).map((r) => r.slug)];
       return [...new Set(slugs)]
         .map((s, i) => view(s, userId, i))

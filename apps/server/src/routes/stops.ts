@@ -2,16 +2,16 @@ import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import {
   createProcessingRepository,
-  createSettingsRepository,
   type Db,
+  type ShiftRow,
   type StopLabelRow,
   type StopRow,
 } from '../db';
 import { ProblemError } from '../errors';
-import type { ShiftProcessor } from '../processing/shift-processor';
-import { refParam, shiftReader } from './shift-access';
-import { presentShift } from '../processing/presenter';
-import { snakeKeys, str, strictObject } from './util';
+import type { DriverContexts } from '../driver-context';
+import type { ShiftBook } from '../processing/shift-book';
+import type { ShiftPresenter } from '../processing/presenter';
+import { refParam, snakeKeys, str, strictObject, type Principal } from './util';
 
 const params = strictObject({ ref: refParam, stop_key: str(1, 200) }, ['ref', 'stop_key']);
 const shiftParams = strictObject({ ref: refParam }, ['ref']);
@@ -43,28 +43,31 @@ export function stopsRoutes({
   db,
   now,
   authn,
-  processor,
+  drivers,
+  present,
+  book,
   platformOk,
 }: {
   db: Db;
   now: () => number;
   authn: Authenticator;
-  processor: ShiftProcessor;
+  drivers: DriverContexts;
+  present: ShiftPresenter;
+  /** Labels change the split only through an engine run, recorded and announced by the book. */
+  book: ShiftBook;
   /** With the platforms module on: whether a slug is a built-in or the driver's own (18 section 4.2). */
   platformOk?: (userId: number, slug: string) => boolean;
 }) {
   return ({ app, bus }: ServerRouteHost) => {
     const repo = createProcessingRepository(db);
-    const settings = createSettingsRepository(db);
-    const read = shiftReader(db, now);
 
     /** The shift and its owner's settings guard. */
     const open = (req: Parameters<typeof authn.authenticate>[0]) => {
       const p = authn.authenticate(req, 'S');
-      if (settings.get(p.userId)?.stopsEnabled !== 1) {
+      if (!drivers.of(p.userId).stopsOn) {
         throw new ProblemError('not_found', 'Stops are turned off.');
       }
-      return { p, shift: read(p, (req.params as { ref: string }).ref) };
+      return { p, shift: book.find(p, (req.params as { ref: string }).ref) };
     };
     const keyOf = (req: { params: unknown }) => (req.params as { stop_key: string }).stop_key;
     const withLabel = (shiftId: number, key: string) => {
@@ -79,19 +82,15 @@ export function stopsRoutes({
     });
 
     /** Labels change only an ended, not finalized, shift: the engine reads them when it runs. */
-    const editable = (shift: ReturnType<typeof read>) => {
+    const editable = (shift: ShiftRow) => {
       if (shift.status === 'finalized')
         throw new ProblemError('shift_finalized', 'This shift is finalized.');
       if (shift.status === 'active')
         throw new ProblemError('shift_not_ended', 'Label stops after the shift has ended.');
-      processor.assertRecomputable(shift);
+      book.needsEngine(shift);
     };
-    const recompute = (shift: ReturnType<typeof read>) => {
-      const saved = processor.run(shift, { reason: 'label' }).shift;
-      bus.emit('shift.updated', { shiftId: String(shift.id) });
-      bus.emit('stops.derived', { shiftId: String(shift.id) });
-      return presentShift(db, saved);
-    };
+    const recompute = (p: Principal, shift: ShiftRow) =>
+      present.one(book.recompute(p, shift, { cause: 'label' }));
 
     app.put(
       '/shifts/:ref/stop-labels/:stop_key',
@@ -127,7 +126,7 @@ export function stopsRoutes({
         if (old && b.edited_at <= old.editedAt) {
           return reply.header('X-MileWage-Applied', 'false').send({
             stop: withLabel(shift.id, key),
-            shift: presentShift(db, shift),
+            shift: present.one(shift),
           });
         }
         if (old) {
@@ -150,7 +149,7 @@ export function stopsRoutes({
           notes: b.notes ?? null,
           editedAt: b.edited_at,
         });
-        const updated = recompute(shift);
+        const updated = recompute(p, shift);
         return reply
           .header('X-MileWage-Applied', 'true')
           .send({ stop: withLabel(shift.id, key), shift: updated });
@@ -158,7 +157,7 @@ export function stopsRoutes({
     );
 
     app.delete('/shifts/:ref/stop-labels/:stop_key', { schema: { params } }, async (req) => {
-      const { shift } = open(req);
+      const { p, shift } = open(req);
       editable(shift);
       const key = keyOf(req);
       const stopExists = repo.stopsOf(shift.id).some((s) => s.stopKey === key);
@@ -166,7 +165,7 @@ export function stopsRoutes({
         throw new ProblemError('not_found', 'This shift has no stop or label with that key.');
       }
       repo.deleteLabel(shift.id, key);
-      const updated = recompute(shift);
+      const updated = recompute(p, shift);
       // `stop` is null only when an orphaned label (its stop is gone) was cleared.
       return { stop: withLabel(shift.id, key) ?? null, shift: updated };
     });

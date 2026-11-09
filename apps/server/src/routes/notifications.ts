@@ -2,6 +2,7 @@ import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import { type Db } from '../db';
 import { ProblemError } from '../errors';
+import type { DriverContexts } from '../driver-context';
 import { evaluate, PREFS, prefsOf } from '../notifications';
 import { idParams, str, strictObject } from './util';
 
@@ -43,19 +44,21 @@ export function notificationsRoutes({
   db,
   now,
   authn,
+  drivers,
   taxCountries,
   override,
 }: {
   db: Db;
   now: () => number;
   authn: Authenticator;
+  drivers: DriverContexts;
   taxCountries: readonly string[];
   override?: 'replace' | 'sum';
 }) {
   return ({ app, registry }: ServerRouteHost) => {
     app.get('/notifications', { schema: { querystring: listQuery } }, async (req) => {
       const { userId } = authn.authenticate(req, 'SD');
-      evaluate({ db, now, registry, taxCountries, override }, userId);
+      evaluate({ db, now, drivers, registry, taxCountries, override }, userId);
       const q = req.query as { unread?: boolean; limit?: number; cursor?: string };
       const limit = q.limit ?? 50;
       let before = Number.MAX_SAFE_INTEGER;

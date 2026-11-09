@@ -230,6 +230,29 @@ describe('GET /sync/changes (15 section 6.5)', () => {
   });
 });
 
+describe('imported shifts (18 section 12)', () => {
+  test('an imported shift and its trip reach the phone through the pull', async () => {
+    // Inside the phone's 14 day window: yesterday in Chicago, 9:30 to 11:00, 12.5 miles.
+    const res = await h.app.inject({
+      method: 'POST',
+      url: '/api/v1/imports/shifts',
+      payload: 'date,start_time,end_time,distance\n2027-01-14,09:30,11:00,12.5',
+      headers: { 'content-type': 'text/csv', cookie, origin: 'http://mw.test', host: 'mw.test' },
+    });
+    expect(res.json().imported).toBe(1);
+    const shift = (await web('GET', '/shifts/1')).json();
+    const trips = (await web('GET', '/shifts/1/trips')).json() as { trip_key: string }[];
+    expect(trips.map((t) => t.trip_key)).toEqual(['import-1']);
+    const changes = (await all()).changes as Entry[];
+    const mine = changes.filter((c) => c.entity === 'shift' || c.entity === 'trip');
+    expect(mine.map((c) => [c.entity, c.op, c.key])).toEqual([
+      ['shift', 'upsert', shift.client_id],
+      ['trip', 'upsert', 'import-1'],
+    ]);
+    expect(mine[1]!.data).toMatchObject({ kind: 'active', source: 'manual', distance_m: 20_117 });
+  });
+});
+
 describe('module off', () => {
   test('sync off: the route is 404 and nothing is written to the log', async () => {
     await h.close();

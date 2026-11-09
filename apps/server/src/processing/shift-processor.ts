@@ -82,8 +82,11 @@ export interface ProcessOutcome {
 export interface ShiftProcessorOptions {
   db: Db;
   now: () => number;
-  /** Whether the `stops` module is on; stops and labels are only read and written then. */
-  stopsOn: () => boolean;
+  /**
+   * Whether the `stops` module is on; stops and labels are only read and written then. This is the
+   * module, not the driver's switch (`DriverContext.stopsOn`): a shift keeps the segmenter it started with.
+   */
+  stopsModule: () => boolean;
   /** `bus.emit`; the diagnostics and sync modules listen to what is announced here. */
   emit: EventEmit;
 }
@@ -95,7 +98,7 @@ export type ShiftProcessor = ReturnType<typeof createShiftProcessor>;
  * 14 section 9.4). The server's result is the one that counts. The segmenter is the one captured at
  * shift start, never the current setting.
  */
-export function createShiftProcessor({ db, now, stopsOn, emit }: ShiftProcessorOptions) {
+export function createShiftProcessor({ db, now, stopsModule, emit }: ShiftProcessorOptions) {
   const repo = createProcessingRepository(db);
   const archive = createArchiveRepository(db);
   /** The engine needs the raw points; once they are archived the stored totals and trips are all there is. */
@@ -107,7 +110,7 @@ export function createShiftProcessor({ db, now, stopsOn, emit }: ShiftProcessorO
       );
   };
 
-  const inputOf = (shift: ShiftRow): ShiftInput => buildShiftInput(repo, shift, stopsOn());
+  const inputOf = (shift: ShiftRow): ShiftInput => buildShiftInput(repo, shift, stopsModule());
 
   /** Facts for the bus (08 section 16.4); a listener's failure never reaches the shift request. */
   const announce = (
@@ -181,7 +184,7 @@ export function createShiftProcessor({ db, now, stopsOn, emit }: ShiftProcessorO
       const editedOnWeb =
         manual.length > 0 ||
         overrides.some((o) => o.deviceId === null) ||
-        (stopsOn() && repo.labelsOf(shift.id).length > 0);
+        (stopsModule() && repo.labelsOf(shift.id).length > 0);
       const stored =
         shift.phoneTotalM !== null && shift.phoneCalcVersion !== null && shift.inputDigest !== null
           ? {
@@ -264,7 +267,7 @@ export function createShiftProcessor({ db, now, stopsOn, emit }: ShiftProcessorO
           editedAt: editedAt.get(x.tripKey) ?? null,
         })),
         flags,
-        stops: stopsOn()
+        stops: stopsModule()
           ? result.stops.map((s) => ({
               stopKey: s.stopKey,
               startedAt: s.startedAt,

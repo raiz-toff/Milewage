@@ -1,14 +1,8 @@
 import type { FastifyInstance } from 'fastify';
-import {
-  createEarningsRepository,
-  createProcessingRepository,
-  createSettingsRepository,
-  totalOf,
-  type Db,
-} from '../db';
+import { createEarningsRepository, createProcessingRepository, totalOf, type Db } from '../db';
 import { ProblemError } from '../errors';
-import { deductionOfShift } from '../processing/presenter';
-import { localDate } from '../time';
+import type { MileageDeduction } from '../mileage-deduction';
+import type { DriverContexts } from '../driver-context';
 import type { EarningsPolicy } from './earnings';
 import { strictObject, type AuthFn } from './util';
 
@@ -23,19 +17,12 @@ const valid = (d: string) => {
   return Number.isFinite(t) && new Date(t).toISOString().startsWith(d);
 };
 
-/** Sum of the shifts' deduction values (each from the pack of its own date); null without a pack or a rate. */
-function deduction(db: Db, userId: number, from: string, to: string): number | null {
-  const values = createProcessingRepository(db)
-    .shiftsInPeriod(userId, from, to)
-    .map((s) => deductionOfShift(db, s))
-    .filter((v): v is number => v !== null);
-  return values.length === 0 ? null : values.reduce((a, b) => a + b, 0);
-}
-
 export interface SummaryContext {
   db: Db;
   now: () => number;
   auth: AuthFn;
+  drivers: DriverContexts;
+  deduction: MileageDeduction;
   /** What counts as earnings (labels, typed rows, override rule); absent means nothing does. */
   earnings?: EarningsPolicy;
 }
@@ -46,14 +33,11 @@ export interface SummaryContext {
  */
 export function summaryRoute(app: FastifyInstance, ctx: SummaryContext) {
   const repo = createProcessingRepository(ctx.db);
-  const settings = createSettingsRepository(ctx.db);
 
   app.get('/summary', { schema: { querystring: query } }, async (req) => {
     const { userId } = ctx.auth(req, 'S');
-    const prefs = settings.get(userId);
-    if (!prefs) throw new ProblemError('setup_incomplete', 'Finish setup first.');
+    const today = ctx.drivers.of(userId).today();
     const q = req.query as { from?: string; to?: string; platform?: string };
-    const today = localDate(ctx.now(), prefs.timezone);
     const to = q.to ?? today;
     const from = q.from ?? `${to.slice(0, 8)}01`;
     const errors = [
@@ -95,7 +79,8 @@ export function summaryRoute(app: FastifyInstance, ctx: SummaryContext) {
       deadhead_m: totals.deadhead_m,
       personal_m: totals.personal_m,
       total_m: totals.total_m,
-      deduction_cents: deduction(ctx.db, userId, from, to),
+      // Each shift's value from the pack of its own date; null without a pack or a rate.
+      deduction_cents: ctx.deduction.ofPeriod(userId, from, to).cents,
       hourly_earnings_cents:
         labelled && hours > 0 ? Math.round(labelled.earningsCents / hours) : null,
       // A shift that spans platforms has one distance; it is not split, so only earnings are filtered.

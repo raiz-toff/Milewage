@@ -4,15 +4,15 @@ import {
   createEarningsRepository,
   createExpenseRepository,
   createProcessingRepository,
-  createSettingsRepository,
   createTaxRepository,
   type Db,
   type ShiftRow,
 } from '../db';
 import { ProblemError } from '../errors';
 import { analytics, type AShift } from '../analytics';
-import { deductibleCents, doubleCounts } from '../expense-math';
-import { localDate } from '../time';
+import { deductibleCents } from '../expense-math';
+import type { MileageDeduction } from '../mileage-deduction';
+import type { DriverContexts } from '../driver-context';
 import { createEarningsPolicy } from './earnings';
 import { strictObject } from './util';
 
@@ -55,23 +55,23 @@ const ashift = (s: ShiftRow): AShift => ({
 /** Module `analytics` (18 section 10.1): read-only groups computed from existing tables. No table of its own. */
 export function analyticsRoutes({
   db,
-  now,
+  drivers,
+  deduction,
   authn,
   override,
 }: {
   db: Db;
-  now: () => number;
+  drivers: DriverContexts;
+  deduction: MileageDeduction;
   authn: Authenticator;
   override?: 'replace' | 'sum';
 }) {
   return ({ app, registry }: ServerRouteHost) => {
-    const settings = createSettingsRepository(db);
     const processing = createProcessingRepository(db);
 
     app.get('/analytics', { schema: { querystring: query } }, async (req) => {
       const { userId } = authn.authenticate(req, 'S');
-      const prefs = settings.get(userId);
-      if (!prefs) throw new ProblemError('setup_incomplete', 'Finish setup first.');
+      const driver = drivers.of(userId);
       const q = req.query as {
         from?: string;
         to?: string;
@@ -79,7 +79,7 @@ export function analyticsRoutes({
         bucket?: 'day' | 'week' | 'month';
         platform?: string;
       };
-      const today = localDate(now(), prefs.timezone);
+      const today = driver.today();
       const to = q.to ?? today;
       const from = q.from ?? iso(utc(to) - 29 * DAY);
       if (!calendar(from) || !calendar(to) || from > to || (utc(to) - utc(from)) / DAY > 730) {
@@ -87,7 +87,7 @@ export function analyticsRoutes({
           { path: '/from', message: 'give a valid range of at most two years' },
         ]);
       }
-      const policy = createEarningsPolicy(db, registry, override);
+      const policy = createEarningsPolicy(drivers, registry, override);
       const earnings = createEarningsRepository(db);
       const eff = (a: string, b: string) =>
         policy.any(userId)
@@ -102,15 +102,15 @@ export function analyticsRoutes({
       if (registry.isEnabled('expenses')) {
         expensesCents = 0;
         for (const e of createExpenseRepository(db).between(userId, from, to)) {
-          if (!doubleCounts(db, userId, e)) expensesCents += deductibleCents(e);
+          if (!deduction.doubleCounts(userId, e)) expensesCents += deductibleCents(e);
         }
       }
       const result = analytics({
         from,
         to,
         today,
-        weekStart: prefs.weekStart,
-        timeZone: prefs.timezone,
+        weekStart: driver.weekStart,
+        timeZone: driver.timeZone,
         bucket: q.bucket ?? 'day',
         shifts: processing.shiftsInPeriod(userId, from, to).map(ashift),
         earnings: eff(from, to),

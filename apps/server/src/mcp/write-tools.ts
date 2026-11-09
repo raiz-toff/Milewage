@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { ENTRY_TYPES } from '../db';
+import { localInstant } from '../time';
 import { ok, ToolProblem, type ToolContext, type ToolSpec } from './tools';
 
 const day = z
@@ -19,32 +20,12 @@ const localTime = z
 export const metresPer = (unit: string) => (unit === 'mi' ? 1609.344 : 1000);
 
 /** The instant a local wall-clock time `YYYY-MM-DDTHH:mm` names in an IANA zone. */
-export function epochOf(local: string, timeZone: string): number {
-  const [y, mo, d, h, mi] = local.split(/[-T:]/).map(Number) as [
-    number,
-    number,
-    number,
-    number,
-    number,
-  ];
-  const wall = Date.UTC(y, mo - 1, d, h, mi);
-  const fmt = new Intl.DateTimeFormat('en-US', {
+const epochOf = (local: string, timeZone: string): number =>
+  localInstant(
+    local.slice(0, 10),
+    Number(local.slice(11, 13)) * 60 + Number(local.slice(14, 16)),
     timeZone,
-    hourCycle: 'h23',
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-  });
-  let at = wall;
-  // Twice: the zone's offset at the first guess may differ from the offset at the answer (DST).
-  for (let i = 0; i < 2; i++) {
-    const p = Object.fromEntries(fmt.formatToParts(at).map((x) => [x.type, Number(x.value)]));
-    at += wall - Date.UTC(p.year!, p.month! - 1, p.day!, p.hour!, p.minute!);
-  }
-  return at;
-}
+  );
 
 /** `CA$54.20`: the amount as the driver reads it, for the confirmation text. */
 export async function money(ctx: ToolContext, amountCents: number) {

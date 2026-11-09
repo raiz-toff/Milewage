@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { expenseCategory } from '@milewage/shared';
-import { overrideDeductionMethod } from '../src/deduction-method';
 import { harness, type Harness } from './support';
 
 // 21 section 3.6c: rent and finance payments for a vehicle that is not owned outright.
@@ -65,8 +64,7 @@ describe('vehicle rental and finance categories', () => {
     expect((await add('vehicle_rental', { vehicle_id: 1 })).double_counts).toBe(true);
     expect((await add('vehicle_finance', { vehicle_id: 1 })).double_counts).toBe(true);
     expect((await add('vehicle_rental', { vehicle_id: 2 })).double_counts).toBe(false); // no rate
-    overrideDeductionMethod(h.db, () => 'actual_expenses');
+    await send('PUT', '/vehicles/1/tax-years/2027', { method: 'actual_expenses' });
     expect((await add('vehicle_rental', { vehicle_id: 1 })).double_counts).toBe(false);
-    overrideDeductionMethod(h.db, undefined);
   });
 });

@@ -1,15 +1,10 @@
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
-import {
-  createSettingsRepository,
-  createTaxRepository,
-  createVehicleRepository,
-  type Db,
-} from '../db';
-import { overrideDeductionMethod } from '../deduction-method';
+import { createTaxRepository, createVehicleRepository, type Db } from '../db';
 import { ProblemError } from '../errors';
+import type { DeductionMethods, MileageDeduction } from '../mileage-deduction';
 import { taxReport } from '../tax-report';
-import { localDate } from '../time';
+import type { DriverContexts } from '../driver-context';
 import { idParams, strictObject } from './util';
 
 const yearParam = { type: 'integer', minimum: 2000, maximum: 2100 };
@@ -45,20 +40,32 @@ const vehicleBody = strictObject(
   ['method'],
 );
 
+/** The deduction method the driver saved for each vehicle in a year (`PUT /vehicles/{id}/tax-years/{year}`). */
+export const taxDeductionMethods =
+  (db: Db): DeductionMethods =>
+  (userId, year) =>
+    new Map(
+      createTaxRepository(db)
+        .vehicleYears(userId, year)
+        .map((v) => [v.vehicleId, v.method]),
+    );
+
 /**
- * Module `tax` (18 section 7): the Tax Center. It estimates, never files. Besides its routes it
- * installs the core seam `deductionMethodFor`, so a vehicle set to actual expenses has no mileage
- * deduction value in the summary and the exports.
+ * Module `tax` (18 section 7): the Tax Center. It estimates, never files. Its saved deduction
+ * methods (`taxDeductionMethods`) are what the mileage deduction reads while the module is on, so a
+ * vehicle set to actual expenses has no mileage deduction value in the summary and the exports.
  */
 export function taxRoutes({
   db,
-  now,
+  deduction,
+  drivers,
   authn,
   countries,
   override,
 }: {
   db: Db;
-  now: () => number;
+  deduction: MileageDeduction;
+  drivers: DriverContexts;
   authn: Authenticator;
   countries: readonly string[];
   override?: 'replace' | 'sum';
@@ -66,14 +73,8 @@ export function taxRoutes({
   return ({ app, registry }: ServerRouteHost) => {
     const repo = createTaxRepository(db);
     const vehicles = createVehicleRepository(db);
-    const settings = createSettingsRepository(db);
-    overrideDeductionMethod(
-      db,
-      (userId, vehicleId, year) =>
-        repo.vehicleYear(userId, vehicleId, year)?.method ?? 'standard_mileage',
-    );
     const report = (userId: number, year: number, collected = 0) =>
-      taxReport({ db, registry, countries, override }, userId, year, collected);
+      taxReport({ db, drivers, deduction, registry, countries, override }, userId, year, collected);
     const jarView = (userId: number, year: number) => {
       const entries = repo.jar(userId, year);
       return {
@@ -152,7 +153,7 @@ export function taxRoutes({
             { path: '/amount_cents', message: 'must not be zero' },
           ]);
         }
-        const on = b.entered_on ?? localDate(now(), settings.get(userId)?.timezone ?? 'UTC');
+        const on = b.entered_on ?? drivers.of(userId).today();
         repo.addJar(userId, year, b.amount_cents, on, b.note ?? null);
         return reply.status(201).send(jarView(userId, year));
       },

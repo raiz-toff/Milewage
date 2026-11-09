@@ -11,7 +11,7 @@ import type { ServerRouteHost } from './app';
 import type { ServerHost } from './assembly';
 import { nightlyBackupJob } from './backup/schedule';
 import { createRestoreService } from './backup/restore';
-import { createBackupRepository, createSettingsRepository, createShiftRepository } from './db';
+import { createBackupRepository, createShiftRepository } from './db';
 import { createDiagnosticsKeeper } from './diagnostics/keeper';
 import { createServerMetrics } from './diagnostics/metrics';
 import { createServerRecorder, effectiveLevel } from './diagnostics/recorder';
@@ -20,7 +20,6 @@ import { createArchiver } from './processing/archive';
 import { createLateRecompute } from './processing/late-recompute';
 import { receiptsDirOf } from './receipts/store';
 import { taxReport } from './tax-report';
-import { localDate } from './time';
 import { SERVER_VERSION } from './version';
 import { createAuditPrune } from './mcp/audit';
 import { mcpEndpoint } from './mcp/endpoint';
@@ -84,17 +83,20 @@ export const serverModules = [
           db: h.db,
           now: h.now,
           secrets: h.secrets,
-          processor: h.processor,
+          book: h.book,
           exportFormats: h.exportFormats,
           captureFor: h.captureFor,
           backupDownload: h.config.backup.download,
           comma: h.config.comma,
+          drivers: h.drivers,
+          deduction: h.deduction,
+          present: h.present,
           status: {
             state: h.state,
             disk: h.disk,
             lastBackup: () => h.backup.list()[0],
             diagnostics: (userId) => ({
-              level: createSettingsRepository(h.db).get(userId)?.diagnosticsLevel ?? 'basic',
+              level: h.drivers.of(userId).settings.diagnosticsLevel,
               db_bytes: h.diagnostics.store().bytes(),
               event_count: h.diagnostics.store().count(),
             }),
@@ -127,9 +129,7 @@ export const serverModules = [
     wire: (h) => {
       const late = createLateRecompute({
         db: h.db,
-        processor: h.processor,
-        emit: h.bus.emit,
-        stopsOn: () => h.registry.isEnabled('stops'),
+        book: h.book,
         delayMs: h.tuning.lateRecomputeMs,
         log: h.log,
       });
@@ -207,15 +207,13 @@ export const serverModules = [
         // A failed backup is an event, not a state that can be re-read later, so it is recorded when it happens.
         'backup.finished'(r) {
           if (r.ok) return;
-          const owner = ownerOf(h)();
-          const tz =
-            owner === undefined ? undefined : createSettingsRepository(h.db).get(owner)?.timezone;
-          if (owner !== undefined && tz) {
+          const owner = h.drivers.owner();
+          if (owner) {
             notify(
               { db: h.db, now: h.now, emit: h.bus.emit },
-              owner,
+              owner.userId,
               'backup_failed',
-              `backup_failed:${localDate(h.now(), tz)}`,
+              `backup_failed:${owner.today()}`,
               'backup_failed',
             );
           }
@@ -298,6 +296,8 @@ export const serverModules = [
           taxReport(
             {
               db: h.db,
+              drivers: h.drivers,
+              deduction: h.deduction,
               registry: reg,
               countries: h.config.comma.taxCountries,
               override: h.config.comma.earningsOverride,
@@ -326,7 +326,7 @@ export const serverModules = [
         store,
         now: h.now,
         owner: ownerOf(h),
-        level: (userId) => effectiveLevel(createSettingsRepository(h.db).get(userId), h.now()),
+        level: (userId) => effectiveLevel(h.drivers.find(userId)?.settings, h.now()),
         disk: diskState(h),
         version: SERVER_VERSION,
         shiftClientId: (id) => createShiftRepository(h.db).byId(id)?.clientId,

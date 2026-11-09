@@ -2,7 +2,6 @@ import type { FastifyInstance } from 'fastify';
 import {
   createOdometerRepository as odometerRepo,
   createProcessingRepository as processingRepo,
-  createSettingsRepository as settingsRepo,
   createShiftRepository as shiftRepo,
   createVehicleRepository as vehicleRepo,
   type Db,
@@ -11,15 +10,11 @@ import {
   type TripRow,
 } from '../db';
 import { ProblemError } from '../errors';
-import { presentShift, presentShifts } from '../processing/presenter';
-import { localDate } from '../time';
 import type { EventEmit } from '../events';
-import type { ShiftProcessor } from '../processing/shift-processor';
-import { snakeKeys, str, strictObject, type AuthFn, type Principal } from './util';
+import type { ShiftPresenter } from '../processing/presenter';
+import type { ShiftBook } from '../processing/shift-book';
+import { refParam as ref, snakeKeys, str, strictObject, type AuthFn, type Principal } from './util';
 
-const DAY = 24 * 60 * 60 * 1000;
-const UUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
-const ref = { type: 'string', pattern: `^([0-9]+|${UUID})$` };
 const ms = { type: 'integer', minimum: 0 };
 const date = { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' };
 const status = { enum: ['active', 'ended', 'finalized'] };
@@ -107,7 +102,11 @@ const flagView = (f: FlagRow) => ({
   detail: f.detail ? (JSON.parse(f.detail) as object) : null,
 });
 /** The `Shift` object. Phone-side columns stay out of it; `recon` has its own member. */
-export const shiftView = (r: ShiftRow, flags: readonly FlagRow[] = []) => ({
+export const shiftView = (
+  r: ShiftRow,
+  flags: readonly FlagRow[] = [],
+  deductionCents: number | null = null,
+) => ({
   ...snakeKeys(
     r,
     'userId',
@@ -119,7 +118,8 @@ export const shiftView = (r: ShiftRow, flags: readonly FlagRow[] = []) => ({
   ),
   recon_reasons: r.reconReasons ? (JSON.parse(r.reconReasons) as string[]) : [],
   calc_mismatch: r.calcMismatch === 1,
-  deduction_cents: null, // from the country registry at read time; no packs yet
+  // Computed at read time by the mileage deduction, never stored.
+  deduction_cents: deductionCents,
   flags: flags.map(flagView),
 });
 /** The `Trip` object; the client UUID of a manual trip is not part of it. */
@@ -144,40 +144,27 @@ export function shiftRoutes(
     db,
     now,
     auth,
-    processor,
+    present,
+    book,
     emit = () => {},
-    trackingOn = () => false,
-    stopsOn = () => false,
   }: {
     db: Db;
     now: () => number;
     auth: AuthFn;
-    /** Runs the engine at shift end; used only while `trackingOn()` (there are no points otherwise). */
-    processor?: ShiftProcessor;
-    /** Publishes facts on the event bus (08 section 16.4). */
+    present: ShiftPresenter;
+    /** Records, recomputes and announces the shift; holds the read window. */
+    book: ShiftBook;
+    /** Publishes the overwrite log and odometer facts on the event bus (08 section 16.4). */
     emit?: EventEmit;
-    trackingOn?: () => boolean;
-    /** Whether the `stops` module is on; a new shift is only given the stops segmenter then. */
-    stopsOn?: () => boolean;
   },
 ) {
   const shifts = shiftRepo(db);
   const processing = processingRepo(db);
   /** One shift with its flags, the way every route returns it. */
-  const view = (r: ShiftRow) => presentShift(db, r);
+  const view = (r: ShiftRow) => present.one(r);
   const odometer = odometerRepo(db);
   const vehicles = vehicleRepo(db);
-  const device = (p: Principal) => p.kind === 'device';
-  const touch = (p: Principal): Partial<ShiftRow> => (device(p) ? { deviceTouchedAt: now() } : {});
-  /** A device sees shifts started in the last 14 days or written to by it in that time (08 section 2.2). */
-  const since = (p: Principal) => (device(p) ? now() - 14 * DAY : undefined);
-  const load = (p: Principal, r: string, open = true) => {
-    const row = shifts.byRef(p.userId, r, since(p));
-    if (!row) throw new ProblemError('shift_not_found', 'No such shift.');
-    if (open && row.status === 'finalized')
-      throw new ProblemError('shift_finalized', 'This shift is finalized.');
-    return row;
-  };
+  const load = (p: Principal, r: string, open = true) => book.find(p, r, { editable: open });
   /** Only the impossible is refused: a time more than 5 minutes ahead of the server (08 section 9). */
   const notFuture = (path: string, at: number) => {
     if (at > now() + 5 * 60 * 1000)
@@ -213,21 +200,13 @@ export function shiftRoutes(
         extra,
       );
     }
-    const prefs = settingsRepo(db).get(p.userId);
-    if (!prefs) throw new ProblemError('setup_incomplete', 'Finish setup first.');
-    const row = shifts.insert({
-      userId: p.userId,
+    const row = book.start(p, {
       clientId,
       vehicleId: b.vehicle_id,
-      status: 'active',
       startedAt: b.started_at,
-      localDate: localDate(b.started_at, prefs.timezone),
-      segmenter: b.segmenter ?? (prefs.stopsEnabled && stopsOn() ? 'stops' : 'whole_shift'),
-      notes: b.notes ?? null,
-      updatedAt: b.started_at, // the edit clock starts at capture time, so offline edits made later still win
-      ...touch(p),
+      segmenter: b.segmenter,
+      notes: b.notes,
     });
-    emit('shift.started', { shiftId: String(row.id) });
     return reply.status(201).send(view(row));
   });
 
@@ -254,12 +233,12 @@ export function shiftRoutes(
         throw invalid('/cursor', 'is not a cursor from this server');
       }
     }
-    const rows = shifts.list(p.userId, { ...q, vehicleId: q.vehicle_id, after, limit }, since(p));
+    const rows = book.list(p, { ...q, vehicleId: q.vehicle_id, after, limit });
     const last = rows[limit - 1];
     const next = rows.length > limit && last ? [last.startedAt, last.id] : null;
     const page = rows.slice(0, limit);
     return {
-      items: presentShifts(db, page),
+      items: present.many(page),
       next_cursor: next && Buffer.from(JSON.stringify(next)).toString('base64url'),
     };
   });
@@ -282,12 +261,14 @@ export function shiftRoutes(
       return reply.header('X-MileWage-Applied', 'false').send(view(row));
     }
     if (b.vehicle_id !== undefined) checkVehicle(p.userId, b.vehicle_id);
-    const set: Partial<ShiftRow> = { updatedAt: b.updated_at ?? now(), ...touch(p) };
+    const set: Partial<ShiftRow> = { updatedAt: b.updated_at ?? now() };
     if (b.notes !== undefined) set.notes = b.notes;
     if (b.vehicle_id !== undefined) set.vehicleId = b.vehicle_id;
-    const saved = shifts.update(row.id, set) ?? row;
     // A value replaced by a newer edit is kept in the overwrite log (15 section 8.2).
-    if (row.notes !== saved.notes || row.vehicleId !== saved.vehicleId) {
+    if (
+      (set.notes !== undefined && set.notes !== row.notes) ||
+      (set.vehicleId !== undefined && set.vehicleId !== row.vehicleId)
+    ) {
       emit('edit.overwritten', {
         userId: String(p.userId),
         entity: 'shift',
@@ -296,7 +277,7 @@ export function shiftRoutes(
         ...(p.kind === 'device' ? { deviceId: String(p.deviceId) } : {}),
       });
     }
-    emit('shift.updated', { shiftId: String(row.id) });
+    const saved = book.edit(p, row, set);
     return reply.header('X-MileWage-Applied', 'true').send(view(saved));
   });
 
@@ -307,9 +288,7 @@ export function shiftRoutes(
     if (row.status === 'finalized') return view(row); // idempotent
     if (row.status === 'active')
       throw new ProblemError('shift_not_ended', 'End the shift before finalizing it.');
-    const saved = shifts.update(row.id, { status: 'finalized', updatedAt: now() }) ?? row;
-    emit('shift.finalized', { shiftId: String(row.id) });
-    return view(saved);
+    return view(book.finalize(row));
   });
 
   // Recalculate: the engine again on the stored points with the current algorithm (calc_version follows it).
@@ -318,11 +297,7 @@ export function shiftRoutes(
     const row = load(p, refOf(req)); // a finalized shift is 409 shift_finalized
     if (row.status === 'active')
       throw new ProblemError('shift_not_ended', 'End the shift before recalculating it.');
-    if (!processor) return view(row);
-    const saved = trackingOn() ? processor.run(row).shift : processor.retotal(row);
-    emit('shift.updated', { shiftId: String(row.id) });
-    if (trackingOn() && stopsOn()) emit('stops.derived', { shiftId: String(row.id) });
-    return view(saved);
+    return view(book.recompute(p, row, { cause: 'recalc' }));
   });
 
   const purgeQuery = strictObject({ confirm_recent: { type: 'boolean' } }, []);
@@ -343,18 +318,7 @@ export function shiftRoutes(
       ) {
         throw invalid('/confirm_recent', 'is required (true) to delete a shift under 7 years old');
       }
-      const tripKeys = processing.tripsOf(row.id).map((t) => t.tripKey);
-      const overrideKeys = processing.overridesOf(row.id).map((o) => o.tripKey);
-      const odometerIds = odometer.idsOfShift(row.id).map(String);
-      shifts.purge(row.id);
-      emit('shift.deleted', {
-        shiftId: String(row.id),
-        userId: String(p.userId),
-        clientId: row.clientId,
-        tripKeys,
-        overrideKeys,
-        odometerIds,
-      });
+      book.purge(p, row);
       return reply.status(204).send();
     },
   );
@@ -386,49 +350,28 @@ export function shiftRoutes(
     if (b.manifest && b.manifest.first_seq > b.manifest.last_seq) {
       throw invalid('/manifest/first_seq', 'must not be after last_seq');
     }
-    const ended = {
-      status: 'ended' as const,
-      endedAt: b.ended_at,
-      updatedAt: b.ended_at,
-      ...touch(p),
-      phoneTotalM: b.phone_result?.total_m ?? null,
-      phoneCalcVersion: b.phone_result?.calc_version ?? null,
-      inputDigest: b.phone_result?.input_digest ?? null,
-      interruptionsJson: b.interruptions ? JSON.stringify(b.interruptions) : null,
-      reconStatus: b.phone_result ? ('pending' as const) : ('phone_missing' as const),
-    };
-    if (!processor || !trackingOn()) {
-      const saved = shifts.update(row.id, ended) ?? row;
-      emit('shift.ended', { shiftId: String(row.id) });
-      return view(saved);
-    }
     const phone = b.phone_result;
-    const outcome = processor.run(
-      { ...row, ...ended },
-      {
-        manifest: b.manifest && {
-          firstSeq: b.manifest.first_seq,
-          lastSeq: b.manifest.last_seq,
-          pointCount: b.manifest.point_count,
-        },
-        result: phone && {
-          calcVersion: phone.calc_version,
-          segmenter: phone.segmenter,
-          inputDigest: phone.input_digest,
-          totalM: phone.total_m,
-          activeM: phone.active_m,
-          deadheadM: phone.deadhead_m,
-          personalM: phone.personal_m,
-          tripsCount: phone.trips_count,
-        },
-        reason: 'shift_end',
+    const ended = book.end(p, row, {
+      endedAt: b.ended_at,
+      manifest: b.manifest && {
+        firstSeq: b.manifest.first_seq,
+        lastSeq: b.manifest.last_seq,
+        pointCount: b.manifest.point_count,
       },
-      ended,
-    );
-    emit('shift.ended', { shiftId: String(row.id) });
-    if (stopsOn()) emit('stops.derived', { shiftId: String(row.id) });
-    const sent = reconView(outcome.shift);
-    return { ...view(outcome.shift), ...(sent ? { recon: sent } : {}) };
+      result: phone && {
+        calcVersion: phone.calc_version,
+        segmenter: phone.segmenter,
+        inputDigest: phone.input_digest,
+        totalM: phone.total_m,
+        activeM: phone.active_m,
+        deadheadM: phone.deadhead_m,
+        personalM: phone.personal_m,
+        tripsCount: phone.trips_count,
+      },
+      interruptions: b.interruptions,
+    });
+    const sent = reconView(ended);
+    return { ...view(ended), ...(sent ? { recon: sent } : {}) };
   });
 
   app.put(
@@ -452,7 +395,7 @@ export function shiftRoutes(
         readingM: b.reading_m,
         recordedAt: b.recorded_at,
       });
-      if (device(p)) shifts.update(row.id, touch(p));
+      book.touch(p, row);
       if (old && old.readingM !== saved.readingM) {
         emit('edit.overwritten', {
           userId: String(p.userId),

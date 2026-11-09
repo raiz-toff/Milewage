@@ -2,7 +2,7 @@ import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import { createExpenseRepository, createVehicleRepository, type Db } from '../db';
 import { ProblemError } from '../errors';
-import { doubleCounts } from '../expense-math';
+import type { MileageDeduction } from '../mileage-deduction';
 import { idParams, strictObject } from './util';
 
 const date = { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' };
@@ -39,10 +39,12 @@ export function maintenanceRoutes({
   db,
   now,
   authn,
+  deduction,
 }: {
   db: Db;
   now: () => number;
   authn: Authenticator;
+  deduction: MileageDeduction;
 }) {
   return ({ app, registry }: ServerRouteHost) => {
     const vehicles = createVehicleRepository(db);
@@ -70,7 +72,7 @@ export function maintenanceRoutes({
         // The cost of a linked entry is read from its expense.
         cost_cents: e ? e.amountCents : r.costCents,
         expense_id: r.expenseId,
-        double_counts: e ? doubleCounts(db, userId, e) : false,
+        double_counts: e ? deduction.doubleCounts(userId, e) : false,
         notes: r.notes,
         created_at: r.createdAt,
       };

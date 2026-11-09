@@ -4,12 +4,11 @@ import {
   createBackupRepository,
   createExpenseRepository,
   createGoalRepository,
-  createSettingsRepository,
   type Db,
 } from './db';
 import { goalViewer } from './routes/goals';
 import { shownTax } from './tax-report';
-import { localDate } from './time';
+import type { DriverContexts } from './driver-context';
 
 export type NotificationKind =
   | 'badge'
@@ -95,19 +94,19 @@ const OVERDUE_MS = 36 * 3_600_000;
  */
 export function evaluate(
   c: NotifyContext & {
+    drivers: DriverContexts;
     registry: ModuleRegistry;
     taxCountries: readonly string[];
     override?: 'replace' | 'sum';
   },
   userId: number,
 ) {
-  const prefs = createSettingsRepository(c.db).get(userId);
-  if (!prefs) return;
-  const today = localDate(c.now(), prefs.timezone);
+  const driver = c.drivers.of(userId);
+  const today = driver.today();
   const inDays = (date: string) =>
     (Date.parse(`${date}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / DAY;
 
-  const tax = shownTax(prefs.country, prefs.region, c.taxCountries);
+  const tax = shownTax(driver.country, driver.region, c.taxCountries);
   if (c.registry.isEnabled('tax') && tax) {
     const year = Number(today.slice(0, 4));
     const dates = (y: number) => tax.pack.deadlines(y, tax.place);
@@ -128,7 +127,12 @@ export function evaluate(
     }
   }
   if (c.registry.isEnabled('goals')) {
-    const view = goalViewer({ db: c.db, now: c.now, registry: c.registry, override: c.override });
+    const view = goalViewer({
+      db: c.db,
+      drivers: c.drivers,
+      registry: c.registry,
+      override: c.override,
+    });
     for (const g of createGoalRepository(c.db).list(userId)) {
       if (g.active !== 1) continue;
       const p = view(userId, g).progress;

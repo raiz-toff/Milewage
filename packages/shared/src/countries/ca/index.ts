@@ -120,7 +120,7 @@ export const caCountry: CountryModule = {
   tax: caTax,
   mileage: {
     yearStarts: '01-01',
-    // The driver chooses per vehicle and year (deduction-method.ts), in every country today.
+    // The driver chooses per vehicle and year (apps/server mileage-deduction.ts), in every country today.
     methods: ['per_distance', 'actual_costs'],
     rates: { car: allowance, van: allowance, motorcycle: allowance },
   },

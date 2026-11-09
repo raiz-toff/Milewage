@@ -3,7 +3,6 @@ import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import {
   createEarningsRepository,
-  createSettingsRepository,
   ENTRY_TYPES,
   totalOf,
   type Db,
@@ -12,10 +11,11 @@ import {
   type EffectiveOptions,
   type EntryType,
 } from '../db';
+import type { DriverContexts } from '../driver-context';
 import { ProblemError } from '../errors';
 import { platformKnown } from './platforms';
-import { refParam, shiftReader } from './shift-access';
-import { strictObject } from './util';
+import { refParam, strictObject, type Principal } from './util';
+import type { ShiftBook } from '../processing/shift-book';
 
 /** What counts as earnings right now: labels (stops on), typed rows (earnings on), and the override rule. */
 export interface EarningsPolicy {
@@ -25,13 +25,12 @@ export interface EarningsPolicy {
 }
 
 export function createEarningsPolicy(
-  db: Db,
+  drivers: DriverContexts,
   registry: ModuleRegistry,
   override: 'replace' | 'sum' = 'replace',
 ): EarningsPolicy {
-  const settings = createSettingsRepository(db);
   const options = (userId: number, platform?: string): EffectiveOptions => ({
-    labels: registry.isEnabled('stops') && settings.get(userId)?.stopsEnabled === 1,
+    labels: drivers.of(userId).stopsOn,
     entries: registry.isEnabled('earnings'),
     override,
     ...(platform === undefined ? {} : { platform }),
@@ -113,18 +112,20 @@ export const earningsView = (e: EarningsRow, ledger: EarningEntry[]) => ({
 /** Module `earnings` (18 section 4.3): the driver's typed total per shift and platform. Web session only. */
 export function earningsRoutes({
   db,
+  book,
   now,
   authn,
   policy,
 }: {
   db: Db;
+  book: ShiftBook;
   now: () => number;
   authn: Authenticator;
   policy: (registry: ModuleRegistry) => EarningsPolicy;
 }) {
   return ({ app, registry, bus }: ServerRouteHost) => {
     const repo = createEarningsRepository(db);
-    const read = shiftReader(db, now);
+    const read = (p: Principal, ref: string) => book.find(p, ref);
     /** The shift, when earnings may be written to it for this platform. */
     const writable = (me: Parameters<typeof read>[0], ref: string, platform: string) => {
       const shift = read(me, ref);

@@ -1,4 +1,4 @@
-import type { DeductionMethod } from '../deduction-method';
+import type { DeductionMethod } from '../mileage-deduction';
 import type { Db } from './open';
 
 export interface TaxYearRow {

@@ -1,7 +1,8 @@
 import { DIAGNOSED_MODULES, validateEvent } from '@milewage/shared';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
-import { createSettingsRepository, type Db } from '../db';
+import { type Db } from '../db';
+import type { DriverContexts } from '../driver-context';
 import type { DiskState } from '../disk';
 import { effectiveLevel } from '../diagnostics/recorder';
 import type { DiagnosticsStore } from '../diagnostics/store';
@@ -49,6 +50,7 @@ function reasonOf(text: string): Reason {
 /** `POST /diagnostics/events` (16 section 7.2): devices send phone sources, a web session sends `web`. */
 export function diagnosticsRoutes({
   db,
+  drivers,
   now,
   authn,
   store,
@@ -59,6 +61,7 @@ export function diagnosticsRoutes({
   bundle = true,
 }: {
   db: Db;
+  drivers: DriverContexts;
   now: () => number;
   authn: Authenticator;
   store: () => DiagnosticsStore;
@@ -73,7 +76,6 @@ export function diagnosticsRoutes({
   observe?: (app: ServerRouteHost['app']) => void;
 }) {
   return ({ app, registry }: ServerRouteHost) => {
-    const settings = createSettingsRepository(db);
     observe?.(app);
 
     app.get('/diagnostics/events', { schema: { querystring: listQuery } }, async (req) => {
@@ -269,7 +271,7 @@ export function diagnosticsRoutes({
         const device = principal.kind === 'device';
         const events = (req.body as { events: unknown[] }).events;
         const t = now();
-        const row = settings.get(principal.userId);
+        const row = drivers.of(principal.userId).settings;
         const level = effectiveLevel(row, t);
         const result = {
           accepted: 0,

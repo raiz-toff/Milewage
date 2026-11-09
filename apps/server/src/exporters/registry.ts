@@ -1,4 +1,6 @@
 import type { EffectiveRow } from '../db';
+import type { DriverContext } from '../driver-context';
+import type { MileageDeduction } from '../mileage-deduction';
 import type { TaxReport } from '../tax-report';
 import type { Db, ShiftRow, StopLabelRow, StopRow, TripRow, VehicleRow } from '../db';
 
@@ -8,21 +10,18 @@ export interface ExportContext {
   userId: number;
   shifts: readonly ShiftRow[];
   vehicles: ReadonlyMap<number, VehicleRow>;
-  unit: 'km' | 'mi';
-  currency: string;
-  timeZone: string;
+  /** The owner's settings for this request: unit, currency, time zone, today, rates, stop detection. */
+  driver: DriverContext;
+  /** Mileage deductions, deduction methods and double-counted expenses. */
+  deduction: MileageDeduction;
   /** CSV only. */
   level: 'trip' | 'shift';
   /** Query parameters of the request that the standalone report exporters read. */
   query: { from?: string; to?: string; year?: number; category?: string; format?: string };
-  /** The owner's local date today. */
-  today: string;
   /** Whether a module is on (a report leaves out what a switched-off module would have said). */
   enabled(module: string): boolean;
   /** The tax report of a year; present when the `tax` module is on. */
   taxReport?: (year: number) => TaxReport;
-  /** True when the stops module and setting are on, so stops and labels may be read. */
-  stopsOn: boolean;
   readers: {
     trips(shiftId: number): TripRow[];
     stops(shiftId: number): StopRow[];

@@ -13,14 +13,10 @@ import { Authenticator } from './auth/authenticator';
 import { fileSecrets, secretsCodec, type SecretsStore } from './backup/secrets';
 import { createBackupService, type BackupService } from './backup/service';
 import { exportFormatsOn, type ServerConfig } from './config';
-import {
-  createBackupRepository,
-  createInstanceReader,
-  createSessionRepository,
-  createSettingsRepository,
-  type Db,
-} from './db';
+import { createInstanceReader, createSessionRepository, type Db } from './db';
 import type { DiskMonitor } from './disk';
+import { createDriverContexts, type DriverContexts } from './driver-context';
+import { createMileageDeduction, type MileageDeduction } from './mileage-deduction';
 import { createCaptureStore, stateOf } from './diagnostics/capture';
 import { openDiagnosticsStore, type DiagnosticsStore } from './diagnostics/store';
 import { csvExporter } from './exporters/csv';
@@ -28,10 +24,12 @@ import { geojsonExporter, gpxExporter } from './exporters/geo';
 import { createExporterRegistry, type ExporterRegistry } from './exporters/registry';
 import { expensesExporter, taxSummaryExporter } from './exporters/reports';
 import { serverModules, type ServerModule } from './modules';
-import { createShiftProcessor, type ShiftProcessor } from './processing/shift-processor';
+import { shiftPresenter, type ShiftPresenter } from './processing/presenter';
+import { createShiftBook, type ShiftBook } from './processing/shift-book';
 import { receiptsDirOf } from './receipts/store';
 import { createEarningsPolicy, type EarningsPolicy } from './routes/earnings';
 import { availableFormats } from './routes/exports';
+import { taxDeductionMethods } from './routes/tax';
 import { settingsReader } from './routes/settings';
 import { createServerState, type ServerState } from './state';
 
@@ -101,8 +99,14 @@ export interface ServerHost {
   /** `config/secrets.json`: the public key new backups are encrypted to. */
   readonly secrets: SecretsStore;
   readonly backup: BackupService;
-  /** The engine run at shift end, on late points, on a label and on recalculate. */
-  readonly processor: ShiftProcessor;
+  /** The owner's settings as the server sees them, read once per request or job. */
+  readonly drivers: DriverContexts;
+  /** Mileage deductions and deduction methods; the method comes from the `tax` module while it is on. */
+  readonly deduction: MileageDeduction;
+  /** The `Shift` object of the API, with flags and deduction. */
+  readonly present: ShiftPresenter;
+  /** Records, recomputes and announces every shift; the device read window. */
+  readonly book: ShiftBook;
   /** diagnostics.db, opened on first use; only the diagnostics and capture modules and the status page read it. */
   readonly diagnostics: { store: () => DiagnosticsStore; path: string; close(): void };
   /** The `Settings` response for a user (core, devices on pairing, sync). */
@@ -189,8 +193,8 @@ export function buildBackupService(o: {
   secrets?: SecretsStore;
   disk?: DiskMonitor;
 }) {
-  const settings = createSettingsRepository(o.db);
-  const owner = createBackupRepository(o.db);
+  // Only the owner's time zone is read here.
+  const drivers = createDriverContexts({ db: o.db, now: o.now, stopsModule: () => false });
   const instance = createInstanceReader(o.db);
   return createBackupService({
     db: o.db,
@@ -201,10 +205,7 @@ export function buildBackupService(o: {
     receiptsDir: receiptsDirOf(o.db),
     // Scheduled backups wait for the recovery key to be confirmed (08 section 2.3).
     ready: () => instance()?.setupConfirmedAt != null,
-    timeZone: () => {
-      const id = owner.ownerId();
-      return (id === undefined ? undefined : settings.get(id)?.timezone) ?? 'UTC';
-    },
+    timeZone: () => drivers.owner()?.timeZone ?? 'UTC',
   });
 }
 
@@ -254,6 +255,16 @@ function shareServices(
       : null;
   };
 
+  const drivers = createDriverContexts({
+    db,
+    now,
+    stopsModule: () => registry.isEnabled('stops'),
+  });
+  const deduction = createMileageDeduction({
+    db,
+    drivers,
+    methods: registry.isEnabled('tax') ? taxDeductionMethods(db) : undefined,
+  });
   const tuning = input.tuning ?? {};
   const exporters = tuning.exporters ?? serverExporters();
   const formatsOn = exportFormatsOn(exporters.formats(), config.settings, input.env ?? {});
@@ -278,17 +289,22 @@ function shareServices(
     disk,
     nightlyBackups: input.nightlyBackups ?? false,
     authn: new Authenticator(createSessionRepository(db), now),
+    drivers,
+    deduction,
+    present: shiftPresenter(db, deduction),
     secrets,
     backup,
-    processor: createShiftProcessor({
+    book: createShiftBook({
       db,
       now,
-      stopsOn: () => registry.isEnabled('stops'),
+      drivers,
       emit: bus.emit,
+      trackingModule: () => registry.isEnabled('tracking'),
+      stopsModule: () => registry.isEnabled('stops'),
     }),
     diagnostics,
     readSettings: settingsReader({
-      db,
+      drivers,
       now,
       registry,
       countries: countryModules.codes(),
@@ -300,6 +316,6 @@ function shareServices(
     exporters,
     formatsOn,
     exportFormats,
-    earningsPolicy: (reg) => createEarningsPolicy(db, reg, config.comma.earningsOverride),
+    earningsPolicy: (reg) => createEarningsPolicy(drivers, reg, config.comma.earningsOverride),
   };
 }

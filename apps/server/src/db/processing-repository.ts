@@ -115,6 +115,8 @@ export function createProcessingRepository(db: Db) {
     updateTrip: (id: number, set: Partial<TripRow>): TripRow | undefined =>
       orm.update(trips).set(set).where(eq(trips.id, id)).returning().get(),
     deleteTrip: (id: number) => void orm.delete(trips).where(eq(trips.id, id)).run(),
+    /** A flag the engine does not derive (an imported shift's `imported`); a run replaces all flags. */
+    addFlag: (row: typeof shiftFlags.$inferInsert) => void orm.insert(shiftFlags).values(row).run(),
     overridesOf: (shiftId: number): OverrideRow[] =>
       orm.select().from(tripOverrides).where(eq(tripOverrides.shiftId, shiftId)).all(),
     findOverride: (shiftId: number, tripKey: string): OverrideRow | undefined =>

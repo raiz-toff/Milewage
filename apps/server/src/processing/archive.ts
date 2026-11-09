@@ -1,12 +1,7 @@
 import type { ModuleJob } from '@milewage/shared';
 import { algorithmVersion, simplifyRoute, type RoutePoint } from '@milewage/track-engine';
-import {
-  createArchiveRepository,
-  createProcessingRepository,
-  createSettingsRepository,
-  type Db,
-  type PointRow,
-} from '../db';
+import { createArchiveRepository, createProcessingRepository, type Db, type PointRow } from '../db';
+import { createDriverContexts } from '../driver-context';
 import type { EventEmit } from '../events';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -70,13 +65,13 @@ export interface ArchiverOptions {
 export function createArchiver({ db, now, emit, everyMs = DAY, log }: ArchiverOptions) {
   const archive = createArchiveRepository(db);
   const processing = createProcessingRepository(db);
-  const settings = createSettingsRepository(db);
+  const drivers = createDriverContexts({ db, now, stopsModule: () => false });
 
   const run = (): number => {
     let done = 0;
     for (const c of archive.candidates()) {
       if (done >= BATCH) break;
-      const days = settings.get(c.userId)?.rawRetentionDays ?? 90;
+      const days = drivers.find(c.userId)?.settings.rawRetentionDays ?? 90;
       const finalized = c.status === 'finalized';
       const due = finalized
         ? c.calcVersion === algorithmVersion && c.endedAt <= now() - days * DAY

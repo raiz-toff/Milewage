@@ -2,18 +2,19 @@ import { countryModules, resolvePlace, type ModuleRegistry } from '@milewage/sha
 import {
   createEarningsRepository,
   createExpenseRepository,
-  createProcessingRepository,
-  createSettingsRepository,
   createTaxRepository,
   totalOf,
   type Db,
 } from './db';
-import { deductibleCents, doubleCounts } from './expense-math';
+import type { DriverContexts } from './driver-context';
+import { deductibleCents } from './expense-math';
+import type { MileageDeduction } from './mileage-deduction';
 import { createEarningsPolicy } from './routes/earnings';
-import { deductionOfShift } from './processing/presenter';
 
 export interface TaxReportOptions {
   db: Db;
+  drivers: DriverContexts;
+  deduction: MileageDeduction;
   registry: ModuleRegistry;
   /** `comma.tax_countries`: countries whose estimate is not hidden. */
   countries: readonly string[];
@@ -37,11 +38,11 @@ export function shownTax(
 
 /** Everything `GET /tax/{year}` and the `tax_summary` export say, computed at read time (18 section 7.2). */
 export function taxReport(o: TaxReportOptions, userId: number, year: number, collectedCents = 0) {
-  const settings = createSettingsRepository(o.db).get(userId);
+  const driver = o.drivers.of(userId);
   const tax = createTaxRepository(o.db);
   const inputs = tax.year(userId, year);
-  const country = settings?.country ?? '';
-  const { pack, place } = shownTax(country, settings?.region, o.countries) ?? {};
+  const country = driver.country;
+  const { pack, place } = shownTax(country, driver.region, o.countries) ?? {};
   const from = `${year}-01-01`;
   const to = `${year}-12-31`;
 
@@ -50,7 +51,7 @@ export function taxReport(o: TaxReportOptions, userId: number, year: number, col
   const base = {
     year,
     country,
-    region: settings?.region ?? null,
+    region: driver.region,
     supported: pack !== undefined,
     unverified: pack ? !pack.verified : true,
     set_aside_bp: inputs.setAsideBp,
@@ -76,7 +77,7 @@ export function taxReport(o: TaxReportOptions, userId: number, year: number, col
     userId,
     from,
     to,
-    createEarningsPolicy(o.db, o.registry, o.override).options(userId),
+    createEarningsPolicy(o.drivers, o.registry, o.override).options(userId),
   );
   const sum = (f: (r: (typeof rows)[number]) => number) => rows.reduce((a, r) => a + f(r), 0);
   const byPlatform = new Map<string, number>();
@@ -107,27 +108,23 @@ export function taxReport(o: TaxReportOptions, userId: number, year: number, col
   if (expensesOn) {
     for (const e of createExpenseRepository(o.db).between(userId, from, to)) {
       const ded = deductibleCents(e);
-      if (doubleCounts(o.db, userId, e)) doubleCounted += ded;
+      if (o.deduction.doubleCounts(userId, e)) doubleCounted += ded;
       else {
         expenses += ded;
         if (e.deductible === 1) credits += e.taxCreditCents;
       }
     }
   }
-  const shifts = createProcessingRepository(o.db).shiftsInPeriod(userId, from, to);
-  const mileage = shifts
-    .map((s) => deductionOfShift(o.db, s))
-    .filter((v): v is number => v !== null);
-  const mileageCents = mileage.reduce((a, b) => a + b, 0);
+  const mileage = o.deduction.ofPeriod(userId, from, to).cents;
 
   const est = income
     ? pack.estimate(
         {
           year,
-          region: settings?.region ?? null,
+          region: driver.region,
           incomeCents: income.total_cents,
           expensesCents: expenses,
-          mileageCents,
+          mileageCents: mileage ?? 0,
           setAsideBp: inputs.setAsideBp,
           salesTaxRegistered: inputs.salesTaxRegistered === 1,
           collectedCents,
@@ -164,7 +161,7 @@ export function taxReport(o: TaxReportOptions, userId: number, year: number, col
     deductions: {
       expenses_cents: expensesOn ? expenses : null,
       double_counted_cents: expensesOn ? doubleCounted : null,
-      mileage_cents: mileage.length === 0 ? null : mileageCents,
+      mileage_cents: mileage,
       vehicles: tax
         .vehicleYears(userId, year)
         .map((v) => ({ vehicle_id: v.vehicleId, method: v.method })),

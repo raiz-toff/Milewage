@@ -1,7 +1,8 @@
 import { statSync } from 'node:fs';
 import type { FastifyInstance } from 'fastify';
 import type { ModuleRegistry } from '@milewage/shared';
-import { createSettingsRepository, type BackupRunRow, type Db } from '../db';
+import { type BackupRunRow, type Db } from '../db';
+import type { DriverContexts } from '../driver-context';
 import type { DiskMonitor } from '../disk';
 import { createServerState, type ServerState } from '../state';
 import { SERVER_VERSION } from '../version';
@@ -40,6 +41,7 @@ export interface StatusContext {
   now: () => number;
   auth: AuthFn;
   registry: ModuleRegistry;
+  drivers: DriverContexts;
   state?: ServerState;
   disk?: DiskMonitor;
   /** The newest backup_runs row, if any. */
@@ -50,7 +52,6 @@ export interface StatusContext {
 
 /** `GET /system/status` (08 section 11, 10 section 11.1): web session only. */
 export function statusRoute(app: FastifyInstance, ctx: StatusContext) {
-  const settings = createSettingsRepository(ctx.db);
   const state = ctx.state ?? createServerState();
   const count = (sql: string) => ctx.db.prepare(sql).pluck().get() as number;
 
@@ -59,7 +60,7 @@ export function statusRoute(app: FastifyInstance, ctx: StatusContext) {
     const t = ctx.now();
     const disk = ctx.disk?.snapshot();
     const last = ctx.lastBackup?.();
-    const row = settings.get(userId);
+    const row = ctx.drivers.of(userId).settings;
     return {
       app_version: SERVER_VERSION,
       schema_version: count('SELECT count(*) FROM schema_migrations'),

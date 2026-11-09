@@ -1,8 +1,9 @@
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
-import { createShiftRepository, createTelemetryRepository, type Db, type NewPoint } from '../db';
+import { createTelemetryRepository, type Db, type NewPoint } from '../db';
 import { ProblemError } from '../errors';
-import type { ShiftProcessor } from '../processing/shift-processor';
+import type { ShiftPresenter } from '../processing/presenter';
+import type { ShiftBook } from '../processing/shift-book';
 import { overrideRoutes } from './trips';
 import { strictObject } from './util';
 
@@ -48,26 +49,26 @@ export function trackingRoutes({
   db,
   now,
   authn,
-  processor,
+  present,
+  book,
 }: {
   db: Db;
   now: () => number;
   authn: Authenticator;
-  processor?: ShiftProcessor;
+  present: ShiftPresenter;
+  book: ShiftBook;
 }) {
   return ({ app, bus }: ServerRouteHost) => {
-    const shifts = createShiftRepository(db);
     const telemetry = createTelemetryRepository(db);
-    if (processor) {
-      overrideRoutes(app, {
-        db,
-        now,
-        auth: authn.authenticate,
-        processor,
-        emit: bus.emit,
-        trackingOn: () => true,
-      });
-    }
+    overrideRoutes(app, {
+      db,
+      now,
+      auth: authn.authenticate,
+      present,
+      book,
+      emit: bus.emit,
+      trackingOn: () => true,
+    });
 
     app.post(
       '/telemetry/batch',
@@ -83,8 +84,7 @@ export function trackingRoutes({
           throw new ProblemError('payload_too_large', `At most ${MAX_POINTS} points per batch.`);
         }
         const t = now();
-        const shift = shifts.byRef(device.userId, b.shift_client_id, t - 14 * 24 * 60 * MIN);
-        if (!shift) throw new ProblemError('shift_not_found', 'No such shift.');
+        const shift = book.find(device, b.shift_client_id);
         if (shift.status === 'finalized') {
           throw new ProblemError(
             'shift_finalized',
@@ -131,7 +131,7 @@ export function trackingRoutes({
           }
         }
         const inserted = telemetry.insert(rows);
-        shifts.update(shift.id, { deviceTouchedAt: t });
+        book.touch(device, shift);
         const rejects: Record<string, number> = {};
         for (const r of rejected) rejects[r.code] = (rejects[r.code] ?? 0) + 1;
         bus.emit('telemetry.batch', {

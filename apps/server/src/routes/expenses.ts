@@ -3,19 +3,20 @@ import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import {
   createExpenseRepository,
-  createSettingsRepository,
   createShiftRepository,
   createVehicleRepository,
   type Db,
   type ExpenseRow,
   type NewExpense,
 } from '../db';
-import { deductibleCents, doubleCounts as doubleCountsOf } from '../expense-math';
+import { deductibleCents } from '../expense-math';
+import type { MileageDeduction } from '../mileage-deduction';
 import { ProblemError } from '../errors';
 import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { receiptsDirOf } from '../receipts/store';
-import { addInterval, localDate } from '../time';
+import { addInterval } from '../time';
+import type { DriverContexts } from '../driver-context';
 import { idParams, str, strictObject } from './util';
 
 const date = { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' };
@@ -65,19 +66,22 @@ export function expensesRoutes({
   db,
   now,
   authn,
+  drivers,
+  deduction,
 }: {
   db: Db;
   now: () => number;
+  drivers: DriverContexts;
+  deduction: MileageDeduction;
   authn: Authenticator;
 }) {
   return ({ app, bus }: ServerRouteHost) => {
     const repo = createExpenseRepository(db);
-    const settings = createSettingsRepository(db);
     const vehicles = createVehicleRepository(db);
     const shifts = createShiftRepository(db);
-    const today = (userId: number) => localDate(now(), settings.get(userId)?.timezone ?? 'UTC');
+    const today = (userId: number) => drivers.of(userId).today();
 
-    const doubleCounts = (userId: number, e: ExpenseRow) => doubleCountsOf(db, userId, e);
+    const doubleCounts = (userId: number, e: ExpenseRow) => deduction.doubleCounts(userId, e);
     const view = (userId: number, e: ExpenseRow) => ({
       id: e.id,
       spent_on: e.spentOn,

@@ -33,6 +33,11 @@ export const strictObject = (properties: object, required: string[], extra = {})
   ...extra,
 });
 export const idParams = strictObject({ id: { type: 'integer', minimum: 1 } }, ['id']);
+/** `{ref}` of a shift: its numeric id or its client UUID. */
+export const refParam = {
+  type: 'string',
+  pattern: '^([0-9]+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$',
+};
 
 /** A DB row as an API object: camelCase to snake_case, minus the columns that never leave the server. */
 export const snakeKeys = (row: object, ...hide: string[]) =>

@@ -3,24 +3,24 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import { createArchiveRepository, telemetryPoints, type Db } from '../db';
-import { refParam, shiftReader } from './shift-access';
-import { strictObject } from './util';
+import { refParam, strictObject, type Principal } from './util';
+import type { ShiftBook } from '../processing/shift-book';
 
 const params = strictObject({ ref: refParam }, ['ref']);
 
 /** `GET /shifts/{ref}/route`: the stored points as parallel arrays for the map and the scrubber (module `replay`). */
 export function replayRoutes({
   db,
-  now,
+  book,
   authn,
 }: {
   db: Db;
-  now: () => number;
+  book: ShiftBook;
   authn: Authenticator;
 }) {
   return ({ app }: ServerRouteHost) => {
     const orm = drizzle(db);
-    const read = shiftReader(db, now);
+    const read = (p: Principal, ref: string) => book.find(p, ref);
     const archives = createArchiveRepository(db);
 
     app.get('/shifts/:ref/route', { schema: { params } }, async (req) => {

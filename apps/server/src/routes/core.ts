@@ -16,10 +16,13 @@ import {
 } from '../db';
 import { COMMA_DEFAULTS, type CommaOptions } from '../comma-options';
 import { countriesRoute } from './countries';
+import type { DriverContexts } from '../driver-context';
+import type { MileageDeduction } from '../mileage-deduction';
+import type { ShiftPresenter } from '../processing/presenter';
 import { describeError, ProblemError } from '../errors';
 import { settingsRoutes } from './settings';
 import { statusRoute, type StatusContext } from './status';
-import type { ShiftProcessor } from '../processing/shift-processor';
+import type { ShiftBook } from '../processing/shift-book';
 import { odometerRoutes } from './odometer';
 import { shiftRoutes } from './shifts';
 import { createEarningsPolicy } from './earnings';
@@ -30,6 +33,9 @@ import { vehicleRoutes } from './vehicles';
 export interface CoreContext {
   db: Db;
   now: () => number;
+  drivers: DriverContexts;
+  deduction: MileageDeduction;
+  present: ShiftPresenter;
   /** Countries a driver may choose; defaults to every registered country (plan 21). */
   countries?: readonly string[];
   /** `config/secrets.json`; defaults to the `config` directory. */
@@ -43,8 +49,8 @@ export interface CoreContext {
   captureFor?: (userId: number, deviceId: number) => object | null;
   /** The owner's answers to the open questions of 18 section 16 (defaults in `comma-options.ts`). */
   comma?: Partial<CommaOptions>;
-  /** The engine run at shift end (tracking module); absent in a bare core. */
-  processor?: ShiftProcessor;
+  /** Records, recomputes and announces shifts. */
+  book: ShiftBook;
 }
 
 const str = (min: number, max = 1024) => ({ type: 'string', minLength: min, maxLength: max });
@@ -83,10 +89,13 @@ export function coreRoutes(
   {
     db,
     now,
+    drivers,
+    deduction,
+    present,
     countries = countryModules.codes(),
     secrets = fileSecrets('config'),
     status,
-    processor,
+    book,
     backupDownload,
     exportFormats,
     captureFor,
@@ -103,6 +112,7 @@ export function coreRoutes(
     const emit = bus.emit;
     settingsRoutes(app, {
       db,
+      drivers,
       now,
       auth,
       registry,
@@ -117,34 +127,26 @@ export function coreRoutes(
       taxShown: comma?.taxCountries ?? COMMA_DEFAULTS.taxCountries,
     });
     vehicleRoutes(app, { db, now, auth, emit });
-    odometerRoutes(app, { db, now, auth, emit });
+    odometerRoutes(app, { db, now, auth, emit, drivers });
     summaryRoute(app, {
       db,
       now,
       auth,
-      earnings: createEarningsPolicy(db, registry, comma?.earningsOverride),
+      drivers,
+      deduction,
+      earnings: createEarningsPolicy(drivers, registry, comma?.earningsOverride),
     });
-    statusRoute(app, { db, now, auth, registry, ...status });
-    shiftRoutes(app, {
+    statusRoute(app, { db, now, auth, registry, drivers, ...status });
+    shiftRoutes(app, { db, now, auth, present, book, emit });
+    tripRoutes(app, {
       db,
       now,
       auth,
-      processor,
+      present,
+      book,
       emit,
       trackingOn: () => registry.isEnabled('tracking'),
-      stopsOn: () => registry.isEnabled('stops'),
     });
-
-    if (processor) {
-      tripRoutes(app, {
-        db,
-        now,
-        auth,
-        processor,
-        emit,
-        trackingOn: () => registry.isEnabled('tracking'),
-      });
-    }
 
     const instanceRow = createInstanceReader(db);
     const setupState = () => {
