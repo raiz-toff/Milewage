@@ -14,3 +14,5 @@ To install or upgrade the server, see [`infra/docs/install.md`](../infra/docs/in
 Your own server also serves a Privacy page at `/privacy`. It says what your server keeps and what leaves it.
 
 Other files in the project: [`CHANGELOG.md`](../CHANGELOG.md), [`SECURITY.md`](../SECURITY.md) and [`DECISIONS.md`](../DECISIONS.md).
+
+For developers: architecture decisions from 2026-11-09 on are recorded in [`adr/`](adr/README.md); these guides stay for drivers.
