@@ -22,12 +22,25 @@ All notable changes to MileWage are listed here. The format follows
   host, and the list of modules exists once. The `modules` flags in `GET /settings` come from the
   registry. A wrong `MILEWAGE_MODULE_EXPORT_<FORMAT>` value now stops the server at start instead of
   failing the first settings read (ADR 0003).
+- One pairing link format, in the shared package, for the server, the web pair page and the phone
+  (`milewage://pair?v=1&u=&t=[&h=]` and `<server>/pair#v=1&t=[&h=]`).
+- The phone builds every request body it sends (shift create, notes, odometer, trip override, manual
+  trip, end, point batch) in one place, typed from the OpenAPI contract and checked against the
+  spec's schemas in tests. Odometer readings are rounded to whole metres on every path.
+- The phone keeps its sync halts (revoked, wrong server, sign-in problem) in one device session.
+  A wrong server is now a halt retried at the upload interval, not an offline error with backoff.
+  Settings shows its "Re-pair" message for a 403 as well as a 401.
 
 ### Fixed
 
 - With the tracking module switched off, a failed backup now produces the `backup_failed` inbox item
   and the diagnostics record. Before, the event emitter was only wired when tracking registered its
   routes, so those events were dropped.
+- The web pair page (camera fallback) dropped the home address from the app link, so a phone
+  paired through it could not use the home Wi-Fi address.
+- After pairing the phone again (by QR code or link code), queued shift creates and ends stayed
+  unsent until "Sync now" or a restart, and a wrong-server block was never cleared. Pairing again
+  now resumes everything.
 
 ### Docs
 

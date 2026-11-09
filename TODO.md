@@ -4,6 +4,12 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
 
 ## Open
 
+- [ ] **Try the re-pairing fixes on the phone** (AR3, 2026-11-09). (1) Revoke the phone on the web,
+      pair again with a new QR code: every queued shift (create and end, not only points) should be
+      sent within a minute. (2) The same with a link code on the home Wi-Fi. (3) Scan the QR with the
+      camera app, open the page, "Open in the MileWage app": Settings should show both addresses.
+      (4) After the "different MileWage server" banner, re-pair to the new server: sending should
+      resume without a restart.
 - [ ] **Make Node 22.22 the default on `coder`** (owner, 2026-11-08). `node --version` is v24.15.0;
       `.nvmrc` says 22.22.0. Verify runs use Node 22 only because `~/.local/node22/bin` is put first
       on `PATH`; a shell without it runs Node 24. Install 22.22 as the default (nvm is not
