@@ -30,6 +30,9 @@ All notable changes to MileWage are listed here. The format follows
 - The phone keeps its sync halts (revoked, wrong server, sign-in problem) in one device session.
   A wrong server is now a halt retried at the upload interval, not an offline error with backoff.
   Settings shows its "Re-pair" message for a 403 as well as a 401.
+- The web app sends every change through one write path and refreshes every cached read after a
+  successful change (ADR 0004). Settings live in the same cache as every other read. One module,
+  `days.ts`, holds the driver's calendar day, week start and period ranges for every page.
 
 ### Fixed
 
@@ -41,6 +44,10 @@ All notable changes to MileWage are listed here. The format follows
 - After pairing the phone again (by QR code or link code), queued shift creates and ends stayed
   unsent until "Sync now" or a restart, and a wrong-server block was never cleared. Pairing again
   now resumes everything.
+- Expenses used the browser's UTC day for a new expense's date, the snooze date and the nearby
+  shifts, so a Toronto driver adding an expense after about 19:00 got tomorrow's date.
+- Figures on other pages stayed stale after a save: Tax kept the old total after an expense was
+  saved, and settings changes refreshed nothing.
 
 ### Docs
 
