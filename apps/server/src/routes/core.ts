@@ -157,6 +157,9 @@ export function coreRoutes(
 
     // Until the recovery key is confirmed only these routes answer (08 section 2.3). Login is added
     // to the spec's list: a driver who signed out before confirming must be able to sign back in.
+    // A request without a session is told to sign in (401) rather than to confirm (403): the web
+    // app shows the sign-in page first, so a driver on another browser or address can reach the
+    // confirm step instead of being stuck on it without a session.
     const openBeforeConfirm = [
       '/setup',
       '/setup/status',
@@ -174,6 +177,15 @@ export function coreRoutes(
       if (state !== 'needs_confirmation') return;
       const path = request.url.split('?')[0]!;
       if (!openBeforeConfirm.includes(path) && !path.startsWith(`${API_PREFIX}/errors/`)) {
+        try {
+          auth(request, 'SD');
+        } catch (e) {
+          if (
+            e instanceof ProblemError &&
+            (e.code === 'auth_required' || e.code === 'session_expired')
+          )
+            throw e;
+        }
         throw new ProblemError('setup_incomplete', 'Confirm the recovery key to finish setup.');
       }
     });

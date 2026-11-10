@@ -71,6 +71,15 @@ describe('recovery key at setup (10 section 4, 08 section 2.3)', () => {
     expect((await h.call('POST', '/auth/logout', undefined, { cookie })).statusCode).toBe(204);
   });
 
+  test('before the key is confirmed a request without a session is 401, not 403', async () => {
+    await h.signUpUnconfirmed();
+    // Another browser (or the same one at another address) has no session cookie: it must be
+    // sent to sign in, from where the confirm step is reachable.
+    const res = await h.call('GET', '/settings');
+    expect([res.statusCode, res.json().code]).toEqual([401, 'auth_required']);
+    expect((await h.call('GET', '/setup/status')).json()).toEqual({ state: 'needs_confirmation' });
+  });
+
   test('a driver who signed out before confirming can still sign in and confirm', async () => {
     const { cookie, recoveryKey } = await h.signUpUnconfirmed();
     await h.call('POST', '/auth/logout', undefined, { cookie });
