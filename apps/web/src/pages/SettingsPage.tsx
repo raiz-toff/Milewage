@@ -107,7 +107,7 @@ function ModuleFlags({ modules }: { modules: Settings['modules'] }) {
               className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
             >
               <span className="tabular-nums text-xs">{name}</span>
-              <Badge variant={on ? 'default' : 'outline'}>{on ? 'On' : 'Off'}</Badge>
+              <Badge variant={on ? 'secondary' : 'outline'}>{on ? 'On' : 'Off'}</Badge>
             </li>
           ))}
         </ul>
@@ -280,7 +280,7 @@ const visibleGroups = (modules: Settings['modules']) =>
 function SectionHeader({ section }: { section: Section }) {
   return (
     <div className="space-y-1">
-      <h2 className="text-lg font-semibold tracking-tight">{section.label}</h2>
+      <h2 className="text-title-large text-on-surface">{section.label}</h2>
       <p className="text-sm text-muted-foreground">{section.description}</p>
       {section.saves ? (
         <p className="text-xs text-muted-foreground">{SAVES[section.saves]}</p>
@@ -345,7 +345,7 @@ function PrefsForm({ prefs, children }: { prefs: Prefs; children: ReactNode }) {
       {children}
       <div
         className={cn(
-          'flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background/95 px-4 py-3',
+          'flex flex-wrap items-center justify-between gap-3 rounded-large bg-surface-container px-4 py-3 shadow-elevation-2',
           dirty && 'sticky bottom-4 z-10 border-primary/40 shadow-lg backdrop-blur',
         )}
       >

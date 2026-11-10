@@ -1,21 +1,21 @@
 import type { ReactNode } from 'react';
 import {
-  CalendarClock,
-  CalendarDays,
-  Car,
-  ChartLine,
-  DatabaseBackup,
-  FileDown,
-  Gauge,
-  Landmark,
-  LayoutDashboard,
-  Receipt,
-  Settings,
-  Smartphone,
-  Target,
-  Trophy,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+  AnalyticsIcon,
+  BackupsIcon,
+  DashboardIcon,
+  DevicesIcon,
+  ExpensesIcon,
+  ExportsIcon,
+  GoalsIcon,
+  OdometerIcon,
+  ProgressIcon,
+  ScheduleIcon,
+  SettingsIcon,
+  ShiftsIcon,
+  TaxIcon,
+  VehiclesIcon,
+} from '@/ui/icons';
+import type { IconComponent } from '@/ui/icons';
 import type { Modules, Settings as SettingsRecord } from './api/client';
 import { helpScreen } from './help';
 import { AnalyticsPage } from './pages/Analytics';
@@ -59,7 +59,7 @@ export interface Screen {
   visible?: (flags: ScreenFlags) => boolean;
   element: ReactNode;
   /** Sidebar entry. Absent means not in the sidebar (the header bell opens Notifications). */
-  nav?: { icon: LucideIcon; group: NavGroup };
+  nav?: { icon: IconComponent; group: NavGroup };
 }
 
 export type NavGroup = 'overview' | 'money' | 'vehicle' | 'system';
@@ -77,74 +77,74 @@ export const screens: Screen[] = [
     path: '/dashboard',
     label: 'Dashboard',
     element: <Dashboard />,
-    nav: { icon: LayoutDashboard, group: 'overview' },
+    nav: { icon: DashboardIcon, group: 'overview' },
   },
   {
     path: '/shifts/*',
     label: 'Shifts',
     element: <ShiftsRoutes />,
-    nav: { icon: CalendarDays, group: 'overview' },
+    nav: { icon: ShiftsIcon, group: 'overview' },
   },
   {
     path: '/schedule',
     label: 'Schedule',
     visible: (m) => m.schedule,
     element: <SchedulePage />,
-    nav: { icon: CalendarClock, group: 'overview' },
+    nav: { icon: ScheduleIcon, group: 'overview' },
   },
   {
     path: '/analytics',
     label: 'Analytics',
     visible: (m) => m.analytics,
     element: <AnalyticsPage />,
-    nav: { icon: ChartLine, group: 'money' },
+    nav: { icon: AnalyticsIcon, group: 'money' },
   },
   {
     path: '/expenses',
     label: 'Expenses',
     visible: (m) => m.expenses,
     element: <ExpensesPage />,
-    nav: { icon: Receipt, group: 'money' },
+    nav: { icon: ExpensesIcon, group: 'money' },
   },
   {
     path: '/goals',
     label: 'Goals',
     visible: (m) => m.goals,
     element: <GoalsPage />,
-    nav: { icon: Target, group: 'money' },
+    nav: { icon: GoalsIcon, group: 'money' },
   },
   {
     path: '/progress',
     label: 'Progress',
     visible: (m) => m.progress,
     element: <ProgressPage />,
-    nav: { icon: Trophy, group: 'money' },
+    nav: { icon: ProgressIcon, group: 'money' },
   },
   {
     path: '/tax',
     label: 'Tax',
     visible: (m) => m.tax,
     element: <TaxPage />,
-    nav: { icon: Landmark, group: 'money' },
+    nav: { icon: TaxIcon, group: 'money' },
   },
   {
     path: '/exports',
     label: 'Exports',
     visible: (m) => m.exporters.length > 0,
     element: <ExportsPage />,
-    nav: { icon: FileDown, group: 'money' },
+    nav: { icon: ExportsIcon, group: 'money' },
   },
   {
     path: '/vehicles',
     label: 'Vehicles',
     element: <VehiclesPage />,
-    nav: { icon: Car, group: 'vehicle' },
+    nav: { icon: VehiclesIcon, group: 'vehicle' },
   },
   {
     path: '/odometer',
     label: 'Odometer',
     element: <OdometerPage />,
-    nav: { icon: Gauge, group: 'vehicle' },
+    nav: { icon: OdometerIcon, group: 'vehicle' },
   },
   {
     path: '/notifications',
@@ -157,19 +157,19 @@ export const screens: Screen[] = [
     label: 'Devices',
     visible: (m) => m.devices,
     element: <Devices />,
-    nav: { icon: Smartphone, group: 'system' },
+    nav: { icon: DevicesIcon, group: 'system' },
   },
   {
     path: '/backups',
     label: 'Backups',
     element: <Backups />,
-    nav: { icon: DatabaseBackup, group: 'system' },
+    nav: { icon: BackupsIcon, group: 'system' },
   },
   {
     path: '/settings/*',
     label: 'Settings',
     element: <SettingsPage />,
-    nav: { icon: Settings, group: 'system' },
+    nav: { icon: SettingsIcon, group: 'system' },
   },
   helpScreen,
   {

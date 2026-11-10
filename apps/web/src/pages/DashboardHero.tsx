@@ -50,9 +50,12 @@ function Tile({ label, value, note }: { label: string; value: ReactNode; note?: 
   return (
     <Card size="sm" role="group" aria-label={label}>
       <CardContent className="space-y-0.5">
-        <p className="text-lg font-semibold tracking-tight tabular-nums sm:text-xl">{value}</p>
-        <p className="text-xs text-muted-foreground">{label}</p>
-        {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}
+        {/* Three tiles share a phone's width: the figure steps down a size there, unbroken. */}
+        <p className="text-title-medium font-medium whitespace-nowrap tabular-nums sm:text-title-large">
+          {value}
+        </p>
+        <p className="text-body-small text-on-surface-variant">{label}</p>
+        {note ? <p className="text-body-small text-on-surface-variant">{note}</p> : null}
       </CardContent>
     </Card>
   );
@@ -104,10 +107,8 @@ function PeriodFigures({
     <div className="space-y-3">
       <Card role="region" aria-label="Earned">
         <CardContent className="space-y-2 py-2">
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Earned, after app fees
-          </p>
-          <p className="text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl">
+          <p className="text-label-medium text-on-surface-variant">Earned, after app fees</p>
+          <p className="text-display-small font-medium tabular-nums sm:text-display-medium">
             {earned === null ? missing.value : money(earned)}
           </p>
           <p className="text-sm text-muted-foreground tabular-nums">

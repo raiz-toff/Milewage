@@ -18,7 +18,9 @@ export function PairPage() {
   const link = code ? pairingLinks(code).appLink : '';
   return (
     <main className="mx-auto max-w-md space-y-4 p-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Connect your phone to MileWage</h1>
+      <h1 className="text-headline-small text-on-surface md:text-headline-medium">
+        Connect your phone to MileWage
+      </h1>
       {ok ? (
         <>
           <p className="text-muted-foreground">

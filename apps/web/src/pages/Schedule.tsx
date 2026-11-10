@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { keepPreviousData } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon } from '@/ui/icons';
 import { PageHeader, Section } from '../ui/layout';
 import { Button as UiButton } from '@/components/ui/button';
 import type { FormEvent } from 'react';
@@ -8,7 +8,7 @@ import { errorText, useApiQuery, useChange } from '../api/query';
 import { useSettings } from '../session';
 import { formatClock } from '../format';
 import { Button, Field, FormError, TimeField } from '../ui/form';
-import { monthGrid, period, todayIn } from '../days';
+import { dateWords, monthGrid, period, todayIn } from '../days';
 
 const NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; // bit 0 is Monday (18 section 9)
 /** Schedule (module `schedule`, off by default): plan shifts ahead, repeating templates, off days. A plan is not a record. */
@@ -78,9 +78,11 @@ export function SchedulePage() {
             aria-label="Previous month"
             onClick={() => shift(-1)}
           >
-            <ChevronLeft />
+            <ChevronLeftIcon />
           </UiButton>
-          <span className="min-w-20 text-center font-medium tabular-nums">{from.slice(0, 7)}</span>
+          <span className="min-w-36 text-center text-title-medium text-on-surface tabular-nums">
+            {dateWords(from, { month: 'long', year: 'numeric' })}
+          </span>
           <UiButton
             type="button"
             variant="ghost"
@@ -88,7 +90,7 @@ export function SchedulePage() {
             aria-label="Next month"
             onClick={() => shift(1)}
           >
-            <ChevronRight />
+            <ChevronRightIcon />
           </UiButton>
           <span className="flex-1" />
           <UiButton
@@ -102,12 +104,12 @@ export function SchedulePage() {
             Fill this month from templates
           </UiButton>
         </div>
-        <table className="w-full table-fixed border-separate border-spacing-1 text-sm">
+        <table className="w-full table-fixed border-separate border-spacing-1 text-body-medium">
           <caption className="sr-only">Planned shifts</caption>
-          <thead className="text-muted-foreground">
+          <thead className="text-on-surface-variant">
             <tr>
               {Array.from({ length: 7 }, (_, i) => (
-                <th key={i} className="pb-1 text-xs font-medium">
+                <th key={i} className="pb-1 text-label-medium">
                   {NAMES[(weekStart + 6 + i) % 7]}
                 </th>
               ))}
@@ -119,15 +121,15 @@ export function SchedulePage() {
                 {week.map((d, i) => (
                   <td
                     key={i}
-                    className={`h-24 rounded-lg align-top ${d ? (day === d ? 'bg-primary/15 ring-1 ring-primary' : offOn.has(d) ? 'bg-muted' : 'border bg-card') : ''}`}
+                    className={`h-24 rounded-small align-top ${d ? (day === d ? 'bg-secondary-container ring-2 ring-primary' : offOn.has(d) ? 'bg-surface-container-highest' : 'border border-outline-variant') : ''}`}
                   >
                     {d ? (
-                      <div className="space-y-1 p-1.5">
+                      <div className="space-y-1 p-1 sm:p-1.5">
                         <button
                           type="button"
                           aria-label={`Plan ${d}`}
                           aria-pressed={day === d}
-                          className="block w-full rounded text-left text-xs text-muted-foreground hover:text-foreground"
+                          className="block w-full rounded-extra-small text-left text-label-medium text-on-surface-variant focus-ring hover:text-on-surface"
                           onClick={() => setDay(d)}
                         >
                           {Number(d.slice(8))}
@@ -138,14 +140,20 @@ export function SchedulePage() {
                           .map((x) => (
                             <div
                               key={x.id}
-                              className="flex items-center justify-between rounded bg-primary px-1.5 py-0.5 text-[11px] font-medium text-primary-foreground"
+                              // On a phone the day is narrow: the start time over the remove
+                              // button; from `sm` up, start to end and the button in one row.
+                              className="flex flex-col items-center rounded-small bg-secondary-container py-0.5 text-label-small text-on-secondary-container sm:h-6 sm:flex-row sm:justify-between sm:gap-1 sm:py-0 sm:pl-2"
                             >
-                              <span>
+                              <span className="max-w-full truncate tracking-tight tabular-nums sm:hidden">
+                                {formatClock(x.start_time, timeFormat)}
+                              </span>
+                              <span className="hidden truncate tabular-nums sm:inline">
                                 {formatClock(x.start_time, timeFormat)}-
                                 {formatClock(x.end_time, timeFormat)}
                               </span>
                               <button
                                 type="button"
+                                className="relative grid size-6 shrink-0 place-items-center rounded-full state-layer focus-ring"
                                 aria-label={`Remove ${d} ${x.start_time}`}
                                 onClick={() =>
                                   void change.run((api) =>
@@ -155,7 +163,7 @@ export function SchedulePage() {
                                   )
                                 }
                               >
-                                ×
+                                <CloseIcon className="size-4" />
                               </button>
                             </div>
                           ))}
@@ -169,7 +177,9 @@ export function SchedulePage() {
         </table>
       </Section>
       {day ? (
-        <Section title={`Plan ${day}`}>
+        <Section
+          title={`Plan ${dateWords(day, { weekday: 'long', month: 'long', day: 'numeric' })}`}
+        >
           <form className="flex flex-wrap items-end gap-3" onSubmit={addEntry}>
             <TimeField
               label="From"
@@ -187,7 +197,6 @@ export function SchedulePage() {
             <UiButton
               type="button"
               variant="outline"
-              size="sm"
               onClick={() =>
                 void change.run(async (api) =>
                   offOn.has(day)
@@ -207,9 +216,9 @@ export function SchedulePage() {
         </Section>
       ) : null}
       <Section label="Templates" title="Repeating shifts">
-        <ul className="divide-y text-sm">
+        <ul className="divide-y divide-outline-variant text-body-medium">
           {data?.templates.map((t) => (
-            <li key={t.id} className="flex items-center gap-3 py-1.5">
+            <li key={t.id} className="flex min-h-12 items-center justify-between gap-3 py-1">
               <span>
                 {t.label}: {NAMES.filter((_, i) => t.weekdays & (1 << i)).join(' ')}{' '}
                 {formatClock(t.start_time, timeFormat)}-{formatClock(t.end_time, timeFormat)}
@@ -219,6 +228,7 @@ export function SchedulePage() {
                 aria-label={`Delete template ${t.label}`}
                 variant="ghost"
                 size="sm"
+                className="text-error"
                 onClick={() =>
                   void change.run((api) =>
                     api.DELETE('/schedule/templates/{id}', { params: { path: { id: t.id } } }),
@@ -237,17 +247,24 @@ export function SchedulePage() {
             maxLength={60}
             onChange={(e) => setTpl({ ...tpl, label: e.target.value })}
           />
-          {NAMES.map((n, i) => (
-            <label key={n} className="flex items-center gap-1 text-sm">
-              <input
-                type="checkbox"
-                className="size-4 accent-primary"
-                checked={(tpl.days & (1 << i)) !== 0}
-                onChange={() => setTpl({ ...tpl, days: tpl.days ^ (1 << i) })}
-              />
-              {n}
-            </label>
-          ))}
+          {/* The weekdays as Material filter chips: each one is a checkbox under its chip. */}
+          <div role="group" aria-label="Days" className="flex flex-wrap gap-2 self-center">
+            {NAMES.map((n, i) => (
+              <label
+                key={n}
+                className="relative flex h-8 cursor-pointer items-center gap-2 rounded-small border border-outline-variant px-4 text-label-large text-on-surface-variant state-layer select-none has-checked:border-transparent has-checked:bg-secondary-container has-checked:pl-2 has-checked:text-on-secondary-container has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring"
+              >
+                <input
+                  type="checkbox"
+                  className="peer sr-only"
+                  checked={(tpl.days & (1 << i)) !== 0}
+                  onChange={() => setTpl({ ...tpl, days: tpl.days ^ (1 << i) })}
+                />
+                <CheckIcon className="hidden size-[18px] peer-checked:block" />
+                {n}
+              </label>
+            ))}
+          </div>
           <TimeField
             label="Template from"
             timeFormat={timeFormat}
@@ -260,7 +277,7 @@ export function SchedulePage() {
             value={tpl.end}
             onChange={(v) => setTpl({ ...tpl, end: v })}
           />
-          <Button type="submit" busy={tpl.label.trim() === '' || tpl.days === 0}>
+          <Button type="submit" variant="tonal" busy={tpl.label.trim() === '' || tpl.days === 0}>
             Add repeating shift
           </Button>
         </form>

@@ -113,6 +113,7 @@ export function EarningLedger({
                     type="button"
                     variant="ghost"
                     size="sm"
+                    className="text-error"
                     aria-label={`Remove ${text}`}
                     onClick={() => remove(r.platform, x.id)}
                   >
@@ -125,7 +126,10 @@ export function EarningLedger({
         </div>
       ))}
       <FormError message={error} />
-      <form className="grid max-w-2xl gap-3 sm:grid-cols-5" onSubmit={(e) => void add(e)}>
+      <form
+        className="grid max-w-2xl gap-3 @md:grid-cols-2 @2xl:grid-cols-4 [&>button]:justify-self-start @2xl:[&>button]:self-center"
+        onSubmit={(e) => void add(e)}
+      >
         <SelectField
           label="Line platform"
           value={platform}
@@ -160,7 +164,7 @@ export function EarningLedger({
           value={form.note}
           onChange={(e) => setForm({ ...form, note: e.target.value })}
         />
-        <Button type="submit" busy={form.amount === ''}>
+        <Button type="submit" variant="tonal" busy={form.amount === ''}>
           Add line
         </Button>
       </form>

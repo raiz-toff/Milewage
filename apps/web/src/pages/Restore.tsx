@@ -59,11 +59,13 @@ export function Restore({ onBack }: { onBack: () => void }) {
   return (
     <Card title="Restore from a backup">
       <form onSubmit={(e) => void submit(e)} className="space-y-4">
-        <label className="block space-y-1">
-          <span className="text-sm text-muted-foreground">Backup file (.db.gz.age)</span>
+        <label className="block space-y-2">
+          <span className="block text-body-small text-on-surface-variant">
+            Backup file (.db.gz.age)
+          </span>
           <input
             type="file"
-            className="block w-full text-sm"
+            className="block w-full"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
         </label>

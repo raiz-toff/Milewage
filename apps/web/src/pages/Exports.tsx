@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { Download } from 'lucide-react';
+import { DownloadIcon } from '@/ui/icons';
 import { Button as UiButton } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { PageHeader, Section } from '../ui/layout';
@@ -106,7 +106,7 @@ export function ExportButtons({ selection }: { selection: Selection }) {
             disabled={busy !== null}
             onClick={() => void run(f)}
           >
-            <Download />
+            <DownloadIcon />
             {`Download ${LABEL[f]}`}
           </UiButton>
         ))}
@@ -228,7 +228,7 @@ export function ExportsPage() {
           disabled={busy !== null || problem !== null}
           onClick={() => void run(f)}
         >
-          <Download />
+          <DownloadIcon />
           Download
         </UiButton>
       </div>

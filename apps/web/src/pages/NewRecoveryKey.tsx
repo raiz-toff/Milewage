@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { KeyRound } from 'lucide-react';
+import { KeyIcon } from '@/ui/icons';
 import { Button as UiButton } from '@/components/ui/button';
 import {
   Dialog,
@@ -40,7 +40,7 @@ export function NewRecoveryKey() {
     >
       <div>
         <UiButton type="button" variant="outline" onClick={() => setOpen(true)}>
-          <KeyRound />
+          <KeyIcon />
           Make a new recovery key
         </UiButton>
       </div>
@@ -110,7 +110,7 @@ function NewKeyDialog({ onClose }: { onClose: () => void }) {
             <div className="space-y-2">
               <code
                 data-testid="new-recovery-key"
-                className="block break-all rounded-lg border bg-muted/40 p-3 font-mono text-sm"
+                className="block rounded-small bg-surface-container-highest p-3 font-mono text-body-medium break-all"
               >
                 {step.key}
               </code>

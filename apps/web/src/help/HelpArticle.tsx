@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeftIcon } from '@/ui/icons';
 import { Button } from '@/components/ui/button';
 import { EmptyState, PageHeader } from '../ui/layout';
 import type { HelpPage } from './catalog';
@@ -45,7 +45,7 @@ export function HelpArticle({
     <div className="max-w-3xl min-w-0 space-y-6">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link to="/help">
-          <ChevronLeft />
+          <ChevronLeftIcon />
           All help pages
         </Link>
       </Button>

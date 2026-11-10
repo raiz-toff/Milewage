@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Smartphone } from 'lucide-react';
+import { DevicesIcon } from '@/ui/icons';
 import { Button } from '@/components/ui/button';
 import { useApiQuery, useChange } from '../api/query';
 import type { paths } from '@milewage/shared/generated/api-types';
@@ -73,7 +73,7 @@ function WaitingPhone({ phone, onLinked }: { phone: Waiting; onLinked: (name: st
       aria-label={`${phone.device_name} wants to link`}
     >
       <p className="flex items-center gap-2 text-sm">
-        <Smartphone aria-hidden="true" className="size-4" />
+        <DevicesIcon className="size-5 shrink-0" />
         <span>
           <span className="font-medium">{phone.device_name}</span> wants to link{' '}
           <span className="text-muted-foreground">(from {phone.from})</span>

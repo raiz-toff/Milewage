@@ -61,10 +61,11 @@
   --color-background: var(--background);
 
   /*
-   * Material roles as Tailwind colours. `primary` is the Material primary above; Material's
-   * `secondary` text role is not exposed, because shadcn's `secondary` is the tonal fill
-   * (secondary-container) and pages use it as such.
+   * Material roles as Tailwind colours. `primary` is the Material primary above. shadcn's
+   * `secondary` is the tonal fill (secondary-container) and pages use it as such, so Material's
+   * own `secondary` role (a text, icon or outline colour) is `md-secondary`: `text-md-secondary`.
    */
+  --color-md-secondary: var(--md-sys-color-secondary);
   --color-on-primary: var(--md-sys-color-on-primary);
   --color-primary-container: var(--md-sys-color-primary-container);
   --color-on-primary-container: var(--md-sys-color-on-primary-container);
@@ -414,6 +415,42 @@
     padding-right: env(safe-area-inset-right);
     padding-bottom: env(safe-area-inset-bottom);
   }
+  /*
+   * A file input (backup, CSV, logo, receipt): the browser's own picker button drawn as a small
+   * Material outlined button, with the chosen file's name beside it in body-medium.
+   */
+  input[type='file'] {
+    max-width: 100%;
+    font-size: var(--text-body-medium);
+    line-height: var(--text-body-medium--line-height);
+    color: var(--md-sys-color-on-surface-variant);
+  }
+  input[type='file']::file-selector-button {
+    height: 32px;
+    margin-inline-end: 12px;
+    padding: 0 16px;
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: var(--md-sys-shape-corner-full);
+    background-color: transparent;
+    color: var(--md-sys-color-primary);
+    font: inherit;
+    font-size: var(--text-label-large);
+    font-weight: 500;
+    letter-spacing: var(--text-label-large--letter-spacing);
+    cursor: pointer;
+    transition: background-color var(--md-sys-motion-duration-short4)
+      var(--md-sys-motion-easing-standard);
+  }
+  @media (hover: hover) {
+    input[type='file']:hover::file-selector-button {
+      background-color: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+    }
+  }
+  input[type='file']:focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: var(--md-sys-shape-corner-extra-small);
+  }
   /* Codes and keys. */
   code,
   kbd,
@@ -535,6 +572,68 @@
   [data-slot='text-field']:has(:disabled) {
     opacity: 0.38;
   }
+  /*
+   * Without :has() (Firefox before 121, Safari before 15.4) a field cannot see that it holds a
+   * value, so a resting label would sit on top of the text. There every label stays floated on
+   * the outline, as with `data-float="always"`: always legible, never over the value. The error
+   * and disabled looks come from the control's own state through sibling selectors instead.
+   */
+  @supports not selector(:has(*)) {
+    [data-slot='text-field'] > [data-slot='text-field-label'] {
+      top: 0;
+      font-size: var(--text-body-small);
+      line-height: var(--text-body-small--line-height);
+      letter-spacing: var(--text-body-small--letter-spacing);
+    }
+    [data-slot='text-field'] > [data-slot='text-field-outline'] > legend {
+      max-width: 100%;
+    }
+    [data-slot='text-field'] > [aria-invalid='true'] ~ [data-slot='text-field-outline'] {
+      border-color: var(--md-sys-color-error);
+    }
+    [data-slot='text-field'] > :disabled ~ * {
+      opacity: 0.38;
+    }
+  }
+}
+
+/*
+ * MapLibre's controls on Material surfaces: the attribution (an (i) button that opens the credit)
+ * and any button group sit on surface-container with the level 1 shadow, links in primary. The
+ * library's own stylesheet loads later with the map, so these carry one more class to win.
+ */
+.maplibregl-map .maplibregl-ctrl.maplibregl-ctrl-attrib,
+.maplibregl-map .maplibregl-ctrl-attrib.maplibregl-compact,
+.maplibregl-map .maplibregl-ctrl-attrib.maplibregl-compact-show {
+  background-color: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface-variant);
+  border-radius: var(--md-sys-shape-corner-large);
+  box-shadow: var(--md-sys-elevation-level1);
+  font-family: var(--font-sans);
+  font-size: var(--text-body-small);
+  line-height: var(--text-body-small--line-height);
+}
+.maplibregl-map .maplibregl-ctrl-attrib a {
+  color: var(--md-sys-color-primary);
+}
+.maplibregl-map .maplibregl-ctrl-group:not(:empty) {
+  background-color: var(--md-sys-color-surface-container);
+  border-radius: var(--md-sys-shape-corner-medium);
+  box-shadow: var(--md-sys-elevation-level2);
+}
+.maplibregl-map .maplibregl-ctrl-group button + button {
+  border-top-color: var(--md-sys-color-outline-variant);
+}
+.maplibregl-map .maplibregl-ctrl button:focus-visible,
+.maplibregl-map .maplibregl-ctrl-attrib-button:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+/* The library draws its icons dark; on the dark theme's surfaces they are turned light. */
+.dark .maplibregl-map .maplibregl-ctrl-attrib-button,
+.dark .maplibregl-map .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(1);
 }
 
 /* Reduced motion: transitions and animations finish at once (the ripple is not drawn at all). */

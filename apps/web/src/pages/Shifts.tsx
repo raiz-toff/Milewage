@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader, Section, StatCard } from '../ui/layout';
 import { Link, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeftIcon, ChevronRightIcon } from '@/ui/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -114,7 +114,7 @@ export function ShiftCard({ shift, settings }: { shift: Shift; settings: Setting
   return (
     <Link
       to={`/shifts/${shift.id}`}
-      className="block rounded-xl border bg-card p-4 transition-colors hover:bg-accent/60 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+      className="relative block rounded-medium bg-card p-4 state-layer focus-ring"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 space-y-1.5">
@@ -139,7 +139,7 @@ export function ShiftCard({ shift, settings }: { shift: Shift; settings: Setting
           ) : null}
         </div>
         <div className="shrink-0 text-right">
-          <div className="tabular-nums text-lg font-semibold">
+          <div className="text-title-large font-medium tabular-nums">
             {formatDistance(shift.total_m, unit)}
           </div>
           {split ? (
@@ -211,7 +211,7 @@ export function ShiftList() {
   return (
     <section className="mx-auto max-w-3xl space-y-6">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Shifts</h1>
+        <h1 className="text-headline-small text-on-surface md:text-headline-medium">Shifts</h1>
         {from !== thisWeek ? (
           <UiButton variant="outline" size="sm" onClick={() => go(thisWeek)}>
             This week
@@ -226,13 +226,13 @@ export function ShiftList() {
           aria-label="Previous week"
           onClick={() => go(addDays(from, -7))}
         >
-          <ChevronLeft />
+          <ChevronLeftIcon />
         </UiButton>
         <div className="min-w-0 text-center">
           <div className="text-sm text-muted-foreground">{heroLabel}</div>
           <div
             aria-live="polite"
-            className="truncate tabular-nums text-4xl font-semibold tracking-tight sm:text-5xl"
+            className="truncate text-display-small font-medium tabular-nums sm:text-display-medium"
           >
             {data ? hero : <Skeleton className="mx-auto mt-1 h-10 w-40" />}
           </div>
@@ -253,7 +253,7 @@ export function ShiftList() {
           disabled={from >= thisWeek}
           onClick={() => go(addDays(from, 7))}
         >
-          <ChevronRight />
+          <ChevronRightIcon />
         </UiButton>
       </div>
 
@@ -280,7 +280,7 @@ export function ShiftList() {
                   aria-pressed={selected}
                   aria-label={`${dateWords(d.date, { weekday: 'long' })}: ${words(d)}`}
                   onClick={() => setDay(selected ? null : d.date)}
-                  className="group flex flex-1 flex-col items-center gap-2 rounded-md pt-6 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                  className="group flex flex-1 flex-col items-center gap-2 rounded-small pt-6 focus-ring"
                 >
                   <div className="flex w-full flex-1 items-end justify-center">
                     <div
@@ -389,7 +389,7 @@ export function ShiftDetail() {
     <section className="@container space-y-6">
       <UiButton asChild variant="ghost" size="sm" className="-ml-2">
         <Link to={`/shifts?week=${weekOf(shift.local_date, settings.week_start)}`}>
-          <ChevronLeft />
+          <ChevronLeftIcon />
           All shifts
         </Link>
       </UiButton>

@@ -30,7 +30,7 @@ export function RecoveryKey({ recoveryKey }: { recoveryKey?: string }) {
           </p>
           <code
             data-testid="recovery-key"
-            className="block break-all rounded-lg border bg-muted/40 p-3 font-mono text-sm"
+            className="block rounded-small bg-surface-container-highest p-3 font-mono text-body-medium break-all"
           >
             {recoveryKey}
           </code>

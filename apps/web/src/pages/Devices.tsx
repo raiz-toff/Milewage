@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Ban, Pencil, Smartphone } from 'lucide-react';
+import { BlockIcon, DevicesIcon, EditIcon } from '@/ui/icons';
 import { RowMenu } from '../ui/RowMenu';
 import { EmptyState, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
 import { Button as UiButton } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { errorText, useApiQuery, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
 import { formatDateTime } from '../format';
 import { useSettings } from '../session';
-import { Button, FormError } from '../ui/form';
+import { Button, FormError, denseField } from '../ui/form';
 import { HelpLink } from '../help';
 import { LinkAPhone } from '../pairing/LinkAPhone';
 import { PairingCode } from '../pairing/PairingCode';
@@ -37,7 +37,7 @@ function DeviceRow({ device }: { device: Device }) {
         ) : (
           <input
             aria-label={`New name for ${device.name}`}
-            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+            className={denseField}
             maxLength={64}
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -79,10 +79,10 @@ function DeviceRow({ device }: { device: Device }) {
             <RowMenu
               name={device.name}
               actions={[
-                { label: 'Rename', icon: Pencil, onSelect: () => setName(device.name) },
+                { label: 'Rename', icon: EditIcon, onSelect: () => setName(device.name) },
                 {
                   label: 'Revoke',
-                  icon: Ban,
+                  icon: BlockIcon,
                   destructive: true,
                   onSelect: () => setConfirming(true),
                 },
@@ -139,7 +139,7 @@ export function Devices() {
       >
         {/* The QR: for a phone that is not on the same Wi-Fi, or did not find the server. */}
         <Button type="button" onClick={() => void pair()}>
-          <Smartphone />
+          <DevicesIcon />
           Pair a phone
         </Button>
       </PageHeader>

@@ -9,24 +9,25 @@ import type { FormEvent } from 'react';
 import type { Schemas } from '../api/client';
 import { errorText, useApiQuery, useChange } from '../api/query';
 import { settingsPatch, useSettings } from '../session';
-import { Button, Field, FormError, SelectField } from '../ui/form';
+import { Button, CheckField, Field, FormError, SelectField } from '../ui/form';
 import { RowMenu } from '../ui/RowMenu';
-import type { LucideIcon } from 'lucide-react';
 import {
-  Archive,
-  ArchiveRestore,
-  Bike,
-  Car,
-  ChevronDown,
-  Footprints,
-  Motorbike,
-  Pencil,
-  Plus,
-  Scooter,
-  Star,
-  Van,
-  Wrench,
-} from 'lucide-react';
+  AddIcon,
+  ArchiveIcon,
+  BicycleIcon,
+  CarIcon,
+  EbikeIcon,
+  EditIcon,
+  ExpandMoreIcon,
+  MaintenanceIcon,
+  MotorcycleIcon,
+  ScooterIcon,
+  StarIcon,
+  UnarchiveIcon,
+  VanIcon,
+  WalkingIcon,
+} from '@/ui/icons';
+import type { IconComponent } from '@/ui/icons';
 import { VehicleMaintenance } from './VehicleMaintenance';
 import { VehicleTaxYear } from './VehicleTaxYear';
 import { KINDS, OWNERSHIP, kindLabel, ownershipNote } from '../vehicles';
@@ -35,14 +36,14 @@ type Vehicle = Schemas['Vehicle'];
 type Kind = Vehicle['kind'];
 type Ownership = Vehicle['ownership'];
 
-const ICONS: Record<Kind, LucideIcon> = {
-  car: Car,
-  van: Van,
-  motorcycle: Motorbike,
-  bicycle: Bike,
-  ebike: Bike,
-  scooter: Scooter,
-  walking: Footprints,
+const ICONS: Record<Kind, IconComponent> = {
+  car: CarIcon,
+  van: VanIcon,
+  motorcycle: MotorcycleIcon,
+  bicycle: BicycleIcon,
+  ebike: EbikeIcon,
+  scooter: ScooterIcon,
+  walking: WalkingIcon,
 };
 
 /** Hints that sit under the Type and Ownership choices, where the question is asked. */
@@ -74,7 +75,7 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
   const titleId = useId();
   const archived = vehicle.archived_at !== null;
   const isDefault = saved.default_vehicle_id === vehicle.id;
-  const Icon = ICONS[vehicle.kind] ?? Car;
+  const Icon = ICONS[vehicle.kind] ?? CarIcon;
   const showTax = saved.modules.tax && !archived;
   const showService = saved.modules.maintenance && !archived;
 
@@ -111,9 +112,9 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
         <div className="flex items-start gap-3 px-(--card-spacing)">
           <div
             aria-hidden="true"
-            className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary-container text-on-secondary-container"
           >
-            <Icon className="size-5" />
+            <Icon className="size-6" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -147,7 +148,7 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
                   : [
                       {
                         label: 'Edit',
-                        icon: Pencil,
+                        icon: EditIcon,
                         onSelect: () =>
                           setEdit({
                             name: vehicle.name,
@@ -162,16 +163,18 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
                     ]),
                 ...(archived || isDefault
                   ? []
-                  : [{ label: 'Make default', icon: Star, onSelect: () => void makeDefault() }]),
+                  : [
+                      { label: 'Make default', icon: StarIcon, onSelect: () => void makeDefault() },
+                    ]),
                 archived
                   ? {
                       label: 'Restore',
-                      icon: ArchiveRestore,
+                      icon: UnarchiveIcon,
                       onSelect: () => void act({ archived: false }),
                     }
                   : {
                       label: 'Archive',
-                      icon: Archive,
+                      icon: ArchiveIcon,
                       destructive: true,
                       onSelect: () => void act({ archived: true }),
                     },
@@ -221,7 +224,7 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
               options={OWNERSHIP}
             />
             <div className="flex items-end gap-2 sm:col-span-2">
-              <Button type="submit" disabled={!edit.name.trim()}>
+              <Button type="submit" variant="tonal" disabled={!edit.name.trim()}>
                 Save
               </Button>
               <UiButton type="button" variant="ghost" onClick={() => setEdit(null)}>
@@ -242,9 +245,9 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
                 aria-expanded={service}
                 onClick={() => setService(!service)}
               >
-                <Wrench data-icon="inline-start" />
+                <MaintenanceIcon data-icon="inline-start" />
                 Service log
-                <ChevronDown
+                <ExpandMoreIcon
                   data-icon="inline-end"
                   className={cn('transition-transform', service && 'rotate-180')}
                 />
@@ -303,7 +306,7 @@ export function VehiclesPage() {
 
   const addButton = (
     <UiButton type="button" onClick={open}>
-      <Plus />
+      <AddIcon />
       Add vehicle
     </UiButton>
   );
@@ -370,15 +373,11 @@ export function VehiclesPage() {
           ))}
         </ul>
       )}
-      <label className="flex w-fit items-center gap-2 text-xs text-muted-foreground">
-        <input
-          type="checkbox"
-          className="size-3.5 accent-primary"
-          checked={showArchived}
-          onChange={(e) => setShowArchived(e.target.checked)}
-        />
-        Show archived vehicles
-      </label>
+      <CheckField
+        label="Show archived vehicles"
+        checked={showArchived}
+        onChange={setShowArchived}
+      />
     </section>
   );
 }

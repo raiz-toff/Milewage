@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { AddIcon } from '@/ui/icons';
 import { Button } from '@/components/ui/button';
 import { dayOf } from '../days';
 import { useSettings } from '../session';
@@ -34,7 +34,7 @@ function Greeting({ now }: { now: number }) {
       {modules.expenses ? (
         <Button asChild variant="outline">
           <Link to="/expenses?new">
-            <Plus />
+            <AddIcon />
             Add expense
           </Link>
         </Button>

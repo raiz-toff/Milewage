@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { CircleHelp } from 'lucide-react';
+import { HelpIcon } from '@/ui/icons';
 import { useSettings } from '../session';
 
 /**
@@ -16,9 +16,9 @@ export function HelpLink({ page, children }: { page: string; children: string })
   return (
     <Link
       to={`/help/${page}`}
-      className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+      className="rounded-extra-small text-label-large whitespace-nowrap text-on-surface-variant underline-offset-4 focus-ring hover:text-on-surface hover:underline"
     >
-      <CircleHelp aria-hidden className="size-4 shrink-0" />
+      <HelpIcon className="mr-1 inline-block size-[18px] align-[-0.25em]" />
       {children}
     </Link>
   );

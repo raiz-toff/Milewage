@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { TableBox, tableClass } from '../ui/layout';
 import { resolveLink } from './links';
 
-const h2 = 'scroll-mt-20 pt-4 text-lg font-semibold tracking-tight';
+const h2 = 'scroll-mt-20 pt-4 text-title-large text-on-surface';
 const link = 'font-medium text-foreground underline underline-offset-4';
 
 /** An element's props without react-markdown's `node`, which is not a DOM attribute. */

@@ -37,9 +37,10 @@ function Tick({
   onChange: (on: boolean) => void;
 }) {
   return (
-    <div className="flex items-center gap-3">
+    // A Material list row: 48 px, the checkbox's 40 px state layer clear of the edge.
+    <div className="flex min-h-12 items-center gap-4 pl-[11px]">
       <Checkbox id={id} checked={checked} onCheckedChange={(v) => onChange(v === true)} />
-      <Label htmlFor={id}>
+      <Label htmlFor={id} className="py-3 text-body-large">
         {platform ? <PlatformBadge platform={platform} /> : null}
         {label}
       </Label>
@@ -71,8 +72,8 @@ export function AppsStep({ ctx, next }: StepProps) {
   };
   return (
     <StepForm save={save} next={next}>
-      <fieldset className="grid gap-3">
-        <legend className="mb-3 text-sm text-muted-foreground">
+      <fieldset className="grid">
+        <legend className="mb-2 text-body-medium text-on-surface-variant">
           Choose every app you work for. Earnings and reports list only these.
         </legend>
         {listed.map((p) => (

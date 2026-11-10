@@ -68,7 +68,7 @@ function ShiftRow({
     <Link
       ref={ref}
       to={`/shifts/${shift.id}`}
-      className="flex items-center gap-3 rounded-xl border bg-card p-3 transition-colors hover:bg-accent/60 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+      className="relative flex items-center gap-3 rounded-medium border border-outline-variant p-3 state-layer focus-ring"
     >
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-2">

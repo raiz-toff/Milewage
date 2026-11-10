@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { MenuIcon } from 'lucide-react';
+import { MenuIcon } from '@/ui/icons';
 
 /*
  * Material 3 navigation (m3.material.io/components/navigation-drawer, /navigation-rail): on wide
@@ -193,6 +193,15 @@ function Sidebar({
             } as React.CSSProperties
           }
           side={side}
+          // Radix skips links when it picks what to focus, so the drawer opened on its last
+          // button (the account menu). Focus the first destination instead; a programmatic focus
+          // after a tap or click is not :focus-visible, so only a keyboard user sees the ring.
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            (e.currentTarget as HTMLElement)
+              .querySelector<HTMLElement>('[data-sidebar="menu-button"]')
+              ?.focus();
+          }}
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Sidebar</SheetTitle>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Download, Smartphone } from 'lucide-react';
+import { DevicesIcon, DownloadIcon } from '@/ui/icons';
 import { Button } from '@/components/ui/button';
 import type { Api } from '../api/client';
 import type { paths } from '@milewage/shared/generated/api-types';
@@ -61,7 +61,7 @@ export function AppButtons({ link, available }: { link: string; available: boole
       {onAndroid() ? (
         <Button asChild>
           <a href={link}>
-            <Smartphone />
+            <DevicesIcon />
             Open in the MileWage app
           </a>
         </Button>
@@ -69,7 +69,7 @@ export function AppButtons({ link, available }: { link: string; available: boole
       {available ? (
         <Button asChild variant="outline">
           <a href={APP_PAGE}>
-            <Download />
+            <DownloadIcon />
             Get the app
           </a>
         </Button>

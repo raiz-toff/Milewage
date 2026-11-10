@@ -84,6 +84,7 @@ export function PairingCode({ session }: { session: PairingSession }) {
               <div className="flex gap-2">
                 <UiButton
                   type="button"
+                  variant="tonal"
                   size="sm"
                   disabled={busy || !address.trim()}
                   onClick={() => void change()}

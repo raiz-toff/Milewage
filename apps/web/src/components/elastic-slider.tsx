@@ -435,7 +435,7 @@ export function ElasticSlider({
         aria-valuetext={displayValue}
         className={cn(
           'group/elastic-slider absolute inset-0 cursor-pointer touch-none overflow-hidden rounded-(--elastic-slider-radius) bg-(--elastic-slider-bg) outline-none select-none',
-          'data-[focus-visible=true]:ring-2 data-[focus-visible=true]:ring-ring/50 data-[focus-visible=true]:ring-offset-1 data-[focus-visible=true]:ring-offset-background',
+          'data-[focus-visible=true]:outline-3 data-[focus-visible=true]:outline-offset-2 data-[focus-visible=true]:outline-ring',
         )}
         style={{ width: rubberWidth, x: rubberX }}
         onPointerDown={handlePointerDown}

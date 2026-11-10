@@ -124,6 +124,7 @@ export function ShiftEarnings({
                   type="button"
                   variant="ghost"
                   size="sm"
+                  className="text-error"
                   aria-label={`Remove entered total for ${label(r.platform)}`}
                   onClick={() => void remove(r.platform)}
                 >
@@ -135,8 +136,9 @@ export function ShiftEarnings({
         </ul>
       )}
       <form
-        // Two fields a row when narrow (platform and the button across), five when wide.
-        className="grid max-w-2xl grid-cols-2 gap-3 *:first:col-span-2 @xl:grid-cols-5 @xl:*:first:col-span-1 [&>button]:col-span-2 @xl:[&>button]:col-span-1"
+        // Two fields a row when narrow, four when wide; the platform takes two (it shows a badge
+        // and a name, cut short in a narrow field) and the button sits after the last field.
+        className="grid max-w-2xl grid-cols-2 gap-3 *:first:col-span-2 @2xl:grid-cols-4 [&>button]:col-span-2 [&>button]:justify-self-start @2xl:[&>button]:col-span-1 @2xl:[&>button]:self-center"
         onSubmit={(e) => void save(e)}
       >
         <SelectField
@@ -161,7 +163,11 @@ export function ShiftEarnings({
             onChange={(e) => setForm({ ...form, [k]: e.target.value })}
           />
         ))}
-        <Button type="submit" busy={form.gross === '' && form.tips === '' && form.bonus === ''}>
+        <Button
+          type="submit"
+          variant="tonal"
+          busy={form.gross === '' && form.tips === '' && form.bonus === ''}
+        >
           Save total
         </Button>
       </form>

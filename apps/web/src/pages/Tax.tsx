@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { keepPreviousData } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import { ChevronLeftIcon, ChevronRightIcon, InfoIcon } from '@/ui/icons';
 import { PageHeader, Section } from '../ui/layout';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { errorText, useApiQuery, useChange } from '../api/query';
 import { dateLocale, formatDay, todayIn } from '../days';
 import { formatMoney, parseMoney } from '../format';
 import { useSettings } from '../session';
-import { Button, Field, FormError } from '../ui/form';
+import { Button, CheckField, Field, FormError } from '../ui/form';
 import { MoreCard } from '../ui/MoreCard';
 
 /** A line of the working: label, figure, and whether it is muted ($0.00 or not estimated). */
@@ -161,20 +161,17 @@ export function TaxPage() {
                 />
                 <Button
                   type="button"
+                  variant="tonal"
                   busy={!(Number(rate) >= 0 && Number(rate) <= 100)}
                   onClick={() => void putYear({ set_aside_bp: Math.round(Number(rate) * 100) })}
                 >
                   Save rate
                 </Button>
-                <label className="flex h-9 items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="size-4 accent-primary"
-                    checked={report.sales_tax_registered}
-                    onChange={(e) => void putYear({ sales_tax_registered: e.target.checked })}
-                  />
-                  Registered for {salesTax}
-                </label>
+                <CheckField
+                  label={`Registered for ${salesTax}`}
+                  checked={report.sales_tax_registered}
+                  onChange={(on) => void putYear({ sales_tax_registered: on })}
+                />
                 {report.sales_tax_registered ? (
                   <Field
                     label="Sales tax you collected"
@@ -205,6 +202,7 @@ export function TaxPage() {
                       type="button"
                       variant="ghost"
                       size="sm"
+                      className="text-error"
                       aria-label={`Delete jar entry ${e.entered_on} ${money(e.amount_cents)}`}
                       onClick={() =>
                         void change.run((api) =>
@@ -235,7 +233,7 @@ export function TaxPage() {
             disabled={year <= 2000}
             onClick={() => setYear(year - 1)}
           >
-            <ChevronLeft />
+            <ChevronLeftIcon />
           </UiButton>
           <span aria-live="polite" className="w-14 text-center font-medium tabular-nums">
             {year}
@@ -248,7 +246,7 @@ export function TaxPage() {
             disabled={year >= thisYear + 1}
             onClick={() => setYear(year + 1)}
           >
-            <ChevronRight />
+            <ChevronRightIcon />
           </UiButton>
         </div>
       </PageHeader>
@@ -261,7 +259,7 @@ export function TaxPage() {
         >
           {est ? (
             <div className="space-y-1">
-              <p className="text-4xl font-semibold tracking-tight tabular-nums">
+              <p className="text-display-small font-medium tabular-nums">
                 {money(est.total_set_aside_cents)}
               </p>
               {next ? (
@@ -276,7 +274,7 @@ export function TaxPage() {
           {/* One quiet note instead of three banners: the server's notices (unverified rates for
               this country, an estimate and not advice, nothing filed) together, by the figure. */}
           <p role="note" className="flex gap-2 text-sm text-muted-foreground">
-            <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+            <InfoIcon className="size-5 shrink-0" />
             <span>{report.notices.join(' ')}</span>
           </p>
           {jar ? (
@@ -295,7 +293,7 @@ export function TaxPage() {
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={Math.round(filled)}
-                  className="h-2 overflow-hidden rounded-full bg-muted"
+                  className="h-2 overflow-hidden rounded-full bg-secondary-container"
                 >
                   <div className="h-2 rounded-full bg-primary" style={{ width: `${filled}%` }} />
                 </div>

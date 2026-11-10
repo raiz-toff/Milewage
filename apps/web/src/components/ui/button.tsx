@@ -20,30 +20,33 @@ import { withRipple } from '@/components/ui/ripple';
  * - `link`: inline text with the brand underline, for a link inside a sentence.
  */
 const buttonVariants = cva(
-  "group/button relative inline-flex shrink-0 items-center justify-center rounded-full border border-transparent text-label-large whitespace-nowrap transition-[background-color,color,box-shadow,border-color] duration-200 ease-standard select-none state-layer focus-ring disabled:pointer-events-none disabled:opacity-[0.38] aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[18px]",
+  "group/button relative inline-flex shrink-0 items-center justify-center rounded-full border border-transparent text-label-large whitespace-nowrap transition-[background-color,color,box-shadow,border-color] duration-200 ease-standard select-none state-layer focus-ring disabled:pointer-events-none disabled:text-on-surface/38 disabled:shadow-none aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5",
   {
     variants: {
       variant: {
-        default: 'bg-primary-container text-on-primary-container hover:shadow-elevation-1',
-        filled: 'bg-primary text-on-primary hover:shadow-elevation-1',
-        tonal: 'bg-secondary-container text-on-secondary-container hover:shadow-elevation-1',
-        secondary: 'bg-secondary-container text-on-secondary-container hover:shadow-elevation-1',
+        default:
+          'bg-primary-container text-on-primary-container hover:shadow-elevation-1 disabled:bg-on-surface/12',
+        filled: 'bg-primary text-on-primary hover:shadow-elevation-1 disabled:bg-on-surface/12',
+        tonal:
+          'bg-secondary-container text-on-secondary-container hover:shadow-elevation-1 disabled:bg-on-surface/12',
+        secondary:
+          'bg-secondary-container text-on-secondary-container hover:shadow-elevation-1 disabled:bg-on-surface/12',
         elevated:
-          'bg-surface-container-low text-primary shadow-elevation-1 hover:shadow-elevation-2',
-        outline: 'border-outline bg-transparent text-primary',
+          'bg-surface-container-low text-primary shadow-elevation-1 hover:shadow-elevation-2 disabled:bg-on-surface/12',
+        outline: 'border-outline bg-transparent text-primary disabled:border-on-surface/12',
         ghost: 'bg-transparent text-primary',
-        destructive: 'bg-error-container text-on-error-container',
+        destructive: 'bg-error-container text-on-error-container disabled:bg-on-surface/12',
         link: 'h-auto! rounded-sm px-0! text-foreground underline decoration-primary decoration-2 underline-offset-4 before:hidden hover:decoration-[3px]',
       },
       size: {
         default:
           'h-10 gap-2 px-6 has-data-[icon=inline-end]:pr-4 has-data-[icon=inline-start]:pl-4 has-[>svg:first-child]:pl-4',
-        xs: "h-7 gap-1 px-3 text-label-medium [&_svg:not([class*='size-'])]:size-3.5",
-        sm: "h-8 gap-1.5 px-4 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3 has-[>svg:first-child]:pl-3 [&_svg:not([class*='size-'])]:size-4",
+        xs: "h-7 gap-1 px-3 text-label-medium [&_svg:not([class*='size-'])]:size-4",
+        sm: "h-8 gap-1.5 px-4 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3 has-[>svg:first-child]:pl-3 [&_svg:not([class*='size-'])]:size-[18px]",
         lg: 'h-12 gap-2 px-6 text-title-medium has-[>svg:first-child]:pl-5',
-        icon: "size-10 [&_svg:not([class*='size-'])]:size-5",
-        'icon-xs': "size-7 [&_svg:not([class*='size-'])]:size-3.5",
-        'icon-sm': "size-8 [&_svg:not([class*='size-'])]:size-[18px]",
+        icon: "size-10 [&_svg:not([class*='size-'])]:size-6",
+        'icon-xs': "size-7 [&_svg:not([class*='size-'])]:size-[18px]",
+        'icon-sm': "size-8 [&_svg:not([class*='size-'])]:size-5",
         'icon-lg': "size-12 [&_svg:not([class*='size-'])]:size-6",
       },
     },

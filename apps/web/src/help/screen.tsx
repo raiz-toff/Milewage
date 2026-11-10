@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { CircleHelp } from 'lucide-react';
+import { HelpIcon } from '@/ui/icons';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Screen } from '../screens';
 
@@ -28,5 +28,5 @@ export const helpScreen: Screen = {
       <HelpRoutes />
     </Suspense>
   ),
-  nav: { icon: CircleHelp, group: 'system' },
+  nav: { icon: HelpIcon, group: 'system' },
 };

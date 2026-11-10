@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ExpandMoreIcon } from '@/ui/icons';
 import { Section } from './layout';
 
 export interface MoreRow {
@@ -35,7 +35,7 @@ export function MoreCard({
                   {r.hint}
                 </span>
               </span>
-              <ChevronDown
+              <ExpandMoreIcon
                 aria-hidden="true"
                 className="size-5 shrink-0 text-on-surface-variant transition-transform duration-200 ease-standard group-open:rotate-180"
               />

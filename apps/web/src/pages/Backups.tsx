@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { DatabaseBackup } from 'lucide-react';
+import { BackupsIcon } from '@/ui/icons';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState, PageHeader, Section, StatCard, TableBox, tableClass } from '../ui/layout';
 import { errorText, put, useApiQuery, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
 import { formatDateTime } from '../format';
 import { useSettings } from '../session';
-import { Button, FormError } from '../ui/form';
+import { Button, CheckField, FormError } from '../ui/form';
 import { NewRecoveryKey } from './NewRecoveryKey';
 
 type Backup = Schemas['Backup'];
@@ -81,7 +81,7 @@ export function Backups() {
         description="A backup can be made once every 15 minutes. Each one is checked after it is written."
       >
         <Button type="button" busy={busy} onClick={() => void run()}>
-          <DatabaseBackup />
+          <BackupsIcon />
           Back up now
         </Button>
       </PageHeader>
@@ -89,7 +89,7 @@ export function Backups() {
         <p
           key={w}
           role="status"
-          className="rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm"
+          className="rounded-medium bg-secondary-container px-4 py-3 text-body-medium text-on-secondary-container"
         >
           {w}
         </p>
@@ -123,11 +123,11 @@ export function Backups() {
               <tbody>
                 {backups.map((b) => (
                   <tr key={b.id} className="border-t border-border">
-                    <td className="py-2 pr-4 tabular-nums text-sm">
+                    <td className="whitespace-nowrap tabular-nums">
                       {formatDateTime(b.created_at, timezone)}
                     </td>
                     <td className="pr-4 text-muted-foreground">{TRIGGER[b.trigger]}</td>
-                    <td className="pr-4 text-muted-foreground">{mb(b.size_bytes)}</td>
+                    <td className="whitespace-nowrap text-muted-foreground">{mb(b.size_bytes)}</td>
                     <td>
                       {b.integrity_ok ? (
                         <Badge variant="secondary">passed</Badge>
@@ -187,15 +187,11 @@ function Offsite({
             ? 'never'
             : formatDateTime(offsite.last_download_at, timezone)}
       </p>
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          className="size-4 accent-primary"
-          checked={at !== null && !stale}
-          onChange={(e) => onChange(e.target.checked)}
-        />
-        <span>My backup folder is copied to another place</span>
-      </label>
+      <CheckField
+        label="My backup folder is copied to another place"
+        checked={at !== null && !stale}
+        onChange={onChange}
+      />
       {at !== null ? (
         <p className="text-sm text-muted-foreground">
           {stale

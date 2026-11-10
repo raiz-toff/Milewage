@@ -6,7 +6,8 @@ import { HelpLink } from '../help';
 import { useSettings } from '../session';
 import { SortTable } from '../ui/SortTable';
 import type { Column } from '../ui/SortTable';
-import { Button, FormError, Picker } from '../ui/form';
+import { Button, FormError, Picker, denseField } from '../ui/form';
+import { cn } from '@/lib/utils';
 import type { Read } from '../shift/view';
 
 type Stop = Schemas['Stop'];
@@ -66,8 +67,7 @@ const ROLES = [
   { value: 'other', label: 'Other' },
 ];
 
-const FIELD =
-  'w-full min-w-24 h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30';
+const FIELD = cn(denseField, 'min-w-24');
 
 /**
  * Detected stops of a shift with optional labels (module `stops`, web only). A save or a clear
@@ -250,13 +250,21 @@ export function StopsPanel({
             <div className="flex gap-2">
               <Button
                 type="button"
+                variant="tonal"
+                size="sm"
                 busy={busy === s.stop_key || !dirty(s) || (drafts[s.stop_key]?.role ?? '') === ''}
                 onClick={() => void save(s)}
               >
                 Save
               </Button>
               {s.label ? (
-                <Button type="button" busy={busy === s.stop_key} onClick={() => void clear(s)}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  busy={busy === s.stop_key}
+                  onClick={() => void clear(s)}
+                >
                   Clear
                 </Button>
               ) : null}
@@ -279,18 +287,27 @@ export function StopsPanel({
         <HelpLink page="active-and-deadhead">About the estimate</HelpLink>
       </p>
       {hasStackedOrders(stops) ? (
-        <p role="status" className="rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm">
+        <p
+          role="status"
+          className="rounded-medium bg-surface-container-high px-4 py-3 text-body-medium text-on-surface"
+        >
           Stacked orders? The estimate under-states active distance when orders overlap. Label the
           stops to correct it.
         </p>
       ) : null}
       {edited ? (
-        <p role="status" className="rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm">
+        <p
+          role="status"
+          className="rounded-medium bg-surface-container-high px-4 py-3 text-body-medium text-on-surface"
+        >
           This shift has edited trips. Labelling a stop may unlink those edits.
         </p>
       ) : null}
       {orphans.length ? (
-        <p role="status" className="rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm">
+        <p
+          role="status"
+          className="rounded-medium bg-surface-container-high px-4 py-3 text-body-medium text-on-surface"
+        >
           Label not applied: {orphans.length === 1 ? 'a label' : `${orphans.length} labels`} no
           longer match a detected stop and{orphans.length === 1 ? ' is' : ' are'} kept but unused.
         </p>

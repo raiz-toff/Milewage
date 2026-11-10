@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import type { ReactNode } from 'react';
-import { ArrowDown, ArrowUp, Copy } from 'lucide-react';
+import { ArrowDownwardIcon, ArrowUpwardIcon, CopyIcon } from '@/ui/icons';
 import { Button } from '@/components/ui/button';
 
 export interface Column<T> {
@@ -100,7 +100,7 @@ export function SortTable<T>({
           </span>
         ) : null}
         <Button type="button" variant="ghost" size="sm" onClick={() => void copy()}>
-          <Copy />
+          <CopyIcon />
           Copy CSV
         </Button>
       </div>
@@ -126,9 +126,9 @@ export function SortTable<T>({
                     {c.label}
                     {sort?.key === c.key ? (
                       sort.dir === 'asc' ? (
-                        <ArrowUp className="size-3.5" />
+                        <ArrowUpwardIcon className="size-[18px]" />
                       ) : (
-                        <ArrowDown className="size-3.5" />
+                        <ArrowDownwardIcon className="size-[18px]" />
                       )
                     ) : null}
                   </button>
@@ -141,12 +141,12 @@ export function SortTable<T>({
               <tr
                 key={rowKey(row)}
                 tabIndex={i === 0 ? 0 : -1}
-                className="border-t border-outline-variant transition-colors hover:bg-on-surface/8 focus:bg-on-surface/10 focus:outline-none"
+                className="border-t border-outline-variant transition-colors outline-none hover:bg-on-surface/8 focus-visible:bg-on-surface/10 focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-ring"
               >
                 {columns.map((c) => (
                   <td
                     key={c.key}
-                    className={`px-4 py-3 ${c.numeric ? 'text-right whitespace-nowrap tabular-nums' : ''}`}
+                    className={`h-[52px] px-4 py-1.5 ${c.numeric ? 'text-right whitespace-nowrap tabular-nums' : ''}`}
                   >
                     {c.render(row)}
                   </td>

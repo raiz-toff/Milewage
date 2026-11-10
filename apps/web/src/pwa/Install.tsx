@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, X } from 'lucide-react';
+import { CloseIcon, DownloadIcon } from '@/ui/icons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cardShows, dismissInstallCard, promptInstall, useInstall } from './install';
@@ -16,6 +16,7 @@ function InstallButton({ size }: { size?: 'sm' }) {
   const [busy, setBusy] = useState(false);
   return (
     <Button
+      variant="tonal"
       size={size}
       disabled={busy}
       onClick={async () => {
@@ -24,7 +25,7 @@ function InstallButton({ size }: { size?: 'sm' }) {
         setBusy(false);
       }}
     >
-      <Download />
+      <DownloadIcon />
       Install
     </Button>
   );
@@ -52,7 +53,7 @@ export function InstallCard() {
         className="absolute top-2 right-2"
         onClick={dismissInstallCard}
       >
-        <X />
+        <CloseIcon />
       </Button>
       <CardContent className="space-y-2">
         <p className="pr-6 text-sm font-medium">Install MileWage</p>

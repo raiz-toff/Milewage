@@ -5,7 +5,7 @@ import { basemapHost } from '../map/style';
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="space-y-3" aria-label={title}>
-      <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+      <h2 className="text-title-large text-on-surface">{title}</h2>
       {children}
     </section>
   );
@@ -59,7 +59,7 @@ export function PrivacyPage({
   return (
     <main className="mx-auto max-w-2xl space-y-8 px-4 py-8 text-sm leading-relaxed sm:text-base">
       <header className="space-y-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Privacy</h1>
+        <h1 className="text-headline-small text-on-surface md:text-headline-medium">Privacy</h1>
         <p className="text-muted-foreground">
           MileWage runs on a server that belongs to the person who set it up, often the driver. This
           page says what the MileWage phone app and this server record, where it is kept, and who

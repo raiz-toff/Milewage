@@ -1,6 +1,6 @@
 import { Component } from 'react';
 import type { ReactNode } from 'react';
-import { TriangleAlert } from 'lucide-react';
+import { WarningIcon } from '@/ui/icons';
 import { QueryErrorResetBoundary, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 
@@ -28,7 +28,7 @@ class Boundary extends Component<Props, { failed: boolean }> {
     if (!this.state.failed) return this.props.children;
     return (
       <div role="alert" className="flex flex-col items-center gap-3 p-8 text-center">
-        <TriangleAlert aria-hidden className="size-6 text-on-surface-variant" />
+        <WarningIcon aria-hidden className="size-6 text-on-surface-variant" />
         <h1 className="text-headline-small text-on-surface">This page could not be shown</h1>
         <p className="max-w-sm text-body-medium text-on-surface-variant">
           Something went wrong while drawing it. Your data is safe on the server.

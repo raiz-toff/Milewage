@@ -1,5 +1,5 @@
-import type { LucideIcon } from 'lucide-react';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreVertIcon } from '@/ui/icons';
+import type { IconComponent } from '@/ui/icons';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -14,7 +14,7 @@ import {
 export interface RowAction {
   label: string;
   onSelect: () => void;
-  icon?: LucideIcon;
+  icon?: IconComponent;
   /** Red, and placed last after a separator (delete, revoke, archive). */
   destructive?: boolean;
   disabled?: boolean;
@@ -42,7 +42,7 @@ export function RowMenu({ name, actions }: { name: string; actions: RowAction[] 
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button type="button" variant="ghost" size="icon" aria-label={`Actions for ${name}`}>
-          <MoreHorizontal />
+          <MoreVertIcon />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-40">

@@ -1,4 +1,4 @@
-import { TriangleAlert } from 'lucide-react';
+import { WarningIcon } from '@/ui/icons';
 import { isHomeAddress } from '@milewage/shared';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -50,8 +50,8 @@ export function AddressWarning({ problem }: { problem: AddressProblem }) {
   if (!problem) return null;
   const { title, text } = WORDS[problem];
   return (
-    <Alert role="note" className="border-primary/40 bg-primary/5">
-      <TriangleAlert aria-hidden="true" />
+    <Alert role="note">
+      <WarningIcon aria-hidden="true" />
       <AlertTitle>{title}</AlertTitle>
       <AlertDescription className="text-foreground">{text}</AlertDescription>
     </Alert>

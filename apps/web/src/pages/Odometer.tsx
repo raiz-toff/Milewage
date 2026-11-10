@@ -115,7 +115,7 @@ export function OdometerPage() {
       {logbook ? (
         <div
           role="note"
-          className="space-y-1 rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm"
+          className="space-y-1 rounded-medium bg-surface-container-high px-4 py-3 text-body-medium text-on-surface"
         >
           <p>
             {logbook.readings}
@@ -203,14 +203,14 @@ function ReadingsTable({
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="border-t border-border">
-                  <td className="py-2 pr-4 tabular-nums text-sm">
+                  <td className="whitespace-nowrap tabular-nums">
                     {formatDateTime(r.recorded_at, timezone)}
                   </td>
-                  <td className="pr-4 text-muted-foreground">{KIND_TEXT[r.kind]}</td>
-                  <td className="pr-4 text-right tabular-nums">
+                  <td className="whitespace-nowrap text-muted-foreground">{KIND_TEXT[r.kind]}</td>
+                  <td className="text-right whitespace-nowrap tabular-nums">
                     {formatDistance(r.reading_m, unit)}
                   </td>
-                  <td className="text-right">
+                  <td className="text-right whitespace-nowrap">
                     {r.shift_id !== null ? (
                       <Link
                         className="font-medium underline decoration-primary decoration-2 underline-offset-4"
@@ -224,7 +224,7 @@ function ReadingsTable({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="ml-3"
+                        className="ml-3 text-error"
                         onClick={() => onDelete(r)}
                       >
                         Delete

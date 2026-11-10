@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Ban, RefreshCw } from 'lucide-react';
+import { BlockIcon, RefreshIcon } from '@/ui/icons';
 import { Button as UiButton } from '@/components/ui/button';
 import { errorText, useApiQuery, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
@@ -155,10 +155,10 @@ function TokenRow({ t, onMade }: { t: Token; onMade: (made: Made) => void }) {
       <RowMenu
         name={t.name}
         actions={[
-          { label: 'Replace token', icon: RefreshCw, onSelect: () => setConfirming('replace') },
+          { label: 'Replace token', icon: RefreshIcon, onSelect: () => setConfirming('replace') },
           {
             label: 'Revoke',
-            icon: Ban,
+            icon: BlockIcon,
             destructive: true,
             onSelect: () => setConfirming('revoke'),
           },

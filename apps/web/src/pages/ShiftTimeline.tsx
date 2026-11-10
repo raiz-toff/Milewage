@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { Flag } from 'lucide-react';
+import { FlagIcon } from '@/ui/icons';
 import { cn } from '@/lib/utils';
 import type { Schemas } from '../api/client';
 import { formatDistance, formatTime } from '../format';
@@ -71,7 +71,7 @@ function Row({
       </span>
     </>
   );
-  const row = 'flex w-full items-start gap-3 rounded-lg px-2 py-2 text-left';
+  const row = 'flex w-full items-start gap-3 rounded-medium px-2 py-2 text-left';
   const ref = useRef<HTMLButtonElement>(null);
   // Picked on the map: bring the entry into view inside the list's own scroll box, not the page.
   useEffect(() => {
@@ -93,8 +93,8 @@ function Row({
           onClick={onClick}
           className={cn(
             row,
-            'transition-colors hover:bg-accent/60 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
-            on && 'bg-accent ring-1 ring-primary/60 ring-inset',
+            'relative state-layer focus-ring',
+            on && 'bg-secondary-container text-on-secondary-container',
           )}
         >
           {body}
@@ -129,7 +129,7 @@ export function ShiftTimeline({
   onPick: (p: Picked) => void;
 }) {
   const { timezone: tz, distance_unit: unit } = useSettings();
-  const flag = <Flag aria-hidden="true" className="mt-0.5 size-4 text-muted-foreground" />;
+  const flag = <FlagIcon aria-hidden="true" className="mt-0.5 size-4 text-muted-foreground" />;
   return (
     <ol aria-label="Timeline" className="-mx-2 space-y-0.5">
       <Row time={formatTime(shift.started_at, tz)} mark={flag} title="Shift started" />

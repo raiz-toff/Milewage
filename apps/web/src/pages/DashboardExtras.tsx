@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
-  ChevronDown,
-  ChevronRight,
-  Circle,
-  CircleCheck,
-  DatabaseBackup,
-  Flag,
-  MapPin,
-} from 'lucide-react';
+  BackupsIcon,
+  CheckCircleIcon,
+  ChevronRightIcon,
+  CircleIcon,
+  ExpandMoreIcon,
+  FlagIcon,
+  LocationIcon,
+} from '@/ui/icons';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -49,12 +49,14 @@ export function GoalRing() {
       <CardContent className="space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-0.5">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            <p className="text-label-medium text-on-surface-variant">
               {PERIOD_WORD[goal.period] ?? 'Goal'}
             </p>
             <h2 className="truncate text-base font-medium">{goal.label}</h2>
           </div>
-          <p className="text-2xl font-semibold tabular-nums">{pct === null ? '—' : `${pct}%`}</p>
+          <p className="text-headline-small font-medium tabular-nums">
+            {pct === null ? '—' : `${pct}%`}
+          </p>
         </div>
         <div
           role="progressbar"
@@ -62,7 +64,7 @@ export function GoalRing() {
           aria-valuenow={pct ?? undefined}
           aria-valuemin={0}
           aria-valuemax={100}
-          className="h-2 overflow-hidden rounded-full bg-primary/20"
+          className="h-2 overflow-hidden rounded-full bg-secondary-container"
         >
           <div
             className="h-2 rounded-full bg-primary"
@@ -248,7 +250,7 @@ export function SetupChecklist() {
           aria-valuenow={done.length}
           aria-valuemin={0}
           aria-valuemax={state.length}
-          className="h-2 overflow-hidden rounded-full bg-primary/20"
+          className="h-2 overflow-hidden rounded-full bg-secondary-container"
         >
           <div
             className="h-2 rounded-full bg-primary"
@@ -259,13 +261,13 @@ export function SetupChecklist() {
           {open.map((i, n) => (
             <li
               key={i.id}
-              className={`flex items-center gap-1 rounded-lg border ${n === 0 ? 'border-primary/50 bg-primary/10' : 'border-transparent'}`}
+              className={`flex items-center gap-1 rounded-medium ${n === 0 ? 'bg-secondary-container text-on-secondary-container' : ''}`}
             >
               <Link
                 to={i.to}
-                className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                className="relative flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-medium px-2 py-2 state-layer focus-ring"
               >
-                <Circle aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                <CircleIcon className="size-5 shrink-0 text-on-surface-variant" />
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-2 font-medium">
                     {i.text}
@@ -273,7 +275,7 @@ export function SetupChecklist() {
                   </span>
                   <span className="block text-xs text-muted-foreground">{i.why}</span>
                 </span>
-                <ChevronRight
+                <ChevronRightIcon
                   aria-hidden="true"
                   className="size-4 shrink-0 text-muted-foreground"
                 />
@@ -301,7 +303,7 @@ export function SetupChecklist() {
               onClick={() => setShowDone(!showDone)}
               className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
             >
-              <ChevronDown
+              <ExpandMoreIcon
                 aria-hidden="true"
                 className={`size-4 transition-transform motion-reduce:transition-none ${showDone ? '' : '-rotate-90'}`}
               />
@@ -311,7 +313,7 @@ export function SetupChecklist() {
               <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
                 {done.map((i) => (
                   <li key={i.id} className="flex items-center gap-3">
-                    <CircleCheck aria-hidden="true" className="size-4 shrink-0 text-earned" />
+                    <CheckCircleIcon className="size-5 shrink-0 text-primary" />
                     {i.text}
                     <span className="sr-only"> (done)</span>
                   </li>
@@ -330,7 +332,7 @@ export function SetupChecklist() {
 
 function Notice({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
-    <Alert role="note" className="border-primary/40 bg-primary/5">
+    <Alert role="note">
       {icon}
       <AlertDescription className="text-foreground">{children}</AlertDescription>
     </Alert>
@@ -361,7 +363,7 @@ export function Notices({ today }: { today: string }) {
   return (
     <>
       {word ? (
-        <Notice icon={<MapPin />}>
+        <Notice icon={<LocationIcon />}>
           Set your {word} to include its own rules. Until then, only the national rules apply.{' '}
           <Link to="/settings/general" className={linkClass}>
             Set your {word}
@@ -369,7 +371,7 @@ export function Notices({ today }: { today: string }) {
         </Notice>
       ) : null}
       {review > 0 ? (
-        <Notice icon={<Flag />}>
+        <Notice icon={<FlagIcon />}>
           {review === 1 ? '1 shift' : `${review} shifts`} from the last 30 days{' '}
           {review === 1 ? 'has' : 'have'} checks to review.{' '}
           <Link to="/shifts" className={linkClass}>
@@ -378,7 +380,7 @@ export function Notices({ today }: { today: string }) {
         </Notice>
       ) : null}
       {backup ? (
-        <Notice icon={<DatabaseBackup />}>
+        <Notice icon={<BackupsIcon />}>
           {backup}{' '}
           <Link to="/backups" className={linkClass}>
             Open Backups

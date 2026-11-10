@@ -81,6 +81,7 @@ export function VehicleMaintenance({ vehicleId, name }: { vehicleId: number; nam
                 type="button"
                 variant="ghost"
                 size="sm"
+                className="text-error"
                 aria-label={`Delete service ${day(l.serviced_on)} ${label(l.kind)}`}
                 onClick={() => void remove(l.id)}
               >
@@ -115,7 +116,9 @@ export function VehicleMaintenance({ vehicleId, name }: { vehicleId: number; nam
           onChange={(e) => setForm({ ...form, odometer: e.target.value })}
         />
         <div className="flex items-end">
-          <Button type="submit">Add service</Button>
+          <Button type="submit" variant="tonal">
+            Add service
+          </Button>
         </div>
       </form>
     </section>

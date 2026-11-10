@@ -133,7 +133,11 @@ export function AddTrip({
         />
       </div>
       <div className="col-span-2 flex items-center gap-2">
-        <Button type="submit" busy={form.distance.trim() === '' || form.purpose.trim() === ''}>
+        <Button
+          type="submit"
+          variant="tonal"
+          busy={form.distance.trim() === '' || form.purpose.trim() === ''}
+        >
           Add trip
         </Button>
         <UiButton type="button" variant="ghost" onClick={onClose}>

@@ -1,5 +1,5 @@
 import { EmptyState, PageHeader } from '../ui/layout';
-import { Mail, MailOpen, X } from 'lucide-react';
+import { CloseIcon, MailIcon, MailOpenIcon } from '@/ui/icons';
 import { RowMenu } from '../ui/RowMenu';
 import { ShowMore } from '../ui/ShowMore';
 import { unwrap } from '../api/client';
@@ -50,7 +50,7 @@ export function NotificationsPage() {
       ) : (
         <ul className="space-y-2">
           {items.map((n) => (
-            <li key={n.id} className="flex items-start gap-3 rounded-xl border bg-card p-4">
+            <li key={n.id} className="flex items-start gap-3 rounded-medium bg-card p-4">
               <span
                 aria-hidden="true"
                 className={`mt-2 size-2 shrink-0 rounded-full ${n.read_at === null ? 'bg-primary' : 'bg-transparent'}`}
@@ -70,12 +70,12 @@ export function NotificationsPage() {
                 actions={[
                   {
                     label: n.read_at === null ? 'Mark read' : 'Mark unread',
-                    icon: n.read_at === null ? MailOpen : Mail,
+                    icon: n.read_at === null ? MailOpenIcon : MailIcon,
                     onSelect: () => void read(n),
                   },
                   {
                     label: 'Dismiss',
-                    icon: X,
+                    icon: CloseIcon,
                     destructive: true,
                     onSelect: () =>
                       void change.run((api) =>

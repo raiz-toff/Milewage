@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useChange } from '../api/query';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeftIcon } from '@/ui/icons';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { unwrap } from '../api/client';
 import type { Schemas } from '../api/client';
@@ -113,19 +114,22 @@ export function Onboarding() {
   return (
     <div className="min-h-svh bg-background px-4 py-8 sm:py-16">
       <div className="mx-auto grid w-full max-w-xl gap-4">
-        <p className="text-sm font-medium text-muted-foreground">Set up MileWage</p>
+        <p className="text-title-small text-on-surface-variant">Set up MileWage</p>
         {before ? (
-          <Link
-            to={path(before.id)}
-            className="flex w-fit items-center gap-1 text-sm underline-offset-4 hover:underline"
-          >
-            <ChevronLeft className="size-4" />
-            Back
-          </Link>
+          <Button asChild variant="ghost" className="-ml-3 w-fit">
+            <Link to={path(before.id)}>
+              <ChevronLeftIcon />
+              Back
+            </Link>
+          </Button>
         ) : null}
         <Card>
           <CardHeader>
-            <h1 ref={heading} tabIndex={-1} className="text-xl font-semibold outline-none">
+            <h1
+              ref={heading}
+              tabIndex={-1}
+              className="text-headline-small text-on-surface outline-none"
+            >
               {title}
             </h1>
           </CardHeader>

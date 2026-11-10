@@ -74,6 +74,7 @@ export function ShiftOdometer({
             />
             <Button
               type="button"
+              variant="tonal"
               busy={locked || values[kind].trim() === ''}
               onClick={() => void save(kind)}
               aria-label={`Save ${label.toLowerCase()} reading`}

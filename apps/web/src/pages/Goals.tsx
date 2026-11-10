@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState, PageHeader, Section } from '../ui/layout';
-import { Pause, Pencil, Play, Trash2 } from 'lucide-react';
+import { DeleteIcon, EditIcon, PauseIcon, PlayIcon } from '@/ui/icons';
 import { RowMenu } from '../ui/RowMenu';
 import type { FormEvent } from 'react';
 import { errorText, useApiQuery, useChange } from '../api/query';
@@ -41,7 +41,7 @@ export function GoalBar({ goal }: { goal: Goal }) {
         aria-valuenow={p.ratio === null ? undefined : Math.round(p.ratio * 100)}
         aria-valuemin={0}
         aria-valuemax={100}
-        className="mt-1 h-2 overflow-hidden rounded-full bg-muted"
+        className="mt-1 h-2 overflow-hidden rounded-full bg-secondary-container"
       >
         <div
           className="h-2 rounded-full bg-primary"
@@ -154,7 +154,7 @@ export function GoalsPage() {
       ) : (
         <ul className="grid gap-4 md:grid-cols-2">
           {goals.map((g) => (
-            <li key={g.id} className="space-y-3 rounded-xl border bg-card p-4">
+            <li key={g.id} className="space-y-3 rounded-medium bg-card p-4">
               <GoalBar goal={g} />
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Badge variant="secondary">{g.period}</Badge>
@@ -163,10 +163,10 @@ export function GoalsPage() {
                 <RowMenu
                   name={g.label}
                   actions={[
-                    { label: 'Edit', icon: Pencil, onSelect: () => edit(g) },
+                    { label: 'Edit', icon: EditIcon, onSelect: () => edit(g) },
                     {
                       label: g.active ? 'Pause' : 'Resume',
-                      icon: g.active ? Pause : Play,
+                      icon: g.active ? PauseIcon : PlayIcon,
                       onSelect: () =>
                         void change.run((api) =>
                           api.PATCH('/goals/{id}', {
@@ -177,7 +177,7 @@ export function GoalsPage() {
                     },
                     {
                       label: 'Delete',
-                      icon: Trash2,
+                      icon: DeleteIcon,
                       destructive: true,
                       onSelect: () => {
                         // The form must not go on editing a goal that is gone.

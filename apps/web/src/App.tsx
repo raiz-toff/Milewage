@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Bell,
-  ChevronsUpDown,
-  LogOut,
-  Monitor,
-  Moon,
-  Settings as SettingsIcon,
-  ShieldCheck,
-  Sun,
-  User,
-  WifiOff,
-} from 'lucide-react';
+  DarkModeIcon,
+  LightModeIcon,
+  LogoutIcon,
+  NotificationsIcon,
+  PersonIcon,
+  PrivacyIcon,
+  SettingsIcon,
+  SystemModeIcon,
+  UnfoldMoreIcon,
+  WifiOffIcon,
+} from '@/ui/icons';
 import { Badge } from '@/components/ui/badge';
 import {
   Breadcrumb,
@@ -91,8 +91,8 @@ function Unreachable({ message }: { message: string }) {
   const offline = !navigator.onLine;
   return (
     <div className="flex min-h-svh flex-col items-center justify-center gap-3 p-8 text-center">
-      <WifiOff aria-hidden className="size-6 text-muted-foreground" />
-      <h1 className="text-lg font-semibold">
+      <WifiOffIcon aria-hidden className="size-6 text-muted-foreground" />
+      <h1 className="text-title-large text-on-surface">
         {offline ? 'You are offline' : 'MileWage is not answering'}
       </h1>
       <p className="max-w-sm text-sm text-muted-foreground">
@@ -111,15 +111,13 @@ const isUnder = (pathname: string, route: string) =>
 
 function NavItem({ screen, pathname }: { screen: Screen; pathname: string }) {
   const Icon = screen.nav!.icon;
+  const active = isUnder(pathname, routeOf(screen));
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton
-        asChild
-        isActive={isUnder(pathname, routeOf(screen))}
-        tooltip={screen.label}
-      >
+      <SidebarMenuButton asChild isActive={active} tooltip={screen.label}>
         <NavLink to={routeOf(screen)}>
-          <Icon />
+          {/* Material: the selected destination's icon is the filled form. */}
+          <Icon filled={active} />
           <span>{screen.label}</span>
         </NavLink>
       </SidebarMenuButton>
@@ -142,14 +140,14 @@ function AccountMenu({ name }: { name: string | null }) {
             aria-label="Account"
             className="data-[state=open]:bg-sidebar-accent"
           >
-            <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-accent text-sm font-semibold uppercase">
-              {name?.trim()[0] ?? <User className="size-4" />}
+            <div className="flex aspect-square size-8 items-center justify-center rounded-full bg-sidebar-accent text-title-small text-sidebar-accent-foreground uppercase">
+              {name?.trim()[0] ?? <PersonIcon className="size-4" />}
             </div>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-medium">{shown}</span>
               <span className="truncate text-xs text-muted-foreground">Signed in</span>
             </div>
-            <ChevronsUpDown className="ml-auto size-4" />
+            <UnfoldMoreIcon className="ml-auto size-4" />
           </SidebarMenuButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -160,7 +158,7 @@ function AccountMenu({ name }: { name: string | null }) {
           <DropdownMenuGroup>
             <DropdownMenuLabel className="truncate">{shown}</DropdownMenuLabel>
             <DropdownMenuItem onSelect={() => navigate('/settings/account')}>
-              <User />
+              <PersonIcon />
               Account
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => navigate('/settings/general')}>
@@ -170,14 +168,14 @@ function AccountMenu({ name }: { name: string | null }) {
             {/* A full page load: /privacy is a public page outside the router (publicPages.tsx). */}
             <DropdownMenuItem asChild>
               <a href="/privacy">
-                <ShieldCheck />
+                <PrivacyIcon />
                 Privacy
               </a>
             </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => void signOut()}>
-            <LogOut />
+            <LogoutIcon />
             Sign out
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -233,7 +231,7 @@ function AppSidebar({ list, name }: { list: Screen[]; name: string | null }) {
               </SidebarGroup>
             ))}
         </SidebarContent>
-        <SidebarFooter>
+        <SidebarFooter className="border-t border-sidebar-border">
           <InstallCard />
           <SidebarMenu>
             {system.map((s) => (
@@ -248,10 +246,10 @@ function AppSidebar({ list, name }: { list: Screen[]; name: string | null }) {
   );
 }
 
-const THEMES: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
-  { value: 'light', label: 'Light', icon: Sun },
-  { value: 'dark', label: 'Dark', icon: Moon },
-  { value: 'system', label: 'System', icon: Monitor },
+const THEMES: { value: ThemeChoice; label: string; icon: typeof LightModeIcon }[] = [
+  { value: 'light', label: 'Light', icon: LightModeIcon },
+  { value: 'dark', label: 'Dark', icon: DarkModeIcon },
+  { value: 'system', label: 'System', icon: SystemModeIcon },
 ];
 
 function ThemeMenu() {
@@ -260,8 +258,8 @@ function ThemeMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="Theme">
-          <Sun className="dark:hidden" />
-          <Moon className="hidden dark:block" />
+          <LightModeIcon className="dark:hidden" />
+          <DarkModeIcon className="hidden dark:block" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
@@ -311,9 +309,12 @@ function Shell({ settings }: { settings: Settings }) {
                     to="/notifications"
                     aria-label={unread > 0 ? `Notifications (${unread})` : 'Notifications'}
                   >
-                    <Bell />
+                    <NotificationsIcon filled={pathname === '/notifications'} />
                     {unread > 0 ? (
-                      <Badge className="absolute -top-1 -right-1 h-4 min-w-4 rounded-full px-1 text-[10px] tabular-nums">
+                      <Badge
+                        variant="count"
+                        className="pointer-events-none absolute top-1 left-[22px] tabular-nums"
+                      >
                         {unread > 99 ? '99+' : unread}
                       </Badge>
                     ) : null}

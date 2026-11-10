@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowDropDownIcon, ChevronRightIcon } from '@/ui/icons';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -55,7 +55,7 @@ export function SectionNav({
             <span className="truncate">
               <span className="text-muted-foreground">{noun}:</span> {current?.label}
             </span>
-            <ChevronDown />
+            <ArrowDropDownIcon />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-(--radix-dropdown-menu-trigger-width)">
@@ -94,7 +94,7 @@ export function SectionNav({
                     onPointerDown={withRipple()}
                     className={({ isActive }) =>
                       cn(
-                        'relative flex h-10 items-center rounded-full px-4 text-label-large state-layer focus-ring transition-colors',
+                        'relative flex min-h-10 items-center rounded-[20px] px-4 py-2 text-label-large state-layer focus-ring transition-colors',
                         isActive
                           ? 'bg-secondary-container text-on-secondary-container'
                           : 'text-on-surface-variant',
@@ -129,7 +129,7 @@ export function LinkRow({ to, title, children }: { to: string; title: string; ch
           <span className="block text-body-large text-on-surface">{title}</span>
           <span className="block text-body-medium text-on-surface-variant">{children}</span>
         </span>
-        <ChevronRight className="size-6 shrink-0 text-on-surface-variant" />
+        <ChevronRightIcon className="size-6 shrink-0 text-on-surface-variant" />
       </Link>
     </li>
   );

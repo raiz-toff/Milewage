@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Button as UiButton } from '@/components/ui/button';
 import type { Schemas } from '../api/client';
 import { put, useChange } from '../api/query';
-import { Button, FormError } from '../ui/form';
+import { Button, FormError, denseField } from '../ui/form';
+import { cn } from '@/lib/utils';
 import { Section } from '../ui/layout';
 import { PERMISSIONS, adviceFor } from '../shift/advice';
 import { AdviceList, CheckList } from './ShiftFacts';
@@ -114,7 +115,7 @@ export function ShiftNotes({ shift, bare }: { shift: Shift; bare?: boolean }) {
       </label>
       <textarea
         id="notes"
-        className="w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+        className={cn(denseField, 'h-auto py-2')}
         rows={3}
         maxLength={2000}
         value={notes}
@@ -125,7 +126,12 @@ export function ShiftNotes({ shift, bare }: { shift: Shift; bare?: boolean }) {
       />
       <FormError message={error} />
       <div className="flex items-center gap-3">
-        <Button type="button" busy={notes === (shift.notes ?? '')} onClick={() => void save()}>
+        <Button
+          type="button"
+          variant="tonal"
+          busy={notes === (shift.notes ?? '')}
+          onClick={() => void save()}
+        >
           Save notes
         </Button>
         {saved ? (

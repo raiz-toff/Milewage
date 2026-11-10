@@ -17,15 +17,15 @@ export function ProgressPage() {
     <section className="space-y-6">
       <PageHeader title="Progress" />
       <FormError message={error} />
-      <div className="space-y-3 rounded-xl border bg-card p-5 sm:max-w-md">
-        <p className="text-3xl font-semibold tracking-tight">Level {p.level}</p>
+      <div className="space-y-3 rounded-medium bg-card p-5 sm:max-w-md">
+        <p className="text-headline-large text-on-surface">Level {p.level}</p>
         <div
           role="progressbar"
           aria-label="XP to next level"
           aria-valuenow={p.xp_into_level}
           aria-valuemin={0}
           aria-valuemax={p.xp_per_level}
-          className="h-2 overflow-hidden rounded-full bg-muted"
+          className="h-2 overflow-hidden rounded-full bg-secondary-container"
         >
           <div
             className="h-2 rounded-full bg-primary"
@@ -70,7 +70,7 @@ export function ProgressPage() {
           {p.badges.map((b) => (
             <li
               key={b.slug}
-              className={`rounded-lg border p-3 text-sm ${b.unlocked_at ? 'border-primary bg-primary/10 font-medium' : 'text-muted-foreground'}`}
+              className={`rounded-medium border p-3 text-body-medium ${b.unlocked_at ? 'border-transparent bg-secondary-container text-on-secondary-container' : 'border-outline-variant text-on-surface-variant'}`}
             >
               {b.label}
               <span className="block text-xs">

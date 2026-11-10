@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQueries } from '@tanstack/react-query';
-import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from '@/ui/icons';
 import { Button as UiButton } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -15,6 +15,7 @@ import {
   todayIn,
 } from '../days';
 import type { PeriodKind } from '../days';
+import { SegmentedButtons } from '../ui/chips';
 import { EmptyState, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
 import { HourBars } from '../ui/HourBars';
 import { describe, unwrap } from '../api/client';
@@ -114,22 +115,19 @@ export function AnalyticsPage() {
     <section className="space-y-6">
       <PageHeader title="Analytics" description="Your figures for a week, a month or a year." />
       <FormError message={error} />
-      <div className="inline-flex rounded-lg bg-muted p-1">
-        {(['week', 'month', 'year'] as const).map((m) => (
-          <button
-            key={m}
-            type="button"
-            aria-pressed={mode === m}
-            className={`rounded-md px-3 py-1 text-sm transition-colors ${mode === m ? 'bg-background font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-            onClick={() => {
-              setMode(m);
-              setOffset(0);
-            }}
-          >
-            {m[0]!.toUpperCase() + m.slice(1)}
-          </button>
-        ))}
-      </div>
+      <SegmentedButtons
+        label="Period"
+        value={mode}
+        options={[
+          { value: 'week', label: 'Week' },
+          { value: 'month', label: 'Month' },
+          { value: 'year', label: 'Year' },
+        ]}
+        onChange={(m) => {
+          setMode(m);
+          setOffset(0);
+        }}
+      />
       {/* The period header of the Shifts page (Comma's and Uber's earnings header): arrows at the
           edges, the period over the period's gross; the period opens a calendar. */}
       <div className="flex items-center justify-between gap-2">
@@ -140,7 +138,7 @@ export function AnalyticsPage() {
           aria-label="Previous period"
           onClick={() => setOffset(offset - 1)}
         >
-          <ChevronLeft />
+          <ChevronLeftIcon />
         </UiButton>
         <div className="flex min-w-0 flex-col items-center text-center">
           {/* The period as a shadcn Date Picker: any day picked opens the period that holds it. */}
@@ -182,7 +180,7 @@ export function AnalyticsPage() {
           </Popover>
           <div
             aria-live="polite"
-            className="truncate text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl"
+            className="truncate text-display-small font-medium tabular-nums sm:text-display-medium"
           >
             {cards ? money(cards.gross_cents) : <Skeleton className="mx-auto mt-1 h-10 w-40" />}
           </div>
@@ -198,7 +196,7 @@ export function AnalyticsPage() {
           disabled={offset >= 0}
           onClick={() => setOffset(offset + 1)}
         >
-          <ChevronRight />
+          <ChevronRightIcon />
         </UiButton>
       </div>
       {data === null ? (
@@ -207,9 +205,9 @@ export function AnalyticsPage() {
         <>
           <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" aria-label="Figures">
             {tiles.map(([k, v]) => (
-              <div key={k} className="space-y-1 rounded-xl border bg-card p-4">
+              <div key={k} className="space-y-1 rounded-medium bg-card p-4">
                 <dt className="text-xs text-muted-foreground">{k}</dt>
-                <dd className="text-xl font-semibold tracking-tight tabular-nums">{v}</dd>
+                <dd className="text-title-large font-medium tabular-nums">{v}</dd>
               </div>
             ))}
           </dl>
@@ -231,7 +229,7 @@ export function AnalyticsPage() {
                   <tbody>
                     {data.trends.buckets.map((b: Data) => (
                       <tr key={b.start} className="border-t border-border">
-                        <td className="tabular-nums">{b.start}</td>
+                        <td className="whitespace-nowrap tabular-nums">{b.start}</td>
                         <td>{b.shifts}</td>
                         <td>{b.hours}</td>
                         <td>{money(b.earnings_cents)}</td>
@@ -256,7 +254,7 @@ export function AnalyticsPage() {
                       {platformOf(s.platform).label}: {money(s.earnings_cents)} (
                       {Math.round((s.share ?? 0) * 100)}%)
                     </PlatformName>
-                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div className="h-2 overflow-hidden rounded-full bg-secondary-container">
                       <div
                         className="h-2 rounded-full bg-primary"
                         style={{ width: `${Math.round((s.share ?? 0) * 100)}%` }}

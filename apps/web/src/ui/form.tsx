@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
-import { CalendarIcon } from 'lucide-react';
+import type { ButtonHTMLAttributes, ComponentProps, InputHTMLAttributes, ReactNode } from 'react';
+import { CalendarIcon, CheckIcon } from '@/ui/icons';
 import { LogoMark } from '@/components/logo';
 import { Button as UiButton } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -43,6 +43,13 @@ function Outline({ label }: { label: string }) {
     </fieldset>
   );
 }
+
+/**
+ * A dense Material outlined text field without a floating label (a table row's inline input,
+ * named by `aria-label`): 40 px, extra-small corners, the outline turns 2 px primary on focus.
+ */
+export const denseField =
+  'h-10 w-full min-w-0 rounded-extra-small border border-input bg-transparent px-3 text-body-medium text-on-surface caret-primary outline-none transition-[border-color,box-shadow] duration-150 ease-standard placeholder:text-on-surface-variant hover:border-on-surface focus-visible:border-primary focus-visible:shadow-[inset_0_0_0_1px_var(--primary)]';
 
 /** Supporting text under a field (Material: body-small, on-surface-variant, 16 px in). */
 function Hint({ id, children }: { id: string; children: string }) {
@@ -267,37 +274,48 @@ export function TimeField({
   const minutes = [...new Set([...Array.from({ length: 12 }, (_, i) => i * 5), m])].sort(
     (a, b) => a - b,
   );
+  // One outlined field, as Material's time input: the hour and minute (and AM/PM) side by side
+  // inside, the label in the outline's notch. Each part is a borderless dropdown.
+  const part =
+    'h-12 w-auto gap-1 data-[size=default]:h-12 border-0 bg-transparent px-2 shadow-none focus-visible:shadow-none data-[state=open]:shadow-none';
   return (
     <div role="group" aria-label={label} className="grid content-start gap-1">
-      <span className="px-1 text-body-small text-on-surface-variant">{label}</span>
-      <div className="flex items-center gap-1">
-        <Picker
-          label={`${label} hour`}
-          className="w-auto min-w-16"
-          value={String(shownHour)}
-          onChange={(v) => set(twelve ? (Number(v) % 12) + (h >= 12 ? 12 : 0) : Number(v), m)}
-          options={hours.map((n) => ({ value: String(n), label: twelve ? String(n) : two(n) }))}
-        />
-        <span aria-hidden>:</span>
-        <Picker
-          label={`${label} minute`}
-          className="w-auto min-w-16"
-          value={String(m)}
-          onChange={(v) => set(h, Number(v))}
-          options={minutes.map((n) => ({ value: String(n), label: two(n) }))}
-        />
-        {twelve ? (
+      <div data-slot="text-field" data-float="always" className="w-fit">
+        <div className="flex h-12 items-center pr-1 pl-2">
           <Picker
-            label={`${label} AM or PM`}
-            className="w-auto min-w-20"
-            value={h < 12 ? 'am' : 'pm'}
-            onChange={(v) => set((h % 12) + (v === 'pm' ? 12 : 0), m)}
-            options={[
-              { value: 'am', label: 'AM' },
-              { value: 'pm', label: 'PM' },
-            ]}
+            label={`${label} hour`}
+            className={part}
+            value={String(shownHour)}
+            onChange={(v) => set(twelve ? (Number(v) % 12) + (h >= 12 ? 12 : 0) : Number(v), m)}
+            options={hours.map((n) => ({ value: String(n), label: twelve ? String(n) : two(n) }))}
           />
-        ) : null}
+          <span aria-hidden className="text-body-large text-on-surface-variant">
+            :
+          </span>
+          <Picker
+            label={`${label} minute`}
+            className={part}
+            value={String(m)}
+            onChange={(v) => set(h, Number(v))}
+            options={minutes.map((n) => ({ value: String(n), label: two(n) }))}
+          />
+          {twelve ? (
+            <Picker
+              label={`${label} AM or PM`}
+              className={part}
+              value={h < 12 ? 'am' : 'pm'}
+              onChange={(v) => set((h % 12) + (v === 'pm' ? 12 : 0), m)}
+              options={[
+                { value: 'am', label: 'AM' },
+                { value: 'pm', label: 'PM' },
+              ]}
+            />
+          ) : null}
+        </div>
+        <span aria-hidden data-slot="text-field-label">
+          {label}
+        </span>
+        <Outline label={label} />
       </div>
     </div>
   );
@@ -351,11 +369,69 @@ export function SelectField({
   );
 }
 
+/**
+ * A checkbox with its label, as a Material list row: 48 px high, the 18 px box with its 40 px
+ * round state layer, the label in body-large beside it; the label toggles it too. A native
+ * checkbox drawn as Material's (as Material Web's own checkbox is), so it behaves like one.
+ */
+export function CheckField({
+  label,
+  checked,
+  onChange,
+  disabled,
+  id: given,
+  className,
+}: {
+  label: ReactNode;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+  id?: string;
+  className?: string;
+}) {
+  const auto = useId();
+  const id = given ?? auto;
+  return (
+    <div className={cn('flex min-h-12 w-fit items-center gap-4 pl-[11px]', className)}>
+      <span className="relative grid size-[18px] shrink-0 place-items-center">
+        <input
+          id={id}
+          type="checkbox"
+          checked={checked}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.checked)}
+          className="peer m-0 size-[18px] cursor-pointer appearance-none rounded-[2px] border-2 border-on-surface-variant bg-transparent transition-colors outline-none checked:border-primary checked:bg-primary focus-visible:outline-3 focus-visible:outline-offset-[11px] focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-[0.38]"
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -inset-[11px] rounded-full bg-on-surface opacity-0 transition-opacity peer-checked:bg-primary peer-hover:opacity-[0.08] peer-focus-visible:opacity-[0.1] peer-disabled:hidden"
+        />
+        <CheckIcon className="pointer-events-none absolute size-4 text-on-primary opacity-0 peer-checked:opacity-100" />
+      </span>
+      <label
+        htmlFor={id}
+        className="flex cursor-pointer items-center gap-2 py-3 text-body-large text-on-surface select-none"
+      >
+        {label}
+      </label>
+    </div>
+  );
+}
+
+/**
+ * A form's button: the screen's primary action unless `variant` says otherwise (one primary,
+ * brand-yellow action per screen; the others are `tonal`, `outline` or `ghost`).
+ */
 export function Button({
   busy,
   children,
   ...rest
-}: { busy?: boolean; children: ReactNode } & ButtonHTMLAttributes<HTMLButtonElement>) {
+}: {
+  busy?: boolean;
+  children: ReactNode;
+  variant?: ComponentProps<typeof UiButton>['variant'];
+  size?: ComponentProps<typeof UiButton>['size'];
+} & ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <UiButton disabled={busy || rest.disabled} {...rest}>
       {children}

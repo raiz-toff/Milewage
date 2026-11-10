@@ -58,16 +58,20 @@ export function WorkStep({ ctx, next }: StepProps) {
   };
   return (
     <StepForm save={save} next={next}>
-      <fieldset className="grid gap-3">
-        <legend className="mb-3 text-sm text-muted-foreground">Choose all that apply.</legend>
+      <fieldset className="grid">
+        <legend className="mb-2 text-body-medium text-on-surface-variant">
+          Choose all that apply.
+        </legend>
         {offered.map((k) => (
-          <div key={k} className="flex items-center gap-3">
+          <div key={k} className="flex min-h-12 items-center gap-4 pl-[11px]">
             <Checkbox
               id={`work-${k}`}
               checked={chosen.includes(k)}
               onCheckedChange={(v) => toggle(k, v === true)}
             />
-            <Label htmlFor={`work-${k}`}>{WORK_LABELS[k]}</Label>
+            <Label htmlFor={`work-${k}`} className="py-3 text-body-large">
+              {WORK_LABELS[k]}
+            </Label>
           </div>
         ))}
       </fieldset>

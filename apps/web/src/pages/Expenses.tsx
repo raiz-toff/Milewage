@@ -1,7 +1,14 @@
 import { useId, useState } from 'react';
 import { keepPreviousData } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { ChevronDown, FileX, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+  AddIcon,
+  AttachIcon,
+  DeleteIcon,
+  EditIcon,
+  ExpandMoreIcon,
+  RemoveReceiptIcon,
+} from '@/ui/icons';
 import { RowMenu } from '../ui/RowMenu';
 import { ShowMore } from '../ui/ShowMore';
 import { EmptyState, PageHeader, Section, StatCard, TableBox, tableClass } from '../ui/layout';
@@ -23,7 +30,8 @@ import type { Schemas } from '../api/client';
 import { addDays, todayIn } from '../days';
 import { formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
-import { Button, DateField, Field, FormError, SelectField } from '../ui/form';
+import { FilterChip } from '../ui/chips';
+import { Button, CheckField, DateField, Field, FormError, SelectField } from '../ui/form';
 import { moneyInput, parseMoney } from '../format';
 
 type Expense = Schemas['Expense'];
@@ -32,9 +40,6 @@ type Category = Schemas['ExpenseCategory'];
 const PICKS = [25, 50, 75, 100];
 /** Common driving costs, offered as one tap until the driver's own most used take their place. */
 const COMMON = ['fuel', 'parking', 'tolls', 'phone', 'wash'];
-const chip = (on: boolean) =>
-  `rounded-full border px-3 py-1 text-sm ${on ? 'border-primary bg-primary/15 font-medium' : 'border-border text-muted-foreground'}`;
-
 /** The five categories offered first: the most used in `rows`, topped up with common ones, in list order. */
 export function quickCategories(cats: Category[], rows: Expense[]): string[] {
   const count = new Map<string, number>();
@@ -230,7 +235,7 @@ export function ExpensesPage() {
               setMore(false);
             }}
           >
-            <Plus />
+            <AddIcon />
             Add expense
           </Button>
         ) : null}
@@ -308,15 +313,13 @@ export function ExpensesPage() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {quick.map((slug) => (
-                  <button
+                  <FilterChip
                     key={slug}
-                    type="button"
-                    aria-pressed={draft.category === slug}
-                    className={chip(draft.category === slug)}
+                    selected={draft.category === slug}
                     onClick={() => pick(slug)}
                   >
                     {cat(slug)?.label ?? slug}
-                  </button>
+                  </FilterChip>
                 ))}
                 <Select
                   value={quick.includes(draft.category) ? '' : draft.category}
@@ -325,7 +328,7 @@ export function ExpensesPage() {
                   <SelectTrigger
                     size="sm"
                     aria-label="More categories"
-                    className={`min-w-0 rounded-full ${quick.includes(draft.category) ? '' : 'border-primary bg-primary/15 font-medium'}`}
+                    className={`h-8! min-w-0 rounded-small text-label-large ${quick.includes(draft.category) ? 'border-outline-variant text-on-surface-variant' : 'border-transparent bg-secondary-container text-on-secondary-container'}`}
                   >
                     <SelectValue placeholder="More…" />
                   </SelectTrigger>
@@ -365,7 +368,7 @@ export function ExpensesPage() {
                 onClick={() => setMore(!more)}
                 className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
               >
-                <ChevronDown
+                <ExpandMoreIcon
                   aria-hidden="true"
                   className={`size-4 transition-transform motion-reduce:transition-none ${more ? '' : '-rotate-90'}`}
                 />
@@ -392,30 +395,24 @@ export function ExpensesPage() {
                   ))}
                 </datalist>
                 <div className="flex flex-wrap items-center gap-3">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      className="size-4 accent-primary"
-                      checked={draft.deductible}
-                      onChange={(e) => setDraft({ ...draft, deductible: e.target.checked })}
-                    />
-                    Deductible
-                  </label>
+                  <CheckField
+                    label="Deductible"
+                    checked={draft.deductible}
+                    onChange={(deductible) => setDraft({ ...draft, deductible })}
+                  />
                   {draft.deductible ? (
                     <div role="group" aria-label="Business use" className="flex flex-wrap gap-2">
                       <span className="self-center text-sm text-muted-foreground">
                         Business use
                       </span>
                       {PICKS.map((p) => (
-                        <button
+                        <FilterChip
                           key={p}
-                          type="button"
-                          aria-pressed={draft.business_pct === p}
-                          className={chip(draft.business_pct === p)}
+                          selected={draft.business_pct === p}
                           onClick={() => setDraft({ ...draft, business_pct: p })}
                         >
                           {p}%
-                        </button>
+                        </FilterChip>
                       ))}
                     </div>
                   ) : null}
@@ -529,8 +526,8 @@ export function ExpensesPage() {
                   <th>Date</th>
                   <th>Category</th>
                   <th>Merchant</th>
-                  <th>Amount</th>
-                  <th>Deductible</th>
+                  <th className="text-right">Amount</th>
+                  <th className="text-right">Deductible</th>
                   {modules.receipts ? <th>Receipt</th> : null}
                   <th />
                 </tr>
@@ -538,11 +535,11 @@ export function ExpensesPage() {
               <tbody>
                 {items.map((x) => (
                   <tr key={x.id} className="border-t border-border">
-                    <td className="py-2 pr-3 tabular-nums text-sm">{x.spent_on}</td>
+                    <td className="whitespace-nowrap tabular-nums">{x.spent_on}</td>
                     <td className="pr-3">{cat(x.category)?.label ?? x.category}</td>
                     <td className="pr-3">{x.merchant}</td>
-                    <td className="pr-3">{money(x.amount_cents)}</td>
-                    <td className="pr-3">
+                    <td className="text-right tabular-nums">{money(x.amount_cents)}</td>
+                    <td className="text-right tabular-nums">
                       {x.double_counts ? 'covered by the mileage rate' : money(x.deductible_cents)}
                     </td>
                     {modules.receipts ? (
@@ -557,16 +554,22 @@ export function ExpensesPage() {
                             View receipt
                           </a>
                         ) : (
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp,application/pdf"
-                            aria-label={`Attach receipt to ${x.merchant || x.category} ${x.spent_on}`}
-                            className="max-w-52 text-xs file:mr-2 file:rounded-md file:border file:border-input file:bg-transparent file:px-2 file:py-1 file:text-xs file:font-medium"
-                            onChange={(e) => {
-                              const f = e.target.files?.[0];
-                              if (f) void attach(x.id, f);
-                            }}
-                          />
+                          // A text button that opens the file picker: the file input itself is
+                          // kept for the keyboard and screen readers, out of sight.
+                          <label className="relative -ml-3 inline-flex h-10 cursor-pointer items-center gap-2 rounded-full px-3 text-label-large text-primary state-layer has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring">
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp,application/pdf"
+                              aria-label={`Attach receipt to ${x.merchant || x.category} ${x.spent_on}`}
+                              className="sr-only"
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) void attach(x.id, f);
+                              }}
+                            />
+                            <AttachIcon className="size-5" />
+                            Attach
+                          </label>
                         )}
                       </td>
                     ) : null}
@@ -576,7 +579,7 @@ export function ExpensesPage() {
                         actions={[
                           {
                             label: 'Edit',
-                            icon: Pencil,
+                            icon: EditIcon,
                             onSelect: () => {
                               setDraft(draftOf(x, currency));
                               setEditing(x.id);
@@ -587,7 +590,7 @@ export function ExpensesPage() {
                             ? [
                                 {
                                   label: 'Remove receipt',
-                                  icon: FileX,
+                                  icon: RemoveReceiptIcon,
                                   destructive: true,
                                   onSelect: () =>
                                     void change.run((api) =>
@@ -600,7 +603,7 @@ export function ExpensesPage() {
                             : []),
                           {
                             label: 'Delete',
-                            icon: Trash2,
+                            icon: DeleteIcon,
                             destructive: true,
                             onSelect: () =>
                               void change.run((api) =>

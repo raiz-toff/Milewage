@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Download } from 'lucide-react';
+import { DownloadIcon } from '@/ui/icons';
 import { Button } from '@/components/ui/button';
 import { createApi } from '../api/client';
 import { APK_URL, apkFacts, storeLabel, useAppInfo } from '../pairing/GetTheApp';
@@ -20,7 +20,9 @@ export function AppPage() {
 
   return (
     <main className="mx-auto max-w-md space-y-5 px-4 py-8">
-      <h1 className="text-2xl font-semibold tracking-tight">Get MileWage for Android</h1>
+      <h1 className="text-headline-small text-on-surface md:text-headline-medium">
+        Get MileWage for Android
+      </h1>
       <p className="text-muted-foreground">
         The MileWage app records your shifts on this phone and sends them to your own server.
       </p>
@@ -49,7 +51,7 @@ export function AppPage() {
               ) : null}
               <Button asChild size="lg" variant={store ? 'outline' : 'default'} className="w-full">
                 <a href={APK_URL} download="milewage.apk">
-                  <Download />
+                  <DownloadIcon />
                   Download MileWage
                 </a>
               </Button>

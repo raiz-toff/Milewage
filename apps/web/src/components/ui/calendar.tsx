@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { DayPicker, getDefaultClassNames, type DayButton, type Locale } from 'react-day-picker';
-import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from 'lucide-react';
+import { ArrowDropDownIcon, ChevronLeftIcon, ChevronRightIcon } from '@/ui/icons';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -39,6 +39,9 @@ function Calendar({
       locale={locale}
       formatters={{
         formatMonthDropdown: (date) => date.toLocaleString(locale?.code, { month: 'short' }),
+        // Material's date picker heads each column with one letter (S M T W T F S); the header
+        // cell keeps the full name as its accessible label (react-day-picker's labelWeekday).
+        formatWeekdayName: (date) => date.toLocaleString(locale?.code, { weekday: 'narrow' }),
         ...formatters,
       }}
       classNames={{
@@ -125,14 +128,14 @@ function Calendar({
         },
         Chevron: ({ className, orientation, ...props }) => {
           if (orientation === 'left') {
-            return <ChevronLeftIcon className={cn('size-4', className)} {...props} />;
+            return <ChevronLeftIcon className={cn('size-6', className)} {...props} />;
           }
 
           if (orientation === 'right') {
-            return <ChevronRightIcon className={cn('size-4', className)} {...props} />;
+            return <ChevronRightIcon className={cn('size-6', className)} {...props} />;
           }
 
-          return <ChevronDownIcon className={cn('size-4', className)} {...props} />;
+          return <ArrowDropDownIcon className={cn('size-5', className)} {...props} />;
         },
         DayButton: ({ ...props }) => <CalendarDayButton locale={locale} {...props} />,
         WeekNumber: ({ children, ...props }) => {

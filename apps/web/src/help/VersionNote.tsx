@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Info } from 'lucide-react';
+import { InfoIcon } from '@/ui/icons';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useApiQuery } from '../api/query';
@@ -19,8 +19,8 @@ export function VersionNote({ version }: { version: string }) {
   const server = status.data?.app_version;
   if (!server || server === version) return null;
   return (
-    <Alert role="note" className="border-primary/40 bg-primary/5">
-      <Info aria-hidden />
+    <Alert role="note">
+      <InfoIcon aria-hidden />
       <AlertDescription className="space-y-3 text-foreground">
         <p>
           Your server runs MileWage {server}. These pages describe {version}.

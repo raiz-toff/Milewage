@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { fileBody } from '../api/client';
 import { errorText, useApiQuery, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
-import { ImageMinus, ImageUp, Trash2 } from 'lucide-react';
+import { AddPhotoIcon, DeleteIcon, HidePhotoIcon } from '@/ui/icons';
 import { Switch } from '@/components/ui/switch';
 import { Button, Field, FormError } from '../ui/form';
 import { PlatformBadge } from '../platforms/PlatformBadge';
@@ -59,14 +59,14 @@ export function PlatformsCard() {
   const actions = (p: Platform): RowAction[] => [
     {
       label: p.logo_version ? 'Change logo' : 'Add logo',
-      icon: ImageUp,
+      icon: AddPhotoIcon,
       onSelect: () => pickLogo(p.slug),
     },
     ...(p.logo_version
       ? [
           {
             label: 'Remove logo',
-            icon: ImageMinus,
+            icon: HidePhotoIcon,
             onSelect: () =>
               void change.run((api) =>
                 api.DELETE('/platforms/{slug}/logo', { params: { path: { slug: p.slug } } }),
@@ -75,7 +75,14 @@ export function PlatformsCard() {
         ]
       : []),
     ...(p.custom
-      ? [{ label: 'Delete', icon: Trash2, destructive: true, onSelect: () => void remove(p.slug) }]
+      ? [
+          {
+            label: 'Delete',
+            icon: DeleteIcon,
+            destructive: true,
+            onSelect: () => void remove(p.slug),
+          },
+        ]
       : []),
   ];
 
