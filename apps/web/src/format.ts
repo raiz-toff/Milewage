@@ -102,6 +102,42 @@ export function formatMoney(minor: number | null, currency: string): string {
   );
 }
 
+/**
+ * Money on a chart axis: whole units where the tick is whole ("$50"), compact from ten thousand
+ * ("$12K"), in the instance currency. `major` is in whole units, as a chart's scale counts them.
+ */
+export function formatMoneyTick(major: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat(LOCALE, {
+      style: 'currency',
+      currency,
+      notation: Math.abs(major) >= 10_000 ? 'compact' : 'standard',
+      maximumFractionDigits: Number.isInteger(major) ? 0 : minorDigits(currency),
+      minimumFractionDigits: Number.isInteger(major) ? 0 : minorDigits(currency),
+    }).format(major);
+  } catch {
+    return String(major);
+  }
+}
+
+/** Whole units of money to minor units of the currency, rounded (a chart's value back to cents). */
+export const toMinor = (major: number, currency: string) => Math.round(major * scale(currency));
+/** Minor units to whole units of the currency, for a chart's scale. */
+export const toMajor = (minor: number, currency: string) => minor / scale(currency);
+
+/** A distance already in the driver's unit on a chart axis: "10 mi", "2.5 km". */
+export const formatDistanceTick = (value: number, unit: DistanceUnit) =>
+  `${new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 1 }).format(value)} ${unit}`;
+
+/** "17:00", or "5 PM" with the 12h setting: the short form a chart's axis has room for. */
+export function hourLabel(hour: number, timeFormat: TimeFormat): string {
+  if (timeFormat === '24h') return `${String(hour).padStart(2, '0')}:00`;
+  return `${hour % 12 === 0 ? 12 : hour % 12} ${hour < 12 ? 'AM' : 'PM'}`;
+}
+
+/** Hours as a figure: "4.5 h" (one decimal), the way the dashboard writes shift time. */
+export const formatHours = (h: number) => `${h.toFixed(1)} h`;
+
 /** Minor units as the plain number a form field shows ("12.50", "1250", "1.250"). */
 export const moneyInput = (minor: number, currency: string): string =>
   (minor / scale(currency)).toFixed(minorDigits(currency));

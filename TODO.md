@@ -63,8 +63,8 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
       only; dashboard, shift pages and the phone show deductions without it. (c) The country list
       says "United Kingdom" (CLDR via `Intl.DisplayNames`), the docs say "Great Britain". (d) Setting
       Repeats on a saved expense hides it from the list and totals; repeating expenses have no list,
-      edit or stop on the web. (e) `tax_credit_cents` has no web field. (f) Analytics: "Gross" is after
-      app fees, "Per hour (online time)" never shows, pay per mile is computed but never shown.
+      edit or stop on the web. (e) `tax_credit_cents` has no web field. (f) Done 2026-11-10: Analytics says
+      "Earned, after app fees", shows online-time pay only when recorded, and shows pay per mile or km.
       (g) Done 2026-11-10: the platform badge colour picker (PL4b).
 - [ ] **Flaky under load: `infra/install.test.mjs`** (2026-11-09). In one full `npm run verify` on a
       busy machine, "no, --no-tailscale, not signed in, or certificates off" saw the "not signed in"

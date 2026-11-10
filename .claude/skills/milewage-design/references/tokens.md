@@ -65,6 +65,12 @@ names per theme:
 | A fill on a card (`bg-muted`, `accent`)   | surface-container-high                   | surface-container-highest                    |
 | Menu, popover, dialog, date picker, sheet | `bg-popover`: lowest (white), shadow 2–3 | `bg-popover`: surface-container-high, shadow |
 
+On Android the same levels are `MaterialTheme.surfaces` (`ui/theme/Theme.kt`, `Surfaces.of(scheme,
+isDark)`): `page` (background), `card` (lowest / surface-container), `fill` (high / highest),
+`popover` (lowest / high), plus `road` (inverse-surface in light, lowest in dark), the dark ribbon
+under the route sketch's yellow lane. `CardSurface` is the card; dialogs pass
+`containerColor = MaterialTheme.surfaces.popover`.
+
 A card reads by lightness alone: no border, no shadow, no tint. Tables have no header fill, only
 a hairline under the header. An `Alert` is the card colour inside an outline-variant hairline.
 
@@ -188,6 +194,13 @@ for colour-blind readers (validated with the data-viz skill: adjacent CVD ΔE �
 dark). Money series use `chart-earned` and `chart-spent`; distance and time use the steel
 `chart-measure`. Grid lines are `chart-grid` (outline-variant), axes `chart-axis` (outline). Text
 in a chart wears the text roles, never a series colour. The brand yellow is not a chart colour.
+Derived steps are a `color-mix` of a token with the card in OKLab (`tint()` in `ui/charts`),
+validated with the data-viz skill in both themes: tips at 50 % of `chart-earned` beside pay;
+deadhead at 45 % of `chart-measure` beside active, with personal distance in `chart-series-7`
+(three greys cannot be told apart; adjacent CVD ΔE ≥ 19 light, ≥ 22 dark); the heatmap's five
+steps at 48, 61, 74, 87 and 100 % (monotone, ΔL ≥ 0.06, the light end at 2:1 on the card) for
+`chart-earned` and `chart-measure`. The tints sit under 3:1, which the legend, the 2 px gaps and
+the table relieve.
 
 ## shadcn names → roles (`index.css`)
 
@@ -291,21 +304,34 @@ dialogs). `prefers-reduced-motion` cuts every transition to near zero and skips 
 
 ## Android equivalents
 
-| Web                                 | Android (Compose)                                                                                              |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `bg-surface-container-low` etc.     | `MaterialTheme.colorScheme.surfaceContainerLow` etc.                                                           |
-| `text-earned`, `bg-spent-container` | `MaterialTheme.extendedColors.earned`, `.spentContainer` (import `app.milewage.phone.ui.theme.extendedColors`) |
-| `text-title-medium`                 | `MaterialTheme.typography.titleMedium`                                                                         |
-| `rounded-medium`                    | `MaterialTheme.shapes.medium`                                                                                  |
-| `tabular-nums`                      | `style.tabular()` (`ui/components/StatTile.kt`)                                                                |
-| `theme.ts` (light default, choice)  | `isSystemInDarkTheme()`; `MileWageTheme(wallpaperColours = …)`                                                 |
+| Web                                                  | Android (Compose)                                                                                              |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `bg-background`, `bg-card`, `bg-muted`, `bg-popover` | `MaterialTheme.surfaces.page`, `.card`, `.fill`, `.popover`; a card is `CardSurface` (`ui/components/Rows.kt`) |
+| `bg-surface-container-low` etc.                      | `MaterialTheme.colorScheme.surfaceContainerLow` etc. (prefer the levels above)                                 |
+| `text-earned`, `bg-spent-container`                  | `MaterialTheme.extendedColors.earned`, `.spentContainer` (import `app.milewage.phone.ui.theme.extendedColors`) |
+| `text-title-medium`                                  | `MaterialTheme.typography.titleMedium`                                                                         |
+| `rounded-medium`                                     | `MaterialTheme.shapes.medium`                                                                                  |
+| `tabular-nums`                                       | `style.tabular()` (`ui/components/StatTile.kt`)                                                                |
+| `theme.ts` (light default, choice)                   | `isSystemInDarkTheme()`; `MileWageTheme(wallpaperColours = …)`                                                 |
 
-`signal` has no Android role. With wallpaper colours on, `extendedColors(sourceArgb, isDark)`
-re-harmonises earned and spent toward the wallpaper's primary. The window background before
-Compose draws is `window_background` (`res/values/colors.xml`). The dark window comes from
-`values-night/themes.xml` on the platform's dark Material theme. As of 2026-11-10 the Android
-app still carries the previous, yellow-seeded scheme; a follow-up brings `BrandColors`,
-`ExtendedColors`, `window_background` and the surface model in line with `m3-scheme.json`.
+`signal` has no Android role. With wallpaper colours on, `extendedColors(isDark, harmonizeWith =
+primary)` re-harmonises earned and spent toward the wallpaper's primary (the brand scheme does not
+harmonise them), and the brand button takes the wallpaper's primary-container, so nothing is
+yellow in that mode but the logo and the notification accent.
+
+**Android's one exception: `inversePrimary`.** The web has no snackbar and leaves inverse-primary
+as Fidelity computes it (`#f9bd17` light, a gold `#795900` dark). Android's snackbar draws its
+action in it, which would put the yellow on a message and gold in dark, so Android takes the
+secondary palette's steel instead: tone 80 `#c1c7ce` on the light theme's dark snackbar (7.7:1),
+tone 40 `#595f65` on the dark theme's light snackbar (5.0:1). `BrandSchemeTest.ANDROID_ONLY` holds
+the reason and pins the web's value too, so a web change brings the exception back for review.
+
+The window and splash background before Compose draws is `window_background`
+(`res/values/colors.xml` `#F0F0F3`, `res/values-night/colors.xml` `#111416`): the page, checked by
+`ContrastTest`. `MainActivity` sets the status and navigation bar icons from the app's own theme
+choice (`SystemBarStyle.auto(...) { dark }`), the status bar clear over the page-coloured top bar,
+three-button navigation over the page colour at 90 %. The adaptive icon's tile stays Asphalt
+`#101214`; the notification accent stays Lane yellow.
 
 ## Regenerating, and changing the scheme
 
@@ -321,11 +347,15 @@ app still carries the previous, yellow-seeded scheme; a follow-up brings `BrandC
   neighbouring series apart, and `spent` at least ΔE 7 from `error`.
 - Then update this file's tables:
   `node .claude/skills/milewage-design/scripts/tokens-table.mjs`, pasted between the markers.
-- `BrandSchemeTest` (`apps/android/app/src/test/.../ui/theme/`) compares Android's scheme with
-  `m3-scheme.json` role by role. Android must build the same palettes and apply the same
-  `overrides` (palette and tone per theme, in the JSON) and custom-colour `tones`.
+- `BrandSchemeTest` (`apps/android/app/src/test/.../ui/theme/`) pins Android to `m3-scheme.json`
+  three ways: its recipe (palettes, overrides, money seeds and tones) equals the JSON's; the
+  generated `BrandColors` is what that recipe gives with materialkolor (it writes the source to
+  `app/build/brand-colors/BrandColors.kt` to copy over); and every role is the JSON's hex in both
+  themes except `ANDROID_ONLY`. It fails when the JSON is missing. `ContrastTest` holds the pairs
+  the app draws at 4.5:1 text and 3:1 marks on the Android surface levels.
 - **To change a palette, an override or a money seed:** edit `PALETTES`, `OVERRIDES` or `CUSTOM`
   in `m3-theme.mjs` with the reason beside it, run the theme script and the web tests, then
-  bring Android in line. The `window_background` and `theme-color` values (`index.html`,
+  bring Android in line: the recipe constants in `BrandSchemeTest` and `ExtendedSeeds`, then the
+  generated `BrandColors.kt`, then `window_background` if `background` moved. The `window_background` and `theme-color` values (`index.html`,
   `manifest.webmanifest`; `test/theme.test.ts` and `test/manifest.test.ts` check them) follow
   `background`.

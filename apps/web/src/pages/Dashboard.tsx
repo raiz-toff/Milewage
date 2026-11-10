@@ -2,12 +2,14 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AddIcon } from '@/ui/icons';
 import { Button } from '@/components/ui/button';
-import { dayOf } from '../days';
+import { PERIODS, dayOf } from '../days';
 import { useSettings } from '../session';
 import { GoalRing, Notices, SetupChecklist } from './DashboardExtras';
 import { PageHeader } from '../ui/layout';
 import { DashboardHero } from './DashboardHero';
 import { RecentShifts } from './DashboardShifts';
+import { PeriodBreakdown } from './DashboardTrend';
+import type { PeriodId } from './DashboardTrend';
 
 /**
  * "Good afternoon, Sam" and the date, both in the driver's time zone (Comma's header), with the
@@ -53,12 +55,21 @@ export function Dashboard({ now }: { now?: number }) {
   const [period, setPeriod] = useState('week');
   const [ref, wide] = useWide(896);
   const hero = <DashboardHero now={at} period={period} onPeriod={setPeriod} />;
+  const today = dayOf(at, settings.timezone);
+  // The second chart: where the period's money (or miles) came from. Nothing when there is no split.
+  const breakdown = (
+    <PeriodBreakdown
+      id={period as PeriodId}
+      range={PERIODS.find((p) => p.id === period)!.range(today, settings.week_start)}
+      today={today}
+    />
+  );
   const goal = settings.modules.goals ? <GoalRing /> : null;
   return (
     <section ref={ref} className="space-y-6">
       <Greeting now={at} />
       <div className="space-y-3 empty:hidden">
-        <Notices today={dayOf(at, settings.timezone)} />
+        <Notices today={today} />
       </div>
       {wide ? (
         // Wide: setup and goal form a side column; without either the main column takes it all.
@@ -69,6 +80,7 @@ export function Dashboard({ now }: { now?: number }) {
           </div>
           <div data-side="" className="space-y-4 empty:hidden">
             <SetupChecklist />
+            {breakdown}
             {goal}
           </div>
         </div>
@@ -77,6 +89,7 @@ export function Dashboard({ now }: { now?: number }) {
         <div className="space-y-6">
           <SetupChecklist />
           {hero}
+          {breakdown}
           {goal}
           <RecentShifts />
         </div>

@@ -665,6 +665,24 @@
   filter: invert(1);
 }
 
+/*
+ * A chart's one entrance (ui/charts): the marks grow from the baseline, once, in a medium
+ * duration with Material's emphasized deceleration. None at all under reduced motion.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .chart-rise > * {
+    transform-box: fill-box;
+    transform-origin: bottom;
+    animation: chart-rise var(--md-sys-motion-duration-medium2)
+      var(--md-sys-motion-easing-emphasized-decelerate) both;
+  }
+}
+@keyframes chart-rise {
+  from {
+    transform: scaleY(0);
+  }
+}
+
 /* Reduced motion: transitions and animations finish at once (the ripple is not drawn at all). */
 @media (prefers-reduced-motion: reduce) {
   *,

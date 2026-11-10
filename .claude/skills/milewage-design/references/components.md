@@ -78,20 +78,89 @@ drawn by `index.css` as a small outlined button.
   text gets a leading quote.
 - Tables: text left, numbers right with `tabular-nums`, 52 px rows, dates through `formatDay`.
 - `ShowMore` (`ui/ShowMore.tsx`) with `usePagedList`: one list that grows by a page.
-- `HourBars` (`ui/HourBars.tsx`, also `hourLabel`) is the chart pattern. It draws CSS columns in
-  `bg-chart-1` (the steel `chart-measure`), labels the busiest value, shows a hover readout, and puts ticks in Settings' time
-  format. A captioned table is always there for screen readers, "Show as a table" shows it to
-  everyone, and an `EmptyState` covers no data. Follow it for any new chart.
-  Colour a new chart from the chart tokens (tokens.md): `chart-series-1` … `8` in order for
-  identity, `chart-earned` / `chart-spent` for money, `chart-measure` for distance and time,
-  `chart-grid` and `chart-axis` for the frame. The Shifts week strip and Analytics' income-source
-  bars use `chart-1` too.
+- Charts: see "Web: charts" below. Every chart is built from `ui/charts`, never by hand.
 - `PlatformBadge` (`platforms/`): the driver's colour is data, stored as chosen. It is drawn at
   Material's custom-colour tones (`platforms/tones.ts`: tone 40 with white letters in light, tone 80
   with tone 20 letters in dark, hue kept, not harmonised), so any colour holds 4.5:1. Settings >
   Platforms > Change colour offers `PRESET_COLORS`, named radios drawn as the badge they give.
 - `Qr` (`ui/Qr.tsx`) is black on a white plate in both themes. `PairingCode`
   (`pairing/PairingCode.tsx`) over `usePairingSession()` is the one way to show a pairing code.
+
+## Web: charts (`apps/web/src/ui/charts/`)
+
+One family of chart primitives, so every chart looks and behaves alike. A chart answers one
+question a driver asks ("How did this week go against the last? Where did the money come from?
+When is it worth being out?"); a chart that answers none is not drawn.
+
+**Library decision (2026-11-10).** Hand-built SVG on `d3-array` (`nice`, `ticks`) and `d3-shape`
+(`stack` with the diverging offset, `line`), pinned exactly (3.2.5, 3.2.1: the d3 maintainers'
+2026-11-03 releases, published from GitHub with provenance; 3.2.5 fixes a `nice` rounding error).
+Both are pure maths that own no DOM, so the drawing stays in the system's tokens and states, and
+nothing is fetched at run time. Measured with esbuild, minified and gzipped, for the parts a
+dashboard needs (bars, stacks, a line, axes, a tooltip):
+
+| Option                                  | gzip       | Why not                                                         |
+| --------------------------------------- | ---------- | --------------------------------------------------------------- |
+| **d3-array + d3-shape (chosen)**        | **≈ 6 kB** | Nice numbers, ticks, stacks and paths without reinventing them  |
+| + d3-scale (`scaleLinear`, `scaleBand`) | ≈ 16 kB    | A linear map and equal bands are a few lines each (`scale.ts`)  |
+| visx 4 primitives (shape, scale, axis)  | ≈ 24 kB    | Owns the axis markup; themes through props, not the roles       |
+| visx 4 XYChart                          | ≈ 56 kB    | Its own tooltip and theme layer to undo                         |
+| Observable Plot 0.6                     | ≈ 102 kB   | Draws its own DOM; not React                                    |
+| Recharts 3.10                           | ≈ 119 kB   | The heaviest; inline styles; its own tooltip and legend markup  |
+| Nivo 0.99                               | ≈ 92 kB    | Heavy, a theme object instead of CSS variables, no 2026 release |
+
+All support React 19. The built app's main chunk went from 361.14 to 377.56 kB gzip (+16.4 kB:
+about 6 kB of d3, the rest the chart primitives and the new Dashboard and Analytics sections);
+CSS from 21.58 to 21.86 kB. MUI X Charts (what OpenMiles uses) is ruled out: no MUI here.
+
+**The primitives** (import from `@/ui/charts` or `../ui/charts`):
+
+| Primitive                          | Use it for                                                                                                                                                                                                                                                                                                                                                                              |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ChartFigure`                      | The frame of every chart: a `<figure>` named by `label`, a toolbar row (a measure switch) with **Show as a table**, the plot, the `Legend` (only with two or more series), a footnote, and the table a screen reader always gets (`sr-only` until shown).                                                                                                                               |
+| `BarChart`                         | Discrete slots (days, months): one series or stacked. Bars at most 24 px with 4 px rounded data ends, a 2 px surface gap between stacked parts, a nice zero-based axis. `future` slots draw nothing and the keyboard skips them; `emphasis` draws one slot in colour and the rest in `chart-other` (today against the week). One direct label: the tallest slot, or the emphasised one. |
+| `LineChart`                        | A measure continuous over the slots (a running total): 2 px lines, the last point ringed. `dots` for a rate that exists only on some slots (pay per hour on days worked): markers, never a line across a gap. `reference` draws one hairline (the period's figure); its words go in the figure's note.                                                                                  |
+| `Heatmap`                          | A grid (weekdays by 3-hour blocks): one hue in five validated steps (`HEAT_STEPS`), a scale legend, a muted cell with a hairline for "no shifts". Arrow keys move across and down.                                                                                                                                                                                                      |
+| `SegmentBar`                       | One whole split into parts, read beside its figures: a thin 8 px bar with rounded ends and 2 px gaps over a list of swatch, name, figure and share. Zero parts are left out.                                                                                                                                                                                                            |
+| `RankBars`                         | Parts compared with each other: one bar per part, largest first, **one hue** (the badge or the name carries identity).                                                                                                                                                                                                                                                                  |
+| `InlineBar`, `Sparkline`           | A bar beside a figure in a table cell; tiny columns of a row's figures across the period (columns, so days off read as gaps).                                                                                                                                                                                                                                                           |
+| `ChartSkeleton`, `ChartEmpty`      | Loading in the chart's shape (never a spinner); no data in words with one way forward ("No shifts this week yet. Start one on your phone.").                                                                                                                                                                                                                                            |
+| `Comparison` (`ui/Comparison.tsx`) | A figure against the period before in words and with the sign as an arrow, never colour alone: "↓ $43.25 (26%) less than by this point last week ($167.64)". A running period is compared to the same point (`comparedWith` in `series.ts`).                                                                                                                                            |
+| `scale.ts`                         | The pure maths, tested: `valueAxis`, `bands`, `labelStep`, `stackRows`, `linePath`, `topRoundedRect`, `binOf`, `percent`.                                                                                                                                                                                                                                                               |
+
+**The rules every chart keeps.**
+
+- Hairline grid in `chart-grid`, the baseline in `chart-axis`, labels in label-small
+  `on-surface-variant` with tabular figures; no chart junk, no dual axes, no donut.
+- Hover and keyboard focus show the same tooltip (Material's plain tooltip: inverse-surface,
+  extra-small corners). The value leads, the slot follows, each series keyed by a short stroke. The
+  plot is one tab stop with `aria-roledescription="chart"`; the arrow keys, Home and End move between
+  slots, Escape lets go, and a polite live region reads the slot. The hovered slot gets the state
+  layer (on-surface at 8 %). Tooltips never gate: every value is in the table.
+- Every figure goes through the formatters (`formatMoney`, `formatMoneyTick`, `formatDistance`,
+  `formatDistanceTick`, `formatHours`, `hourLabel`) in the driver's currency, unit and time format;
+  weeks start at `settings.week_start`. A slot with nothing entered is "Not entered", never 0.
+- Colour: money in `chart-earned` (tips a 50 % tint of it), money out `chart-spent`, distance and
+  time the steel `chart-measure` (deadhead a 45 % tint), personal distance `chart-series-7`, the
+  period before and folded tails `chart-other`, platforms by their place in the driver's list
+  (`usePlatformColors`: slot 1 to 8, the same in every chart and period). Tints are
+  `tint(color, pct)`, a `color-mix` with the card in OKLab, so both themes follow.
+- One short entrance (`chart-rise`: the marks grow from the baseline, medium2, emphasized
+  decelerate) and none under reduced motion. Sizes come from the box (`useWidth`, a
+  ResizeObserver).
+- A chart whose module is off, or with nothing to draw, is not rendered at all; the layout closes
+  up (no empty card).
+- Estimates carry the asterisk and say so in the footnote (active and deadhead, the heatmap's
+  spread of a shift's pay over its hours).
+
+**Where they are used.** Dashboard (`pages/DashboardTrend.tsx`): the comparison under the earned
+figure, one trend chart per period tab (Today against the six days before; Week, Month and 30 days
+by day; Year by month) with an Earned / Distance / Time switch, and one breakdown card (where the
+money came from with two or more platforms, else where the miles went). Analytics
+(`pages/AnalyticsCharts.tsx`): earnings stacked by platform (or pay and tips), the pace against the
+period before, pay per hour and per mile as two small multiples, distance by kind, when it pays,
+money in and out, and the platform and vehicle tables. The data is `GET /summary/series` and
+`GET /analytics/breakdown` (`series.ts`).
 
 ## Web: states and feedback
 
@@ -137,21 +206,26 @@ alternative.
 
 ## Android: house composables (`apps/android/app/src/main/kotlin/app/milewage/phone/ui/components/`)
 
-| Composable                                              | Notes                                                                                                                                                                                                                                                    |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Screen`                                                | `title`, `onBack` (adds the back arrow), `actions`, and lazy-list `content`. A Material `TopAppBar` that takes surface-container once content scrolls under it. Padding and gaps are `ScreenPadding` (16 dp).                                            |
-| `Rows` + `ListRow` + `RowDivider`                       | A card (surface-container-low) of Material `ListItem`s, at least 56 dp. `ListRow(headline, supporting, leading, trailing, onClick)`: trailing holds a switch, a value or a chevron. Tappable rows ripple. `Rows(label = …)` puts a `SectionLabel` above. |
-| `SectionLabel`                                          | A group's name in title-small, primary colour, marked as a heading for TalkBack.                                                                                                                                                                         |
-| `StatTile`                                              | `label`, `value`, `caption`, `tone` (`StatTone.NEUTRAL`, `EARNED`, `SPENT`: money only). The figure is headline-small and tabular. Read out as one sentence.                                                                                             |
-| `EmptyState`                                            | `title`, `body`, an optional `icon` and at most one action.                                                                                                                                                                                              |
-| `ConfirmHost` + `rememberConfirmState()`                | `confirm.ask(ConfirmRequest(title, text, confirmLabel, destructive, onConfirm))`, shown as a Material `AlertDialog` with text buttons.                                                                                                                   |
-| `BrandButton`                                           | The one brand action on a screen: primary-container (Lane yellow) with on-primary-container content, 56 dp, `BrandSize.VEHICLE` 64 dp in the car (Start shift); `busy` shows a spinner. Every other action is tonal, outlined or text.                   |
-| `Snackbars` / `LocalSnackbars` / `MileWageSnackbarHost` | `LocalSnackbars.current.show(message, actionLabel, onAction)` from a coroutine. One host in `AppShell`. A message with an action stays longer.                                                                                                           |
+| Composable                                              | Notes                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Screen`                                                | `title`, `onBack` (adds the back arrow), `actions`, and lazy-list `content`, all on the page (`surfaces.page`). The `TopAppBar` keeps the page colour and shows an outline-variant hairline once content scrolls under it (no tonal tint). Padding and gaps are `ScreenPadding` (16 dp). `BottomAction` holds the screen's one main action on the page.                                   |
+| `CardSurface`                                           | The card: `surfaces.card` (white in light, surface-container in dark), medium corners, no border, no shadow. Every card is this; never a card inside a card (use `surfaces.fill` for a highlighted block on a card, as Connect's found servers do).                                                                                                                                       |
+| `Rows` + `ListRow` + `RowDivider`                       | A `CardSurface` of Material `ListItem`s, at least 56 dp, divided by outline-variant hairlines. `ListRow(headline, supporting, leading, trailing, onClick)`: trailing holds a switch, a value or a chevron. Tappable rows ripple. `Rows(label = …)` puts a `SectionLabel` above.                                                                                                           |
+| `SectionLabel`                                          | A group's name in title-small, ink (`primary`), marked as a heading for TalkBack.                                                                                                                                                                                                                                                                                                         |
+| `StatTile`, `StatCell`, `FigureRow`                     | `label`, `value`, `caption`, `tone` (`StatTone.NEUTRAL`, `EARNED`, `SPENT`: money only). The figure is headline-small and tabular, read out as one sentence. `StatTile` is a figure on its own card; figures that belong together are `StatCell`s in a `FigureRow` (equal heights, vertical hairlines) inside one card, under the screen's big figure (Home's summary, a shift's totals). |
+| `NoticeCard`                                            | Icon, title, body (on-surface-variant), at most one outlined action and a text action. `Tone.NEUTRAL` is a card; `WARNING` is outlined (the page colour inside an outline-variant hairline, the web's `Alert`), never a tint; `PROBLEM` is error-container.                                                                                                                               |
+| `RouteSketch`                                           | The shift's route on a Canvas: a Lane yellow lane line (`primaryContainer`) on an asphalt ribbon (`surfaces.road`), the start a ring, the end a square, stops dots, all ink with a card-coloured halo. The dark ribbon carries the route on the white card in light; the yellow carries it in dark.                                                                                       |
+| `EmptyState`                                            | `title`, `body`, an optional `icon` and at most one action.                                                                                                                                                                                                                                                                                                                               |
+| `ConfirmHost` + `rememberConfirmState()`                | `confirm.ask(ConfirmRequest(title, text, confirmLabel, destructive, onConfirm))`, shown as a Material `AlertDialog` with text buttons.                                                                                                                                                                                                                                                    |
+| `BrandButton`                                           | The one brand action on a screen: primary-container (Lane yellow) with on-primary-container (Asphalt) content, 56 dp, `BrandSize.VEHICLE` 64 dp in the car (Start shift); `busy` shows a spinner. Every other action is tonal, outlined or text.                                                                                                                                          |
+| `Snackbars` / `LocalSnackbars` / `MileWageSnackbarHost` | `LocalSnackbars.current.show(message, actionLabel, onAction)` from a coroutine. One host in `AppShell`. A message with an action stays longer. Inverse-surface, the action in `inversePrimary` (steel on Android, tokens.md).                                                                                                                                                             |
 
 Navigation (`ui/nav/`): `AppShell` shows first run (`WelcomeRoute`) until the phone is paired, the
 setup steps (Connected, permissions, Ready) after a first connection, then the main graph under a
-Material `NavigationBar` with Home, Shifts and Settings (outlined icons, filled when selected). Each tab keeps its
-state. `ShiftDetailRoute` opens over Shifts with a back arrow. Routes are type-safe
+Material `NavigationBar` with Home, Shifts and Settings (outlined icons, filled when selected), drawn by
+`MainNavigationBar`: on the page colour under an outline-variant hairline, the selected item in the
+secondary-container pill, and a 24 x 3 dp Lane yellow dash on the hairline above it (the lane mark,
+decoration only). Each tab keeps its state. `ShiftDetailRoute` opens over Shifts with a back arrow. Routes are type-safe
 `@Serializable` objects in `Routes.kt`.
 
 New screens follow the steps in SKILL.md and should fit Home's existing places (the running

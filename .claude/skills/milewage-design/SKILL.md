@@ -33,7 +33,8 @@ clear space and minimum sizes.
 **Colour.** `apps/web/scripts/m3-theme.mjs` builds the scheme with Google's
 material-color-utilities from explicit palettes: neutrals at Asphalt's hue (243, chroma 4 and 8),
 a neutral secondary, and the seed's own palette for the yellow roles; then a short, documented
-table of overrides (tokens.md). Android's `BrandColors` must match it role by role (tests).
+table of overrides (tokens.md). Android's `BrandColors` must match it role by role (tests), with
+one Android-only value: `inversePrimary`, the snackbar action (below).
 **`primary` is ink, not yellow**: Asphalt-dark in light (`#242628`), near-white in dark. The
 brand yellow is **`primary-container`**, exactly `#FFC21F` in both themes, with an Asphalt label.
 No neutral role carries any yellow (a test holds chroma under 0.02). The roles and their jobs:
@@ -51,7 +52,7 @@ No neutral role carries any yellow (a test holds chroma under 0.02). The roles a
 | `primary-container` (Lane yellow)      | The one main action, the map's route, the drawer's lane dash; nothing else                                       |
 | `secondary-container` (cool grey)      | Selection: the active navigation pill, a chosen chip or segment, the tonal button, the `Next` badge              |
 | `error` / `error-container`            | Destructive actions, invalid fields, `FormError`, the unread `count` badge                                       |
-| `inverse-surface`                      | Tooltips (and Android snackbars, by Material default)                                                            |
+| `inverse-surface`                      | Tooltips; Android snackbars, whose action is `inversePrimary` (Android: steel, not the web's yellow or gold)     |
 | `scrim`                                | Behind dialogs and sheets, at 32 %                                                                               |
 | `earned` / `spent` (extended)          | Money in / money out, and nothing else                                                                           |
 | `chart-*` (extended)                   | Charts only: eight series, earned, spent, the steel `measure`, `other`, grid and axis (tokens.md)                |
@@ -59,8 +60,11 @@ No neutral role carries any yellow (a test holds chroma under 0.02). The roles a
 
 **Where the yellow appears, the complete list:** the logo; the one main action per screen
 (`<Button>` default, Android's `BrandButton` / extended FAB); the route (and place circles and
-markers) on a map; a short lane dash at the leading edge of the current destination in the
-navigation drawer and rail. Nowhere else: not as a fill, a tint, a chart colour, a focus ring, a
+markers) on a map, and on Android the lane line of the shift's route sketch (on an asphalt ribbon);
+a short lane dash at the leading edge of the current destination in the navigation drawer and
+rail, and on Android above the selected item of the bottom navigation bar; on Android the QR
+scanner's viewfinder corners (the scan screen's one target, on the camera image). Android's
+notification accent is the yellow too (the system draws it). Nowhere else: not as a fill, a tint, a chart colour, a focus ring, a
 progress bar or a badge (the `default` badge exists but is not used).
 
 **One brand action per screen.** On the web this is `<Button>` with no variant: `default` is
@@ -100,7 +104,8 @@ same values through `Shapes()`.
 **Surfaces and elevation.** Use the surface model (tokens.md): page `bg-background`, card
 `bg-card`, a fill on a card `bg-muted`, a floating thing `bg-popover`. In light a card is white on
 a cool grey page; in dark it is one step lighter than the Asphalt page. A card has no shadow and
-no border; it reads by lightness. Lists inside a card are rows divided by `outline-variant`
+no border; it reads by lightness. On Android the levels are `MaterialTheme.surfaces.page`, `.card`,
+`.fill`, `.popover` (and `.road` for the route sketch), and every card is `CardSurface`. Lists inside a card are rows divided by `outline-variant`
 hairlines, not boxes in a box. Shadows exist only where Material draws them: level 1 on `elevated`
 buttons and cards and on a filled button's hover, level 2 on menus and popovers, level 3 on
 dialogs and the date picker.
@@ -167,11 +172,14 @@ Diagnostics). New ones follow the same steps:
    and a lazy column 16 dp from the edges with 16 between items). Top-level screens sit in
    `AppShell`, which draws the bottom `NavigationBar` (Home, Shifts, Settings) and the one snackbar
    host.
-3. Compose from the house parts: `Rows` + `ListRow` + `RowDivider` under a `SectionLabel`,
-   `StatTile` (with `StatTone.EARNED` / `SPENT` only for money), `EmptyState`, `ConfirmHost` with
+3. Compose from the house parts: `CardSurface` for any card, `Rows` + `ListRow` + `RowDivider`
+   under a `SectionLabel`, `StatTile` for a lone figure or `StatCell`s in a `FigureRow` for
+   figures that belong together in one card (with `StatTone.EARNED` / `SPENT` only for money), `EmptyState`, `ConfirmHost` with
    `rememberConfirmState()` before anything hard to undo, and `LocalSnackbars.current.show(...)` for
    short messages. A problem message always carries one action.
-4. Colours come from `MaterialTheme.colorScheme.*` and `MaterialTheme.extendedColors.*`. Type
+4. Colours come from `MaterialTheme.surfaces.*` (the level: page, card, fill, popover),
+   `MaterialTheme.colorScheme.*` and `MaterialTheme.extendedColors.*`. A screen never branches on
+   the theme to pick a container. Type
    comes from `MaterialTheme.typography.*`. Never put a hex or a `Color(0x…)` in a screen.
 5. Every string goes in `res/values/strings.xml` (the app) or `tracking/src/main/res/values/strings.xml`
    (notifications), in the voice. Plurals use `<plurals>`. Numbers come from the `:core`
@@ -211,7 +219,8 @@ Diagnostics). New ones follow the same steps:
   `chart-spent` for money, `chart-measure` (steel) for distance and time, `chart-other`,
   `chart-grid`, `chart-axis`. Never `primary`, never the yellow.
 - **Every chart has a text alternative**: a table a screen reader always gets and a visible "Show
-  as a table". Follow `HourBars`. Add no chart library.
+  as a table", and keyboard reading. Build charts only from `ui/charts` (components.md, "Web:
+  charts"); the only chart dependencies are `d3-array` and `d3-shape`. Add no chart library.
 - **A measurement not computed yet is a dash** (`formatDistance(null)` on the web, `DASH` on
   Android), never 0. Money that does not exist yet reads "not available" or "not entered".
 - **Dates, times, money and distance come from the formatting helpers** in the driver's settings,
@@ -255,4 +264,7 @@ For anyone who knew the previous system:
   a cool grey under white cards and dark pages are Asphalt; `on-primary-container` is Asphalt;
   selection is a cool grey; money colours are no longer harmonised (spent is an orange); the
   focus ring is ink; a chart palette was added; tables lost their header fill. The Android app
-  has not followed yet.
+  followed the same day: `BrandColors` equal to the JSON (pinned by `BrandSchemeTest`), the
+  surface model as `MaterialTheme.surfaces` and `CardSurface`, the page-coloured top and bottom
+  bars with hairlines, the lane dash over the selected tab, the route sketch as a yellow lane on
+  an asphalt ribbon, and `ContrastTest` for the pairs the app draws.

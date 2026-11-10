@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { hourLabel } from '../src/ui/HourBars';
 import { renderApp, settingsFixture, signedIn, DASHBOARD } from './support/kit';
 
 afterEach(cleanup);
@@ -55,19 +54,190 @@ const groups = (over: Record<string, unknown> = {}): Record<string, unknown> => 
   ...over,
 });
 
-/** The API's 24 hours, with shifts starting at the given ones. */
-const byHour = (shifts: Record<number, number>) =>
-  Array.from({ length: 24 }, (_, hour) => ({ hour, shifts: shifts[hour] ?? 0 }));
+const bucket = (start: string, over: Record<string, unknown> = {}) => ({
+  start,
+  shift_count: 0,
+  hours: 0,
+  earnings_cents: 0,
+  tips_cents: 0,
+  active_m: 0,
+  deadhead_m: 0,
+  personal_m: 0,
+  total_m: 0,
+  unsplit_m: 0,
+  platforms: [],
+  ...over,
+});
+/** Every day (or month) of the asked range; the first two slots have shifts unless `empty`. */
+function series(url: URL, mode?: unknown) {
+  const from = url.searchParams.get('from')!;
+  const to = url.searchParams.get('to')!;
+  const by = url.searchParams.get('bucket') ?? 'day';
+  const starts: string[] = [];
+  for (
+    let t = Date.parse(`${from}T00:00:00Z`);
+    t <= Date.parse(`${to}T00:00:00Z`);
+    t += 86_400_000
+  ) {
+    const d = new Date(t).toISOString().slice(0, 10);
+    if (by === 'day') starts.push(d);
+    else if (!starts.includes(`${d.slice(0, 7)}-01`)) starts.push(`${d.slice(0, 7)}-01`);
+  }
+  const busy = mode !== 'empty';
+  return {
+    from,
+    to,
+    bucket: by,
+    buckets: starts.map((s, i) =>
+      busy && i === 0
+        ? bucket(s, {
+            shift_count: 1,
+            hours: 2,
+            earnings_cents: 10_000,
+            tips_cents: 2_000,
+            active_m: 6_000,
+            deadhead_m: 4_000,
+            total_m: 10_000,
+            platforms:
+              mode === 'one'
+                ? [{ platform: 'doordash', earnings_cents: 10_000, tips_cents: 2_000 }]
+                : [
+                    { platform: 'doordash', earnings_cents: 7_000, tips_cents: 1_500 },
+                    { platform: 'ubereats', earnings_cents: 3_000, tips_cents: 500 },
+                  ],
+          })
+        : busy && i === 1
+          ? bucket(s, {
+              shift_count: 1,
+              hours: 4,
+              earnings_cents: 20_000,
+              tips_cents: 0,
+              active_m: 5_000,
+              deadhead_m: 5_000,
+              total_m: 10_000,
+              platforms: [{ platform: 'doordash', earnings_cents: 20_000, tips_cents: 0 }],
+            })
+          : bucket(s),
+    ),
+  };
+}
+const breakdownFixture = {
+  week_hours: [
+    { weekday: 1, hour: 18, hours: 2, paid_hours: 2, earnings_cents: 8_000 },
+    { weekday: 1, hour: 19, hours: 1, paid_hours: 1, earnings_cents: 4_000 },
+    { weekday: 2, hour: 9, hours: 4, paid_hours: 4, earnings_cents: 6_000 },
+  ],
+  vehicles: [
+    {
+      vehicle_id: 1,
+      shifts: 2,
+      hours: 6,
+      business_m: 20_000,
+      personal_m: 0,
+      earnings_cents: 30_000,
+      expenses_cents: 500,
+    },
+  ],
+  platforms: [
+    {
+      platform: 'doordash',
+      earnings_cents: 27_000,
+      tips_cents: 1_500,
+      orders: 9,
+      online_minutes: null,
+      shifts: 2,
+    },
+    {
+      platform: 'ubereats',
+      earnings_cents: 3_000,
+      tips_cents: 500,
+      orders: null,
+      online_minutes: null,
+      shifts: 1,
+    },
+  ],
+  expense_categories: [{ category: 'phone', cents: 500, count: 1 }],
+};
+const summaryFixture = {
+  shift_count: 2,
+  hours: 6,
+  earnings_cents: 30_000,
+  tips_cents: 2_000,
+  active_m: 11_000,
+  deadhead_m: 9_000,
+  personal_m: 0,
+  total_m: 20_000,
+  deduction_cents: 1_400,
+  deduction_rate: 'official',
+  hourly_earnings_cents: 5_000,
+};
+const platformRow = (slug: string, label: string, sort: number) => ({
+  slug,
+  label,
+  custom: false,
+  color: null,
+  emoji: null,
+  active: true,
+  sort,
+  hourly_target_cents: null,
+  logo_version: null,
+});
+const platformsFixture = [
+  platformRow('doordash', 'DoorDash', 0),
+  platformRow('ubereats', 'Uber Eats', 1),
+];
+const vehicle = (id: number, name: string) => ({
+  id,
+  name,
+  kind: 'car',
+  make: null,
+  model: null,
+  year: null,
+  plate: null,
+  power: null,
+  ownership: 'owned',
+  created_at: 1,
+  archived_at: null,
+});
 
 function open(
   over: Record<string, unknown> = {},
   enabled = true,
   timeFormat: '12h' | '24h' = '24h',
+  extra: Record<string, unknown> = {},
+  modules: Record<string, boolean> = {},
 ) {
   const g = groups(over);
   return renderApp(
     {
-      ...signedIn(settingsFixture({ modules: { analytics: enabled }, time_format: timeFormat })),
+      ...signedIn(
+        settingsFixture({ modules: { analytics: enabled, ...modules }, time_format: timeFormat }),
+      ),
+      'GET /summary/series': ({ url }) => ({ body: series(url, extra.series) }),
+      'GET /analytics/breakdown': ({ url }) => ({
+        body: {
+          from: url.searchParams.get('from'),
+          to: url.searchParams.get('to'),
+          ...breakdownFixture,
+          ...(extra.breakdown as object),
+        },
+      }),
+      'GET /summary': ({ url }) => ({
+        body: {
+          ...summaryFixture,
+          from: url.searchParams.get('from'),
+          to: url.searchParams.get('to'),
+          ...(extra.summary as object),
+        },
+      }),
+      'GET /vehicles': () => ({ body: (extra.vehicles as unknown[]) ?? [vehicle(1, 'Civic')] }),
+      'GET /expenses/categories': () => ({
+        body: [
+          { slug: 'fuel', label: 'Fuel' },
+          { slug: 'phone', label: 'Phone' },
+        ],
+      }),
+      'GET /platforms': () => ({ body: platformsFixture }),
       'GET /analytics': ({ url }) => ({
         body: {
           from: url.searchParams.get('from'),
@@ -82,22 +252,40 @@ function open(
 }
 
 describe('analytics screen (module analytics)', () => {
-  it('shows the cards, with "not available" where the server said null, and the groups', async () => {
+  it('shows the cards: earned after app fees, per mile, and online time only when there is some', async () => {
     open();
     const figures = await screen.findByLabelText('Figures');
-    expect(figures.textContent).toMatch(/Gross\$300\.00/);
-    expect(figures.textContent).toMatch(/Per hour \(online time\)not available/);
+    expect(figures.textContent).toMatch(/Earned, after app fees\$300\.00/);
     expect(figures.textContent).toMatch(/Net take-home\$220\.00/);
+    // 300.00 over 20 km of business distance.
+    expect(figures.textContent).toMatch(/Per km \(business\)\$15\.00/);
+    expect(figures.textContent).not.toMatch(/online time/);
     expect(screen.getByText(/Not enough shifts to project/)).toBeTruthy();
     expect(screen.getByText(/estimated from detected stops/)).toBeTruthy();
-    const sources = screen.getByRole('region', { name: 'Income sources' });
-    // The platform's name and badge (plan 25), not its slug.
-    expect(sources.textContent).toMatch(/DoorDash: \$300\.00 \(100%\)/);
-    expect(sources.querySelector('[data-platform="doordash"]')).not.toBeNull();
     expect(screen.getByRole('region', { name: 'Work rhythm' }).textContent).toMatch(
       /Busiest weekday: Tuesday/,
     );
-    expect(screen.getAllByText('not available').length).toBeGreaterThan(0); // the null trend bucket
+    cleanup();
+    open({
+      cards: {
+        gross_cents: 30_000,
+        hourly_shift_cents: 5000,
+        hourly_online_cents: 6000,
+        total_hours: 6,
+      },
+    });
+    expect((await screen.findByLabelText('Figures')).textContent).toMatch(
+      /Per hour \(online time\)\$60\.00/,
+    );
+  });
+
+  it('compares the period with the one before, in words', async () => {
+    const s = open({}, true, '24h', { summary: {} });
+    const words = await screen.findByTestId('comparison');
+    // Both sides come from the fixture (300.00): the same.
+    expect(words.textContent).toBe('The same as by this point last week ($300.00)');
+    const asked = s.calls.filter((c) => c.path === '/summary').map((c) => c.query);
+    expect(asked.length).toBeGreaterThanOrEqual(3); // to date, the week before to the same day, the whole week
   });
 
   it('leaves out the lines of modules that are off: no expense or set-aside tiles', async () => {
@@ -154,84 +342,129 @@ describe('analytics screen (module analytics)', () => {
     expect(s.calls.filter((c) => c.path === '/analytics').length).toBeGreaterThan(1);
   });
 
-  it('draws a column per hour of the day for shift start times, with the numbers in a table', async () => {
-    open({
-      rhythm: {
-        by_weekday: [{ weekday: 2, shifts: 2, hours: 4 }],
-        by_start_hour: byHour({ 9: 2, 17: 3 }),
-        average_shift_minutes: 120,
-      },
-    });
-    const region = await screen.findByRole('region', { name: 'Shift start times' });
-    expect(region.querySelector('h2')!.textContent).toBe('Shift start times');
-    expect(region.textContent).toMatch(/How many shifts started in each hour of the day/);
-    const columns = region.querySelectorAll<HTMLElement>('[data-hour]');
-    expect(columns).toHaveLength(24);
-    // The columns are drawn to scale with the chart token, and hidden from a screen reader.
-    const bar = (h: number) => columns[h]!.querySelector<HTMLElement>('.bg-chart-1')!;
-    expect([bar(17).style.height, bar(9).style.height, bar(0).style.height]).toEqual([
-      '100%',
-      `${(2 / 3) * 100}%`,
-      '0%',
-    ]);
-    expect(columns[0]!.closest('[aria-hidden]')).not.toBeNull();
-    // Only the busiest hour is labelled on the chart; a tick every six hours.
-    const chart = columns[0]!.parentElement!;
-    expect([...chart.querySelectorAll('.absolute')].map((n) => n.textContent)).toEqual([
-      '00:00',
-      '06:00',
-      '12:00',
-      '3',
-      '18:00',
-    ]);
-    // Hovering a column says its value and hour; leaving the chart clears it.
-    fireEvent.pointerEnter(columns[9]!);
-    expect(region.textContent).toMatch(/2 shifts at 09:00/);
-    fireEvent.pointerLeave(chart);
-    expect(region.textContent).not.toMatch(/2 shifts at 09:00/);
-    // Every hour and its count are in the table a screen reader gets; the button shows it to all.
-    const table = within(region).getByRole('table', { name: 'Shifts by start hour' });
+  it('draws earnings stacked by platform, with the same numbers in its table', async () => {
+    open();
+    const region = await screen.findByRole('region', { name: 'Earnings' });
+    const figure = within(region).getByRole('figure', { name: 'Earned each day, this week' });
+    const legend = within(figure).getAllByRole('list')[0]!; // the legend, before the table
+    expect(legend.textContent).toBe('DoorDashUber Eats');
+    expect(figure.textContent).toMatch(/Tips were \$20\.00 of it \(7%\)/);
+    const table = within(figure).getByRole('table', { name: 'Earned each day, this week' });
     const rows = within(table).getAllByRole('row');
-    expect(rows).toHaveLength(25);
-    expect(rows[18]!.textContent).toBe('17:003');
-    expect(table.parentElement!.className).toBe('sr-only');
-    const show = within(region).getByRole('button', { name: 'Show as a table' });
-    expect(show.getAttribute('aria-expanded')).toBe('false');
-    fireEvent.click(show);
-    expect(table.parentElement!.className).not.toMatch(/sr-only/);
-    expect(
-      within(region).getByRole('button', { name: 'Hide table' }).getAttribute('aria-expanded'),
-    ).toBe('true');
+    expect(rows[0]!.textContent).toBe('DayDoorDashUber EatsTipsEarned');
+    expect(rows[1]!.textContent).toMatch(/\$70\.00\$30\.00\$20\.00\$100\.00$/);
+    expect(rows[2]!.textContent).toMatch(/\$200\.00\$0\.00\$0\.00\$200\.00$/);
+    // The keyboard reads the chart: focus, then the arrows.
+    const chart = within(figure).getByRole('group', { name: /^Earned each day/ });
+    fireEvent.focus(chart);
+    expect(within(figure).getByRole('tooltip').textContent).toMatch(
+      /^\$100\.00.*\$70\.00DoorDash\$30\.00Uber Eats1 shift, \$20\.00 in tips$/,
+    );
+    fireEvent.keyDown(chart, { key: 'ArrowRight' });
+    expect(within(figure).getByRole('tooltip').textContent).toMatch(/^\$200\.00/);
   });
 
-  it('start times: hours follow the time format setting, and no shifts is words, not bars', async () => {
+  it('draws the pace, the pay rates, the distance split and when it pays', async () => {
+    open();
+    const pace = await screen.findByRole('region', { name: 'Pace' });
+    expect(within(pace).getByRole('table').textContent).toMatch(/\$100\.00\$100\.00/); // day 1, both periods
+    const pay = screen.getByRole('region', { name: 'Pay rate' });
+    expect(
+      within(pay).getByRole('figure', { name: /^Per hour \(shift time\) each day worked/ }),
+    ).toBeTruthy();
+    expect(within(pay).getByRole('figure', { name: /^Per km \(business distance\)/ })).toBeTruthy();
+    // 300.00 over 6 h; 300.00 over 20 km.
+    expect(pay.textContent).toMatch(/The line is the whole period: \$50\.00 an hour/);
+    expect(pay.textContent).toMatch(/The line is the whole period: \$15\.00 a km/);
+    const distance = screen.getByRole('region', { name: 'Distance' });
+    expect(within(distance).getAllByRole('list')[0]!.textContent).toBe('Active*Deadhead*');
+    expect(distance.textContent).toMatch(/\* Estimated from detected stops/);
+    const when = screen.getByRole('region', { name: 'When it pays' });
+    // Monday 18:00 to 21:00: 120.00 over 3 h.
+    expect(when.textContent).toMatch(
+      /Best: Mondays, 18:00 to 21:00, at \$40\.00 an hour \(3\.0 h on shift\)/,
+    );
+    fireEvent.click(within(when).getByRole('button', { name: 'Time on shift' }));
+    expect(
+      within(when).getByRole('table', { name: /^Time on shift by day and time/ }),
+    ).toBeTruthy();
+  });
+
+  it('money in and out, the platforms side by side, and the vehicles only with two', async () => {
+    open({}, true, '24h', {
+      vehicles: [vehicle(1, 'Civic'), vehicle(2, 'Prius')],
+      breakdown: {
+        vehicles: [
+          ...breakdownFixture.vehicles,
+          {
+            vehicle_id: 2,
+            shifts: 1,
+            hours: 1,
+            business_m: 0,
+            personal_m: 0,
+            earnings_cents: null,
+            expenses_cents: 0,
+          },
+        ],
+      },
+    });
+    const money = await screen.findByRole('region', { name: 'Money in and out' });
+    expect(money.textContent).toMatch(/Left after expenses: \$295\.00/);
+    expect(money.textContent).toMatch(/Phone\$5\.00100%/);
+    expect(money.textContent).toMatch(/Estimated deduction value: \$14\.00 on 20\.0 km/);
+    const platforms = screen.getByRole('region', { name: 'Platforms' });
+    const rows = within(within(platforms).getByRole('table')).getAllByRole('row');
+    expect(rows[1]!.textContent).toMatch(/^DDDoorDash\$270\.0090%\$15\.0029\$30\.00/);
+    expect(
+      within(platforms).getByRole('img', { name: 'DoorDash, earned each day of this week' }),
+    ).toBeTruthy();
+    const vehicles = screen.getByRole('region', { name: 'Vehicles' });
+    expect(within(vehicles).getAllByRole('row')[2]!.textContent).toMatch(
+      /^Prius11\.0 h0\.0 kmNot entered/,
+    );
+    cleanup();
+    open();
+    await screen.findByRole('region', { name: 'Platforms' });
+    expect(screen.queryByRole('region', { name: 'Vehicles' })).toBeNull(); // one vehicle: nothing to compare
+  });
+
+  it('with platforms and expenses off: pay and tips, no platform table, the deduction alone', async () => {
     open(
-      { rhythm: { by_weekday: [], by_start_hour: byHour({ 17: 1 }), average_shift_minutes: 60 } },
+      {
+        cards: {
+          gross_cents: 30_000,
+          hourly_shift_cents: 5000,
+          hourly_online_cents: null,
+          total_hours: 6,
+        },
+      },
       true,
-      '12h',
+      '24h',
+      {},
+      { platforms: false, expenses: false, receipts: false },
     );
-    const region = await screen.findByRole('region', { name: 'Shift start times' });
-    expect([...region.querySelectorAll('[data-hour] .absolute')].map((n) => n.textContent)).toEqual(
-      ['12 AM', '6 AM', '12 PM', '1', '6 PM'],
+    const earnings = await screen.findByRole('region', { name: 'Earnings' });
+    expect(within(earnings).getAllByRole('list')[0]!.textContent).toBe('PayTips');
+    expect(screen.queryByRole('region', { name: 'Platforms' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Money in and out' })).toBeNull();
+    expect(screen.getByRole('region', { name: 'Deduction' }).textContent).toMatch(/\$14\.00/);
+  });
+
+  it('a period with no shifts says so once, with a way forward; a year asks by month', async () => {
+    const s = open({}, true, '24h', {
+      series: 'empty',
+      breakdown: { week_hours: [], platforms: [], vehicles: [] },
+    });
+    expect(
+      await screen.findByText(/No shifts in this week yet\. Start one on your phone/),
+    ).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Earnings' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Year' }));
+    await waitFor(() =>
+      expect(
+        s.calls.some((c) => c.path === '/summary/series' && c.query.includes('bucket=month')),
+      ).toBe(true),
     );
-    fireEvent.pointerEnter(region.querySelectorAll('[data-hour]')[17]!);
-    expect(region.textContent).toMatch(/1 shift at 5 PM/);
-    cleanup();
-    open(); // the fixture's by_start_hour is empty
-    const empty = await screen.findByRole('region', { name: 'Shift start times' });
-    expect(empty.textContent).toMatch(/No shifts started in this period/);
-    expect(empty.querySelectorAll('[data-hour]')).toHaveLength(0);
-    expect(within(empty).queryByRole('table')).toBeNull();
-    cleanup();
-    open({ rhythm: { by_weekday: [], by_start_hour: byHour({}), average_shift_minutes: null } });
-    expect((await screen.findByRole('region', { name: 'Shift start times' })).textContent).toMatch(
-      /No shifts started in this period/,
-    );
-    expect([hourLabel(0, '12h'), hourLabel(12, '12h'), hourLabel(23, '24h')]).toEqual([
-      '12 AM',
-      '12 PM',
-      '23:00',
-    ]);
   });
 
   it('is absent when the module is off', async () => {

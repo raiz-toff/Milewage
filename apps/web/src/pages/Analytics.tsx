@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils';
 import {
   dateLocale,
   dateToIso,
-  formatDay,
   formatMonth,
   isoToDate,
   period,
@@ -19,64 +18,71 @@ import {
 } from '../days';
 import type { PeriodKind } from '../days';
 import { SegmentedButtons } from '../ui/chips';
-import { EmptyState, moneyText, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
+import { moneyText, PageHeader, Section } from '../ui/layout';
 import type { MoneyTone } from '../ui/layout';
-import { HourBars } from '../ui/HourBars';
 import { describe, unwrap } from '../api/client';
-import { apiKey } from '../api/query';
-import { formatMoney } from '../format';
+import { apiKey, useApiQuery } from '../api/query';
+import { deductionWord, formatDistance, formatMoney, fromMetres } from '../format';
 import { useSession, useSettings } from '../session';
 import { FormError } from '../ui/form';
-import { PlatformName } from '../platforms/PlatformBadge';
 import { usePlatformOf } from '../platforms/usePlatforms';
+import { businessOf, comparedWith, usePlatformColors, useSeries } from '../series';
+import { Comparison } from '../ui/Comparison';
+import { ChartEmpty, ChartSkeleton } from '../ui/charts';
+import {
+  ChartSection,
+  DistanceOverTime,
+  EarningsOverTime,
+  MoneyInOut,
+  PayRates,
+  PlatformTable,
+  RunningTotal,
+  VehicleTable,
+  WhenItPays,
+} from './AnalyticsCharts';
+import type { Ctx } from './AnalyticsCharts';
 
 type Mode = PeriodKind;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Data = Record<string, any>;
-const GROUPS = [
-  'cards',
-  'trends',
-  'sources',
-  'rhythm',
-  'outlook',
-  'efficiency',
-  'order_economics',
-] as const;
+const GROUPS = ['cards', 'rhythm', 'outlook', 'efficiency', 'order_economics'] as const;
 
-/** Analytics (module `analytics`, 18 section 10.1): a period navigator and the groups the server returns. */
+/**
+ * Analytics (module `analytics`, 18 section 10.1): a period navigator, the period's figures, then
+ * one chart per question (how the money came in, the pace against the period before, pay per hour
+ * and per mile, where the distance went, when it pays, money in and out) and the platforms and
+ * vehicles side by side. Every chart has its table.
+ */
 export function AnalyticsPage() {
   const { api } = useSession();
+  const settings = useSettings();
   const {
     timezone,
     currency,
     country,
     week_start: weekStart,
     time_format: timeFormat,
-  } = useSettings();
+    distance_unit: unit,
+    modules,
+  } = settings;
   const platformOf = usePlatformOf();
+  const colorOf = usePlatformColors();
   const [mode, setMode] = useState<Mode>('week');
   const [offset, setOffset] = useState(0);
   const today = todayIn(timezone);
   const range = period(mode, today, weekStart, offset);
+  const before = period(mode, today, weekStart, offset - 1);
   const [picking, setPicking] = useState(false);
   const periodText = rangeText(range.from, range.to, dateLocale(country));
   const money = (c: number | null | undefined) =>
     c == null ? 'not available' : formatMoney(c, currency);
+  const bucket = mode === 'year' ? ('month' as const) : ('day' as const);
 
   // One request per group, all for the period shown; the page waits for every one.
   const groups = useQueries({
     queries: GROUPS.map((group) => {
-      const params = {
-        query: {
-          from: range.from,
-          to: range.to,
-          group,
-          ...(group === 'trends'
-            ? { bucket: mode === 'year' ? ('month' as const) : ('day' as const) }
-            : {}),
-        },
-      };
+      const params = { query: { from: range.from, to: range.to, group } };
       return {
         queryKey: apiKey('/analytics', params),
         queryFn: ({ signal }: { signal: AbortSignal }) =>
@@ -87,16 +93,35 @@ export function AnalyticsPage() {
   const data: Data | null = groups.every((q) => q.isSuccess)
     ? Object.fromEntries(GROUPS.map((group, i) => [group, groups[i]!.data]))
     : null;
-  const failed = groups.find((q) => q.error)?.error;
+  const series = useSeries(range, bucket);
+  const previous = useSeries(before, bucket);
+  const breakdown = useApiQuery('/analytics/breakdown', {
+    params: { query: { from: range.from, to: range.to } },
+  });
+  // The comparison under the figure: up to the same point when the period is still running.
+  const compared = comparedWith(mode, range, today);
+  const nowSummary = useApiQuery('/summary', { params: { query: compared.current } });
+  const prevSummary = useApiQuery('/summary', { params: { query: compared.previous } });
+  const wholeSummary = useApiQuery('/summary', { params: { query: range } });
+  const vehicles = useApiQuery('/vehicles').data ?? [];
+  const categories =
+    useApiQuery('/expenses/categories', undefined, { enabled: modules.expenses }).data ?? [];
+  const failed = [...groups, series, previous, breakdown].find((q) => q.error)?.error;
   const error = failed ? describe(failed) : null;
 
   const cards = data?.cards as Data | undefined;
+  const whole = wholeSummary.data;
+  const business = whole ? businessOf(whole) : 0;
   // Money in and out carry the earned and spent colours (the label says which); the net by its sign.
   const inOut = (cents: number | null | undefined, tone: MoneyTone) =>
     cents ? (cents < 0 ? 'spent' : tone) : undefined;
+  const perDistance =
+    cards?.gross_cents != null && business > 0
+      ? money(Math.round(cards.gross_cents / fromMetres(business, unit)))
+      : 'not available';
   const tiles: [string, string | null, MoneyTone?][] = cards
     ? [
-        ['Gross', money(cards.gross_cents), inOut(cards.gross_cents, 'earned')],
+        ['Earned, after app fees', money(cards.gross_cents), inOut(cards.gross_cents, 'earned')],
         ...(cards.expenses_cents === undefined
           ? []
           : ([
@@ -117,10 +142,40 @@ export function AnalyticsPage() {
           ? []
           : ([['Tax set-aside', money(cards.tax_set_aside_cents)]] as [string, string][])),
         ['Per hour (shift time)', money(cards.hourly_shift_cents)],
-        ['Per hour (online time)', money(cards.hourly_online_cents)],
+        // Online time is typed per platform on the phone; without it there is no such figure.
+        ...(cards.hourly_online_cents == null
+          ? []
+          : ([['Per hour (online time)', money(cards.hourly_online_cents)]] as [string, string][])),
+        [unit === 'mi' ? 'Per mile (business)' : 'Per km (business)', perDistance],
         ['Total time', `${cards.total_hours} h`],
       ]
     : [];
+  const when =
+    mode === 'week'
+      ? offset === 0
+        ? 'this week'
+        : 'that week'
+      : mode === 'month'
+        ? formatMonth(range.from, dateLocale(country))
+        : range.from.slice(0, 4);
+  const ctx: Ctx = { currency, unit, timeFormat, weekStart, today, bucket, when };
+  const buckets = series.data?.buckets ?? [];
+  const nothing =
+    series.data !== undefined && buckets.every((b) => b.shift_count === 0 && !b.earnings_cents);
+  const earningsPossible = modules.earnings || modules.stops;
+  const vehicleName = (id: number | null) =>
+    vehicles.find((v) => v.id === id)?.name ?? (id === null ? 'No vehicle' : `Vehicle ${id}`);
+  const categoryName = (slug: string) => categories.find((c) => c.slug === slug)?.label ?? slug;
+  const deduction = whole?.deduction_cents ? (
+    <p className="text-body-medium text-on-surface-variant">
+      Estimated {deductionWord({ ...settings, deduction_rate: whole.deduction_rate })} value:{' '}
+      <span className="font-medium text-on-surface tabular-nums">
+        {money(whole.deduction_cents)}
+      </span>{' '}
+      on {formatDistance(business, unit)} of business driving. It lowers your taxable income; it is
+      not money paid to you.
+    </p>
+  ) : null;
 
   return (
     <section className="space-y-6">
@@ -197,8 +252,19 @@ export function AnalyticsPage() {
           </div>
           {cards ? (
             <div className="mt-1 text-body-small text-muted-foreground">
-              gross · {cards.total_hours} h
+              earned after app fees · {cards.total_hours} h
             </div>
+          ) : null}
+          {cards?.gross_cents != null && nowSummary.data && prevSummary.data ? (
+            <Comparison
+              className="mt-1 justify-center text-center"
+              current={nowSummary.data.earnings_cents}
+              previous={
+                prevSummary.data.earnings_cents ?? (prevSummary.data.shift_count === 0 ? 0 : null)
+              }
+              format={(v) => formatMoney(v, currency)}
+              words={compared.words}
+            />
           ) : null}
         </div>
         <UiButton
@@ -231,64 +297,115 @@ export function AnalyticsPage() {
               </div>
             ))}
           </dl>
-          <Section label="Trends" title="Trends">
-            {data.trends.buckets.length === 0 ? (
-              <EmptyState>No shifts in this period.</EmptyState>
-            ) : (
-              <TableBox>
-                <table className={tableClass}>
-                  <thead>
-                    <tr>
-                      <th>Period</th>
-                      <th className="text-right">Shifts</th>
-                      <th className="text-right">Hours</th>
-                      <th className="text-right">Earnings</th>
-                      <th className="text-right">Per hour</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.trends.buckets.map((b: Data) => (
-                      <tr key={b.start}>
-                        <td className="whitespace-nowrap tabular-nums">
-                          {mode === 'year'
-                            ? formatMonth(b.start, dateLocale(country))
-                            : formatDay(b.start, dateLocale(country))}
-                        </td>
-                        <td className="text-right tabular-nums">{b.shifts}</td>
-                        <td className="text-right tabular-nums">{b.hours}</td>
-                        <td className="text-right tabular-nums">{money(b.earnings_cents)}</td>
-                        <td className="text-right tabular-nums">{money(b.hourly_cents)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </TableBox>
-            )}
-            <p className="text-body-medium text-muted-foreground">
-              Previous period: {money(data.trends.previous.earnings_cents)},{' '}
-              {data.trends.previous.hours} h
-            </p>
-          </Section>
-          {data.sources.length > 0 ? (
-            <Section label="Income sources" title="Income sources">
-              <ul className="space-y-3 text-body-medium">
-                {data.sources.map((s: Data) => (
-                  <li key={s.platform} className="space-y-1.5">
-                    <PlatformName platform={platformOf(s.platform)} className="tabular-nums">
-                      {platformOf(s.platform).label}: {money(s.earnings_cents)} (
-                      {Math.round((s.share ?? 0) * 100)}%)
-                    </PlatformName>
-                    <div className="h-2 overflow-hidden rounded-full bg-secondary-container">
-                      <div
-                        className="h-2 rounded-full bg-chart-1"
-                        style={{ width: `${Math.round((s.share ?? 0) * 100)}%` }}
-                      />
-                    </div>
-                  </li>
-                ))}
-              </ul>
+          {!series.data || !breakdown.data ? (
+            <Section label="Charts">
+              <ChartSkeleton />
             </Section>
-          ) : null}
+          ) : nothing ? (
+            <ChartEmpty>
+              No shifts in {when} yet. Start one on your phone, or pick another period with the
+              arrows.
+            </ChartEmpty>
+          ) : (
+            <>
+              {earningsPossible && buckets.some((b) => b.earnings_cents) ? (
+                <div className="grid gap-4 xl:grid-cols-2">
+                  <ChartSection
+                    title="Earnings"
+                    description={`What came in each ${bucket}, after app fees, and from where.`}
+                  >
+                    <EarningsOverTime
+                      ctx={ctx}
+                      buckets={buckets}
+                      platformOf={platformOf}
+                      colorOf={colorOf}
+                      byPlatform={modules.platforms}
+                    />
+                  </ChartSection>
+                  <ChartSection
+                    title="Pace"
+                    description="Earnings added up through the period, against the period before."
+                  >
+                    <RunningTotal
+                      ctx={ctx}
+                      current={buckets}
+                      previous={previous.data?.buckets ?? []}
+                    />
+                  </ChartSection>
+                </div>
+              ) : null}
+              {earningsPossible && buckets.some((b) => b.earnings_cents) ? (
+                <ChartSection
+                  title="Pay rate"
+                  description={`What each ${bucket} worked paid for the time and for the distance.`}
+                >
+                  <PayRates ctx={ctx} buckets={buckets} />
+                </ChartSection>
+              ) : null}
+              {buckets.some((b) => b.total_m > 0) ? (
+                <ChartSection
+                  title="Distance"
+                  description={`Where the ${unit === 'mi' ? 'miles' : 'kilometres'} went each ${bucket}.`}
+                >
+                  <DistanceOverTime ctx={ctx} buckets={buckets} />
+                </ChartSection>
+              ) : null}
+              {breakdown.data.week_hours.length > 0 ? (
+                <ChartSection
+                  title="When it pays"
+                  description="Each weekday and time of day, from the shifts in this period."
+                >
+                  <WhenItPays
+                    ctx={ctx}
+                    cells={breakdown.data.week_hours}
+                    earnings={
+                      earningsPossible && breakdown.data.week_hours.some((c) => c.earnings_cents)
+                    }
+                  />
+                </ChartSection>
+              ) : null}
+              {modules.expenses && cards?.expenses_cents !== undefined ? (
+                <ChartSection
+                  title="Money in and out"
+                  description="Earnings against expenses, and where the expenses went."
+                >
+                  <MoneyInOut
+                    ctx={ctx}
+                    earnedCents={cards?.gross_cents ?? null}
+                    expensesCents={cards?.expenses_cents ?? 0}
+                    categories={breakdown.data.expense_categories ?? []}
+                    categoryName={categoryName}
+                    deduction={deduction}
+                  />
+                </ChartSection>
+              ) : deduction ? (
+                <Section label="Deduction" title="Deduction">
+                  {deduction}
+                </Section>
+              ) : null}
+              {modules.platforms && breakdown.data.platforms.length > 0 ? (
+                <ChartSection
+                  title="Platforms"
+                  description="Each platform side by side, with its earnings across the period."
+                >
+                  <PlatformTable
+                    ctx={ctx}
+                    platforms={breakdown.data.platforms}
+                    buckets={buckets}
+                    platformOf={platformOf}
+                  />
+                </ChartSection>
+              ) : null}
+              {breakdown.data.vehicles.length > 1 ? (
+                <ChartSection
+                  title="Vehicles"
+                  description="Each vehicle side by side: time, distance and what it earned."
+                >
+                  <VehicleTable ctx={ctx} vehicles={breakdown.data.vehicles} nameOf={vehicleName} />
+                </ChartSection>
+              ) : null}
+            </>
+          )}
           <div className="grid items-start gap-4 lg:grid-cols-3">
             <Section label="Outlook" title="Outlook" className="text-body-medium">
               {data.outlook.projected_earnings_cents === null ? (
@@ -347,22 +464,6 @@ export function AnalyticsPage() {
               </p>
             </Section>
           </div>
-          <Section
-            label="Shift start times"
-            title="Shift start times"
-            description="How many shifts started in each hour of the day, in this period."
-          >
-            <HourBars
-              label="Shifts by start hour"
-              unit={['shift', 'shifts']}
-              bars={(data.rhythm.by_start_hour as Data[]).map((h) => ({
-                hour: h.hour as number,
-                value: h.shifts as number,
-              }))}
-              timeFormat={timeFormat}
-              emptyText="No shifts started in this period."
-            />
-          </Section>
         </>
       )}
     </section>

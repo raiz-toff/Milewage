@@ -1,5 +1,12 @@
 import type { FastifyInstance } from 'fastify';
-import { createEarningsRepository, createProcessingRepository, totalOf, type Db } from '../db';
+import {
+  createEarningsRepository,
+  createProcessingRepository,
+  totalOf,
+  type Db,
+  type ShiftRow,
+} from '../db';
+import { summarySeries, type SeriesShift } from '../analytics-series';
 import { ProblemError } from '../errors';
 import type { MileageDeduction } from '../mileage-deduction';
 import type { DriverContexts } from '../driver-context';
@@ -11,6 +18,26 @@ const query = strictObject(
   { from: date, to: date, platform: { type: 'string', pattern: '^[a-z0-9_]{1,32}$' } },
   [],
 );
+
+const seriesQuery = strictObject({ from: date, to: date, bucket: { enum: ['day', 'month'] } }, [
+  'from',
+  'to',
+]);
+const DAY = 86_400_000;
+
+/** A shift as the series and breakdowns read it: totals not computed yet count as 0. */
+export const seriesShift = (s: ShiftRow): SeriesShift => ({
+  id: s.id,
+  vehicleId: s.vehicleId,
+  localDate: s.localDate,
+  startedAt: s.startedAt,
+  endedAt: s.endedAt ?? s.startedAt,
+  totalM: s.totalM ?? 0,
+  activeM: s.activeM ?? 0,
+  deadheadM: s.deadheadM ?? 0,
+  personalM: s.personalM ?? 0,
+  segmenter: s.segmenter,
+});
 
 const valid = (d: string) => {
   const t = Date.parse(`${d}T00:00:00Z`);
@@ -89,5 +116,46 @@ export function summaryRoute(app: FastifyInstance, ctx: SummaryContext) {
       // A shift that spans platforms has one distance; it is not split, so only earnings are filtered.
       ...(q.platform ? { platform_filter: 'earnings_only' } : {}),
     };
+  });
+
+  /**
+   * `GET /summary/series`: the summary's figures per day or per month, every slot of the range
+   * included, for the dashboard's and Analytics' charts. At most 366 days by day, two years by month.
+   */
+  app.get('/summary/series', { schema: { querystring: seriesQuery } }, async (req) => {
+    const { userId } = ctx.auth(req, 'S');
+    const q = req.query as { from: string; to: string; bucket?: 'day' | 'month' };
+    const bucket = q.bucket ?? 'day';
+    const days =
+      valid(q.from) && valid(q.to)
+        ? (Date.parse(`${q.to}T00:00:00Z`) - Date.parse(`${q.from}T00:00:00Z`)) / DAY + 1
+        : 0;
+    if (days < 1 || days > (bucket === 'day' ? 366 : 731)) {
+      throw new ProblemError('validation_failed', 'The request is not valid.', [
+        {
+          path: '/from',
+          message:
+            bucket === 'day'
+              ? 'give a valid range of at most 366 days'
+              : 'give a valid range of at most two years',
+        },
+      ]);
+    }
+    const known = ctx.earnings?.any(userId) ?? false;
+    return summarySeries({
+      from: q.from,
+      to: q.to,
+      bucket,
+      shifts: repo.shiftsInPeriod(userId, q.from, q.to).map(seriesShift),
+      earnings: known
+        ? createEarningsRepository(ctx.db).effective(
+            userId,
+            q.from,
+            q.to,
+            ctx.earnings!.options(userId),
+          )
+        : [],
+      earningsKnown: known,
+    });
   });
 }

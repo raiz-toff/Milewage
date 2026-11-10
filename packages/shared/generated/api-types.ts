@@ -920,6 +920,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/summary/series": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The summary's figures per day or per month, every slot of the range included (the dashboard's and Analytics' charts). At most 366 days by day, two years by month. */
+        get: operations["getSummarySeries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/platforms": {
         parameters: {
             query?: never;
@@ -1346,6 +1363,23 @@ export interface paths {
         };
         /** One group of period figures. Unknown is null, never 0. The platform filter applies to earnings only. */
         get: operations["getAnalytics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/analytics/breakdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A range by weekday and clock hour, per vehicle, per platform and per expense category. At most two years. */
+        get: operations["getAnalyticsBreakdown"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3201,6 +3235,81 @@ export interface components {
              * @constant
              */
             platform_filter?: "earnings_only";
+        };
+        SummarySeries: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            /** @enum {unknown} */
+            bucket: "day" | "month";
+            buckets: components["schemas"]["SeriesBucket"][];
+        };
+        SeriesBucket: {
+            /**
+             * Format: date
+             * @description The bucket's first day (the first of the month by month).
+             */
+            start: string;
+            shift_count: number;
+            /** @description Shift time. */
+            hours: number;
+            /** @description As Summary.earnings_cents; null when the bucket has shifts but nothing entered or labelled, or nothing can count as earnings. 0 with no shifts and no earnings. */
+            earnings_cents: number | null;
+            tips_cents: number | null;
+            /** @description Includes unsplit_m. */
+            active_m: number;
+            deadhead_m: number;
+            personal_m: number;
+            total_m: number;
+            /** @description Business distance of shifts with no stop-based split; it is counted in active_m. The rest of active_m and deadhead_m are estimates from detected stops. */
+            unsplit_m: number;
+            /** @description Earnings per platform in the bucket, largest first. */
+            platforms: {
+                platform: string;
+                earnings_cents: number;
+                tips_cents: number;
+            }[];
+        };
+        AnalyticsBreakdown: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            /** @description Shift time by weekday (0 Sunday) and clock hour in the instance time zone; only cells with shift time. A shift's earnings are spread over its hours in proportion to time. */
+            week_hours: {
+                weekday: number;
+                hour: number;
+                hours: number;
+                /** @description The part of hours from shifts with earnings. */
+                paid_hours: number;
+                /** @description null when no shift in the cell has earnings. */
+                earnings_cents: number | null;
+            }[];
+            vehicles: {
+                vehicle_id: number | null;
+                shifts: number;
+                hours: number;
+                business_m: number;
+                personal_m: number;
+                earnings_cents: number | null;
+                /** @description Present only with the expenses module on. */
+                expenses_cents?: number;
+            }[];
+            platforms: {
+                platform: string;
+                earnings_cents: number;
+                tips_cents: number;
+                orders: number | null;
+                online_minutes: number | null;
+                shifts: number;
+            }[];
+            /** @description Present only with the expenses module on. The same rule as the cards' expenses (the deductible part, nothing counted twice). */
+            expense_categories?: {
+                category: string;
+                cents: number;
+                count: number;
+            }[];
         };
         Backup: {
             id: number;
@@ -5578,6 +5687,31 @@ export interface operations {
             422: components["responses"]["Unprocessable"];
         };
     };
+    getSummarySeries: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                bucket?: "day" | "month";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One bucket per day or month, oldest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SummarySeries"];
+                };
+            };
+            422: components["responses"]["Unprocessable"];
+        };
+    };
     listPlatforms: {
         parameters: {
             query?: {
@@ -6590,6 +6724,30 @@ export interface operations {
                         platform_filter?: "earnings_only";
                         data: Record<string, never> | unknown[] | null;
                     };
+                };
+            };
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    getAnalyticsBreakdown: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The breakdowns. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyticsBreakdown"];
                 };
             };
             422: components["responses"]["Unprocessable"];

@@ -68,9 +68,21 @@ Built-in platforms cannot be renamed or deleted. Delete, for a platform you adde
 
 The dashboard's "Earned, after app fees" is your fares, tips, bonuses and corrections, minus commission and platform fees, for the ended shifts in the period. Tax withheld, cash collected, top-ups and payouts are not in it. With nothing entered or labelled it says "Not entered", not zero.
 
-Per hour is those earnings divided by shift time: from the start to the end of each shift, breaks included. Analytics shows the same figure as "Per hour (shift time)". Its "Per hour (online time)" needs your online time in each app, which the web has no box for, so it shows no figure.
+Per hour is those earnings divided by shift time: from the start to the end of each shift, breaks included. Analytics shows the same figure as "Per hour (shift time)". "Per hour (online time)" appears only when your online time in each app was recorded; the web has no box for it.
 
-When you type orders, Analytics also shows the pay per order and orders per hour. The web shows no earnings per mile or per km in this version.
+Per mile (or per km) is the same earnings divided by your business distance: active and deadhead together, personal distance left out. Analytics shows it for the period and for each day worked.
+
+When you type orders, Analytics also shows the pay per order and orders per hour.
+
+## The charts
+
+Under the dashboard's earned figure, a line compares it with the period before, up to the same point: this week so far against last week to the same weekday, this month to today's date against last month to the same date, today against all of yesterday. An arrow and the words "more" or "less" say which way it went.
+
+The chart under it shows the period day by day (month by month for Year). Earned, Distance and Time switch what it shows. Today is drawn against the six days before it. Beside it, "Where the money came from" splits the earnings by platform when two or more earned; otherwise "Where the miles went" splits the distance into active, deadhead and personal.
+
+Analytics adds the earnings by platform, the pace against the period before, pay per hour and per mile for each day worked, the distance by kind, money in and out, and the platforms and vehicles side by side. "When it pays" colours each weekday and time of day by the pay per hour of the shifts you worked then. A shift's earnings are spread evenly over its hours, so a busy hour inside a long shift is not singled out.
+
+Every chart has "Show as a table" for the same figures as words. With a keyboard, move to a chart with Tab and read it with the arrow keys.
 
 ## In the exports
 

@@ -13,6 +13,8 @@ import { PERIODS, dateWords, dayOf, weekWords } from '../days';
 import { Est } from '../ui/Est';
 import { moneyText } from '../ui/layout';
 import { cn } from '@/lib/utils';
+import { PeriodComparison, PeriodTrend, useBreakdown } from './DashboardTrend';
+import type { PeriodId } from './DashboardTrend';
 
 type Summary = Schemas['Summary'];
 type Range = { from: string; to: string };
@@ -73,18 +75,29 @@ function PeriodFigures({
   today,
   week,
   periodId,
+  range,
+  day,
 }: {
   summary: Summary;
   today: Summary;
   week: Summary;
-  periodId: string;
+  periodId: PeriodId;
+  range: Range;
+  /** Today, the driver's day. */
+  day: string;
 }) {
   const settings = useSettings();
   const money = (c: number) => formatMoney(c, settings.currency);
   const unit = settings.distance_unit;
   const missing = missingEarnings(settings);
   const business = formatDistance(summary.active_m + summary.deadhead_m, unit);
-  const split = settings.modules.stops && summary.active_m + summary.deadhead_m > 0;
+  // The split in words, unless the breakdown card beside the hero already draws it.
+  const card = useBreakdown(periodId, range, day);
+  const split =
+    settings.modules.stops &&
+    summary.active_m + summary.deadhead_m > 0 &&
+    card?.kind !== 'distance';
+  const earningsPossible = settings.modules.earnings || settings.modules.stops;
   const perHourWhy =
     summary.hours === 0
       ? 'No shift time yet'
@@ -124,9 +137,15 @@ function PeriodFigures({
           >
             {earned === null ? missing.value : money(earned)}
           </p>
+          {earned !== null ? (
+            <PeriodComparison id={periodId} range={range} today={day} earned={earned} />
+          ) : null}
           <p className="text-body-medium text-muted-foreground tabular-nums">
             {earned === null ? missing.why : line}
           </p>
+          <div className="pt-4">
+            <PeriodTrend id={periodId} today={day} earningsPossible={earningsPossible} />
+          </div>
         </CardContent>
       </Card>
       <div className="grid grid-cols-3 gap-3">
@@ -229,7 +248,9 @@ export function DashboardHero({
             summary={data.summary}
             today={data.today}
             week={data.week}
-            periodId={period}
+            periodId={period as PeriodId}
+            range={chosen}
+            day={day}
           />
         )}
       </TabsContent>

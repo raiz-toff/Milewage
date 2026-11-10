@@ -54,7 +54,7 @@ page by hand.
 | Rates          | `formatRate`, `rateInput`, `parseRate`, `deductionWord`                                                 | (none yet)                                                     | Per-distance rates keep hundredths of a minor unit.                                                                                                                                   |
 | Day            | `formatDay(iso, dateLocale(country))`, `parseDay`                                                       | `formatDay(day, country)`                                      | English in the driver's country's order: "Nov 7, 2026" (CA, US), "7 Nov 2026" (GB).                                                                                                   |
 | Date and time  | `formatDateTime(ms, timeZone, …)`                                                                       | `dayOf(ms, timeZone)`, `zoneOf`                                | Always the instance time zone (`settings.timezone`), never the browser's or the phone's.                                                                                              |
-| Clock time     | `formatTime(ms, tz, fmt)`, `formatClock(hhmm, fmt)`, `hourLabel` (`ui/HourBars.tsx`)                    | `formatClock(ms, timeZone, TimeFormat.H12/H24)`                | 12h or 24h from Settings > Time format, not the browser or phone language.                                                                                                            |
+| Clock time     | `formatTime(ms, tz, fmt)`, `formatClock(hhmm, fmt)`, `hourLabel`                                        | `formatClock(ms, timeZone, TimeFormat.H12/H24)`                | 12h or 24h from Settings > Time format, not the browser or phone language.                                                                                                            |
 | Distance       | `formatDistance(m, unit)`, `toMetres`, `fromMetres`, `distanceInput`, `parseDistance`, `formatOdometer` | `formatDistance(m, DistanceUnit)`, `toMetres`, `parseDistance` | Whole metres to the driver's unit with one decimal; null is a dash (`DASH` on Android), never 0. Nothing else writes 1609.344.                                                        |
 | Duration       | `formatDuration(startMs, endMs)`                                                                        | `formatDuration(startMs, endMs)`                               | Hours and minutes.                                                                                                                                                                    |
 | Today          | `todayIn(timeZone)`, `dayOf(ms, timeZone)`                                                              | `dayOf(ms, timeZone)`                                          | The driver's day, for defaults and period navigation. Never `new Date().toISOString()` (the UTC day).                                                                                 |
@@ -88,7 +88,9 @@ tests). The patterns:
 ## Accessibility that is part of the style
 
 - Every control has a real name; tests find things by role and name, so a missing name fails a test.
-- Charts carry a table a screen reader always gets, and a visible toggle for it.
+- Charts carry a table a screen reader always gets, and a visible toggle for it; the keyboard reads
+  them slot by slot. A comparison says the direction in words ("less than by this point last
+  week"), never by colour alone.
 - Codes meant to be read aloud (a 6-digit link code) are read digit by digit.
 - Focus rings are Material's: 3 px in `ring` (the scheme's secondary) on the web, the platform's own on Android. Never remove them.
 - Dialogs trap focus and return it; a dialog showing a secret does not close on an outside click.

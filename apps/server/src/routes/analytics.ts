@@ -10,6 +10,8 @@ import {
 } from '../db';
 import { ProblemError } from '../errors';
 import { analytics, type AShift } from '../analytics';
+import { breakdown } from '../analytics-series';
+import { seriesShift } from './summary';
 import { deductibleCents } from '../expense-math';
 import type { MileageDeduction } from '../mileage-deduction';
 import type { DriverContexts } from '../driver-context';
@@ -36,6 +38,7 @@ const query = strictObject(
   },
   [],
 );
+const rangeQuery = strictObject({ from: date, to: date }, ['from', 'to']);
 const DAY = 86_400_000;
 const utc = (d: string) => Date.parse(`${d}T00:00:00Z`);
 const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
@@ -132,6 +135,44 @@ export function analyticsRoutes({
         ...(q.platform ? { platform_filter: 'earnings_only' } : {}),
         data: result[group],
       };
+    });
+
+    /**
+     * `GET /analytics/breakdown`: the range by weekday and clock hour (shift time and earnings, a
+     * shift's earnings spread over its hours), per vehicle, per platform and, with expenses on,
+     * per expense category (the same rule as the cards' expenses). At most two years.
+     */
+    app.get('/analytics/breakdown', { schema: { querystring: rangeQuery } }, async (req) => {
+      const { userId } = authn.authenticate(req, 'S');
+      const driver = drivers.of(userId);
+      const { from, to } = req.query as { from: string; to: string };
+      if (!calendar(from) || !calendar(to) || from > to || (utc(to) - utc(from)) / DAY > 730) {
+        throw new ProblemError('validation_failed', 'The request is not valid.', [
+          { path: '/from', message: 'give a valid range of at most two years' },
+        ]);
+      }
+      const policy = createEarningsPolicy(drivers, registry, override);
+      const earnings = policy.any(userId)
+        ? createEarningsRepository(db).effective(userId, from, to, policy.options(userId))
+        : [];
+      const expenses = registry.isEnabled('expenses')
+        ? createExpenseRepository(db)
+            .between(userId, from, to)
+            .filter((e) => !deduction.doubleCounts(userId, e))
+            .map((e) => ({
+              category: e.category,
+              vehicleId: e.vehicleId,
+              cents: deductibleCents(e),
+            }))
+        : null;
+      return breakdown({
+        from,
+        to,
+        timeZone: driver.timeZone,
+        shifts: processing.shiftsInPeriod(userId, from, to).map(seriesShift),
+        earnings,
+        expenses,
+      });
     });
   };
 }

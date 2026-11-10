@@ -59,6 +59,20 @@ has the AI assistant endpoint off again, as it was in 0.1.0. Set `MILEWAGE_MODUL
 
 ### Added
 
+- Charts on the dashboard and in Analytics. The dashboard compares the period's earnings with the
+  period before up to the same point, in words and with an arrow; draws the period day by day (month
+  by month for Year, today against the six days before) as earned, distance or time; and says where
+  the money came from by platform, or where the miles went. Analytics draws earnings by platform
+  (or pay and tips), the pace against the period before, pay per hour and per mile for each day
+  worked, the distance by kind with the estimate marked, when it pays (pay per hour by weekday and
+  time of day), money in and out with expenses by category and the deduction's value, and the
+  platforms and vehicles side by side. Every chart has a table ("Show as a table") and is read with
+  the keyboard. The shift start times chart and the trends table are replaced by these.
+
+- `GET /summary/series` (per day or month, every slot of a range included, with each platform's
+  earnings) and `GET /analytics/breakdown` (by weekday and clock hour, per vehicle, per platform,
+  per expense category). Read-only; nothing existing changed.
+
 - The native Android app (`apps/android`): first run with pairing (the server found on the home
   Wi-Fi with a 6-digit link code, the QR scanner, a pasted code or address, Tailscale), one
   permissions screen, Home with the summary, the sending banner, the setup checklist and Start
@@ -131,6 +145,10 @@ has the AI assistant endpoint off again, as it was in 0.1.0. Set `MILEWAGE_MODUL
   authorities and host names in the certificate.
 
 ### Changed
+
+- Analytics says "Earned, after app fees" where it said "Gross" (the figure was always after app
+  fees), shows "Per hour (online time)" only when online time was recorded, and shows the pay per
+  mile or per km of business distance.
 
 - The look is Material Design 3 on the web and the phone, from one colour scheme generated from
   Lane yellow, with earned and spent as matching extra colours (ADR 0010). The web's components
