@@ -2,7 +2,10 @@ import type { ReactNode } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
-/** The top of every page: title, one line of context, and the page's actions on the right. */
+/**
+ * The top of every page: title (Material headline, small on phones and medium from `md`), one
+ * line of context in body-medium on-surface-variant, and the page's actions on the right.
+ */
 export function PageHeader({
   title,
   description,
@@ -15,8 +18,10 @@ export function PageHeader({
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0 space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+        <h1 className="text-headline-small text-on-surface md:text-headline-medium">{title}</h1>
+        {description ? (
+          <p className="text-body-medium text-on-surface-variant">{description}</p>
+        ) : null}
       </div>
       {children ? <div className="flex flex-wrap items-center gap-2">{children}</div> : null}
     </div>
@@ -56,8 +61,10 @@ export function Section({
       {title || action ? (
         <div className="flex items-start justify-between gap-4 px-(--card-spacing)">
           <div className="space-y-1">
-            {title ? <h2 className="text-base leading-snug font-medium">{title}</h2> : null}
-            {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+            {title ? <h2 className="text-title-medium text-on-surface">{title}</h2> : null}
+            {description ? (
+              <p className="text-body-medium text-on-surface-variant">{description}</p>
+            ) : null}
           </div>
           {action ? <div className="shrink-0">{action}</div> : null}
         </div>
@@ -67,7 +74,7 @@ export function Section({
   );
 }
 
-/** One figure with its label, and an optional line under it. */
+/** One figure with its label, and an optional line under it (label-medium, title-large figure). */
 export function StatCard({
   label,
   value,
@@ -82,9 +89,11 @@ export function StatCard({
   return (
     <Card size="sm" className={className}>
       <CardContent className="space-y-1">
-        <div className="text-xs text-muted-foreground">{label}</div>
-        <div className="text-xl font-semibold tracking-tight tabular-nums">{value}</div>
-        {sub ? <div className="text-xs text-muted-foreground tabular-nums">{sub}</div> : null}
+        <div className="text-label-medium text-on-surface-variant">{label}</div>
+        <div className="text-title-large font-medium text-on-surface tabular-nums">{value}</div>
+        {sub ? (
+          <div className="text-body-small text-on-surface-variant tabular-nums">{sub}</div>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -95,7 +104,7 @@ export function EmptyState({ children, className }: { children: ReactNode; class
   return (
     <div
       className={cn(
-        'rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground',
+        'rounded-xl border border-dashed border-outline-variant p-8 text-center text-body-medium text-on-surface-variant',
         className,
       )}
     >
@@ -104,11 +113,19 @@ export function EmptyState({ children, className }: { children: ReactNode; class
   );
 }
 
-/** shadcn's table look for a plain <table>: muted header, row rules, hover. */
+/**
+ * The Material data table look for a plain <table> (components/ui/table.tsx has the reasons): a
+ * 48 px header in title-small on-surface-variant on surface-container, body-medium rows with
+ * outline-variant rules, an on-surface wash on hover.
+ */
 export const tableClass =
-  'w-full text-left text-sm [&_tbody_tr]:border-t [&_tbody_tr]:transition-colors [&_tbody_tr:hover]:bg-muted/40 [&_td]:px-3 [&_td]:py-2.5 [&_td]:align-middle [&_th]:h-10 [&_th]:px-3 [&_th]:font-medium [&_th]:whitespace-nowrap [&_th]:text-muted-foreground [&_thead]:bg-muted/50';
+  'w-full text-left text-body-medium [&_tbody_tr]:border-t [&_tbody_tr]:border-outline-variant [&_tbody_tr]:transition-colors [&_tbody_tr:hover]:bg-on-surface/8 [&_td]:px-4 [&_td]:py-3 [&_td]:align-middle [&_th]:h-12 [&_th]:px-4 [&_th]:text-title-small [&_th]:whitespace-nowrap [&_th]:text-on-surface-variant [&_thead]:bg-surface-container';
 
-/** The bordered, scrollable box a data table sits in. */
+/** The outlined, scrollable box a data table sits in (medium corners). */
 export function TableBox({ children }: { children: ReactNode }) {
-  return <div className="overflow-x-auto rounded-xl border bg-card">{children}</div>;
+  return (
+    <div className="overflow-x-auto rounded-xl border border-outline-variant bg-card">
+      {children}
+    </div>
+  );
 }

@@ -1,15 +1,29 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
-@import '@fontsource-variable/geist';
-@import '@fontsource-variable/geist-mono';
+@import '@fontsource-variable/roboto-flex';
+@import '@fontsource-variable/roboto-mono';
+/* The Material 3 colour roles, generated from the brand seed (scripts/m3-theme.mjs). */
+@import './theme/m3-scheme.css';
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Material 3 baseline (m3.material.io) over shadcn/ui. Three layers:
+ *   1. `--md-sys-color-*` / `--md-extended-color-*`: the generated scheme (theme/m3-scheme.css).
+ *   2. `--md-sys-typescale-*`, `--md-sys-shape-*`, `--md-sys-elevation-*`, `--md-sys-state-*`,
+ *      `--md-sys-motion-*`: the other Material system tokens, below.
+ *   3. shadcn's names (`background`, `primary`, `muted`, `sidebar-*`, ...) resolve to Material
+ *      roles, so every page keeps its classes. New work can use the roles directly:
+ *      `bg-surface-container`, `text-on-surface-variant`, `bg-primary-container`, `text-title-medium`.
+ */
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: 'Geist Variable', sans-serif;
-  --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+  /* Type faces: one line each. Google Sans Flex can replace Roboto Flex here. */
+  --font-heading: var(--md-ref-typeface-brand);
+  --font-sans: var(--md-ref-typeface-plain);
+  --font-mono: var(--md-ref-typeface-mono);
+
+  /* shadcn names, resolved to Material roles (see :root). */
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -30,6 +44,7 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -44,99 +59,336 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /*
+   * Material roles as Tailwind colours. `primary` is the Material primary above; Material's
+   * `secondary` text role is not exposed, because shadcn's `secondary` is the tonal fill
+   * (secondary-container) and pages use it as such.
+   */
+  --color-on-primary: var(--md-sys-color-on-primary);
+  --color-primary-container: var(--md-sys-color-primary-container);
+  --color-on-primary-container: var(--md-sys-color-on-primary-container);
+  --color-inverse-primary: var(--md-sys-color-inverse-primary);
+  --color-on-secondary: var(--md-sys-color-on-secondary);
+  --color-secondary-container: var(--md-sys-color-secondary-container);
+  --color-on-secondary-container: var(--md-sys-color-on-secondary-container);
+  --color-tertiary: var(--md-sys-color-tertiary);
+  --color-on-tertiary: var(--md-sys-color-on-tertiary);
+  --color-tertiary-container: var(--md-sys-color-tertiary-container);
+  --color-on-tertiary-container: var(--md-sys-color-on-tertiary-container);
+  --color-error: var(--md-sys-color-error);
+  --color-on-error: var(--md-sys-color-on-error);
+  --color-error-container: var(--md-sys-color-error-container);
+  --color-on-error-container: var(--md-sys-color-on-error-container);
+  --color-surface: var(--md-sys-color-surface);
+  --color-surface-dim: var(--md-sys-color-surface-dim);
+  --color-surface-bright: var(--md-sys-color-surface-bright);
+  --color-surface-variant: var(--md-sys-color-surface-variant);
+  --color-surface-container-lowest: var(--md-sys-color-surface-container-lowest);
+  --color-surface-container-low: var(--md-sys-color-surface-container-low);
+  --color-surface-container: var(--md-sys-color-surface-container);
+  --color-surface-container-high: var(--md-sys-color-surface-container-high);
+  --color-surface-container-highest: var(--md-sys-color-surface-container-highest);
+  --color-on-surface: var(--md-sys-color-on-surface);
+  --color-on-surface-variant: var(--md-sys-color-on-surface-variant);
+  --color-outline: var(--md-sys-color-outline);
+  --color-outline-variant: var(--md-sys-color-outline-variant);
+  --color-inverse-surface: var(--md-sys-color-inverse-surface);
+  --color-inverse-on-surface: var(--md-sys-color-inverse-on-surface);
+  --color-scrim: var(--md-sys-color-scrim);
+  --color-shadow: var(--md-sys-color-shadow);
+  --color-on-earned: var(--md-extended-color-on-earned);
+  --color-earned-container: var(--md-extended-color-earned-container);
+  --color-on-earned-container: var(--md-extended-color-on-earned-container);
+  --color-on-spent: var(--md-extended-color-on-spent);
+  --color-spent-container: var(--md-extended-color-spent-container);
+  --color-on-spent-container: var(--md-extended-color-on-spent-container);
+  --color-on-signal: var(--md-extended-color-on-signal);
+  --color-signal-container: var(--md-extended-color-signal-container);
+  --color-on-signal-container: var(--md-extended-color-on-signal-container);
+  --color-qr-ink: var(--qr-ink);
+  --color-qr-plate: var(--qr-plate);
+
+  /*
+   * Shape scale. Material's corners under Material's names (`rounded-medium`), and Tailwind's
+   * names moved onto the nearest step, so existing classes land on the scale: cards and boxes
+   * (`rounded-xl`) are medium, 12 px.
+   */
+  --radius-none: 0px;
+  --radius-extra-small: var(--md-sys-shape-corner-extra-small);
+  --radius-small: var(--md-sys-shape-corner-small);
+  --radius-medium: var(--md-sys-shape-corner-medium);
+  --radius-large: var(--md-sys-shape-corner-large);
+  --radius-extra-large: var(--md-sys-shape-corner-extra-large);
+  --radius-xs: var(--md-sys-shape-corner-extra-small);
+  --radius-sm: var(--md-sys-shape-corner-extra-small);
+  --radius-md: var(--md-sys-shape-corner-small);
+  --radius-lg: var(--md-sys-shape-corner-medium);
+  --radius-xl: var(--md-sys-shape-corner-medium);
+  --radius-2xl: var(--md-sys-shape-corner-large);
+  --radius-3xl: var(--md-sys-shape-corner-extra-large);
+  --radius-4xl: var(--md-sys-shape-corner-extra-large);
+
+  /* Elevation: shadows for the levels that have one (menus 2, dialogs 3, FAB 3, hover 4). */
+  --shadow-elevation-0: none;
+  --shadow-elevation-1: var(--md-sys-elevation-level1);
+  --shadow-elevation-2: var(--md-sys-elevation-level2);
+  --shadow-elevation-3: var(--md-sys-elevation-level3);
+  --shadow-elevation-4: var(--md-sys-elevation-level4);
+  --shadow-elevation-5: var(--md-sys-elevation-level5);
+  --shadow-xs: var(--md-sys-elevation-level1);
+  --shadow-sm: var(--md-sys-elevation-level1);
+  --shadow-md: var(--md-sys-elevation-level2);
+  --shadow-lg: var(--md-sys-elevation-level3);
+  --shadow-xl: var(--md-sys-elevation-level4);
+  --shadow-2xl: var(--md-sys-elevation-level5);
+
+  /* Motion: Material's easing curves as `ease-standard`, `ease-emphasized-decelerate`, ... */
+  --ease-standard: var(--md-sys-motion-easing-standard);
+  --ease-standard-accelerate: var(--md-sys-motion-easing-standard-accelerate);
+  --ease-standard-decelerate: var(--md-sys-motion-easing-standard-decelerate);
+  --ease-emphasized: var(--md-sys-motion-easing-emphasized);
+  --ease-emphasized-accelerate: var(--md-sys-motion-easing-emphasized-accelerate);
+  --ease-emphasized-decelerate: var(--md-sys-motion-easing-emphasized-decelerate);
 }
 
 /*
- * MileWage palette. Lane yellow #FFC21F is the brand and the primary action; Asphalt #101214 is
- * canvas, ink and outlines; Signal blue #4C8DFF marks the live position only; Earned #34D399 is
- * money in and Spent #FF6B5E money out. Dark is the in-car default (phone); light is the web
- * default. The light theme keeps the hues but darkens text-weight greys and money colours so
- * they stay readable on white.
+ * The type scale as utilities: `text-display-large` ... `text-label-small` set size, line height,
+ * tracking and weight together (m3.material.io/styles/typography/type-scale-tokens).
  */
+@theme static {
+  --text-display-large: 3.5625rem;
+  --text-display-large--line-height: 4rem;
+  --text-display-large--letter-spacing: -0.015625rem;
+  --text-display-large--font-weight: 400;
+  --text-display-medium: 2.8125rem;
+  --text-display-medium--line-height: 3.25rem;
+  --text-display-medium--letter-spacing: 0rem;
+  --text-display-medium--font-weight: 400;
+  --text-display-small: 2.25rem;
+  --text-display-small--line-height: 2.75rem;
+  --text-display-small--letter-spacing: 0rem;
+  --text-display-small--font-weight: 400;
+  --text-headline-large: 2rem;
+  --text-headline-large--line-height: 2.5rem;
+  --text-headline-large--letter-spacing: 0rem;
+  --text-headline-large--font-weight: 400;
+  --text-headline-medium: 1.75rem;
+  --text-headline-medium--line-height: 2.25rem;
+  --text-headline-medium--letter-spacing: 0rem;
+  --text-headline-medium--font-weight: 400;
+  --text-headline-small: 1.5rem;
+  --text-headline-small--line-height: 2rem;
+  --text-headline-small--letter-spacing: 0rem;
+  --text-headline-small--font-weight: 400;
+  --text-title-large: 1.375rem;
+  --text-title-large--line-height: 1.75rem;
+  --text-title-large--letter-spacing: 0rem;
+  --text-title-large--font-weight: 400;
+  --text-title-medium: 1rem;
+  --text-title-medium--line-height: 1.5rem;
+  --text-title-medium--letter-spacing: 0.009375rem;
+  --text-title-medium--font-weight: 500;
+  --text-title-small: 0.875rem;
+  --text-title-small--line-height: 1.25rem;
+  --text-title-small--letter-spacing: 0.00625rem;
+  --text-title-small--font-weight: 500;
+  --text-body-large: 1rem;
+  --text-body-large--line-height: 1.5rem;
+  --text-body-large--letter-spacing: 0.03125rem;
+  --text-body-large--font-weight: 400;
+  --text-body-medium: 0.875rem;
+  --text-body-medium--line-height: 1.25rem;
+  --text-body-medium--letter-spacing: 0.015625rem;
+  --text-body-medium--font-weight: 400;
+  --text-body-small: 0.75rem;
+  --text-body-small--line-height: 1rem;
+  --text-body-small--letter-spacing: 0.025rem;
+  --text-body-small--font-weight: 400;
+  --text-label-large: 0.875rem;
+  --text-label-large--line-height: 1.25rem;
+  --text-label-large--letter-spacing: 0.00625rem;
+  --text-label-large--font-weight: 500;
+  --text-label-medium: 0.75rem;
+  --text-label-medium--line-height: 1rem;
+  --text-label-medium--letter-spacing: 0.03125rem;
+  --text-label-medium--font-weight: 500;
+  --text-label-small: 0.6875rem;
+  --text-label-small--line-height: 1rem;
+  --text-label-small--letter-spacing: 0.03125rem;
+  --text-label-small--font-weight: 500;
+}
+
+/*
+ * The state layer (m3.material.io/foundations/interaction/states): a wash of the content colour
+ * over a control, 8 % on hover and 10 % on keyboard focus. A press draws the ripple
+ * (components/ui/ripple.ts); without motion the press is the same wash at 10 %. The control
+ * needs a position (`relative` or `absolute`) for the layer to cover it.
+ */
+@utility state-layer {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-color: currentColor;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+  }
+  @media (hover: hover) {
+    &:hover::before {
+      opacity: var(--md-sys-state-hover-state-layer-opacity);
+    }
+  }
+  &:focus-visible::before,
+  &[data-highlighted]::before {
+    opacity: var(--md-sys-state-focus-state-layer-opacity);
+  }
+  &[aria-expanded='true']::before,
+  &[data-state='open']::before {
+    opacity: var(--md-sys-state-pressed-state-layer-opacity);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &:active::before {
+      opacity: var(--md-sys-state-pressed-state-layer-opacity);
+    }
+  }
+  &:is(:disabled, [aria-disabled='true'], [data-disabled])::before {
+    opacity: 0;
+  }
+}
+
+/* Material's focus indicator: a 3 px ring in the focus colour, 2 px off the control. */
+@utility focus-ring {
+  outline: none;
+  &:focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
 :root {
   /* Native scroll bars and form controls follow the theme (MDN: color-scheme). */
   color-scheme: light;
-  --background: #f5f6f8;
-  --foreground: #101214;
-  --card: #ffffff;
-  --card-foreground: #101214;
-  --popover: #ffffff;
-  --popover-foreground: #101214;
-  --primary: #ffc21f;
-  --primary-foreground: #101214;
-  --secondary: #eceef0;
-  --secondary-foreground: #101214;
-  --muted: #eceef0;
-  --muted-foreground: #5c636b;
-  --accent: #eceef0;
-  --accent-foreground: #101214;
-  --destructive: #d93f33;
-  --border: #e1e4e8;
-  --input: #d3d7dc;
-  --ring: #ffc21f;
-  --earned: #0f9f6e;
-  --spent: #d93f33;
-  --signal: #2f6fe0;
-  /* The brand yellow is 1.6:1 on a white card; chart marks need 3:1, so light mode uses this darker amber (3.3:1). Dark mode keeps #ffc21f. */
-  --chart-1: #b88600;
-  --chart-2: #0f9f6e;
-  --chart-3: #2f6fe0;
-  --chart-4: #d93f33;
-  --chart-5: #8b939c;
-  --radius: 0.625rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #101214;
-  --sidebar-primary: #ffc21f;
-  --sidebar-primary-foreground: #101214;
-  --sidebar-accent: #eceef0;
-  --sidebar-accent-foreground: #101214;
-  --sidebar-border: #e1e4e8;
-  --sidebar-ring: #ffc21f;
+
+  /* Type faces (md.ref.typeface). */
+  --md-ref-typeface-brand: 'Roboto Flex Variable', 'Roboto Flex', Roboto, system-ui, sans-serif;
+  --md-ref-typeface-plain: 'Roboto Flex Variable', 'Roboto Flex', Roboto, system-ui, sans-serif;
+  --md-ref-typeface-mono: 'Roboto Mono Variable', 'Roboto Mono', ui-monospace, monospace;
+
+  /* Shape (md.sys.shape.corner). */
+  --md-sys-shape-corner-none: 0px;
+  --md-sys-shape-corner-extra-small: 4px;
+  --md-sys-shape-corner-small: 8px;
+  --md-sys-shape-corner-medium: 12px;
+  --md-sys-shape-corner-large: 16px;
+  --md-sys-shape-corner-extra-large: 28px;
+  --md-sys-shape-corner-full: 9999px;
+  --radius: var(--md-sys-shape-corner-medium);
+
+  /* Elevation (md.sys.elevation): the key and ambient shadows of levels 1 to 5. */
+  --md-sys-elevation-key: color-mix(in srgb, var(--md-sys-color-shadow) 30%, transparent);
+  --md-sys-elevation-ambient: color-mix(in srgb, var(--md-sys-color-shadow) 15%, transparent);
+  --md-sys-elevation-level0: none;
+  --md-sys-elevation-level1:
+    0 1px 2px 0 var(--md-sys-elevation-key), 0 1px 3px 1px var(--md-sys-elevation-ambient);
+  --md-sys-elevation-level2:
+    0 1px 2px 0 var(--md-sys-elevation-key), 0 2px 6px 2px var(--md-sys-elevation-ambient);
+  --md-sys-elevation-level3:
+    0 1px 3px 0 var(--md-sys-elevation-key), 0 4px 8px 3px var(--md-sys-elevation-ambient);
+  --md-sys-elevation-level4:
+    0 2px 3px 0 var(--md-sys-elevation-key), 0 6px 10px 4px var(--md-sys-elevation-ambient);
+  --md-sys-elevation-level5:
+    0 4px 4px 0 var(--md-sys-elevation-key), 0 8px 12px 6px var(--md-sys-elevation-ambient);
+
+  /* State layers (md.sys.state). */
+  --md-sys-state-hover-state-layer-opacity: 0.08;
+  --md-sys-state-focus-state-layer-opacity: 0.1;
+  --md-sys-state-pressed-state-layer-opacity: 0.1;
+  --md-sys-state-dragged-state-layer-opacity: 0.16;
+
+  /* Motion (md.sys.motion). */
+  --md-sys-motion-easing-linear: cubic-bezier(0, 0, 1, 1);
+  --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --md-sys-motion-easing-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+  --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --md-sys-motion-duration-short1: 50ms;
+  --md-sys-motion-duration-short2: 100ms;
+  --md-sys-motion-duration-short3: 150ms;
+  --md-sys-motion-duration-short4: 200ms;
+  --md-sys-motion-duration-medium1: 250ms;
+  --md-sys-motion-duration-medium2: 300ms;
+  --md-sys-motion-duration-medium3: 350ms;
+  --md-sys-motion-duration-medium4: 400ms;
+  --md-sys-motion-duration-long1: 450ms;
+  --md-sys-motion-duration-long2: 500ms;
+  --md-sys-motion-duration-long3: 550ms;
+  --md-sys-motion-duration-long4: 600ms;
+  --md-sys-motion-duration-extra-long1: 700ms;
+  --md-sys-motion-duration-extra-long2: 800ms;
+  --md-sys-motion-duration-extra-long3: 900ms;
+  --md-sys-motion-duration-extra-long4: 1000ms;
+
+  /*
+   * shadcn names onto Material roles. Pages: surface; cards: surface-container-low (tonal
+   * elevation 1, no shadow); menus and popovers: surface-container (elevation 2, with its shadow).
+   * `primary` is Material's primary (#795900 in light, a 6.2:1 mark on the page); the brand
+   * yellow itself is `primary-container`, which the one primary action wears (button.tsx).
+   * Green (earned) is money in only; spent is money out; `destructive` is Material's error.
+   */
+  --background: var(--md-sys-color-surface);
+  --foreground: var(--md-sys-color-on-surface);
+  --card: var(--md-sys-color-surface-container-low);
+  --card-foreground: var(--md-sys-color-on-surface);
+  --popover: var(--md-sys-color-surface-container);
+  --popover-foreground: var(--md-sys-color-on-surface);
+  --primary: var(--md-sys-color-primary);
+  --primary-foreground: var(--md-sys-color-on-primary);
+  --secondary: var(--md-sys-color-secondary-container);
+  --secondary-foreground: var(--md-sys-color-on-secondary-container);
+  --muted: var(--md-sys-color-surface-container-highest);
+  --muted-foreground: var(--md-sys-color-on-surface-variant);
+  --accent: var(--md-sys-color-surface-container-highest);
+  --accent-foreground: var(--md-sys-color-on-surface);
+  --destructive: var(--md-sys-color-error);
+  --destructive-foreground: var(--md-sys-color-on-error);
+  --border: var(--md-sys-color-outline-variant);
+  --input: var(--md-sys-color-outline);
+  /* Material's focus indicator colour is secondary. */
+  --ring: var(--md-sys-color-secondary);
+  --earned: var(--md-extended-color-earned);
+  --spent: var(--md-extended-color-spent);
+  --signal: var(--md-extended-color-signal);
+  /* Chart marks need 3:1 on a card: primary in light; the brand yellow in dark (primary-container). */
+  --chart-1: var(--md-sys-color-primary);
+  --chart-2: var(--md-extended-color-earned);
+  --chart-3: var(--md-extended-color-signal);
+  --chart-4: var(--md-extended-color-spent);
+  --chart-5: var(--md-sys-color-outline);
+  /* Navigation drawer and rail: the active destination is a secondary-container pill. */
+  --sidebar: var(--md-sys-color-surface-container-low);
+  --sidebar-foreground: var(--md-sys-color-on-surface-variant);
+  --sidebar-primary: var(--md-sys-color-primary-container);
+  --sidebar-primary-foreground: var(--md-sys-color-on-primary-container);
+  --sidebar-accent: var(--md-sys-color-secondary-container);
+  --sidebar-accent-foreground: var(--md-sys-color-on-secondary-container);
+  --sidebar-border: var(--md-sys-color-outline-variant);
+  --sidebar-ring: var(--md-sys-color-secondary);
+  /*
+   * A QR code is black modules on a white plate in both themes: scanners need the dark-on-light
+   * contrast, so these two do not follow the theme.
+   */
+  --qr-ink: #000000;
+  --qr-plate: #ffffff;
 }
 
 .dark {
   color-scheme: dark;
-  --background: #101214;
-  --foreground: #eceef0;
-  --card: #181b1e;
-  --card-foreground: #eceef0;
-  --popover: #181b1e;
-  --popover-foreground: #eceef0;
-  --primary: #ffc21f;
-  --primary-foreground: #101214;
-  --secondary: #262a2f;
-  --secondary-foreground: #eceef0;
-  --muted: #262a2f;
-  --muted-foreground: #8b939c;
-  --accent: #262a2f;
-  --accent-foreground: #eceef0;
-  --destructive: #ff6b5e;
-  --border: #262a2f;
-  --input: #262a2f;
-  --ring: #ffc21f;
-  --earned: #34d399;
-  --spent: #ff6b5e;
-  --signal: #4c8dff;
-  --chart-1: #ffc21f;
-  --chart-2: #34d399;
-  --chart-3: #4c8dff;
-  --chart-4: #ff6b5e;
-  --chart-5: #8b939c;
-  --sidebar: #101214;
-  --sidebar-foreground: #eceef0;
-  --sidebar-primary: #ffc21f;
-  --sidebar-primary-foreground: #101214;
-  --sidebar-accent: #262a2f;
-  --sidebar-accent-foreground: #eceef0;
-  --sidebar-border: #262a2f;
-  --sidebar-ring: #ffc21f;
+  --chart-1: var(--md-sys-color-primary-container);
 }
 
 @layer base {
@@ -161,6 +413,138 @@
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
     padding-bottom: env(safe-area-inset-bottom);
+  }
+  /* Codes and keys. */
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--font-mono);
+  }
+}
+
+/*
+ * Material 3 outlined text field with a floating label (m3.material.io/components/text-fields),
+ * for the house `Field`, `SelectField` and `DateField` (ui/form.tsx):
+ *
+ *   <div data-slot="text-field" [data-float="always"]>
+ *     <input | button>                         the control, borderless
+ *     <label data-slot="text-field-label">     rests inside; floats onto the outline
+ *     <fieldset data-slot="text-field-outline" aria-hidden><legend><span data-label="…">
+ *   </div>
+ *
+ * The outline is a fieldset whose legend cuts the notch the floated label sits in, so the notch
+ * works on any surface (the technique MUI's outlined input uses). The legend's text comes from
+ * `data-label` through CSS, so it is never read out or matched a second time.
+ */
+@layer components {
+  [data-slot='text-field'] {
+    position: relative;
+    display: grid;
+    min-width: 0;
+  }
+  [data-slot='text-field-outline'] {
+    position: absolute;
+    inset: -5px 0 0;
+    margin: 0;
+    padding: 0 12px;
+    min-width: 0;
+    overflow: hidden;
+    pointer-events: none;
+    border: 1px solid var(--input);
+    border-radius: var(--md-sys-shape-corner-extra-small);
+    transition: border-color var(--md-sys-motion-duration-short3)
+      var(--md-sys-motion-easing-standard);
+  }
+  [data-slot='text-field-outline'] > legend {
+    display: block;
+    float: unset;
+    width: auto;
+    max-width: 0.01px;
+    height: 11px;
+    padding: 0;
+    overflow: hidden;
+    visibility: hidden;
+    font-size: var(--text-body-small);
+    white-space: nowrap;
+    transition: max-width var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+  }
+  [data-slot='text-field-outline'] > legend > span::before {
+    content: attr(data-label);
+    display: inline-block;
+    padding: 0 4px;
+  }
+  [data-slot='text-field-label'] {
+    position: absolute;
+    top: 50%;
+    left: 16px;
+    max-width: calc(100% - 32px);
+    overflow: hidden;
+    transform: translateY(-50%);
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: var(--text-body-large);
+    line-height: var(--text-body-large--line-height);
+    letter-spacing: var(--text-body-large--letter-spacing);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    pointer-events: none;
+    transition:
+      top var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard),
+      font-size var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard),
+      color var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard);
+  }
+  /* Floated: focused, filled, autofilled, or a control that always shows something. */
+  [data-slot='text-field']:is(
+    [data-float='always'],
+    :focus-within,
+    :has(input:not(:placeholder-shown)),
+    :has(input:autofill)
+  ) {
+    & > [data-slot='text-field-label'] {
+      top: 0;
+      font-size: var(--text-body-small);
+      line-height: var(--text-body-small--line-height);
+      letter-spacing: var(--text-body-small--letter-spacing);
+    }
+    & > [data-slot='text-field-outline'] > legend {
+      max-width: 100%;
+    }
+  }
+  @media (hover: hover) {
+    [data-slot='text-field']:hover > [data-slot='text-field-outline'] {
+      border-color: var(--md-sys-color-on-surface);
+    }
+  }
+  [data-slot='text-field']:is(:focus-within, :has([data-state='open'])) {
+    & > [data-slot='text-field-outline'] {
+      border-width: 2px;
+      border-color: var(--md-sys-color-primary);
+    }
+    & > [data-slot='text-field-label'] {
+      color: var(--md-sys-color-primary);
+    }
+  }
+  [data-slot='text-field']:has([aria-invalid='true']) {
+    & > [data-slot='text-field-outline'] {
+      border-color: var(--md-sys-color-error);
+    }
+    & > [data-slot='text-field-label'] {
+      color: var(--md-sys-color-error);
+    }
+  }
+  [data-slot='text-field']:has(:disabled) {
+    opacity: 0.38;
+  }
+}
+
+/* Reduced motion: transitions and animations finish at once (the ripple is not drawn at all). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

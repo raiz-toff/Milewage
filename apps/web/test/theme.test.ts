@@ -37,11 +37,15 @@ describe('theme-color follows the theme chosen in the app (plan 27 section 4.1)'
   });
 
   it('the colours are the page backgrounds of index.css', () => {
+    // The page background is Material's surface role, whose values the generated scheme holds.
     const css = readFileSync(join(import.meta.dirname, '../src/index.css'), 'utf8');
-    const bg = (block: string) =>
-      new RegExp(`${block} \\{[^}]*?--background: (#\\w+);`).exec(css)?.[1];
-    expect(bg(':root')).toBe(THEME_COLORS.light);
-    expect(bg('\\.dark')).toBe(THEME_COLORS.dark);
+    expect(css).toMatch(/:root \{[^}]*?--background: var\(--md-sys-color-surface\);/);
+    expect(css).not.toMatch(/\.dark \{[^}]*?--background:/);
+    const scheme = readFileSync(join(import.meta.dirname, '../src/theme/m3-scheme.css'), 'utf8');
+    const surface = (block: string) =>
+      new RegExp(`${block} \\{[^}]*?--md-sys-color-surface: (#\\w+);`).exec(scheme)?.[1];
+    expect(surface(':root')).toBe(THEME_COLORS.light);
+    expect(surface('\\.dark')).toBe(THEME_COLORS.dark);
   });
 });
 

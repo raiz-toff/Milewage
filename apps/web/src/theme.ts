@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
+import scheme from './theme/m3-scheme.json';
 
 export type ThemeChoice = 'light' | 'dark' | 'system';
 
 const KEY = 'mw-theme';
 const darkQuery = () => window.matchMedia('(prefers-color-scheme: dark)');
 
-/** Each theme's page background (index.css `--background`), used as the window and bar colour. */
-export const THEME_COLORS = { light: '#f5f6f8', dark: '#101214' } as const;
+/**
+ * Each theme's page background (index.css `--background`, Material's surface), used as the window
+ * and bar colour. index.html and public/manifest.webmanifest carry the same values (a test checks).
+ */
+export const THEME_COLORS = { light: scheme.light.surface, dark: scheme.dark.surface } as const;
 
 /**
  * The `theme-color` metas in index.html follow the OS (one per `prefers-color-scheme`). A theme

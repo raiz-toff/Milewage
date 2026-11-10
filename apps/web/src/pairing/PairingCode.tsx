@@ -42,7 +42,7 @@ export function PairingCode({ session }: { session: PairingSession }) {
       <AddressWarning problem={problem} />
       <div className="flex flex-wrap items-start gap-6">
         {problem === 'local' ? null : (
-          <div className="rounded-lg border bg-white p-2">
+          <div className="rounded-lg border bg-qr-plate p-2">
             <Qr text={pairing.pair_url} label="Pairing code" />
           </div>
         )}

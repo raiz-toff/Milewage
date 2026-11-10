@@ -172,8 +172,9 @@ describe('dashboard recent shifts (Comma rows)', () => {
     expect(svg.getAttribute('aria-hidden')).toBe('true');
     const [edge, line] = [...svg.querySelectorAll('polyline')];
     expect(line!.getAttribute('points')!.split(' ')).toHaveLength(3);
+    // A near-black edge (on-primary-fixed) under the Lane yellow route (primary-container).
     expect([edge!.getAttribute('stroke'), line!.getAttribute('stroke')]).toEqual([
-      '#101214',
+      '#261a00',
       '#ffc21f',
     ]);
     cleanup();

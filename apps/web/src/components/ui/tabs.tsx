@@ -2,9 +2,15 @@
 
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from 'cn';
 import { Tabs as TabsPrimitive } from 'radix-ui';
+import { cn } from '@/lib/utils';
+import { withRipple } from '@/components/ui/ripple';
 
+/**
+ * Material 3 tabs (m3.material.io/components/tabs). `default` is primary tabs: a 48 px row over a
+ * divider, title-small labels, the active one in primary with a 3 px indicator as wide as its
+ * label. `line` is secondary tabs: the indicator runs the tab's full width, 2 px.
+ */
 function Tabs({
   className,
   orientation = 'horizontal',
@@ -21,12 +27,12 @@ function Tabs({
 }
 
 const tabsListVariants = cva(
-  'group/tabs-list inline-flex w-fit items-center justify-center rounded-lg p-[3px] text-muted-foreground group-data-horizontal/tabs:h-8 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none',
+  'group/tabs-list relative inline-flex w-fit max-w-full items-stretch overflow-x-auto text-on-surface-variant [scrollbar-width:none] group-data-horizontal/tabs:h-12 group-data-horizontal/tabs:shadow-[inset_0_-1px_0_var(--border)] group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col',
   {
     variants: {
       variant: {
-        default: 'bg-muted',
-        line: 'gap-1 bg-transparent',
+        default: '',
+        line: '',
       },
     },
     defaultVariants: {
@@ -50,19 +56,33 @@ function TabsList({
   );
 }
 
-function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
+function TabsTrigger({
+  className,
+  children,
+  onPointerDown,
+  ...props
+}: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
   return (
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap text-foreground/60 transition-all group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 dark:text-muted-foreground dark:hover:text-foreground group-data-[variant=default]/tabs-list:data-active:shadow-sm group-data-[variant=line]/tabs-list:data-active:shadow-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        'group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent',
-        'data-active:bg-background data-active:text-foreground dark:data-active:border-input dark:data-active:bg-input/30 dark:data-active:text-foreground',
-        'after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100',
+        "group/tab relative inline-flex min-w-12 flex-1 items-center justify-center gap-1.5 px-4 text-title-small whitespace-nowrap state-layer transition-colors duration-200 ease-standard outline-none group-data-vertical/tabs:h-12 group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-[0.38] data-active:text-primary hover:text-on-surface data-active:hover:text-primary [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5",
+        // Secondary tabs: a 2 px indicator across the whole tab.
+        'after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary after:opacity-0 group-data-[variant=line]/tabs-list:data-active:after:opacity-100',
         className,
       )}
+      onPointerDown={withRipple(onPointerDown)}
       {...props}
-    />
+    >
+      <span className="relative inline-flex h-full items-center gap-1.5">
+        {children}
+        {/* Primary tabs: a 3 px indicator as wide as the label, rounded on top. */}
+        <span
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 h-[3px] rounded-t-full bg-primary opacity-0 transition-opacity duration-200 group-data-[variant=default]/tabs-list:group-data-[state=active]/tab:opacity-100"
+        />
+      </span>
+    </TabsPrimitive.Trigger>
   );
 }
 
@@ -70,7 +90,7 @@ function TabsContent({ className, ...props }: React.ComponentProps<typeof TabsPr
   return (
     <TabsPrimitive.Content
       data-slot="tabs-content"
-      className={cn('flex-1 text-sm outline-none', className)}
+      className={cn('flex-1 text-body-medium outline-none', className)}
       {...props}
     />
   );

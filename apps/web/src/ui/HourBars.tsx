@@ -53,13 +53,15 @@ export function HourBars({
   const shown = hovered === null ? null : hours[hovered]!;
   return (
     <div className="space-y-2">
-      <div className="flex min-h-7 items-center justify-between gap-3 text-sm">
+      <div className="flex min-h-8 items-center justify-between gap-3 text-body-medium">
         {/* The hover readout: the value leads, the hour follows. The table carries it for a screen reader. */}
         <p aria-hidden data-testid="hour-readout" className="tabular-nums">
           {shown ? (
             <>
-              <span className="font-medium">{count(shown.value)}</span>{' '}
-              <span className="text-muted-foreground">at {hourLabel(shown.hour, timeFormat)}</span>
+              <span className="text-title-small">{count(shown.value)}</span>{' '}
+              <span className="text-on-surface-variant">
+                at {hourLabel(shown.hour, timeFormat)}
+              </span>
             </>
           ) : null}
         </p>
@@ -85,10 +87,10 @@ export function HourBars({
               className="min-w-0 flex-1"
               onPointerEnter={() => setHovered(b.hour)}
             >
-              <div className="relative flex h-24 items-end justify-center border-b border-border">
+              <div className="relative flex h-24 items-end justify-center border-b border-outline-variant">
                 {b.value === max ? (
                   <span
-                    className="absolute left-1/2 -translate-x-1/2 text-xs text-muted-foreground tabular-nums"
+                    className="absolute left-1/2 -translate-x-1/2 text-label-small text-on-surface-variant tabular-nums"
                     style={{ bottom: `calc(${pct}% + 2px)` }}
                   >
                     {b.value}
@@ -96,14 +98,14 @@ export function HourBars({
                 ) : null}
                 <div
                   className={cn(
-                    'w-full max-w-6 rounded-t-[4px] bg-chart-1 transition-opacity',
+                    'w-full max-w-6 rounded-t-extra-small bg-chart-1 transition-opacity duration-150',
                     hovered === b.hour && 'opacity-70',
                   )}
                   style={{ height: `${pct}%` }}
                 />
               </div>
               {/* A tick every six hours, from the left edge of its hour, so the labels never collide. */}
-              <div className="relative h-5 text-xs text-muted-foreground tabular-nums">
+              <div className="relative h-5 text-label-small text-on-surface-variant tabular-nums">
                 {b.hour % 6 === 0 ? (
                   <span className="absolute top-1 left-0 whitespace-nowrap">
                     {hourLabel(b.hour, timeFormat)}
@@ -114,7 +116,12 @@ export function HourBars({
           );
         })}
       </div>
-      <div id={tableId} className={showTable ? 'overflow-x-auto rounded-xl border' : 'sr-only'}>
+      <div
+        id={tableId}
+        className={
+          showTable ? 'overflow-x-auto rounded-xl border border-outline-variant' : 'sr-only'
+        }
+      >
         <table className={tableClass}>
           <caption className="sr-only">{label}</caption>
           <thead>

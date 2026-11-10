@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { withRipple } from '@/components/ui/ripple';
 import { cn } from '@/lib/utils';
 
 /** One group of a `SectionNav`: its heading and its links, in order. */
@@ -79,23 +80,24 @@ export function SectionNav({
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-      <div className="hidden space-y-4 text-sm @2xl:block">
+      <div className="hidden space-y-2 @2xl:block">
         {groups.map((g, i) => (
           <div key={g.label} className="space-y-1">
-            <p id={`${id}-${i}`} className="px-3 text-xs font-medium text-muted-foreground">
+            <p id={`${id}-${i}`} className="px-4 py-2 text-title-small text-on-surface-variant">
               {g.label}
             </p>
-            <ul aria-labelledby={`${id}-${i}`} className="flex flex-col gap-1">
+            <ul aria-labelledby={`${id}-${i}`} className="flex flex-col">
               {g.items.map((s) => (
                 <li key={s.to}>
                   <NavLink
                     to={s.to}
+                    onPointerDown={withRipple()}
                     className={({ isActive }) =>
                       cn(
-                        'block rounded-md px-3 py-1.5 transition-colors',
+                        'relative flex h-10 items-center rounded-full px-4 text-label-large state-layer focus-ring transition-colors',
                         isActive
-                          ? 'bg-muted font-medium text-foreground'
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                          ? 'bg-secondary-container text-on-secondary-container'
+                          : 'text-on-surface-variant',
                       )
                     }
                   >
@@ -111,19 +113,23 @@ export function SectionNav({
   );
 }
 
-/** A row that leads to another page of the app: its title, one line about it, a chevron. */
+/**
+ * A row that leads to another page of the app, as a Material two-line list item: its title in
+ * body-large, one line about it in body-medium on-surface-variant, a trailing chevron.
+ */
 export function LinkRow({ to, title, children }: { to: string; title: string; children: string }) {
   return (
     <li>
       <Link
         to={to}
-        className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted"
+        onPointerDown={withRipple()}
+        className="relative flex min-h-16 items-center justify-between gap-4 px-4 py-2 state-layer focus-ring focus-visible:-outline-offset-3"
       >
         <span className="space-y-0.5">
-          <span className="block text-sm font-medium">{title}</span>
-          <span className="block text-sm text-muted-foreground">{children}</span>
+          <span className="block text-body-large text-on-surface">{title}</span>
+          <span className="block text-body-medium text-on-surface-variant">{children}</span>
         </span>
-        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+        <ChevronRight className="size-6 shrink-0 text-on-surface-variant" />
       </Link>
     </li>
   );

@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
-import { ChevronDownIcon } from 'lucide-react';
+import { CalendarIcon } from 'lucide-react';
 import { LogoMark } from '@/components/logo';
 import { Button as UiButton } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -18,24 +18,68 @@ import { cn } from '@/lib/utils';
 import { dateLocale, dateToIso, formatDay, isoToDate, todayIn } from '../days';
 import { useSession } from '../session';
 
-/** A labelled input. The label wraps the control, so it is the accessible name; the hint is its description. */
+/** Input types that always show something (a format, a picker), so their label never rests inside. */
+const ALWAYS_UP = new Set([
+  'date',
+  'time',
+  'datetime-local',
+  'month',
+  'week',
+  'file',
+  'color',
+  'range',
+]);
+
+/**
+ * The outline of a Material outlined text field, with the notch its floated label sits in (the
+ * legend's text comes from CSS, so it is neither read out nor matched as text). index.css draws it.
+ */
+function Outline({ label }: { label: string }) {
+  return (
+    <fieldset aria-hidden data-slot="text-field-outline">
+      <legend>
+        <span data-label={label} />
+      </legend>
+    </fieldset>
+  );
+}
+
+/** Supporting text under a field (Material: body-small, on-surface-variant, 16 px in). */
+function Hint({ id, children }: { id: string; children: string }) {
+  return (
+    <p id={id} className="px-4 text-body-small text-on-surface-variant">
+      {children}
+    </p>
+  );
+}
+
+/**
+ * A labelled input: a Material 3 outlined text field whose label rests inside and floats onto the
+ * outline when the field has focus or a value. The label wraps the control, so it is the
+ * accessible name; the hint is its description (supporting text).
+ */
 export function Field({
   label,
   hint,
+  className,
   ...input
 }: { label: string; hint?: string } & InputHTMLAttributes<HTMLInputElement>) {
   const hintId = useId();
+  const always = Boolean(input.placeholder) || ALWAYS_UP.has(input.type ?? 'text');
   return (
-    <div className="grid content-start gap-2">
-      <label className="grid gap-2">
-        <span className="text-sm font-medium">{label}</span>
-        <Input aria-describedby={hint ? hintId : undefined} {...input} />
+    <div className="grid content-start gap-1">
+      <label data-slot="text-field" data-float={always ? 'always' : undefined}>
+        <Input
+          aria-describedby={hint ? hintId : undefined}
+          {...input}
+          // A blank placeholder lets CSS see an empty field (:placeholder-shown), so the label rests.
+          placeholder={input.placeholder ?? ' '}
+          className={cn('h-12 border-0 focus-visible:shadow-none', className)}
+        />
+        <span data-slot="text-field-label">{label}</span>
+        <Outline label={label} />
       </label>
-      {hint ? (
-        <p id={hintId} className="text-xs text-muted-foreground">
-          {hint}
-        </p>
-      ) : null}
+      {hint ? <Hint id={hintId}>{hint}</Hint> : null}
     </div>
   );
 }
@@ -75,28 +119,36 @@ export function DateField({
   const textId = `${id}-text`;
   const hintId = `${id}-hint`;
   return (
-    <div className="grid min-w-0 content-start gap-2">
-      <label id={labelId} htmlFor={id} className="text-sm font-medium">
-        {label}
-      </label>
+    <div className="grid min-w-0 content-start gap-1">
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <UiButton
-            id={id}
-            type="button"
-            variant="outline"
-            data-empty={!selected}
-            aria-labelledby={`${labelId} ${textId}`}
-            aria-describedby={hint ? hintId : undefined}
-            className="w-full min-w-0 justify-between font-normal data-[empty=true]:text-muted-foreground"
-          >
-            <span id={textId} className="truncate">
-              {selected ? formatDay(value, locale) : 'Pick a date'}
-            </span>
-            <ChevronDownIcon data-icon="inline-end" className="text-muted-foreground" />
-          </UiButton>
-        </PopoverTrigger>
-        <PopoverContent aria-label={label} align="start" className="w-auto overflow-hidden p-0">
+        <div data-slot="text-field" data-float="always">
+          <PopoverTrigger asChild>
+            <UiButton
+              id={id}
+              type="button"
+              variant="outline"
+              data-empty={!selected}
+              data-ripple="off"
+              aria-labelledby={`${labelId} ${textId}`}
+              aria-describedby={hint ? hintId : undefined}
+              className={textFieldControl}
+            >
+              <span id={textId} className="truncate">
+                {selected ? formatDay(value, locale) : 'Pick a date'}
+              </span>
+              <CalendarIcon data-icon="inline-end" className="size-5! text-on-surface-variant" />
+            </UiButton>
+          </PopoverTrigger>
+          <label id={labelId} htmlFor={id} data-slot="text-field-label">
+            {label}
+          </label>
+          <Outline label={label} />
+        </div>
+        <PopoverContent
+          aria-label={label}
+          align="start"
+          className="w-auto overflow-hidden rounded-large bg-surface-container-high p-0 shadow-elevation-3"
+        >
           <Calendar
             mode="single"
             captionLayout="dropdown"
@@ -118,14 +170,14 @@ export function DateField({
           />
         </PopoverContent>
       </Popover>
-      {hint ? (
-        <p id={hintId} className="text-xs text-muted-foreground">
-          {hint}
-        </p>
-      ) : null}
+      {hint ? <Hint id={hintId}>{hint}</Hint> : null}
     </div>
   );
 }
+
+/** A button or select trigger drawn as the inside of an outlined text field (no own outline). */
+const textFieldControl =
+  'h-12 w-full min-w-0 justify-between rounded-extra-small border-0 data-[size=default]:h-12 bg-transparent pr-3 pl-4 text-body-large font-normal text-on-surface before:hidden focus-visible:shadow-none focus-visible:outline-none data-[empty=true]:text-on-surface-variant data-[state=open]:shadow-none';
 
 export interface PickOption {
   value: string;
@@ -216,8 +268,8 @@ export function TimeField({
     (a, b) => a - b,
   );
   return (
-    <div role="group" aria-label={label} className="grid content-start gap-2">
-      <span className="text-sm font-medium">{label}</span>
+    <div role="group" aria-label={label} className="grid content-start gap-1">
+      <span className="px-1 text-body-small text-on-surface-variant">{label}</span>
       <div className="flex items-center gap-1">
         <Picker
           label={`${label} hour`}
@@ -277,24 +329,24 @@ export function SelectField({
   // min-w-0 lets the field shrink inside a grid column, so a long choice is cut off with an
   // ellipsis instead of spilling over the next field.
   return (
-    <div className="grid min-w-0 content-start gap-2">
-      <label htmlFor={id} className="text-sm font-medium">
-        {label}
-      </label>
-      <Picker
-        id={id}
-        label={name}
-        describedBy={hint ? hintId : undefined}
-        value={value}
-        onChange={onChange}
-        options={options}
-        disabled={disabled}
-      />
-      {hint ? (
-        <p id={hintId} className="text-xs text-muted-foreground">
-          {hint}
-        </p>
-      ) : null}
+    <div className="grid min-w-0 content-start gap-1">
+      <div data-slot="text-field" data-float="always" className="min-w-0">
+        <Picker
+          id={id}
+          label={name}
+          describedBy={hint ? hintId : undefined}
+          value={value}
+          onChange={onChange}
+          options={options}
+          disabled={disabled}
+          className={textFieldControl}
+        />
+        <label htmlFor={id} data-slot="text-field-label">
+          {label}
+        </label>
+        <Outline label={label} />
+      </div>
+      {hint ? <Hint id={hintId}>{hint}</Hint> : null}
     </div>
   );
 }
@@ -313,7 +365,7 @@ export function Button({
 
 export function FormError({ message }: { message: string | null }) {
   return message ? (
-    <p role="alert" className="text-sm text-destructive">
+    <p role="alert" className="text-body-medium text-destructive">
       {message}
     </p>
   ) : null;
@@ -327,25 +379,31 @@ export function PrivacyLink({ className }: { className?: string }) {
   return (
     <a
       href="/privacy"
-      className={cn('underline-offset-4 hover:text-foreground hover:underline', className)}
+      className={cn(
+        'rounded-extra-small underline-offset-4 focus-ring hover:text-foreground hover:underline',
+        className,
+      )}
     >
       Privacy
     </a>
   );
 }
 
-/** A centred card for screens shown before sign-in, with the privacy link under it. */
+/**
+ * A centred card for screens shown before sign-in, with the privacy link under it: a Material
+ * filled card with large corners on the page's surface, the mark and a headline-small title.
+ */
 export function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-4 p-6">
-      <UiCard className="w-full max-w-sm">
-        <CardHeader className="gap-3">
+    <div className="flex min-h-svh flex-col items-center justify-center gap-4 p-4 sm:p-6">
+      <UiCard className="w-full max-w-[400px] rounded-large [--card-spacing:--spacing(6)]">
+        <CardHeader className="gap-4">
           <LogoMark size={40} />
-          <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+          <h1 className="text-headline-small text-on-surface">{title}</h1>
         </CardHeader>
         <CardContent className="space-y-4">{children}</CardContent>
       </UiCard>
-      <footer className="text-xs text-muted-foreground">
+      <footer className="text-body-small text-on-surface-variant">
         <PrivacyLink />
       </footer>
     </div>

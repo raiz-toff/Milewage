@@ -93,9 +93,9 @@ export function SortTable<T>({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-end gap-3 text-sm">
+      <div className="flex items-center justify-end gap-3 text-body-medium">
         {copied ? (
-          <span role="status" className="text-muted-foreground">
+          <span role="status" className="text-on-surface-variant">
             {copied}
           </span>
         ) : null}
@@ -104,10 +104,10 @@ export function SortTable<T>({
           Copy CSV
         </Button>
       </div>
-      <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full text-left text-sm">
+      <div className="overflow-x-auto rounded-xl border border-outline-variant">
+        <table className="w-full text-left text-body-medium">
           <caption className="sr-only">{caption}</caption>
-          <thead className="bg-muted/50 text-muted-foreground">
+          <thead className="bg-surface-container text-on-surface-variant">
             <tr>
               {columns.map((c) => (
                 <th
@@ -116,12 +116,12 @@ export function SortTable<T>({
                   aria-sort={
                     sort?.key === c.key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'
                   }
-                  className={`h-10 px-3 font-medium whitespace-nowrap ${c.numeric ? 'text-right' : ''}`}
+                  className={`h-12 px-4 text-title-small whitespace-nowrap ${c.numeric ? 'text-right' : ''}`}
                 >
                   <button
                     type="button"
                     onClick={() => toggle(c.key)}
-                    className="inline-flex items-center gap-1 hover:text-foreground"
+                    className="inline-flex items-center gap-1 rounded-extra-small focus-ring hover:text-on-surface"
                   >
                     {c.label}
                     {sort?.key === c.key ? (
@@ -141,12 +141,12 @@ export function SortTable<T>({
               <tr
                 key={rowKey(row)}
                 tabIndex={i === 0 ? 0 : -1}
-                className="border-t transition-colors hover:bg-muted/40 focus:bg-muted/60 focus:outline-none"
+                className="border-t border-outline-variant transition-colors hover:bg-on-surface/8 focus:bg-on-surface/10 focus:outline-none"
               >
                 {columns.map((c) => (
                   <td
                     key={c.key}
-                    className={`px-3 py-2.5 ${c.numeric ? 'text-right whitespace-nowrap tabular-nums' : ''}`}
+                    className={`px-4 py-3 ${c.numeric ? 'text-right whitespace-nowrap tabular-nums' : ''}`}
                   >
                     {c.render(row)}
                   </td>

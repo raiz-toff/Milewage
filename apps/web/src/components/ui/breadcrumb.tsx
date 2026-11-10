@@ -1,7 +1,13 @@
 import * as React from 'react';
-import { cn } from 'cn';
 import { Slot } from 'radix-ui';
 import { ChevronRightIcon, MoreHorizontalIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+/*
+ * Material 3 has no breadcrumb; this one wears its type and colour roles: body-medium links in
+ * on-surface-variant, the current page in on-surface as a title (title-large in the top app bar
+ * is set by the caller's place), chevrons as separators.
+ */
 
 function Breadcrumb({ className, ...props }: React.ComponentProps<'nav'>) {
   return (
@@ -14,7 +20,7 @@ function BreadcrumbList({ className, ...props }: React.ComponentProps<'ol'>) {
     <ol
       data-slot="breadcrumb-list"
       className={cn(
-        'flex flex-wrap items-center gap-1.5 text-sm wrap-break-word text-muted-foreground',
+        'flex flex-wrap items-center gap-1.5 text-body-medium wrap-break-word text-on-surface-variant',
         className,
       )}
       {...props}
@@ -44,7 +50,10 @@ function BreadcrumbLink({
   return (
     <Comp
       data-slot="breadcrumb-link"
-      className={cn('transition-colors hover:text-foreground', className)}
+      className={cn(
+        'rounded-extra-small transition-colors focus-ring hover:text-on-surface hover:underline underline-offset-4',
+        className,
+      )}
       {...props}
     />
   );
@@ -57,7 +66,7 @@ function BreadcrumbPage({ className, ...props }: React.ComponentProps<'span'>) {
       role="link"
       aria-disabled="true"
       aria-current="page"
-      className={cn('font-normal text-foreground', className)}
+      className={cn('text-title-medium text-on-surface', className)}
       {...props}
     />
   );

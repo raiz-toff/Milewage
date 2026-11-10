@@ -89,13 +89,16 @@ describe('map style', () => {
     expect(chooseStyle(' /tiles/style.json ', true)).toBe('/tiles/style.json');
   });
 
-  it('takes its colours from the MileWage palette, per theme', () => {
+  it('takes its colours from the Material scheme, per theme', () => {
     const bg = (d: boolean) =>
       (blankStyle(d).layers[0] as { paint: { 'background-color': string } }).paint[
         'background-color'
       ];
-    expect(bg(true)).toBe('#181b1e');
-    expect(bg(false)).toBe('#ffffff');
+    // The card surface (surface-container-low) of each theme.
+    expect(bg(true)).toBe('#201b11');
+    expect(bg(false)).toBe('#fef2e1');
+    // The route is Lane yellow itself in both themes.
     expect(routeColor(true)).toBe('#ffc21f');
+    expect(routeColor(false)).toBe('#ffc21f');
   });
 });

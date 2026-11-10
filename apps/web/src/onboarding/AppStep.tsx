@@ -38,7 +38,7 @@ export function AppStep({ next }: StepProps) {
         <AddressWarning problem="local" />
       ) : (
         <div className="flex flex-wrap items-start gap-6">
-          <div className="rounded-lg border bg-white p-2">
+          <div className="rounded-lg border bg-qr-plate p-2">
             <Qr text={info.page_url} label="Download page code" />
           </div>
           <div className="min-w-0 flex-1 basis-64 space-y-3 text-sm">

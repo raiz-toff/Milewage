@@ -1,12 +1,23 @@
 import type { StyleSpecification } from 'maplibre-gl';
+import scheme from '../theme/m3-scheme.json';
 
 /**
- * Map colours from the MileWage palette (src/index.css): card surface, Lane yellow route, and an
- * Asphalt edge under the route so yellow stays visible on a light basemap.
+ * Map colours from the Material scheme (src/theme/m3-scheme.json; MapLibre needs the values, not
+ * CSS variables): the card surface (surface-container-low), the route in Lane yellow
+ * (primary-container, the brand itself in both themes), and a near-black edge under the route
+ * (on-primary-fixed) so the yellow stays visible on a light basemap.
  */
 const palette = {
-  dark: { canvas: '#181b1e', route: '#ffc21f', casing: '#101214' },
-  light: { canvas: '#ffffff', route: '#ffc21f', casing: '#101214' },
+  dark: {
+    canvas: scheme.dark.surfaceContainerLow,
+    route: scheme.dark.primaryContainer,
+    casing: scheme.dark.onPrimaryFixed,
+  },
+  light: {
+    canvas: scheme.light.surfaceContainerLow,
+    route: scheme.light.primaryContainer,
+    casing: scheme.light.onPrimaryFixed,
+  },
 } as const;
 
 /**

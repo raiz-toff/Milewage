@@ -1,13 +1,19 @@
 import * as React from 'react';
-import { cn } from 'cn';
+import { cn } from '@/lib/utils';
 
+/**
+ * Material 3 outlined text field, the box (m3.material.io/components/text-fields): extra-small
+ * corners, a 1 px outline that turns 2 px primary on focus and error when invalid, body-large
+ * text. 48 px high here (Material's 56 less the floating label's room, which `Field` provides
+ * where it draws the label in the outline); `h-8` callers keep their dense size.
+ */
 function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
   return (
     <input
       type={type}
       data-slot="input"
       className={cn(
-        'h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40',
+        'h-12 w-full min-w-0 rounded-extra-small border border-input bg-transparent px-4 py-2 text-body-large text-on-surface caret-primary transition-[border-color,box-shadow] duration-150 ease-standard outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-label-large file:text-foreground placeholder:text-on-surface-variant hover:border-on-surface focus-visible:border-primary focus-visible:shadow-[inset_0_0_0_1px_var(--primary)] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-[0.38] aria-invalid:border-destructive aria-invalid:focus-visible:shadow-[inset_0_0_0_1px_var(--destructive)]',
         className,
       )}
       {...props}

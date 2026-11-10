@@ -1,6 +1,6 @@
 import qrcode from 'qrcode-generator';
 
-/** A QR code as inline SVG rects. Dark modules are `currentColor` over a light plate. */
+/** A QR code as inline SVG rects: `qr-ink` modules on the `qr-plate`, black on white in both themes. */
 export function Qr({ text, label }: { text: string; label: string }) {
   const qr = qrcode(0, 'M');
   qr.addData(text);
@@ -19,10 +19,10 @@ export function Qr({ text, label }: { text: string; label: string }) {
       role="img"
       aria-label={label}
       viewBox={`0 0 ${size} ${size}`}
-      className="h-56 w-56 rounded bg-white"
+      className="h-56 w-56 rounded-extra-small bg-qr-plate"
       shapeRendering="crispEdges"
     >
-      <path d={cells.join('')} fill="#000" />
+      <path d={cells.join('')} className="fill-qr-ink" />
     </svg>
   );
 }

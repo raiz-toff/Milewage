@@ -41,7 +41,7 @@ export function RowMenu({ name, actions }: { name: string; actions: RowAction[] 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="ghost" size="icon-sm" aria-label={`Actions for ${name}`}>
+        <Button type="button" variant="ghost" size="icon" aria-label={`Actions for ${name}`}>
           <MoreHorizontal />
         </Button>
       </DropdownMenuTrigger>
