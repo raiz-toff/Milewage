@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { countryModules, type ModuleRegistry } from '@milewage/shared';
 import { API_PREFIX, type ServerRouteHost } from '../app';
-import { generateRecoveryKey, keyTail, tailCheck } from '../backup/age';
+import { generateRecoveryKey, keyTail, recipientOf, tailCheck } from '../backup/age';
 import { fileSecrets, type SecretsStore } from '../backup/secrets';
 import { FailureLimiter } from '../auth/limiter';
 import { hashPassword, verifyPassword } from '../auth/password';
@@ -75,6 +75,7 @@ const setupBody = body({
 const confirmBody = body({ last6: str(6, 6) });
 const loginBody = body({ username: str(1, 64), password: str(1) });
 const passwordBody = body({ current_password: str(1), new_password: str(10) });
+const resetBody = body({ recovery_key: str(1, 200), new_password: str(10) });
 
 interface SetupBody {
   username: string;
@@ -107,6 +108,10 @@ export function coreRoutes(
     const users = createUserRepository(db);
     const sessions = createSessionRepository(db);
     const limiter = new FailureLimiter(5, 15 * 60 * 1000, now);
+    // Wrong recovery keys on the reset form: 5 per client and 20 in all per 15 minutes. A key has
+    // 256 random bits, so this guards the server's time rather than the key.
+    const resetFailures = new FailureLimiter(5, 15 * 60 * 1000, now);
+    const resetAll = new FailureLimiter(20, 15 * 60 * 1000, now);
     const dummy = hashPassword('no-such-user');
     const auth = authn.authenticate;
     const emit = bus.emit;
@@ -280,6 +285,41 @@ export function coreRoutes(
       users.setPasswordHash(user.id, await hashPassword(b.new_password));
       sessions.deleteOthers(user.id, me.idHash);
       return reply.status(204).send();
+    });
+
+    // Forgot the password: the recovery key proves it is the owner (it never leaves their hands;
+    // the server keeps only its public half). Sets the new password, signs out every browser and
+    // signs this one in.
+    app.post('/auth/reset-password', resetBody, async (request, reply) => {
+      const ip = `ip:${request.ip}`;
+      const wait = Math.max(resetFailures.retryAfter(ip), resetAll.retryAfter('all'));
+      if (wait > 0) {
+        const headers = { 'Retry-After': String(wait) };
+        throw new ProblemError('rate_limited', 'Too many wrong recovery keys.', undefined, headers);
+      }
+      const b = request.body as { recovery_key: string; new_password: string };
+      const stored = secrets.read()?.age_public_key;
+      const owner = db.prepare('SELECT id, username FROM users ORDER BY id LIMIT 1').get() as
+        { id: number; username: string } | undefined;
+      const given = await recipientOf(b.recovery_key).catch(() => null);
+      if (!stored || !owner || given !== stored) {
+        resetFailures.fail(ip);
+        resetAll.fail('all');
+        throw new ProblemError(
+          'invalid_credentials',
+          "That is not this server's recovery key. Check it against the copy you saved.",
+        );
+      }
+      users.setPasswordHash(owner.id, await hashPassword(b.new_password));
+      db.prepare('DELETE FROM web_sessions WHERE user_id = ?').run(owner.id);
+      // The owner proved who they are: lift the sign-in lockout for the account and this client.
+      limiter.reset(`account:${owner.username.toLowerCase()}`);
+      limiter.reset(ip);
+      resetFailures.reset(ip);
+      return reply
+        .status(204)
+        .header('set-cookie', startSession(sessions, owner.id, now(), secureRequest(request)))
+        .send();
     });
   };
 }

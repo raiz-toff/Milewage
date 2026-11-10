@@ -73,7 +73,7 @@ A link leads to the Devices page. See [Phones and devices](phones-and-devices.md
 
 ## AI assistants
 
-Shown only when the assistant module is switched on in the server's configuration. It is off by default. "Make a token" makes a code for one assistant, with "Read only" or "Read and change" access and an expiry. The code is shown once. The page lists your codes and the changes assistants made, and you can revoke a code at any time. An assistant cannot delete anything or see your password, backups or GPS points. See [Connect an AI assistant](../../infra/docs/install.md#7-connect-an-ai-assistant-optional) in the install guide.
+Lets an AI assistant such as Claude read your records and add to them. "Connect by signing in" is the easy way: give your assistant the address shown there. It opens MileWage in your browser, you sign in, choose "Read only" or "Read and change" and press Allow. Nothing to copy. For an assistant that cannot sign in, "Make a token" makes a code for it instead, with an access and an expiry. That code is shown once. If you lose it, choose "Replace token" in its row's menu: the old code stops working and a new one is shown once. The page lists every connected assistant and the changes assistants made, and you can revoke one at any time. A signed-in assistant that is not used for 90 days is disconnected. An assistant cannot delete anything or see your password, backups or GPS points. See [Connect an AI assistant](../../infra/docs/install.md#7-connect-an-ai-assistant-optional) in the install guide.
 
 ## Server modules
 

@@ -133,6 +133,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Forgot the password. The recovery key proves it is the owner; sets a new password, signs out every browser and signs this one in. 5 wrong keys per client and 20 in all per 15 minutes. */
+        post: operations["resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/logout": {
         parameters: {
             query?: never;
@@ -387,6 +404,43 @@ export interface paths {
         post?: never;
         /** Revoke a token at once (idempotent). */
         delete: operations["revokeMcpToken"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mcp/tokens/{id}/replace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A new secret for a live token made by hand; the old one stops working at once. Name, access, expiry and change history stay. The token is in this response only. */
+        post: operations["replaceMcpToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/oauth/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Checks an assistant's sign-in request and says who is asking. 422 when the client, its return address or PKCE is wrong; nothing is sent to the assistant then. */
+        get: operations["getOAuthAuthorization"];
+        put?: never;
+        /** The driver's answer. Allow makes a one-minute code; either way the answer is the address to send the browser back to the assistant. */
+        post: operations["decideOAuthAuthorization"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1867,7 +1921,7 @@ export interface components {
             diagnostics: boolean;
             /** @description Capture module registered (16 section 8); false by default. */
             capture: boolean;
-            /** @description MCP module registered (plan 26): the AI assistant endpoint and its tokens; off by default. */
+            /** @description MCP module registered (plan 26): the AI assistant endpoint, its tokens and sign-in connections; on by default. */
             mcp: boolean;
             backup_download: boolean;
             exporters: ("csv" | "pdf" | "gpx" | "geojson" | "expenses" | "tax_summary")[];
@@ -1976,7 +2030,13 @@ export interface components {
             name: string;
             /** @enum {unknown} */
             scope: "read" | "write";
+            /**
+             * @description sign_in: the assistant connected through the browser (its name is the one it registered). code: made by hand on the page.
+             * @enum {unknown}
+             */
+            kind: "code" | "sign_in";
             created_at: components["schemas"]["EpochMs"];
+            /** @description For sign_in, when the connection ends unless the assistant renews it (90 days after its last renewal). */
             expires_at: number | null;
             /** @description Updated at most once a minute. */
             last_used_at: number | null;
@@ -3404,6 +3464,36 @@ export interface operations {
             429: components["responses"]["RateLimited"];
         };
     };
+    resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description AGE-SECRET-KEY-1…, as shown at setup. Never stored. */
+                    recovery_key: string;
+                    new_password: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Password changed; session cookie mw_session set. */
+            204: {
+                headers: {
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            422: components["responses"]["Unprocessable"];
+            429: components["responses"]["RateLimited"];
+        };
+    };
     logout: {
         parameters: {
             query?: never;
@@ -3988,6 +4078,119 @@ export interface operations {
                 content?: never;
             };
             404: components["responses"]["NotFound"];
+        };
+    };
+    replaceMcpToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Replaced. Show `token` once. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpToken"] & {
+                        token: string;
+                    };
+                };
+            };
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    getOAuthAuthorization: {
+        parameters: {
+            query: {
+                client_id: string;
+                redirect_uri: string;
+                response_type: "code";
+                code_challenge: string;
+                code_challenge_method: "S256";
+                state?: string;
+                /** @description Space-separated; `write` asks for read and change. */
+                scope?: string;
+                /** @description RFC 8707; must be this server's MCP address. */
+                resource?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The request is good; ask the driver. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description As the assistant registered itself. */
+                        client_name: string;
+                        redirect_uri: string;
+                        /**
+                         * @description What the assistant asked for.
+                         * @enum {unknown}
+                         */
+                        scope: "read" | "write";
+                    };
+                };
+            };
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    decideOAuthAuthorization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    client_id: string;
+                    redirect_uri: string;
+                    /** @constant */
+                    response_type: "code";
+                    code_challenge: string;
+                    /** @constant */
+                    code_challenge_method: "S256";
+                    state?: string;
+                    scope?: string;
+                    resource?: string;
+                    /** @enum {unknown} */
+                    decision: "allow" | "deny";
+                    /**
+                     * @description What the driver allows; default read.
+                     * @enum {unknown}
+                     */
+                    access?: "read" | "write";
+                };
+            };
+        };
+        responses: {
+            /** @description Where to send the browser. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description The redirect URI with `code` or `error=access_denied`, `state` and `iss`. */
+                        redirect_to: string;
+                    };
+                };
+            };
+            422: components["responses"]["Unprocessable"];
         };
     };
     getSettings: {

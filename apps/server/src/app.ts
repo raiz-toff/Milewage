@@ -12,6 +12,11 @@ export const API_PREFIX = '/api/v1';
 /** What a module's routes are registered on: the `/api/v1` Fastify scope, the module registry and the event bus. */
 export interface ServerRouteHost {
   readonly app: FastifyInstance;
+  /**
+   * The unprefixed root, only for documents a standard places at the origin: the OAuth discovery
+   * documents under `/.well-known/` (RFC 8414, RFC 9728). Everything else goes on `app`.
+   */
+  readonly root: FastifyInstance;
   readonly registry: ModuleRegistry;
   /** The in-process event bus (08 section 16.4); modules emit facts, other modules subscribe. */
   readonly bus: EventBus;
@@ -52,7 +57,7 @@ export const REDACT_PATHS = [
  */
 export function buildHttpApp(
   options: HttpOptions,
-  mount: (api: FastifyInstance) => void,
+  mount: (api: FastifyInstance, root: FastifyInstance) => void,
 ): FastifyInstance {
   const fastify = Fastify({
     genReqId: () => newRequestId(),
@@ -90,6 +95,6 @@ export function buildHttpApp(
   });
 
   // Module routes live under /api/v1; a disabled module registers nothing, so its paths 404.
-  void fastify.register(async (api) => mount(api), { prefix: API_PREFIX });
+  void fastify.register(async (api) => mount(api, fastify), { prefix: API_PREFIX });
   return fastify;
 }

@@ -47,7 +47,8 @@
 		reverse_proxy api:3000
 	}
 
-	@api path /api/* /healthz
+	# The OAuth discovery documents for AI assistants (RFC 8414, RFC 9728) live at the origin.
+	@api path /api/* /healthz /.well-known/oauth-authorization-server /.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/*
 	handle @api {
 		request_body {
 			max_size 2MB
@@ -79,7 +80,7 @@
 	# The web client (apps/web, built into /srv/web by the caddy image target). Only its own
 	# screens fall back to index.html, so any other unknown path is still a 404.
 	# Keep this list in step with apps/web/src/screens.tsx.
-	@spa path / /pair /app /privacy /onboarding /onboarding/* /dashboard /shifts /shifts/* /expenses /progress /schedule /notifications /analytics /goals /tax /vehicles /odometer /exports /devices /backups /settings /settings/* /help /help/*
+	@spa path / /pair /app /privacy /onboarding /onboarding/* /dashboard /shifts /shifts/* /expenses /progress /schedule /notifications /analytics /goals /tax /vehicles /odometer /exports /devices /backups /settings /settings/* /help /help/* /oauth/authorize
 	handle @spa {
 		root * /srv/web
 		rewrite * /index.html

@@ -83,6 +83,7 @@ export default defineConfig({
       // (changeOrigin), and the server refuses every write whose Origin does not match Host.
       '/api': { target: api },
       '/healthz': { target: api },
+      '/.well-known/oauth-': { target: api },
     },
   },
   build: { outDir: 'dist', sourcemap: false },

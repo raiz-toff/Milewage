@@ -159,8 +159,8 @@ export function assembleServer(input: ServerInput): App {
       identity: () => (state.mode === 'normal' ? identity() : undefined),
       isHealthy: () => db.prepare('SELECT 1').pluck().get() === 1,
     },
-    (api) => {
-      const routeHost = { app: api, registry, bus };
+    (api, root) => {
+      const routeHost = { app: api, root, registry, bus };
       for (const p of parts) p.routes?.(routeHost);
     },
   );

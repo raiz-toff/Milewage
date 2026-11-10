@@ -16,6 +16,10 @@ export interface McpTokenRow {
   expiresAt: number | null;
   lastUsedAt: number | null;
   revokedAt: number | null;
+  /** Set when an assistant connected by signing in (`oauth.ts`); null for a code made by hand. */
+  clientId: string | null;
+  /** A signed-in connection lasts while its refresh code does; `expiresAt` is then the access code's. */
+  refreshExpiresAt: number | null;
 }
 
 /** At most this many tokens that are neither revoked nor expired (plan 26 section 3.2). */
@@ -26,7 +30,11 @@ export const TOKEN_PATTERN = /^mwa_[A-Za-z0-9_-]{43}$/;
 export const newAssistantToken = () => `mwa_${randomBytes(32).toString('base64url')}`;
 
 const COLUMNS =
-  'id, user_id AS userId, name, scope, token_hash AS tokenHash, created_at AS createdAt, expires_at AS expiresAt, last_used_at AS lastUsedAt, revoked_at AS revokedAt';
+  'id, user_id AS userId, name, scope, token_hash AS tokenHash, created_at AS createdAt, expires_at AS expiresAt, last_used_at AS lastUsedAt, revoked_at AS revokedAt, client_id AS clientId, refresh_expires_at AS refreshExpiresAt';
+
+/** Not revoked, and either code still good: the access code, or a signed-in connection's refresh code. */
+export const LIVE_SQL =
+  'revoked_at IS NULL AND (expires_at IS NULL OR expires_at > @at OR refresh_expires_at > @at)';
 
 /** Assistant access tokens (module `mcp`). Only the SHA-256 hash of a token is stored. */
 export function createMcpTokenRepository(db: Db) {
@@ -41,11 +49,9 @@ export function createMcpTokenRepository(db: Db) {
         .all(userId) as McpTokenRow[],
     live: (userId: number, at: number) =>
       db
-        .prepare(
-          'SELECT count(*) FROM mcp_tokens WHERE user_id = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?)',
-        )
+        .prepare(`SELECT count(*) FROM mcp_tokens WHERE user_id = @userId AND ${LIVE_SQL}`)
         .pluck()
-        .get(userId, at) as number,
+        .get({ userId, at }) as number,
     create(
       r: Pick<McpTokenRow, 'userId' | 'name' | 'scope' | 'tokenHash' | 'createdAt' | 'expiresAt'>,
     ) {
@@ -80,8 +86,11 @@ export const tokenView = (t: McpTokenRow) => ({
   id: t.id,
   name: t.name,
   scope: t.scope,
+  /** `sign_in`: the assistant connected through the browser; `code`: a code made on the page. */
+  kind: t.clientId === null ? ('code' as const) : ('sign_in' as const),
   created_at: t.createdAt,
-  expires_at: t.expiresAt,
+  // A signed-in connection ends when its refresh code does; its access code renews every hour.
+  expires_at: t.clientId === null ? t.expiresAt : t.refreshExpiresAt,
   last_used_at: t.lastUsedAt,
   revoked_at: t.revokedAt,
 });
@@ -140,6 +149,34 @@ export function mcpTokenRoutes({
       'SELECT a.id, a.at, a.tool, a.outcome, a.target, a.token_id, t.name AS token_name FROM mcp_audit a JOIN mcp_tokens t ON t.id = a.token_id WHERE a.user_id = ? ORDER BY a.id DESC LIMIT 50',
     );
     app.get('/mcp/audit', async (req) => audit.all(authn.authenticate(req, 'S').userId));
+
+    // A new secret for a code made by hand, when the old one is lost or seen by someone else. The
+    // row stays (name, access, expiry and its audit rows); the old secret stops working at once.
+    app.post('/mcp/tokens/:id/replace', { schema: { params: idParams } }, async (req) => {
+      const { userId } = authn.authenticate(req, 'S');
+      const { id } = req.params as { id: number };
+      const row = repo.find(userId, id);
+      if (!row) throw new ProblemError('not_found', 'No such token.');
+      const at = now();
+      if (row.clientId !== null) {
+        throw new ProblemError(
+          'validation_failed',
+          'A signed-in assistant has no code to replace. Revoke it, then connect it again.',
+        );
+      }
+      if (row.revokedAt !== null || (row.expiresAt !== null && row.expiresAt <= at)) {
+        throw new ProblemError(
+          'validation_failed',
+          'This token is revoked or expired. Make a new one.',
+        );
+      }
+      const token = newAssistantToken();
+      db.prepare('UPDATE mcp_tokens SET token_hash = ?, last_used_at = NULL WHERE id = ?').run(
+        hashToken(token),
+        id,
+      );
+      return { ...tokenView(repo.find(userId, id)!), token };
+    });
 
     app.delete('/mcp/tokens/:id', { schema: { params: idParams } }, async (req, reply) => {
       const { userId } = authn.authenticate(req, 'S');

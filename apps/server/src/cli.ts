@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
+import { resetPasswordCommand } from './cli-password';
 import { restoreCommand, type RestoreIo } from './cli-restore';
 import { recalcReport, type RecalcRow } from './processing/recalc-report';
 
@@ -19,6 +20,11 @@ Commands:
       Run with the api service stopped. Checks the backup, moves the current data into
       <data>/before-restore-<time>/ (nothing is deleted) and writes the backup's data in its place.
       Without --key it asks for the key; without --yes it asks before changing anything.
+
+  reset-password [--username <name>]
+      Run with the api service stopped. Gives the account a new random password, prints it once
+      and signs out every browser. Paired phones and AI assistants keep working. --username is
+      needed only when the server has more than one account.
 
 Environment: MILEWAGE_DATA_DIR (default /app/data) holds milewage.db; MILEWAGE_CONFIG_DIR
 (default /app/config) holds secrets.json.
@@ -73,6 +79,7 @@ export async function runCli(
   env: Readonly<Record<string, string | undefined>>,
   io: CliIo,
 ): Promise<number> {
+  if (argv[0] === 'reset-password') return resetPasswordCommand(argv.slice(1), env, io);
   if (argv[0] !== 'restore') return recalc(argv, env, io);
   const opts = restoreArgs(argv.slice(1));
   if (typeof opts === 'string') {

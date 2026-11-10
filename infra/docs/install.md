@@ -124,11 +124,18 @@ Never copy `milewage.db` by hand while the API runs. Logs rotate (3 files of 10 
 
 ## 7. Connect an AI assistant (optional)
 
-MileWage can let an AI assistant such as Claude read your records and add to them, over the Model Context Protocol (plan 26). It is **off** until you turn it on:
+MileWage can let an AI assistant such as Claude read your records and add to them, over the Model Context Protocol (plan 26). The endpoint is on, but nothing reaches your data until you connect an assistant in **Settings › AI assistants**. To switch it off completely, add `MILEWAGE_MODULE_MCP=0` to `infra/docker/.env` and run `docker compose -f infra/docker/docker-compose.yml up -d --wait api`.
 
-1. In `infra/docker/.env` add `MILEWAGE_MODULE_MCP=1` (or put `{ "modules": { "mcp": true } }` in `settings.json` in the `config` volume), then `docker compose -f infra/docker/docker-compose.yml up -d --wait api`.
-2. In MileWage open **Settings › AI assistants**, give the token a name, choose **Read only** or **Read and change**, and press **Make a token**. Copy it at once: it is shown only this time. The page also shows the two commands below with your address and token filled in.
-3. Connect from a computer in your tailnet (the endpoint is `https://<your address>/api/v1/mcp`):
+**By signing in (recommended).** The assistant finds MileWage's sign-in page by itself (OAuth 2.1 with PKCE, the way MCP clients connect), so there is no code to copy:
+
+1. On a computer in your tailnet, add the address: `claude mcp add --transport http milewage https://<your address>/api/v1/mcp`. Cursor, VS Code and other MCP clients take the same address.
+2. In Claude Code type `/mcp`, choose **milewage** and sign in. Your browser opens MileWage: sign in, choose **Read only** or **Read and change**, and press **Allow**.
+3. The assistant appears in Settings › AI assistants with "Signed in". It renews its access by itself; one that is unused for 90 days is disconnected.
+
+**With a token**, for an assistant that cannot sign in:
+
+1. In MileWage open **Settings › AI assistants**, give the token a name, choose **Read only** or **Read and change**, and press **Make a token**. Copy it at once: it is shown only this time. The page also shows the two commands below with your address and token filled in.
+2. Connect from a computer in your tailnet (the endpoint is `https://<your address>/api/v1/mcp`):
    - **Claude Code:** `claude mcp add --transport http milewage https://<your address>/api/v1/mcp --header "Authorization: Bearer mwa_…"`
    - **Claude Desktop:** Settings › Developer › Edit config, and add to `claude_desktop_config.json`:
      ```json
@@ -149,9 +156,10 @@ MileWage can let an AI assistant such as Claude read your records and add to the
      }
      ```
      (needs Node.js on that computer; restart Claude Desktop afterwards).
-4. Ask, for example, "How much did I make per hour last week?" or "Add a $54.20 fuel expense from Esso today". Your assistant asks before each change unless you allowed it.
 
-Revoke a token on the same page as soon as you stop using it; changes made by assistants are listed there too. claude.ai's own connectors reach servers from the internet, not from your tailnet, so they cannot connect to a Tailscale-only MileWage; do not open the endpoint with `tailscale funnel` for them.
+Then ask, for example, "How much did I make per hour last week?" or "Add a $54.20 fuel expense from Esso today". Your assistant asks before each change unless you allowed it.
+
+Revoke an assistant on the same page as soon as you stop using it; changes made by assistants are listed there too. Forgot your password? See [Troubleshooting](../../docs/help/troubleshooting.md#you-forgot-your-password). claude.ai's own connectors reach servers from the internet, not from your tailnet, so they cannot connect to a Tailscale-only MileWage; do not open the endpoint with `tailscale funnel` for them.
 
 ## 8. Security headers and another map service
 

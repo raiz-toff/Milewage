@@ -8,6 +8,7 @@ import type { Db } from '../db';
 import { ProblemError } from '../errors';
 import { SERVER_VERSION } from '../version';
 import { createWriteGuard } from './audit';
+import { resourceMetadataUrl } from './oauth';
 import { createMcpTokenRepository, TOKEN_PATTERN } from './tokens';
 import { writeTools } from './write-tools';
 import {
@@ -147,7 +148,10 @@ export function mcpEndpoint({
       const row = TOKEN_PATTERN.test(bearer) ? tokens.byToken(bearer) : undefined;
       const at = now();
       if (!row || row.revokedAt !== null || (row.expiresAt !== null && row.expiresAt <= at)) {
-        const headers = { 'WWW-Authenticate': 'Bearer realm="MileWage"' };
+        // RFC 9728 section 5.1: where a client finds how to sign in (`oauth.ts`).
+        const headers = {
+          'WWW-Authenticate': `Bearer realm="MileWage", resource_metadata="${resourceMetadataUrl(req)}"`,
+        };
         throw new ProblemError(
           'auth_required',
           'An assistant token is needed.',

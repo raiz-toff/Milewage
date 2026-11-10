@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { Ban, RefreshCw } from 'lucide-react';
 import { Button as UiButton } from '@/components/ui/button';
 import { errorText, useApiQuery, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
@@ -8,6 +9,7 @@ import { formatDateTime } from '../format';
 import { useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
 import { EmptyState, Section, TableBox, tableClass } from '../ui/layout';
+import { RowMenu } from '../ui/RowMenu';
 
 type Token = Schemas['McpToken'];
 type Made = paths['/mcp/tokens']['post']['responses'][201]['content']['application/json'];
@@ -23,6 +25,12 @@ const ACCESS = [
   { value: 'read', label: 'Read only' },
   { value: 'write', label: 'Read and change' },
 ];
+
+/** The ways to connect by signing in: the address, and the Claude Code command without a code. */
+export function signInText(origin: string) {
+  const url = `${origin}/api/v1/mcp`;
+  return { url, code: `claude mcp add --transport http milewage ${url}` };
+}
 
 /** The MCP address and the two connect recipes of plan 26 section 3.10, for this server. */
 export function connectText(origin: string, token: string) {
@@ -87,42 +95,75 @@ function MadeToken({ made, onDone }: { made: Made; onDone: () => void }) {
   );
 }
 
-function TokenRow({ t }: { t: Token }) {
+/**
+ * One token or signed-in assistant. A token made by hand can be replaced (a new secret, shown
+ * once, when the old one is lost) or revoked; a signed-in assistant can only be revoked.
+ */
+function TokenRow({ t, onMade }: { t: Token; onMade: (made: Made) => void }) {
   const { timezone } = useSettings();
-  const [confirming, setConfirming] = useState(false);
+  const [confirming, setConfirming] = useState<'revoke' | 'replace' | null>(null);
   const { run, error } = useChange();
   const at = (ms: number | null, none: string) =>
     ms === null ? none : formatDateTime(ms, timezone);
   const expired = t.expires_at !== null && t.expires_at <= Date.now();
   const state = t.revoked_at !== null ? 'revoked' : expired ? 'expired' : 'active';
-  const revoke = () =>
-    run((api) => api.DELETE('/mcp/tokens/{id}', { params: { path: { id: t.id } } }));
+  const params = { params: { path: { id: t.id } } };
+  const revoke = () => run((api) => api.DELETE('/mcp/tokens/{id}', params));
+  async function replace() {
+    const done = await run((api) => api.POST('/mcp/tokens/{id}/replace', params));
+    setConfirming(null);
+    if (done) onMade(done.data);
+  }
+  const actions =
+    state !== 'active' ? null : confirming ? (
+      <>
+        <UiButton
+          type="button"
+          variant={confirming === 'revoke' ? 'destructive' : 'default'}
+          size="sm"
+          onClick={() => void (confirming === 'revoke' ? revoke() : replace())}
+        >
+          {confirming === 'revoke' ? 'Confirm revoke' : 'Confirm replace'}
+        </UiButton>
+        <UiButton type="button" variant="ghost" size="sm" onClick={() => setConfirming(null)}>
+          Cancel
+        </UiButton>
+      </>
+    ) : t.kind === 'code' ? (
+      <RowMenu
+        name={t.name}
+        actions={[
+          { label: 'Replace token', icon: RefreshCw, onSelect: () => setConfirming('replace') },
+          {
+            label: 'Revoke',
+            icon: Ban,
+            destructive: true,
+            onSelect: () => setConfirming('revoke'),
+          },
+        ]}
+      />
+    ) : (
+      <UiButton type="button" variant="outline" size="sm" onClick={() => setConfirming('revoke')}>
+        Revoke {t.name}
+      </UiButton>
+    );
   return (
     <tr>
       <td className={state === 'active' ? '' : 'text-muted-foreground line-through'}>
         {t.name}
+        {confirming === 'replace' ? (
+          <p className="text-xs text-muted-foreground">
+            The old token stops working at once. Give the new one to the assistant.
+          </p>
+        ) : null}
         <FormError message={error} />
       </td>
       <td>{t.scope === 'write' ? 'Read and change' : 'Read only'}</td>
+      <td className="text-muted-foreground">{t.kind === 'sign_in' ? 'Signed in' : 'Token'}</td>
       <td className="tabular-nums text-muted-foreground">{at(t.last_used_at, 'never')}</td>
       <td className="tabular-nums text-muted-foreground">{at(t.expires_at, 'never')}</td>
       <td className="text-muted-foreground">{state}</td>
-      <td className="text-right whitespace-nowrap">
-        {state !== 'active' ? null : confirming ? (
-          <>
-            <UiButton type="button" variant="destructive" size="sm" onClick={() => void revoke()}>
-              Confirm revoke
-            </UiButton>
-            <UiButton type="button" variant="ghost" size="sm" onClick={() => setConfirming(false)}>
-              Cancel
-            </UiButton>
-          </>
-        ) : (
-          <UiButton type="button" variant="outline" size="sm" onClick={() => setConfirming(true)}>
-            Revoke {t.name}
-          </UiButton>
-        )}
-      </td>
+      <td className="text-right whitespace-nowrap">{actions}</td>
     </tr>
   );
 }
@@ -159,8 +200,23 @@ export function AssistantsCard() {
     setName('');
   }
 
+  const signIn = signInText(globalThis.location?.origin ?? '');
   return (
     <div className="space-y-4">
+      <Section title="Connect by signing in" label="Connect by signing in">
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            The easy way. Give your assistant this address. It opens MileWage in your browser, you
+            sign in and press Allow. No code to copy. It works with assistants that run on a
+            computer in your tailnet, such as Claude Code, Cursor and VS Code.
+          </p>
+          <Copyable label="MileWage address for assistants" text={signIn.url} />
+          <Copyable label="Claude Code" text={signIn.code} />
+          <p className="text-xs text-muted-foreground">
+            Then type /mcp in Claude Code, choose milewage and sign in.
+          </p>
+        </div>
+      </Section>
       <Section title="Connect an AI assistant" label="Connect an AI assistant">
         <p className="text-sm text-muted-foreground">
           A token is the secret code you make for one assistant so it can reach your server. You can
@@ -200,6 +256,7 @@ export function AssistantsCard() {
                 <tr>
                   <th>Name</th>
                   <th>Access</th>
+                  <th>How</th>
                   <th>Last used</th>
                   <th>Expires</th>
                   <th>State</th>
@@ -208,7 +265,7 @@ export function AssistantsCard() {
               </thead>
               <tbody>
                 {tokens.map((t) => (
-                  <TokenRow key={t.id} t={t} />
+                  <TokenRow key={t.id} t={t} onMade={setMade} />
                 ))}
               </tbody>
             </table>

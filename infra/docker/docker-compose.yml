@@ -52,7 +52,7 @@ services:
       - MILEWAGE_HOME_URL=${MILEWAGE_HOME_URL:-}
       # The app's store page once it is published (https); the download page then offers it first.
       - MILEWAGE_APP_STORE_URL=${MILEWAGE_APP_STORE_URL:-}
-      # 1 turns on the MCP endpoint for AI assistants (plan 26); empty leaves it off.
+      # 0 turns off the MCP endpoint for AI assistants (plan 26); empty leaves it on (the default).
       - MILEWAGE_MODULE_MCP=${MILEWAGE_MODULE_MCP:-}
     volumes:
       - data:/app/data

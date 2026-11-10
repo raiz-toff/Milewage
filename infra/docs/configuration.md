@@ -65,14 +65,14 @@ The first four are compose settings in `infra/docker/.env`; the API never sees t
 
 ## 5. Modules
 
-| Setting                           | What it does                                                                                                                       | Default   | Where it is set                                               |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------------- |
-| `MILEWAGE_MODULE_<NAME>`          | Switch: turns a module on or off. `<NAME>` is the module name in capitals, for example `MILEWAGE_MODULE_SCHEDULE=1`.               | see below | `settings.json` `modules.<name>`, or the environment          |
-| `MILEWAGE_MODULE_MCP`             | The same switch for the AI assistant endpoint (`install.md` section 7). The only module switch the compose file passes to the API. | off       | `.env`; the compose file passes it on (empty leaves it off)   |
-| `MILEWAGE_MODULE_EXPORT_<FORMAT>` | Switch: offers one export format or hides it. Formats: `CSV`, `GPX`, `GEOJSON`, `EXPENSES`, `TAX_SUMMARY`.                         | all on    | `settings.json` `modules.export_<format>`, or the environment |
+| Setting                           | What it does                                                                                                                                       | Default   | Where it is set                                                  |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------- |
+| `MILEWAGE_MODULE_<NAME>`          | Switch: turns a module on or off. `<NAME>` is the module name in capitals, for example `MILEWAGE_MODULE_SCHEDULE=1`.                               | see below | `settings.json` `modules.<name>`, or the environment             |
+| `MILEWAGE_MODULE_MCP`             | The same switch for the AI assistant endpoint and its sign-in (`install.md` section 7). The only module switch the compose file passes to the API. | on        | `.env`; the compose file passes it on (empty leaves the default) |
+| `MILEWAGE_MODULE_EXPORT_<FORMAT>` | Switch: offers one export format or hides it. Formats: `CSV`, `GPX`, `GEOJSON`, `EXPENSES`, `TAX_SUMMARY`.                                         | all on    | `settings.json` `modules.export_<format>`, or the environment    |
 
 Modules on by default: `devices`, `tracking`, `stops`, `replay`, `sync`, `exporters`, `diagnostics`, `platforms`, `earnings`, `expenses`, `receipts`, `goals`, `analytics`, `maintenance`, `import`, `notifications`, `tax`.
-Off by default: `capture`, `schedule`, `progress`, `mcp`.
+Off by default: `capture`, `schedule`, `progress`.
 `core` and `backup` cannot be turned off. A module whose dependency is off stops the server at start with a message that names both (for example `receipts` needs `expenses`, `progress` needs `goals` and `earnings`).
 
 Apart from `MILEWAGE_MODULE_MCP`, a module switch in `.env` does not reach the API. Use `settings.json`, for example `{ "modules": { "schedule": true } }`.

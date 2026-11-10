@@ -25,7 +25,8 @@ const STOP_API =
 /** What a restore replaces. `diagnostics.db` is left alone, as `POST /setup/restore` does (10 section 2). */
 const REPLACED = ['milewage.db', 'milewage.db-wal', 'milewage.db-shm', 'receipts'];
 
-class Refused extends Error {}
+/** A refusal the command explains to the driver, with no stack. */
+export class Refused extends Error {}
 
 /**
  * Whether another process has the database open, and its restore generation. The API keeps its
@@ -33,7 +34,7 @@ class Refused extends Error {}
  * an exclusive lock fails while it runs. The OS drops the lock when a process dies, so a crashed
  * server never leaves a stale lock behind, and it works across containers on one volume.
  */
-function liveGeneration(dbPath: string): number {
+export function liveGeneration(dbPath: string): number {
   if (existsSync(`${dbPath}.migrate.lock`)) throw new Refused(STOP_API);
   if (!existsSync(dbPath)) return 0;
   const db = new Database(dbPath, { fileMustExist: true, timeout: 500 });

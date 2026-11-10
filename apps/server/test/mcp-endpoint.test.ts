@@ -19,7 +19,7 @@ const post = (body: object, headers: Record<string, string> = {}) =>
 const list = { jsonrpc: '2.0', id: 1, method: 'tools/list' };
 
 test('the endpoint is absent while the module is off', async () => {
-  h = harness();
+  h = harness({ mcp: false });
   await h.signUp();
   expect((await post(list)).statusCode).toBe(404);
 });
@@ -37,7 +37,10 @@ test('only a live assistant token gets in; a token opens nothing else', async ()
   for (const headers of tries) {
     const res = await post(list, headers);
     expect(res.statusCode, JSON.stringify(headers)).toBe(401);
-    expect(res.headers['www-authenticate']).toBe('Bearer realm="MileWage"');
+    // Where to sign in (RFC 9728), for this server's own address.
+    expect(res.headers['www-authenticate']).toMatch(
+      /^Bearer realm="MileWage", resource_metadata="http:\/\/[^/"]+\/\.well-known\/oauth-protected-resource\/api\/v1\/mcp"$/,
+    );
   }
   const bearer = { authorization: `Bearer ${m.read.token}` };
   expect((await post(list, bearer)).statusCode).toBe(200);

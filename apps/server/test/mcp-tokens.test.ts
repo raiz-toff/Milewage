@@ -15,8 +15,10 @@ async function start(enabled: Record<string, boolean> = { mcp: true }) {
   return { cookie, web };
 }
 
-test('the module is off by default: no token routes, and the flag says so', async () => {
-  const { web } = await start({});
+test('the module is on by default; switched off, no token routes and the flag says so', async () => {
+  expect((await (await start({})).web('GET', '/settings')).json().modules.mcp).toBe(true);
+  await h.close();
+  const { web } = await start({ mcp: false });
   expect((await web('GET', '/mcp/tokens')).statusCode).toBe(404);
   expect((await web('POST', '/mcp/tokens', { name: 'x', scope: 'read' })).statusCode).toBe(404);
   expect((await web('GET', '/settings')).json().modules.mcp).toBe(false);
@@ -102,4 +104,21 @@ test('tokens are managed from a web session only, never by a phone', async () =>
   const res = await h.call('GET', '/mcp/tokens', undefined, phone.auth);
   expect(res.statusCode).toBe(403);
   expect((await h.call('GET', '/mcp/tokens')).statusCode).toBe(401);
+});
+
+test('replace gives a hand-made token a new secret; the old one stops at once', async () => {
+  const { web } = await start();
+  const made = (await web('POST', '/mcp/tokens', { name: 'Laptop', scope: 'write' })).json();
+  const res = await web('POST', `/mcp/tokens/${made.id}/replace`);
+  expect(res.statusCode).toBe(200);
+  const fresh = res.json();
+  expect(fresh.token).toMatch(/^mwa_[A-Za-z0-9_-]{43}$/);
+  expect(fresh.token).not.toBe(made.token);
+  expect(fresh).toMatchObject({ id: made.id, name: 'Laptop', scope: 'write', kind: 'code' });
+  const repo = createMcpTokenRepository(h.db);
+  expect(repo.byToken(made.token)).toBeUndefined();
+  expect(repo.byToken(fresh.token)?.id).toBe(made.id);
+  await web('DELETE', `/mcp/tokens/${made.id}`);
+  expect((await web('POST', `/mcp/tokens/${made.id}/replace`)).statusCode).toBe(422);
+  expect((await web('POST', '/mcp/tokens/99/replace')).statusCode).toBe(404);
 });

@@ -52,7 +52,7 @@ If the server says "The recovery key does not open this file, or the file is dam
 
 The recovery key is the `AGE-SECRET-KEY-1...` line shown once when you created your account. Every backup is locked with it, using age encryption. The server keeps only the public half. That half can lock new backups but cannot open any, so nobody can show you the key again.
 
-You need the key only to restore. Keep it in a password manager or on paper, away from the server.
+You need the key to restore, and to choose a new password if you forget yours ("Forgot your password?" on the sign-in page). Keep it in a password manager or on paper, away from the server.
 
 ## Make a new recovery key
 

@@ -42,6 +42,22 @@ If the page says "The map could not start in this browser", the timeline beside 
 
 The phone app always draws routes on a plain background, so it needs no tiles.
 
+## You forgot your password
+
+Use your recovery key. On the sign-in page choose "Forgot your password?", paste the recovery key you saved at setup (it starts with `AGE-SECRET-KEY-1`) and type a new password. You are signed in at once. Every other browser is signed out. Paired phones and AI assistants keep working, and your data and recovery key do not change. After 5 wrong keys, wait 15 minutes.
+
+There is no "forgot password" email: there is no MileWage cloud to send one.
+
+**Lost the recovery key too?** Whoever runs the server makes a new password on the server machine. Stop the server, run the reset command, then start it again:
+
+```bash
+docker compose -f infra/docker/docker-compose.yml stop api
+docker compose -f infra/docker/docker-compose.yml run --rm --no-deps api milewage-cli reset-password
+docker compose -f infra/docker/docker-compose.yml up -d --wait api
+```
+
+It prints a new random password once. Sign in with it, then choose your own in Settings > Account and security. Every browser is signed out. Paired phones and AI assistants keep working, and your data and recovery key do not change.
+
 ## "A new version of MileWage is ready"
 
 After your server is upgraded, the web app fetches the new version in the background. Choose "Reload" to switch to it. "Later" hides the offer until your next visit. This works only when the web app is open at an https address, such as your Tailscale address. At a plain http address, reload the page yourself after an upgrade.

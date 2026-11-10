@@ -8,6 +8,18 @@ All notable changes to MileWage are listed here. The format follows
 
 ### Added
 
+- AI assistants connect by signing in: give Claude Code, Cursor or VS Code the address
+  `https://<your server>/api/v1/mcp`, sign in to MileWage in the browser that opens and press Allow.
+  No token to copy. Standard OAuth 2.1 with PKCE, self-registering clients and discovery documents
+  (RFC 7591, 8414, 9728); access renews every hour, and an assistant unused for 90 days is
+  disconnected. Signed-in assistants are listed, revoked and audited in Settings > AI assistants
+  beside hand-made tokens.
+- Forgot your password? on the sign-in page: paste the recovery key from setup and choose a new
+  password. You are signed in at once and every other browser is signed out. 5 wrong keys per
+  client per 15 minutes. If the recovery key is lost too, `milewage-cli reset-password` on the
+  server machine (run with the server stopped) prints a new random password once.
+- "Replace token" in Settings > AI assistants: a new secret for a token made by hand, shown once;
+  the old one stops working at once, and its name, access and change history stay.
 - Help pages in the web app: a Help screen (`/help`) with the driver guides from `docs/help/`,
   bundled into the build so they describe the version you run, with "What's new" cut from this
   changelog for that version and a note with Reload when the server reports another version. Ten
@@ -21,6 +33,8 @@ All notable changes to MileWage are listed here. The format follows
 
 ### Changed
 
+- The AI assistant module (`mcp`) is on by default, so Settings > AI assistants is always there.
+  Nothing reaches your data until you connect an assistant. `MILEWAGE_MODULE_MCP=0` switches it off.
 - The server is assembled by one function, `assembleServer`, for production and tests alike: the
   module registry and the event bus come first, each switched-on module wires itself from one typed
   host, and the list of modules exists once. The `modules` flags in `GET /settings` come from the
