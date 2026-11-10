@@ -200,8 +200,10 @@ function AppSidebar({ list, name }: { list: Screen[]; name: string | null }) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link to="/dashboard">
-                <LogoMark size={32} className="shrink-0" />
-                <div className="grid flex-1 text-left text-sm leading-tight">
+                {/* `size-8!`: the menu button shrinks every svg to 16 px; the mark must fill the
+                    32 px button when the sidebar is collapsed, or the text leaks past it. */}
+                <LogoMark size={32} className="size-8! shrink-0" />
+                <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                   <span className="truncate font-semibold">MileWage</span>
                   <span className="truncate text-xs text-muted-foreground">
                     Mileage and earnings
