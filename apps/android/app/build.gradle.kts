@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    // Screenshots of the screens on the JVM (Robolectric): ./gradlew :app:recordRoborazziDebug
+    alias(libs.plugins.roborazzi)
 }
 
 // versionName is the repository's VERSION file, like every package.json and the Expo app.
@@ -89,6 +91,10 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Robolectric (Compose UI tests and screenshots on the JVM) reads the app's resources.
+        unitTests.isIncludeAndroidResources = true
+        // Robolectric's native graphics draw full screens (and dialogs' windows) in memory.
+        unitTests.all { it.maxHeapSize = "3g" }
     }
 }
 
@@ -198,7 +204,11 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.lifecycle.process)
+    implementation(libs.androidx.work.runtime)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.datetime)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
@@ -213,4 +223,14 @@ dependencies {
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlin.test.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    // Compose UI tests and screenshots on the JVM (Robolectric, Roborazzi); no emulator.
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(platform(libs.compose.bom))
+    testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.roborazzi.junit.rule)
+    debugImplementation(libs.compose.ui.test.manifest)
 }

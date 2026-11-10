@@ -15,28 +15,35 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import app.milewage.core.pairing.LinkDecision
+import app.milewage.phone.BuildConfig
 import app.milewage.phone.R
 import app.milewage.phone.ui.components.LocalSnackbars
 import app.milewage.phone.ui.components.MileWageSnackbarHost
 import app.milewage.phone.ui.components.Snackbars
-import app.milewage.phone.ui.screens.HomeScreen
+import app.milewage.phone.ui.detail.ShiftDetailRoute as ShiftDetailScreenRoute
+import app.milewage.phone.ui.diagnostics.DiagnosticsRoute as DiagnosticsScreenRoute
+import app.milewage.phone.ui.home.HomeRoute as HomeScreenRoute
 import app.milewage.phone.ui.screens.SettingsScreen
-import app.milewage.phone.ui.screens.ShiftDetailScreen
-import app.milewage.phone.ui.screens.ShiftsScreen
 import app.milewage.phone.ui.screens.WelcomeScreen
+import app.milewage.phone.ui.shifts.ShiftsRoute as ShiftsScreenRoute
 import kotlin.reflect.KClass
 
 /** A destination in the bottom navigation bar. */
@@ -47,19 +54,50 @@ private enum class TopLevel(val route: Any, val routeClass: KClass<*>, @StringRe
 }
 
 /**
- * The navigation shell: first run until the phone is paired, then the app with a bottom bar of
- * Home, Shifts and Settings. One snackbar host for every screen ([LocalSnackbars]).
+ * The navigation shell: first run until the phone is paired ([Gate]), then the app with a bottom bar
+ * of Home, Shifts and Settings. One snackbar host for every screen ([LocalSnackbars]).
  *
- * `paired` is false until the pairing task gives the real state; "Get started" on Welcome goes on
- * to the app meanwhile.
+ * [gate] is never [Gate.LOADING] here (the splash stays until it is known). When it changes (paired,
+ * unpaired, revoked with no shift running) the shell moves to the other graph. A pairing link that
+ * opened the app goes to first run (the Connect screen, from the pairing task) or is a message.
  */
 @Composable
-fun AppShell(paired: Boolean = false) {
+fun AppShell(
+    gate: Gate,
+    link: LinkDecision?,
+    onLinkHandled: () -> Unit,
+    onOpenUnpaired: () -> Unit,
+) {
     val nav = rememberNavController()
     val snackbars = remember { Snackbars() }
     val entry by nav.currentBackStackEntryAsState()
     val destination = entry?.destination
     val showBar = TopLevel.entries.any { top -> destination?.hierarchy?.any { it.hasRoute(top.routeClass) } == true }
+    // The first graph is decided once; later changes navigate.
+    val start = remember { if (gate == Gate.MAIN) MainGraph else FirstRunGraph }
+
+    LaunchedEffect(gate) { moveTo(nav, gate) }
+
+    val res = LocalResources.current
+    LaunchedEffect(link) {
+        when (link) {
+            null -> Unit
+            is LinkDecision.Ask -> {
+                // Kept in the inbox: the pairing task's Connect screen consumes it.
+                if (nav.currentDestination?.hierarchy?.any { it.hasRoute(FirstRunGraph::class) } != true) {
+                    nav.navigate(FirstRunGraph) { launchSingleTop = true }
+                }
+            }
+            LinkDecision.AlreadyConnected -> {
+                onLinkHandled()
+                snackbars.show(res.getString(R.string.link_already_connected))
+            }
+            LinkDecision.NotAPairingCode -> {
+                onLinkHandled()
+                snackbars.show(res.getString(R.string.link_not_a_code))
+            }
+        }
+    }
 
     CompositionLocalProvider(LocalSnackbars provides snackbars) {
         Scaffold(
@@ -73,14 +111,7 @@ fun AppShell(paired: Boolean = false) {
                             val selected = destination?.hierarchy?.any { it.hasRoute(top.routeClass) } == true
                             NavigationBarItem(
                                 selected = selected,
-                                onClick = {
-                                    nav.navigate(top.route) {
-                                        // Home is the root of the app: tabs replace each other above it, each keeping its state.
-                                        popUpTo<HomeRoute> { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
+                                onClick = { goTo(nav, top.route) },
                                 icon = { Icon(top.icon, contentDescription = null) },
                                 label = { Text(stringResource(top.label)) },
                             )
@@ -91,32 +122,55 @@ fun AppShell(paired: Boolean = false) {
         ) { padding ->
             NavHost(
                 navController = nav,
-                startDestination = if (paired) MainGraph else FirstRunGraph,
+                startDestination = start,
                 modifier = Modifier.padding(padding).consumeWindowInsets(padding),
             ) {
                 navigation<FirstRunGraph>(startDestination = WelcomeRoute) {
                     composable<WelcomeRoute> {
                         WelcomeScreen(
-                            onGetStarted = {
-                                nav.navigate(MainGraph) { popUpTo(FirstRunGraph) { inclusive = true } }
-                            },
+                            linkAddress = (link as? LinkDecision.Ask)?.link?.baseUrl,
+                            onOpenUnpaired = if (BuildConfig.DEBUG) onOpenUnpaired else null,
                         )
                     }
                 }
                 navigation<MainGraph>(startDestination = HomeRoute) {
-                    composable<HomeRoute> { HomeScreen() }
-                    composable<ShiftsRoute> {
-                        ShiftsScreen(onOpenShift = { nav.navigate(ShiftDetailRoute(it)) })
-                    }
-                    composable<ShiftDetailRoute> { backStack ->
-                        ShiftDetailScreen(
-                            clientId = backStack.toRoute<ShiftDetailRoute>().clientId,
-                            onBack = { nav.popBackStack() },
+                    composable<HomeRoute> {
+                        HomeScreenRoute(
+                            onOpenShift = { nav.navigate(ShiftDetailRoute(it)) },
+                            onOpenShifts = { goTo(nav, ShiftsRoute) },
+                            onOpenDiagnostics = { nav.navigate(DiagnosticsRoute) },
+                            onPair = { nav.navigate(FirstRunGraph) { launchSingleTop = true } },
                         )
                     }
-                    composable<SettingsRoute> { SettingsScreen() }
+                    composable<ShiftsRoute> {
+                        ShiftsScreenRoute(onOpenShift = { nav.navigate(ShiftDetailRoute(it)) }, onGoHome = { goTo(nav, HomeRoute) })
+                    }
+                    composable<ShiftDetailRoute> { backStack ->
+                        ShiftDetailScreenRoute(clientId = backStack.toRoute<ShiftDetailRoute>().clientId, onBack = { nav.popBackStack() })
+                    }
+                    composable<SettingsRoute> { SettingsScreen(onOpenDiagnostics = { nav.navigate(DiagnosticsRoute) }) }
                 }
+                composable<DiagnosticsRoute> { DiagnosticsScreenRoute(onBack = { nav.popBackStack() }) }
             }
         }
+    }
+}
+
+/** A bottom-bar tab: tabs replace each other above Home, each keeping its state. */
+private fun goTo(nav: NavHostController, route: Any) {
+    nav.navigate(route) {
+        popUpTo<HomeRoute> { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
+}
+
+/** Moves to the graph the gate names, dropping the other one from the back stack. */
+private fun moveTo(nav: NavHostController, gate: Gate) {
+    val inMain = nav.currentDestination?.hierarchy?.any { it.hasRoute(MainGraph::class) } == true
+    val inFirstRun = nav.currentDestination?.hierarchy?.any { it.hasRoute(FirstRunGraph::class) } == true
+    when {
+        gate == Gate.MAIN && inFirstRun -> nav.navigate(MainGraph) { popUpTo(FirstRunGraph) { inclusive = true } }
+        gate == Gate.FIRST_RUN && inMain -> nav.navigate(FirstRunGraph) { popUpTo(MainGraph) { inclusive = true } }
     }
 }

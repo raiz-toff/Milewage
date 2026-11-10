@@ -13,15 +13,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import app.milewage.phone.R
-import app.milewage.phone.ui.theme.extendedColors
 
 /** One question before something hard to undo, with the consequence spelled out in [text]. */
 data class ConfirmRequest(
     val title: String,
     val text: String,
     val confirmLabel: String,
-    /** Deleting or disconnecting: the confirm button is red (spent). */
+    /** Deleting, disconnecting, ending: the confirm button is Material's error colour. */
     val destructive: Boolean = false,
+    /** The answer that changes nothing ("Keep recording"); "Cancel" when null. */
+    val dismissLabel: String? = null,
     val onConfirm: () -> Unit,
 )
 
@@ -48,7 +49,7 @@ fun rememberConfirmState(): ConfirmState = remember { ConfirmState() }
 fun ConfirmHost(state: ConfirmState) {
     val request = state.request ?: return
     val confirmColors = if (request.destructive) {
-        ButtonDefaults.textButtonColors(contentColor = MaterialTheme.extendedColors.spent)
+        ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
     } else {
         ButtonDefaults.textButtonColors()
     }
@@ -66,7 +67,7 @@ fun ConfirmHost(state: ConfirmState) {
             ) { Text(request.confirmLabel) }
         },
         dismissButton = {
-            TextButton(onClick = state::dismiss) { Text(stringResource(R.string.cancel)) }
+            TextButton(onClick = state::dismiss) { Text(request.dismissLabel ?: stringResource(R.string.cancel)) }
         },
     )
 }

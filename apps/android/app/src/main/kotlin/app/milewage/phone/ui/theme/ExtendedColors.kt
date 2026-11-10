@@ -7,8 +7,8 @@ import com.materialkolor.blend.Blend
 import com.materialkolor.palettes.TonalPalette
 
 /**
- * MileWage's two colours beyond the Material roles. Green is money in and nothing else; red is money
- * out and destructive actions. Each comes with a container pair, like the Material roles.
+ * MileWage's two colours beyond the Material roles. Green is money in and nothing else; red-orange is
+ * money out and nothing else (destructive actions use Material's `error`). Each comes with a container pair, like the Material roles.
  */
 @Immutable
 data class ExtendedColors(

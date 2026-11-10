@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Every string a driver reads. Voice: short sentences, plain words, say what it is and what to do
-     next, no exclamation marks, no "please", no jargon (see .claude/skills/milewage-design). -->
-<resources>
+     next, no exclamation marks, no "please", no jargon (see .claude/skills/milewage-design). Every
+     problem carries one way forward. Words carried over from the Expo app (apps/phone/src) where it
+     had them. -->
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name" translatable="false">MileWage</string>
 
     <!-- Bottom navigation -->
@@ -12,24 +14,351 @@
     <!-- Common -->
     <string name="back">Back</string>
     <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="not_now">Not now</string>
+    <string name="dismiss">Dismiss</string>
+    <string name="try_again">Try again</string>
+    <string name="estimate">Estimate</string>
 
-    <!-- First run -->
+    <!-- The one way forward a message offers (logic/HomeLogic.kt Fix) -->
+    <string name="fix_app_settings">Fix permissions</string>
+    <string name="fix_location_settings">Turn on location</string>
+    <string name="fix_battery_settings">Open battery settings</string>
+    <string name="fix_storage_settings">Free up space</string>
+    <string name="fix_notifications">Allow notifications</string>
+    <string name="fix_retry_vehicles">Try again</string>
+    <string name="fix_send_now">Send now</string>
+    <string name="fix_check_address">Check the address</string>
+    <string name="fix_pair">Pair this phone</string>
+    <string name="fix_open_shifts">Open shifts</string>
+    <string name="fix_resume_recording">Resume recording</string>
+    <string name="fix_stop_sending">Stop sending</string>
+    <string name="fix_start_again">Try again</string>
+
+    <!-- First run (placeholder until the pairing task) -->
     <string name="welcome_title">Welcome to MileWage</string>
     <string name="welcome_body">MileWage records the miles you drive on a shift and sends them to your own MileWage server.</string>
-    <string name="welcome_get_started">Get started</string>
+    <string name="welcome_next_build">Pairing this phone with your server comes in the next build.</string>
+    <string name="welcome_link_arrived">A pairing code for %1$s opened MileWage. Connecting with it comes in the next build.</string>
+    <string name="welcome_debug_open">Open the app without pairing</string>
+    <string name="welcome_debug_note">Debug build only. Shifts cannot start until the phone is paired.</string>
+    <string name="link_not_a_code">That is not a MileWage pairing code.</string>
+    <string name="link_already_connected">This phone is already connected. To pair with another server, disconnect it in Settings first.</string>
 
     <!-- Home -->
-    <string name="home_week_distance">This week</string>
-    <string name="home_week_earned">Earned this week</string>
-    <string name="home_no_shift_title">No shift running</string>
-    <string name="home_no_shift_body">Starting a shift from this screen comes in the next build.</string>
+    <string name="home_title">MileWage</string>
+    <string name="home_open_diagnostics">Diagnostics</string>
+    <string name="period_today">Today</string>
+    <string name="period_week">Week</string>
+    <string name="period_month">Month</string>
+    <string name="summary_distance">Distance driven</string>
+    <plurals name="summary_unsent">
+        <item quantity="one">Includes %d shift not yet on the server.</item>
+        <item quantity="other">Includes %d shifts not yet on the server.</item>
+    </plurals>
+    <string name="summary_shifts">Shifts</string>
+    <string name="summary_business">Business</string>
+    <string name="summary_deduction">Deduction value</string>
+    <string name="summary_deduction_yours">Deduction value (your rate)</string>
+    <string name="summary_deduction_caption">An estimate. It lowers your taxable income; it is not money paid to you.</string>
+    <string name="summary_deduction_none">No mileage rate on this phone yet. Your server shows it once the shift is sent.</string>
+    <string name="next_shift">Next shift</string>
+    <string name="vehicle">Vehicle</string>
+    <string name="vehicle_one">Vehicle: %1$s</string>
+    <string name="vehicles_kept">Offline: using the vehicles from your last connection.</string>
+    <string name="vehicles_not_loaded">Your vehicles could not be loaded. Connect to the internet once so the phone can keep them.</string>
+    <string name="vehicles_none">No vehicles yet. Add one under Vehicles on your MileWage web app.</string>
+    <string name="vehicles_loading">Loading your vehicles.</string>
+    <string name="start_shift">Start shift</string>
+    <string name="starting_shift">Starting…</string>
+    <string name="not_paired_note">This phone is not paired. Shifts start once it is.</string>
 
-    <!-- Shifts -->
+    <!-- Why a shift did not start (StartProblem) -->
+    <string name="start_location_off">Location is switched off on this phone. Turn it on to record a shift.</string>
+    <string name="start_no_permission">Location permission is needed to record a shift.</string>
+    <string name="start_approximate">MileWage needs precise location to count your miles. Approximate is not enough.</string>
+    <string name="start_not_paired">Pair this phone first. Shifts are recorded for your MileWage server.</string>
+    <string name="start_vehicles_not_loaded">Your vehicles have not loaded. Connect to the internet once so the phone can keep your vehicle list.</string>
+    <string name="start_no_vehicles">Add a vehicle on the web first. Open Vehicles on your MileWage web app, then try again here.</string>
+    <string name="start_tracker_refused">The tracker could not start. Check that location is on and that MileWage may use it all the time.</string>
+    <string name="start_failed">Could not start the shift. Nothing was recorded.</string>
+
+    <!-- Setup checklist -->
+    <string name="setup_title">Finish setting up</string>
+    <plurals name="setup_left">
+        <item quantity="one">%d step left before your first shift.</item>
+        <item quantity="other">%d steps left before your first shift.</item>
+    </plurals>
+    <string name="setup_progress" tools:ignore="PluralsCandidate">%1$d of %2$d done</string>
+    <string name="setup_location">Allow location</string>
+    <string name="setup_location_detail">Needed to count your miles while a shift runs.</string>
+    <string name="setup_always">Allow location all the time</string>
+    <string name="setup_always_detail">So recording goes on with the screen off.</string>
+    <string name="setup_notifications">Allow notifications</string>
+    <string name="setup_notifications_detail">See your shift\'s time and distance.</string>
+    <string name="setup_battery">Keep MileWage running</string>
+    <string name="setup_battery_detail">Stop the phone closing MileWage to save battery.</string>
+    <string name="setup_done">Done</string>
+    <string name="setup_todo">Not done</string>
+
+    <!-- Sync banner (StatusMessage KDoc, the Expo app's words) -->
+    <string name="sync_all_sent">Everything is on the server.</string>
+    <string name="sync_status_label">Sending status</string>
+    <plurals name="sync_unsent_shifts">
+        <item quantity="one">%d shift</item>
+        <item quantity="other">%d shifts</item>
+    </plurals>
+    <plurals name="sync_unsent_points">
+        <item quantity="one">%d point</item>
+        <item quantity="other">%d points</item>
+    </plurals>
+    <plurals name="sync_oldest_days">
+        <item quantity="one">oldest %d day ago</item>
+        <item quantity="other">oldest %d days ago</item>
+    </plurals>
+    <string name="sync_oldest_today">oldest today</string>
+    <string name="sync_not_yet">Not yet on server: %1$s · %2$s · %3$s</string>
+    <string name="sync_waiting">Saved on your phone. It is sent to the server by itself.</string>
+    <string name="sync_offline">Offline. Saved on your phone.</string>
+    <string name="sync_wrong_server">This address now points to a different MileWage server than the one this phone was paired with. Nothing was sent.</string>
+    <string name="sync_revoked">This phone was removed from your server. Re-pair to send your saved data.</string>
+    <string name="sync_auth_problem">Sign-in problem. Re-pair this phone.</string>
+    <string name="sync_restored">The server was restored from a backup. MileWage is re-sending the last 14 days from your phone.</string>
+    <string name="sync_storage_critical">Phone storage is almost full. MileWage may stop recording. Free some space now.</string>
+    <string name="sync_storage_low">Phone storage is low. Free some space so MileWage can keep recording.</string>
+    <string name="sync_needs_attention">Some items could not be sent. Open the shift to see why.</string>
+    <string name="sync_progress" tools:ignore="PluralsCandidate">Sending %1$d of %2$d points, shift %3$d of %4$d</string>
+    <string name="sync_sending">Sending…</string>
+    <string name="sync_still_waiting">Some shifts are still only on this phone. They are sent when the server is reachable.</string>
+
+    <!-- Unsynced reminder: banner line and notification (decision 1.5d) -->
+    <string name="reminder_title">Shifts only on this phone</string>
+    <plurals name="reminder_normal">
+        <item quantity="one">%1$d shift is only on this phone. Open MileWage when you reach your server.</item>
+        <item quantity="other">%1$d shifts are only on this phone. Open MileWage when you reach your server.</item>
+    </plurals>
+    <plurals name="reminder_strong">
+        <item quantity="one">%1$d shift is only on this phone, for %2$d days. If the phone is lost they are gone. Open MileWage when you reach your server.</item>
+        <item quantity="other">%1$d shifts are only on this phone, for %2$d days. If the phone is lost they are gone. Open MileWage when you reach your server.</item>
+    </plurals>
+    <string name="channel_reminders">Reminders</string>
+    <string name="channel_reminders_description">Tells you when shifts have been only on this phone for days.</string>
+
+    <!-- Running shift -->
+    <string name="running_title">Shift running</string>
+    <string name="running_since">since %1$s</string>
+    <string name="reading_time">Time</string>
+    <string name="reading_distance">Distance</string>
+    <string name="reading_distance_note">Approximate. The server works out the final distance.</string>
+    <string name="reading_deduction">Deduction so far</string>
+    <string name="reading_deduction_yours">Deduction so far (your rate)</string>
+    <string name="reading_deduction_note">An estimate, at the rate on this phone.</string>
+    <string name="running_on_server">On the server</string>
+    <string name="running_on_phone">Saved on your phone. It is sent when the server is reachable.</string>
+    <string name="running_other_shift">Another shift is already running on the server, so this one waits on your phone. Its miles are still being recorded here. End the other shift on the web, and this one is sent.</string>
+    <string name="end_shift">End shift</string>
+    <string name="ending_shift">Ending shift…</string>
+    <string name="end_confirm_title">End this shift?</string>
+    <string name="end_confirm_text">Recording stops at %1$s. You cannot restart this shift.</string>
+    <string name="end_keep">Keep recording</string>
+    <string name="shift_ended">Shift ended.</string>
+    <string name="shift_ended_offline">Shift ended. It is saved on your phone and sent when the server is reachable.</string>
+    <string name="view_shift">View shift</string>
+    <string name="end_failed">Could not end the shift. It is still recording. Try again.</string>
+    <string name="resume_failed">Recording could not start again. Check that location is on and allowed.</string>
+    <string name="close_unfinished">End it at its last point</string>
+    <string name="close_unfinished_title">End this shift at its last point?</string>
+    <string name="close_unfinished_text">The shift ends at the last place the phone recorded, not now. Use this if you stopped working a while ago.</string>
+    <string name="close_confirm">End shift</string>
+
+    <!-- The tracker's state in words (TrackingLine) -->
+    <string name="track_recording">Recording</string>
+    <string name="track_recording_detail">Your miles are being counted.</string>
+    <string name="track_saving_battery">Saving battery while you are stopped</string>
+    <string name="track_saving_battery_detail">Recording picks up as soon as you move.</string>
+    <string name="track_starting">Checking the recording</string>
+    <string name="track_starting_detail">This takes a moment.</string>
+    <string name="track_server_off">Recording is off on your server</string>
+    <string name="track_server_off_detail">The shift keeps its time. Distance is not recorded.</string>
+    <string name="track_no_background">Recording may stop with the screen off</string>
+    <string name="track_no_background_detail">Allow location all the time so MileWage keeps counting.</string>
+    <string name="track_location_off">Location is switched off</string>
+    <string name="track_location_off_detail">Recording is paused. Turn location on to keep counting.</string>
+    <string name="track_permission_lost">MileWage cannot use your location</string>
+    <string name="track_permission_lost_detail">Nothing is being recorded. Allow precise location again.</string>
+    <string name="track_no_provider">This phone gives no location</string>
+    <string name="track_no_provider_detail">Check the location settings, then reopen MileWage.</string>
+    <string name="track_not_recording">This shift is not recording</string>
+    <string name="track_not_recording_detail">It may have stopped when the phone restarted. Resume it, or end it at its last point if you stopped working.</string>
+
+    <!-- Odometer prompt -->
+    <string name="odometer_title">Odometer check</string>
+    <string name="odometer_start_text">Type the reading on your dashboard before you set off. MileWage asks about twice a month, so your recorded miles can be checked against the vehicle\'s.</string>
+    <string name="odometer_end_text">Type the reading on your dashboard. MileWage asks about twice a month, so your recorded miles can be checked against the vehicle\'s.</string>
+    <string name="odometer_field">Odometer reading</string>
+    <string name="odometer_hint">Reading in %1$s, for example 45210</string>
+    <string name="odometer_save">Save reading</string>
+    <string name="odometer_start_save">Save and start</string>
+    <string name="odometer_skip">Start without it</string>
+    <string name="odometer_saved">Odometer saved.</string>
+    <string name="odometer_invalid">That odometer reading is not a number. Type the reading in %1$s, for example 12480.</string>
+
+    <!-- Shifts list -->
     <string name="shifts_empty_title">No shifts yet</string>
-    <string name="shifts_empty_body">Shifts you record on this phone show here.</string>
-    <string name="shift_title">Shift</string>
+    <string name="shifts_empty_body">Start a shift on Home. Every shift is kept here, even with no connection.</string>
+    <string name="shifts_go_home">Go to Home</string>
+    <string name="week_this">This week</string>
+    <string name="week_last">Last week</string>
+    <string name="week_of">Week of %1$s</string>
+    <plurals name="week_total">
+        <item quantity="one">%2$s · %1$d shift</item>
+        <item quantity="other">%2$s · %1$d shifts</item>
+    </plurals>
+    <string name="shift_in_progress">In progress</string>
+    <plurals name="shift_review">
+        <item quantity="one">%d thing to check</item>
+        <item quantity="other">%d things to check</item>
+    </plurals>
+    <string name="shifts_older">Show older shifts</string>
+    <string name="shift_row_label">Shift %1$s, %2$s, %3$s, %4$s</string>
 
-    <!-- Settings -->
+    <!-- Send state of a shift (ShiftMarker KDoc) -->
+    <string name="marker_on_phone">On phone only</string>
+    <string name="marker_sending">Sending</string>
+    <string name="marker_sent">On server</string>
+    <string name="marker_sent_differs">On server (total differs)</string>
+    <string name="marker_attention">Needs attention</string>
+    <string name="calc_phone">Calculated on phone</string>
+    <string name="calc_server">Confirmed by server</string>
+    <string name="calc_waiting">Totals will appear once it is sent to the server</string>
+
+    <!-- Shift detail -->
+    <string name="shift_title">Shift</string>
+    <string name="shift_gone_title">This shift is no longer on this phone.</string>
+    <string name="shift_gone_body">It may have been deleted on the server. Your other shifts are in the list.</string>
+    <string name="back_to_shifts">Back to shifts</string>
+    <string name="route">Route</string>
+    <plurals name="route_label">
+        <item quantity="one">Route of the shift, from the start marker to the end marker, with %d stop.</item>
+        <item quantity="other">Route of the shift, from the start marker to the end marker, with %d stops.</item>
+    </plurals>
+    <string name="route_start">Start</string>
+    <string name="route_end">End</string>
+    <string name="route_stops">Stops</string>
+    <string name="route_none">No route on this phone. Routes are drawn from the points the phone recorded.</string>
+    <string name="total_distance">Total distance</string>
+    <string name="business_distance">Business</string>
+    <string name="shift_time">Time</string>
+    <string name="deduction">Deduction value</string>
+    <string name="split_estimated">Active %1$s · Deadhead %2$s (estimated)</string>
+    <string name="checks_title">Worth a check</string>
+    <string name="checks_info">Notes</string>
+    <string name="trips_title">Trips</string>
+    <string name="trips_none">No trips.</string>
+    <string name="trip_estimated">estimated</string>
+    <string name="trip_added">added by you</string>
+    <string name="trip_change">Change</string>
+    <string name="trip_change_label">Change trip at %1$s</string>
+    <string name="trip_edit_title">Trip at %1$s</string>
+    <string name="trip_purpose">Purpose</string>
+    <string name="trip_purpose_hint">For example: Deliveries</string>
+    <string name="trip_purpose_invalid">Give the trip a purpose of 1 to 200 characters.</string>
+    <string name="trip_changed">Trip changed.</string>
+    <string name="add_trip">Add a trip</string>
+    <string name="add_trip_text">For a drive the phone missed. It is added at the end of the shift.</string>
+    <string name="add_trip_distance">Distance in %1$s</string>
+    <string name="trip_added_saved">Trip added.</string>
+    <string name="distance_invalid">The distance must be a number above 0, in %1$s, for example 12.5.</string>
+    <string name="kind_business">Business</string>
+    <string name="kind_active">Business, on an order</string>
+    <string name="kind_deadhead">Business, between orders</string>
+    <string name="kind_personal">Personal</string>
+    <string name="kind_active_short">Active</string>
+    <string name="kind_deadhead_short">Deadhead</string>
+    <string name="stops_title">Stops (estimated, labelled on the web)</string>
+    <string name="stops_none">No stops detected.</string>
+    <string name="stop_line">%1$s · %2$d min · %3$s confidence</string>
+    <string name="stop_role">looks like a %1$s</string>
+    <string name="odometer_section">Odometer</string>
+    <string name="odometer_start">Start reading</string>
+    <string name="odometer_end">End reading</string>
+    <string name="odometer_none">Not noted</string>
+    <string name="odometer_edit">Edit</string>
+    <string name="notes_title">Notes</string>
+    <string name="notes_hint">Anything to remember about this shift</string>
+    <string name="notes_saved">Notes saved.</string>
+    <plurals name="interruptions_count">
+        <item quantity="one">%d time the phone was not recording</item>
+        <item quantity="other">%d times the phone was not recording</item>
+    </plurals>
+
+    <!-- What an edit answered (EditOutcome; the Expo app's EDIT_PROBLEMS) -->
+    <string name="edit_finalized">This shift is finalized on the server. A finalized shift cannot be changed any more.</string>
+    <string name="edit_no_shift">This shift is no longer on this phone.</string>
+    <string name="edit_no_trip">That trip is no longer on this phone. Pull to refresh Shifts.</string>
+    <string name="edit_running">End the shift first. Trips are added after it ends.</string>
+    <string name="edit_invalid">That value is not valid. Check it and try again.</string>
+    <string name="edit_failed">This could not be saved. Try again.</string>
+
+    <!-- What the server changed (overwrite log) -->
+    <string name="overwrite_difference">Server confirmed %1$s. Your phone showed %2$s (%3$s difference).</string>
+    <string name="overwrite_reasons">Reason: %1$s.</string>
+    <string name="overwrite_deleted">This was deleted on the server. Your unsent change was not sent.</string>
+    <string name="overwrite_not_applied">One of your edits could not be applied.</string>
+    <string name="overwrite_replaced">A change on the server replaced your unsent edit.</string>
+
+    <!-- Flags in the driver's words (ShiftFlag) -->
+    <string name="flag_gap_counted">GPS dropped out for a short while. The straight line across the gap was counted.</string>
+    <string name="flag_gap_large">GPS dropped out for a long while. Check the distance looks right.</string>
+    <string name="flag_gap_dropped">A GPS gap was too long to count. Some distance may be missing; add it as a trip.</string>
+    <string name="flag_tracking_interrupted">Recording stopped for a while (the phone or the app was off). Some distance may be missing; add it as a trip.</string>
+    <string name="flag_shift_auto_closed">MileWage ended this shift at its last recorded point because it recorded nothing for 12 hours.</string>
+    <string name="flag_no_stops_detected">No stops were found, so active and deadhead could not be estimated.</string>
+    <string name="flag_long_stop">One stop was very long. Check you were still working.</string>
+    <string name="flag_label_orphaned">A stop label no longer matches a stop. Label it again on the web.</string>
+    <string name="flag_poor_accuracy_share">Much of the GPS was imprecise. The distance may be a little off.</string>
+    <string name="flag_low_fix_density">Few GPS points were recorded. The distance may be short; add a missed drive as a trip.</string>
+    <string name="flag_clock_skew">The phone\'s clock was off. Times were corrected from GPS.</string>
+    <string name="flag_override_orphaned">One of your trip edits no longer matches a trip. Check the trips below.</string>
+    <string name="flag_manual_trip_present">This shift has a trip you added by hand.</string>
+    <string name="flag_calc_mismatch">The server\'s total differs from the phone\'s. The server\'s total counts.</string>
+    <string name="flag_other">The server marked this shift for a check. Open it on the web.</string>
+
+    <!-- Diagnostics -->
+    <string name="diag_title">Diagnostics</string>
+    <string name="diag_maths">Mileage maths check</string>
+    <string name="diag_maths_passed">Passed. This phone calculates distances exactly like your server.</string>
+    <plurals name="diag_maths_failed">
+        <item quantity="one">Failed: %d case differs from the server. Totals are corrected by the server; copy the summary for a bug report.</item>
+        <item quantity="other">Failed: %d cases differ from the server. Totals are corrected by the server; copy the summary for a bug report.</item>
+    </plurals>
+    <string name="diag_running">Checking…</string>
+    <string name="diag_versions">Versions</string>
+    <string name="diag_app">App</string>
+    <string name="diag_engine">Mileage engine</string>
+    <string name="diag_android">Android</string>
+    <string name="diag_phone">Phone</string>
+    <string name="diag_connection">Connection</string>
+    <string name="diag_pairing">Pairing</string>
+    <string name="diag_pairing_paired">Paired</string>
+    <string name="diag_pairing_unpaired">Not paired</string>
+    <string name="diag_pairing_revoked">Removed by the server</string>
+    <string name="diag_route">Sending to</string>
+    <string name="diag_route_home">Home address</string>
+    <string name="diag_route_away">Away address</string>
+    <string name="diag_route_unknown">Not chosen yet</string>
+    <string name="diag_home">Home address</string>
+    <string name="diag_away">Away address</string>
+    <string name="diag_none">None</string>
+    <string name="diag_tracking">Recording</string>
+    <string name="diag_mode">State</string>
+    <string name="diag_permissions">Permissions</string>
+    <string name="diag_unsent">Not yet on server</string>
+    <string name="diag_copy">Copy diagnostics summary</string>
+    <string name="diag_copied">Diagnostics summary copied. It holds no locations.</string>
+    <string name="diag_copy_note">The summary holds versions, states and counts. Never a location.</string>
+
+    <!-- Settings (placeholder until the Settings task) -->
     <string name="settings_appearance">Appearance</string>
     <string name="settings_wallpaper_colours">Use wallpaper colours</string>
     <string name="settings_wallpaper_colours_body">Colours from your wallpaper instead of MileWage yellow.</string>
@@ -37,4 +366,6 @@
     <string name="settings_about">About</string>
     <string name="settings_version">Version</string>
     <string name="settings_version_value">%1$s (build %2$d)</string>
+    <string name="settings_diagnostics">Diagnostics</string>
+    <string name="settings_diagnostics_body">The mileage maths check, versions and states for a bug report.</string>
 </resources>

@@ -14,7 +14,7 @@ object FirstRunGraph
 @Serializable
 object WelcomeRoute
 
-/** The app proper: shown once the phone is paired. */
+/** The app proper: shown once the phone is paired (or while a shift runs). */
 @Serializable
 object MainGraph
 
@@ -29,3 +29,7 @@ object SettingsRoute
 
 @Serializable
 data class ShiftDetailRoute(val clientId: String)
+
+/** The mileage maths check and the phone's states (long press on Home's title; a button in debug builds). */
+@Serializable
+object DiagnosticsRoute

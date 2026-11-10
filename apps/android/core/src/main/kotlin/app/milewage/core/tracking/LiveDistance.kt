@@ -1,5 +1,8 @@
 package app.milewage.core.tracking
 
+import app.milewage.core.shift.ShiftRun
+import app.milewage.engine.LiveAccumulator
+import app.milewage.engine.createLiveAccumulator
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -8,9 +11,9 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * The running distance of a shift, for the notification and the status. Exactly stages 1 to 3 of
- * the engine (algorithm version 4) as `createLiveAccumulator` runs them one fix at a time
- * (packages/track-engine/src/live.ts with gate.ts, qualify.ts, haversine.ts, normalize.ts):
+ * The running distance of a shift, for the notification and the status: the engine's own live
+ * accumulator (`:engine` `createLiveAccumulator`, the port of packages/track-engine/src/live.ts),
+ * stages 1 to 3 one fix at a time with the same stage functions as the end's run:
  *
  * 1. a fix more than 5 minutes before the shift start is ignored, and a `seq` already seen;
  * 2. a fix with an accuracy radius over 50 m is skipped;
@@ -18,39 +21,20 @@ import kotlin.math.sqrt
  *    implied speed over 42 m/s is a glitch, and a move under `max(20 m, 10 x the worse accuracy)`
  *    (ADR 0006) is jitter; otherwise the chord is counted and the fix becomes the anchor.
  *
- * Display only, never stored: the shift's real total comes from the engine at the end.
- *
- * The haversine uses `kotlin.math`, which on the JVM may differ from V8 in the last bit of a
- * double; the result is rounded to whole decimetres, so that only matters at an exact half.
- *
- * TODO(engine): switch to `:engine`'s `createLiveAccumulator` once the port lands, and delete this.
+ * Its haversine is the engine's (V8's fdlibm), so the figure is the one the end's run counts for the
+ * same fixes. Display only, never stored: the shift's real total comes from the engine at the end.
+ * Not thread-safe: push from one thread (the tracking service's).
  */
-class LiveDistance(private val startedAt: Long) {
-    private val seen = HashSet<Long>()
-    private var anchor: RecordedFix? = null
-    private var totalDm = 0L
+class LiveDistance(startedAt: Long) {
+    private val acc: LiveAccumulator = createLiveAccumulator(startedAt)
 
-    fun push(f: RecordedFix) {
-        if (f.recordedAt < startedAt - WINDOW_BEFORE_MS) return // stage 1
-        if (!seen.add(f.seq)) return
-        if (f.accuracyM > MAX_ACCURACY_M) return // stage 2
-        val a = anchor
-        if (a != null) { // stage 3
-            val dtMs = f.recordedAt - a.recordedAt
-            if (dtMs <= 0) return
-            val dDm = Geo.haversineDm(a.latE7, a.lonE7, f.latE7, f.lonE7)
-            if (dDm * 1000 > MAX_SPEED_DMPS * dtMs) return
-            if (dDm < minMoveDm(a.accuracyM, f.accuracyM)) return
-            totalDm += dDm
-        }
-        anchor = f
-    }
+    fun push(f: RecordedFix) = acc.push(ShiftRun.toFix(f))
 
-    /** Whole metres, rounded once (14 section 9.1 rule 2): `divRound(dm, 10)`. */
-    fun runningTotalM(): Long = Math2.divRound(totalDm, 10)
+    /** Whole metres, rounded once (14 section 9.1 rule 2). */
+    fun runningTotalM(): Long = acc.runningTotalM()
 
     companion object {
-        const val WINDOW_BEFORE_MS = 5 * 60_000L
+        const val WINDOW_BEFORE_MS = app.milewage.engine.WINDOW_BEFORE_MS
         const val MAX_ACCURACY_M = 50L
         const val MAX_SPEED_DMPS = 420L
         const val MIN_MOVE_DM = 200L

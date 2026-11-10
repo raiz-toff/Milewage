@@ -2,18 +2,18 @@
 
 The native Android app: Kotlin, Jetpack Compose and Material 3. It replaces the Expo app in
 `apps/phone` and installs over it (same application id `app.milewage.phone`, same upload key).
-This is the skeleton: the theme, the navigation shell, the house components and the module layout.
-The engine port, storage, tracking, pairing, sending and the real screens come next.
+The engine port, storage, tracking, sending and the main screens (Home, the running shift, Shifts, a
+shift's detail, Diagnostics) are in; first run with pairing, the permissions screen and Settings come next.
 
 ## Modules
 
-| Module      | Kind               | Holds                                                                                                                                                                                  |
-| ----------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `:engine`   | plain Kotlin (JVM) | The port of `packages/track-engine`. Integer arithmetic, bit for bit with the TypeScript. See `engine/README.md`.                                                                      |
-| `:core`     | plain Kotlin (JVM) | Shared models, formatting (money in minor units, distance, clock times, days, durations), the home-address rule, and the ports (`SecretStore`, `Clock`) the Android modules implement. |
-| `:data`     | Android library    | Room 3 database, the HTTP client (OkHttp, kotlinx.serialization), the Keystore-backed `SecretStore`, UI preferences (DataStore), sending (WorkManager).                                |
-| `:tracking` | Android library    | The location foreground service and the boot receiver (placeholders), with their manifest entries.                                                                                     |
-| `:app`      | Android app        | `MainActivity`, `MileWageTheme`, navigation, the house components and the screens.                                                                                                     |
+| Module      | Kind               | Holds                                                                                                                                                                                                                     |
+| ----------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `:engine`   | plain Kotlin (JVM) | The port of `packages/track-engine`. Integer arithmetic, bit for bit with the TypeScript. See `engine/README.md`.                                                                                                         |
+| `:core`     | plain Kotlin (JVM) | Shared models, formatting (money in minor units, distance, clock times, days, durations), the home-address rule, and the ports (`SecretStore`, `Clock`) the Android modules implement.                                    |
+| `:data`     | Android library    | Room 3 database, the HTTP client (OkHttp, kotlinx.serialization), the Keystore-backed `SecretStore`, UI preferences (DataStore), sending (WorkManager).                                                                   |
+| `:tracking` | Android library    | Recording a shift and the opt-in drive prompt: the location foreground service, the notification buttons, the boot receiver (resumes a running shift after a restart) and `TrackingController`. See `tracking/README.md`. |
+| `:app`      | Android app        | `MileWageApp` (the service locator `AppGraph`, the tracking and sending wiring, reminders), `MainActivity`, `MileWageTheme`, navigation, the house components, the screens and their view models. See "The app" below.    |
 
 `:engine` and `:core` have no `android.*`, `androidx.*`, `java.*` or `javax.*` in `src/main`
 (`ModuleRulesTest` in each fails otherwise), so they can become Kotlin Multiplatform `commonMain`
@@ -60,7 +60,7 @@ the debug key. `--publish PATH` copies the APK where the server hands it out.
   yellow `#FFC21F` with material-color-utilities (Fidelity, 2021 spec, standard contrast), the same
   settings as the web's `apps/web/scripts/m3-theme.mjs`; `BrandSchemeTest` pins it to the generator
   and to the web's `m3-scheme.json`. `MaterialTheme.extendedColors` adds `earned` (money in only)
-  and `spent` (money out and destructive actions). Settings > Use wallpaper colours switches to the
+  and `spent` (money out only); destructive actions use Material's `error`. Settings > Use wallpaper colours switches to the
   phone's Material You colours (Android 12+, off by default).
 - **Type and shape**: Material 3's type scale on the system font, Material 3's shape scale.
 - **Screens** use the house components in `ui/components`: `Screen`, `ListRow`, `Rows`,
@@ -69,3 +69,34 @@ the debug key. `--publish PATH` copies the APK where the server hands it out.
 - **R8** is on for release, with keep rules in `app/proguard-rules.pro` and
   `data/consumer-rules.pro`. Room schemas are exported to `data/schemas/` and committed.
 - The owner tests on a real phone; there is no emulator here. Say what is untested.
+
+## The app (`:app`)
+
+**Wiring.** `MileWageApp` makes one `AppGraph`, the service locator (no DI framework): `data`
+(`MileWageData.create` with `TrackingRecorder`, `ReminderNotifications`, `AndroidBattery`),
+`tracking` (`TrackingController`, lazy: its runtime reads `trackingDependencies` back from the
+Application), `trackingDependencies`, the view models' seams `shiftData` (`ShiftData`) and
+`trackingView` (`TrackingView`), `links` (`PairLinkInbox`), `diagnosticsSource`, `uiPreferences`.
+The Application is the `TrackingDependenciesProvider` and the `MileWageDataProvider` (the send
+worker), creates the reminder channel, calls `data.start(...)`, keeps the shift notification's
+details in step (`ShiftNoticeSync`), and on every foreground calls `ensureRunning()` and `kick()`.
+A crash is recorded in the diagnostics ring. View models are made by `ui/ViewModels.kt` from the graph.
+
+**Layers.** Decisions are plain Kotlin in `logic/` (start checks, the tracker's state in words, the
+sync banner, the setup checklist, week groups, flags, the server's changes, trip choices, the route
+projection, the diagnostics summary) and return types, not words; `ui/Texts.kt` maps them to
+`strings.xml`. View models (`ui/*/…ViewModel.kt`) combine the facade's flows into one state and run
+actions; screens (`…Content`) only render a state. Numbers go through `model/Formats` (`:core`'s
+formatters in the driver's unit, currency, zone and 12/24 h).
+
+**Screens.** Home (summary, sync banner, setup checklist, vehicle, Start shift; while a shift runs:
+time, distance, deduction so far, the tracker's state with its fix, End shift with a confirm, the
+odometer check), Shifts (weeks, send state, things to check, paging), a shift's detail (route sketch
+on a Canvas, totals, trips with their purpose edit, added trips, stops, odometer, notes, the
+server's changes, Send now), Diagnostics (long press on Home's title; a button in debug builds; also
+Settings > Diagnostics). Welcome and Settings are placeholders until the first-run task.
+
+**Tests.** `./gradlew :app:testDebugUnitTest`: the decisions, the view models with fakes
+(`kotlinx-coroutines-test`), and the screens on the JVM with Robolectric (SDK 35: Robolectric's
+SDK 36 needs Java 21). `./gradlew :app:recordRoborazziDebug` also writes a PNG of every screen state,
+light and dark (`app/build/screens/`).
