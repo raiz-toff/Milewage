@@ -44,6 +44,10 @@ _Avoid_: reviewed shift, locked shift, closed shift
 One GPS reading from the phone: a position, its time and its accuracy.
 _Avoid_: point, position, telemetry point, sample, ping
 
+**Minimum move**:
+How far a fix must be from the last counted fix before the step counts: 20 metres, or the worse GPS accuracy of the two fixes when that is larger, up to 50 metres. Shorter steps are GPS drift and add nothing.
+_Avoid_: jitter filter, gate threshold, min step
+
 **Track**:
 All the fixes recorded during one shift. Every distance is worked out from the track.
 _Avoid_: GPS log, trace, breadcrumbs

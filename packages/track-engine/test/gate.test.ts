@@ -4,9 +4,18 @@ import {
   degToE7,
   gate,
   haversineDm,
+  MAX_SPEED_DMPS,
   measureDistance,
+  minMoveDm,
+  MIN_MOVE_DM,
+  normalize,
+  processShift,
+  qualify,
   type Fix,
 } from '../src/index';
+import { goldenInputs } from './support/goldenShift';
+import { seeded } from './support/rides';
+import { SCENARIOS } from './support/scenarios';
 
 const T0 = 1_700_000_000_000;
 const END = T0 + 3_600_000;
@@ -110,6 +119,135 @@ describe('gate', () => {
   });
 });
 
+/** Stage 3 as it was up to algorithmVersion 3: a fixed 20 m minimum move. Reference only. */
+function oldGateDm(fixes: readonly Fix[]): number {
+  let anchor: Fix | null = null;
+  let total = 0;
+  for (const f of fixes) {
+    if (anchor === null) {
+      anchor = f;
+      continue;
+    }
+    const dtMs = f.recordedAt - anchor.recordedAt;
+    if (dtMs <= 0) continue;
+    const d = haversineDm(anchor.latE7, anchor.lonE7, f.latE7, f.lonE7);
+    if (d * 1000 > MAX_SPEED_DMPS * dtMs || d < MIN_MOVE_DM) continue;
+    total += d;
+    anchor = f;
+  }
+  return total;
+}
+const oldDistanceDm = (fixes: readonly Fix[]) => oldGateDm(qualify(normalize(fixes, T0, END)));
+
+// Metres east and north of (43, -79) to a fix, `tS` seconds in.
+const COS43 = Math.cos((43 * Math.PI) / 180);
+const local = (northM: number, eastM: number, tS: number, accuracyM: number): Fix =>
+  at(43 + northM / DEG_M, -79 + eastM / (DEG_M * COS43), tS, accuracyM);
+
+// 1 km north with good fixes, 10 minutes parked with poor fixes that wander 20-45 m from where the
+// car stopped (each fix's accuracy at least its wander), then 500 m on with good fixes.
+function parkedWander(): { all: Fix[]; withoutParked: Fix[] } {
+  const rideIn = Array.from({ length: 11 }, (_, i) => local(i * 100, 0, i * 10, 5));
+  const parked = Array.from({ length: 60 }, (_, i) => {
+    const d = 20 + ((i * 11) % 26); // 20..45 m
+    const a = (i * 137 * Math.PI) / 180;
+    const acc = Math.min(50, Math.max(30, d + 1 + (i % 5)));
+    return local(1000 + d * Math.cos(a), d * Math.sin(a), 100 + (i + 1) * 10, acc);
+  });
+  const rideOut = Array.from({ length: 5 }, (_, i) => local(1100 + i * 100, 0, 710 + i * 10, 5));
+  return { all: [...rideIn, ...parked, ...rideOut], withoutParked: [...rideIn, ...rideOut] };
+}
+
+describe('accuracy-aware minimum move (ADR 0006)', () => {
+  test('max(20 m, worse accuracy of anchor and fix), in decimetres, integers only', () => {
+    const f = (accuracyM: number) => ({ ...at(43, -79, 0), accuracyM });
+    expect(minMoveDm(f(5), f(5))).toBe(200);
+    expect(minMoveDm(f(20), f(3))).toBe(200);
+    expect(minMoveDm(f(21), f(3))).toBe(210);
+    expect(minMoveDm(f(3), f(35))).toBe(350);
+    expect(minMoveDm(f(45), f(30))).toBe(450);
+    expect(minMoveDm(f(50), f(50))).toBe(500);
+    expect(minMoveDm(f(0), f(0))).toBe(MIN_MOVE_DM);
+    for (let a = 0; a <= 50; a++)
+      for (let b = 0; b <= 50; b++) {
+        const m = minMoveDm(f(a), f(b));
+        expect(Number.isInteger(m) && m >= 200 && m <= 500).toBe(true);
+      }
+  });
+
+  test('the step uses the anchor accuracy too: a fix 30 m from a 35 m anchor is jitter', () => {
+    const a = at(43, -79, 0, 35);
+    const near = at(43 + 30 / DEG_M, -79, 10, 5);
+    expect(gate([a, near]).stats.within_gate).toBe(1);
+    expect(gate([a, at(43 + 36 / DEG_M, -79, 10, 5)]).distanceM).toBe(36);
+  });
+
+  test('a parked phone with 30-50 m accuracy wandering 20-45 m adds no distance', () => {
+    const { all, withoutParked } = parkedWander();
+    const r = measureDistance(all, T0, END);
+    expect(r.distanceDm).toBe(measureDistance(withoutParked, T0, END).distanceDm);
+    expect(r.distanceM).toBe(1500);
+    expect(r.stats.within_gate).toBe(60);
+    // The old fixed 20 m rule counted the wander as driving.
+    expect(oldDistanceDm(all) - r.distanceDm).toBeGreaterThan(5_000);
+  });
+
+  test('a slow ride with poor accuracy still counts its full chord distance', () => {
+    // 2 m/s, a fix every 10 s (20 m apart), accuracy 35-45 m: 1180 m north, then 400 m east.
+    const north = Array.from({ length: 60 }, (_, i) => local(i * 20, 0, i * 10, 35 + (i % 11)));
+    const east = Array.from({ length: 20 }, (_, i) =>
+      local(1180, (i + 1) * 20, 600 + i * 10, 40 + (i % 6)),
+    );
+    const fixes = [...north, ...east];
+    const r = measureDistance(fixes, T0, END);
+    const old = oldDistanceDm(fixes);
+    expect(old).toBe(15_800); // exact positions: the old rule counted every 20 m step
+    // The larger step only holds back the last stretch before the corner and the end, each
+    // shorter than one minimum move (at most 50 m).
+    expect(r.distanceDm).toBeLessThanOrEqual(old);
+    expect(old - r.distanceDm).toBeLessThan(2 * 500);
+    // On the straight part every fix held back is counted later, inside the chord from the same
+    // anchor: the full 1180 m.
+    expect(measureDistance(north, T0, END).distanceDm).toBe(oldDistanceDm(north));
+    // The only shortfall is the last 40 m east, still inside the minimum move when the shift ends.
+    expect(r.distanceDm).toBe(15_400);
+  });
+
+  test('tracks with every accuracy at 20 m or better give exactly the old totals', () => {
+    for (const input of Object.values(goldenInputs())) {
+      if (input.fixes.some((f) => f.accuracyM > 20)) continue;
+      const g = measureDistance(input.fixes, input.startedAt, input.endedAt);
+      expect(g.distanceDm).toBe(
+        oldGateDm(qualify(normalize(input.fixes, input.startedAt, input.endedAt))),
+      );
+    }
+    const rand = seeded(42);
+    for (let k = 0; k < 200; k++) {
+      let y = 0;
+      const fixes = Array.from({ length: 80 }, (_, i) => {
+        y += rand() * 40;
+        return local(y, rand() * 30, i * 10, 1 + Math.floor(rand() * 20));
+      });
+      expect(measureDistance(fixes, T0, END).distanceDm).toBe(oldDistanceDm(fixes));
+    }
+  });
+
+  test('a step is never accepted that the old rule would have dropped from the same anchor', () => {
+    const rand = seeded(7);
+    for (let k = 0; k < 2000; k++) {
+      const a = at(43, -79, 0, 1 + Math.floor(rand() * 50));
+      const f = at(43 + (rand() * 60) / DEG_M, -79, 10, 1 + Math.floor(rand() * 50));
+      const d = haversineDm(a.latE7, a.lonE7, f.latE7, f.lonE7);
+      if (gate([a, f]).distanceDm > 0) expect(d).toBeGreaterThanOrEqual(MIN_MOVE_DM);
+    }
+  });
+
+  test('the golden scenario: parked wander adds nothing, the crawl out counts in full', () => {
+    const r = processShift(SCENARIOS.parked_poor_accuracy!());
+    expect(r.totals.totalM).toBe(2000);
+  });
+});
+
 describe('live accumulator', () => {
   test('agrees with the batch result on clean input', () => {
     const fixes = line(30, 80, 10);
@@ -132,6 +270,21 @@ describe('live accumulator', () => {
     const acc = createLiveAccumulator(T0);
     for (const x of messy) acc.push(x);
     expect(acc.runningTotalM()).toBe(measureDistance(messy, T0, END).distanceM);
+  });
+
+  test('agrees with batch on poor accuracy: parked wander and a slow ride', () => {
+    const { all } = parkedWander();
+    const slow = Array.from({ length: 40 }, (_, i) =>
+      local(1500 + i * 15, 0, 760 + i * 10, 30 + (i % 21)),
+    );
+    const fixes = [...all, ...slow];
+    const acc = createLiveAccumulator(T0);
+    for (const f of fixes) acc.push(f);
+    expect(acc.runningTotalM()).toBe(measureDistance(fixes, T0, END).distanceM);
+    const scenario = SCENARIOS.parked_poor_accuracy!();
+    const live = createLiveAccumulator(scenario.startedAt);
+    for (const f of scenario.fixes) live.push(f);
+    expect(live.runningTotalM()).toBe(processShift(scenario).totals.totalM);
   });
 
   test('does not use the clock', () => {

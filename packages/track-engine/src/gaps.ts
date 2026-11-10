@@ -8,8 +8,8 @@ import type { Fix, Flag, ShiftInput } from './types';
 /**
  * Reading of 14 section 7.1: the time step is the silence before the segment's end fix, i.e.
  * the time since the previous plausible fix, not the whole span since the anchor. Fixes inside
- * the 20 m gate keep the anchor but show the signal was there, so a long rest (GPS asleep, then
- * a jitter fix, then riding) is not a gap, as the spec's intent says.
+ * the gate's minimum move keep the anchor but show the signal was there, so a long rest (GPS
+ * asleep, then a jitter fix, then riding) is not a gap, as the spec's intent says.
  * A gap needs a silence over this AND a chord of at least GAP_MIN_CHORD_DM (14 section 7.1). */
 export const GAP_MIN_DT_MS = 90_000;
 export const GAP_MIN_CHORD_DM = 1_000; // 100 m

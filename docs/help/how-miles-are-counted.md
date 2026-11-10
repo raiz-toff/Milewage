@@ -15,7 +15,8 @@ While a shift is running, the phone asks for a GPS fix about every 10 seconds, o
 Raw GPS is noisy. Before any distance is added up, MileWage removes bad data. The rules are the same everywhere:
 
 - A fix whose accuracy is worse than 50 metres is dropped.
-- Movement of less than 20 metres from the last accepted point is ignored. A parked car that drifts a little adds nothing.
+- Movement of less than 20 metres from the last accepted point is ignored. When GPS reports a weaker accuracy for the new point or the last accepted one, the movement must be at least that far, up to 50 metres. At 35 metres accuracy, a move of 30 metres is ignored. A parked car whose GPS drifts adds nothing.
+- A point held back by this rule is not lost. When you drive on, the whole distance from the last accepted point is counted.
 - A jump that would need a speed above 42 metres per second (about 150 km/h) is cut. It is a glitch, not driving.
 - A long silence between fixes is not guessed at. It is flagged on the shift, so you can see that part of the route is missing.
 
@@ -29,7 +30,7 @@ When a shift ends, the phone shows you its total. The server then works the tota
 
 ## When the total is worked out again
 
-The server runs the engine again on the points it holds when a shift ends, when points arrive late, and when you add or edit a trip or label a stop. Your corrections are kept: trip edits, stop labels and trips you added by hand. There is no Recalculate button in the web app. After an upgrade changes the engine, `milewage-cli recalc --dry-run` lists the shifts whose totals would change. It changes nothing.
+The server runs the engine again on the points it holds when a shift ends, when points arrive late, and when you add or edit a trip or label a stop. Your corrections are kept: trip edits, stop labels and trips you added by hand. There is no Recalculate button in the web app. After an upgrade changes the engine, `milewage-cli recalc --dry-run` lists the shifts whose totals would change. It changes nothing. Shifts keep the figures they have until one of those things happens.
 
 A finalized shift is never worked out again. The web app shows it as "Reviewed". Finalizing a shift is not available in the app yet.
 

@@ -1,5 +1,5 @@
 {
-  "algorithmVersion": 3,
+  "algorithmVersion": 4,
   "inputs": {
     "ride_straight": {
       "shiftClientId": "synthetic-straight",
@@ -5189,22 +5189,794 @@
         }
       ],
       "segmenter": "stops"
+    },
+    "scenario_parked_poor_accuracy": {
+      "shiftClientId": "scn",
+      "startedAt": 1700000000000,
+      "endedAt": 1700001080000,
+      "fixes": [
+        {
+          "seq": 1,
+          "recordedAt": 1700000000000,
+          "latE7": 436500000,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 2,
+          "recordedAt": 1700000010000,
+          "latE7": 436508993,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 3,
+          "recordedAt": 1700000020000,
+          "latE7": 436517986,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 4,
+          "recordedAt": 1700000030000,
+          "latE7": 436526980,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 5,
+          "recordedAt": 1700000040000,
+          "latE7": 436535973,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 6,
+          "recordedAt": 1700000050000,
+          "latE7": 436544966,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 7,
+          "recordedAt": 1700000060000,
+          "latE7": 436553959,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 8,
+          "recordedAt": 1700000070000,
+          "latE7": 436562953,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 9,
+          "recordedAt": 1700000080000,
+          "latE7": 436571946,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 10,
+          "recordedAt": 1700000090000,
+          "latE7": 436580939,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 11,
+          "recordedAt": 1700000100000,
+          "latE7": 436589932,
+          "lonE7": -793800000,
+          "accuracyM": 5
+        },
+        {
+          "seq": 12,
+          "recordedAt": 1700000110000,
+          "latE7": 436588156,
+          "lonE7": -793797711,
+          "accuracyM": 32
+        },
+        {
+          "seq": 13,
+          "recordedAt": 1700000120000,
+          "latE7": 436590145,
+          "lonE7": -793804216,
+          "accuracyM": 39
+        },
+        {
+          "seq": 14,
+          "recordedAt": 1700000130000,
+          "latE7": 436592253,
+          "lonE7": -793796040,
+          "accuracyM": 46
+        },
+        {
+          "seq": 15,
+          "recordedAt": 1700000140000,
+          "latE7": 436587973,
+          "lonE7": -793800381,
+          "accuracyM": 30
+        },
+        {
+          "seq": 16,
+          "recordedAt": 1700000150000,
+          "latE7": 436592069,
+          "lonE7": -793802067,
+          "accuracyM": 34
+        },
+        {
+          "seq": 17,
+          "recordedAt": 1700000160000,
+          "latE7": 436589259,
+          "lonE7": -793795623,
+          "accuracyM": 41
+        },
+        {
+          "seq": 18,
+          "recordedAt": 1700000170000,
+          "latE7": 436587940,
+          "lonE7": -793804581,
+          "accuracyM": 48
+        },
+        {
+          "seq": 19,
+          "recordedAt": 1700000180000,
+          "latE7": 436592007,
+          "lonE7": -793799178,
+          "accuracyM": 30
+        },
+        {
+          "seq": 20,
+          "recordedAt": 1700000190000,
+          "latE7": 436587448,
+          "lonE7": -793798251,
+          "accuracyM": 36
+        },
+        {
+          "seq": 21,
+          "recordedAt": 1700000200000,
+          "latE7": 436591101,
+          "lonE7": -793804438,
+          "accuracyM": 43
+        },
+        {
+          "seq": 22,
+          "recordedAt": 1700000210000,
+          "latE7": 436591513,
+          "lonE7": -793794852,
+          "accuracyM": 50
+        },
+        {
+          "seq": 23,
+          "recordedAt": 1700000220000,
+          "latE7": 436587796,
+          "lonE7": -793801314,
+          "accuracyM": 31
+        },
+        {
+          "seq": 24,
+          "recordedAt": 1700000230000,
+          "latE7": 436592738,
+          "lonE7": -793801335,
+          "accuracyM": 38
+        },
+        {
+          "seq": 25,
+          "recordedAt": 1700000240000,
+          "latE7": 436588243,
+          "lonE7": -793795610,
+          "accuracyM": 45
+        },
+        {
+          "seq": 26,
+          "recordedAt": 1700000250000,
+          "latE7": 436589443,
+          "lonE7": -793802521,
+          "accuracyM": 30
+        },
+        {
+          "seq": 27,
+          "recordedAt": 1700000260000,
+          "latE7": 436592068,
+          "lonE7": -793798156,
+          "accuracyM": 33
+        },
+        {
+          "seq": 28,
+          "recordedAt": 1700000270000,
+          "latE7": 436586842,
+          "lonE7": -793799170,
+          "accuracyM": 40
+        },
+        {
+          "seq": 29,
+          "recordedAt": 1700000280000,
+          "latE7": 436592152,
+          "lonE7": -793804223,
+          "accuracyM": 47
+        },
+        {
+          "seq": 30,
+          "recordedAt": 1700000290000,
+          "latE7": 436590184,
+          "lonE7": -793797163,
+          "accuracyM": 30
+        },
+        {
+          "seq": 31,
+          "recordedAt": 1700000300000,
+          "latE7": 436587865,
+          "lonE7": -793802397,
+          "accuracyM": 35
+        },
+        {
+          "seq": 32,
+          "recordedAt": 1700000310000,
+          "latE7": 436593255,
+          "lonE7": -793800241,
+          "accuracyM": 42
+        },
+        {
+          "seq": 33,
+          "recordedAt": 1700000320000,
+          "latE7": 436587183,
+          "lonE7": -793796066,
+          "accuracyM": 49
+        },
+        {
+          "seq": 34,
+          "recordedAt": 1700000330000,
+          "latE7": 436589971,
+          "lonE7": -793803107,
+          "accuracyM": 30
+        },
+        {
+          "seq": 35,
+          "recordedAt": 1700000340000,
+          "latE7": 436591858,
+          "lonE7": -793797044,
+          "accuracyM": 37
+        },
+        {
+          "seq": 36,
+          "recordedAt": 1700000350000,
+          "latE7": 436586438,
+          "lonE7": -793800422,
+          "accuracyM": 44
+        },
+        {
+          "seq": 37,
+          "recordedAt": 1700000360000,
+          "latE7": 436591350,
+          "lonE7": -793801530,
+          "accuracyM": 30
+        },
+        {
+          "seq": 38,
+          "recordedAt": 1700000370000,
+          "latE7": 436589552,
+          "lonE7": -793796685,
+          "accuracyM": 32
+        },
+        {
+          "seq": 39,
+          "recordedAt": 1700000380000,
+          "latE7": 436588222,
+          "lonE7": -793803503,
+          "accuracyM": 39
+        },
+        {
+          "seq": 40,
+          "recordedAt": 1700000390000,
+          "latE7": 436593525,
+          "lonE7": -793798854,
+          "accuracyM": 46
+        },
+        {
+          "seq": 41,
+          "recordedAt": 1700000400000,
+          "latE7": 436588219,
+          "lonE7": -793798633,
+          "accuracyM": 30
+        },
+        {
+          "seq": 42,
+          "recordedAt": 1700000410000,
+          "latE7": 436590695,
+          "lonE7": -793803447,
+          "accuracyM": 34
+        },
+        {
+          "seq": 43,
+          "recordedAt": 1700000420000,
+          "latE7": 436591351,
+          "lonE7": -793795978,
+          "accuracyM": 41
+        },
+        {
+          "seq": 44,
+          "recordedAt": 1700000430000,
+          "latE7": 436586322,
+          "lonE7": -793801915,
+          "accuracyM": 48
+        },
+        {
+          "seq": 45,
+          "recordedAt": 1700000440000,
+          "latE7": 436591933,
+          "lonE7": -793801117,
+          "accuracyM": 30
+        },
+        {
+          "seq": 46,
+          "recordedAt": 1700000450000,
+          "latE7": 436588754,
+          "lonE7": -793796508,
+          "accuracyM": 36
+        },
+        {
+          "seq": 47,
+          "recordedAt": 1700000460000,
+          "latE7": 436588876,
+          "lonE7": -793804492,
+          "accuracyM": 43
+        },
+        {
+          "seq": 48,
+          "recordedAt": 1700000470000,
+          "latE7": 436593472,
+          "lonE7": -793797288,
+          "accuracyM": 50
+        },
+        {
+          "seq": 49,
+          "recordedAt": 1700000480000,
+          "latE7": 436587663,
+          "lonE7": -793799218,
+          "accuracyM": 31
+        },
+        {
+          "seq": 50,
+          "recordedAt": 1700000490000,
+          "latE7": 436591549,
+          "lonE7": -793803440,
+          "accuracyM": 38
+        },
+        {
+          "seq": 51,
+          "recordedAt": 1700000500000,
+          "latE7": 436590557,
+          "lonE7": -793795104,
+          "accuracyM": 45
+        },
+        {
+          "seq": 52,
+          "recordedAt": 1700000510000,
+          "latE7": 436588424,
+          "lonE7": -793801571,
+          "accuracyM": 30
+        },
+        {
+          "seq": 53,
+          "recordedAt": 1700000520000,
+          "latE7": 436592436,
+          "lonE7": -793800364,
+          "accuracyM": 33
+        },
+        {
+          "seq": 54,
+          "recordedAt": 1700000530000,
+          "latE7": 436587867,
+          "lonE7": -793796717,
+          "accuracyM": 40
+        },
+        {
+          "seq": 55,
+          "recordedAt": 1700000540000,
+          "latE7": 436589800,
+          "lonE7": -793805217,
+          "accuracyM": 47
+        },
+        {
+          "seq": 56,
+          "recordedAt": 1700000550000,
+          "latE7": 436591395,
+          "lonE7": -793797979,
+          "accuracyM": 30
+        },
+        {
+          "seq": 57,
+          "recordedAt": 1700000560000,
+          "latE7": 436587236,
+          "lonE7": -793800130,
+          "accuracyM": 35
+        },
+        {
+          "seq": 58,
+          "recordedAt": 1700000570000,
+          "latE7": 436592443,
+          "lonE7": -793803017,
+          "accuracyM": 42
+        },
+        {
+          "seq": 59,
+          "recordedAt": 1700000580000,
+          "latE7": 436589519,
+          "lonE7": -793794561,
+          "accuracyM": 49
+        },
+        {
+          "seq": 60,
+          "recordedAt": 1700000590000,
+          "latE7": 436591731,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 61,
+          "recordedAt": 1700000600000,
+          "latE7": 436593529,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 62,
+          "recordedAt": 1700000610000,
+          "latE7": 436595328,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 63,
+          "recordedAt": 1700000620000,
+          "latE7": 436597127,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 64,
+          "recordedAt": 1700000630000,
+          "latE7": 436598925,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 65,
+          "recordedAt": 1700000640000,
+          "latE7": 436600724,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 66,
+          "recordedAt": 1700000650000,
+          "latE7": 436602523,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 67,
+          "recordedAt": 1700000660000,
+          "latE7": 436604321,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 68,
+          "recordedAt": 1700000670000,
+          "latE7": 436606120,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 69,
+          "recordedAt": 1700000680000,
+          "latE7": 436607919,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 70,
+          "recordedAt": 1700000690000,
+          "latE7": 436609717,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 71,
+          "recordedAt": 1700000700000,
+          "latE7": 436611516,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 72,
+          "recordedAt": 1700000710000,
+          "latE7": 436613315,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 73,
+          "recordedAt": 1700000720000,
+          "latE7": 436615113,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 74,
+          "recordedAt": 1700000730000,
+          "latE7": 436616912,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 75,
+          "recordedAt": 1700000740000,
+          "latE7": 436618710,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 76,
+          "recordedAt": 1700000750000,
+          "latE7": 436620509,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 77,
+          "recordedAt": 1700000760000,
+          "latE7": 436622308,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 78,
+          "recordedAt": 1700000770000,
+          "latE7": 436624106,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 79,
+          "recordedAt": 1700000780000,
+          "latE7": 436625905,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 80,
+          "recordedAt": 1700000790000,
+          "latE7": 436627704,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 81,
+          "recordedAt": 1700000800000,
+          "latE7": 436629502,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 82,
+          "recordedAt": 1700000810000,
+          "latE7": 436631301,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 83,
+          "recordedAt": 1700000820000,
+          "latE7": 436633100,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 84,
+          "recordedAt": 1700000830000,
+          "latE7": 436634898,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 85,
+          "recordedAt": 1700000840000,
+          "latE7": 436636697,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 86,
+          "recordedAt": 1700000850000,
+          "latE7": 436638496,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 87,
+          "recordedAt": 1700000860000,
+          "latE7": 436640294,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 88,
+          "recordedAt": 1700000870000,
+          "latE7": 436642093,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 89,
+          "recordedAt": 1700000880000,
+          "latE7": 436643891,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 90,
+          "recordedAt": 1700000890000,
+          "latE7": 436645690,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 91,
+          "recordedAt": 1700000900000,
+          "latE7": 436647489,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 92,
+          "recordedAt": 1700000910000,
+          "latE7": 436649287,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 93,
+          "recordedAt": 1700000920000,
+          "latE7": 436651086,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 94,
+          "recordedAt": 1700000930000,
+          "latE7": 436652885,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 95,
+          "recordedAt": 1700000940000,
+          "latE7": 436654683,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 96,
+          "recordedAt": 1700000950000,
+          "latE7": 436656482,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 97,
+          "recordedAt": 1700000960000,
+          "latE7": 436658281,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 98,
+          "recordedAt": 1700000970000,
+          "latE7": 436660079,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 99,
+          "recordedAt": 1700000980000,
+          "latE7": 436661878,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 100,
+          "recordedAt": 1700000990000,
+          "latE7": 436663677,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 101,
+          "recordedAt": 1700001000000,
+          "latE7": 436665475,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 102,
+          "recordedAt": 1700001010000,
+          "latE7": 436667274,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 103,
+          "recordedAt": 1700001020000,
+          "latE7": 436669072,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 104,
+          "recordedAt": 1700001030000,
+          "latE7": 436670871,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 105,
+          "recordedAt": 1700001040000,
+          "latE7": 436672670,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 106,
+          "recordedAt": 1700001050000,
+          "latE7": 436674468,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 107,
+          "recordedAt": 1700001060000,
+          "latE7": 436676267,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 108,
+          "recordedAt": 1700001070000,
+          "latE7": 436678066,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        },
+        {
+          "seq": 109,
+          "recordedAt": 1700001080000,
+          "latE7": 436679864,
+          "lonE7": -793800000,
+          "accuracyM": 35
+        }
+      ],
+      "segmenter": "stops"
     }
   },
   "expected": {
-    "ride_grid": "{\"algorithmVersion\":3,\"flags\":[],\"inputDigest\":\"17a1bf7d4accd95b\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436517986,\"lonE7\":-793800000,\"t\":1700000020000},{\"latE7\":436517986,\"lonE7\":-793775142,\"t\":1700000040000},{\"latE7\":436535973,\"lonE7\":-793775142,\"t\":1700000060000},{\"latE7\":436535973,\"lonE7\":-793750284,\"t\":1700000080000},{\"latE7\":436517986,\"lonE7\":-793750284,\"t\":1700000100000},{\"latE7\":436517986,\"lonE7\":-793725426,\"t\":1700000120000},{\"latE7\":436553959,\"lonE7\":-793725426,\"t\":1700000160000}],\"stats\":{\"fixes_in\":17,\"fixes_used\":17,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":1600,\"deadheadM\":0,\"personalM\":0,\"totalM\":1600},\"trips\":[{\"distanceM\":1600,\"endLatE7\":436553959,\"endLonE7\":-793725426,\"endedAt\":1700000160000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"synthetic-grid:1700000000000:active\"}]}",
-    "ride_loop": "{\"algorithmVersion\":3,\"flags\":[],\"inputDigest\":\"ef4d8b723b50461a\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436501320,\"lonE7\":-793788478,\"t\":1700000009416},{\"latE7\":436507902,\"lonE7\":-793773634,\"t\":1700000023540},{\"latE7\":436518642,\"lonE7\":-793764538,\"t\":1700000037664},{\"latE7\":436526980,\"lonE7\":-793762713,\"t\":1700000047080},{\"latE7\":436535317,\"lonE7\":-793764538,\"t\":1700000056496},{\"latE7\":436546057,\"lonE7\":-793773634,\"t\":1700000070620},{\"latE7\":436551019,\"lonE7\":-793783072,\"t\":1700000080036},{\"latE7\":436553959,\"lonE7\":-793800000,\"t\":1700000094160},{\"latE7\":436551019,\"lonE7\":-793816928,\"t\":1700000108284},{\"latE7\":436546057,\"lonE7\":-793826366,\"t\":1700000117700},{\"latE7\":436535317,\"lonE7\":-793835462,\"t\":1700000131824},{\"latE7\":436526980,\"lonE7\":-793837287,\"t\":1700000141240},{\"latE7\":436518642,\"lonE7\":-793835462,\"t\":1700000150656},{\"latE7\":436507902,\"lonE7\":-793826366,\"t\":1700000164780},{\"latE7\":436501320,\"lonE7\":-793811522,\"t\":1700000178904},{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000188320}],\"stats\":{\"fixes_in\":41,\"fixes_used\":41,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":1884,\"deadheadM\":0,\"personalM\":0,\"totalM\":1884},\"trips\":[{\"distanceM\":1884,\"endLatE7\":436500000,\"endLonE7\":-793800000,\"endedAt\":1700000188320,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"synthetic-loop:1700000000000:active\"}]}",
-    "ride_stop_and_go": "{\"algorithmVersion\":3,\"flags\":[],\"inputDigest\":\"37267328573f2b90\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436679864,\"lonE7\":-793800000,\"t\":1700000740000}],\"stats\":{\"fixes_in\":93,\"fixes_used\":21,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":72},\"stops\":[],\"totals\":{\"activeM\":2000,\"deadheadM\":0,\"personalM\":0,\"totalM\":2000},\"trips\":[{\"distanceM\":2000,\"endLatE7\":436679864,\"endLonE7\":-793800000,\"endedAt\":1700000740000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"synthetic-stop_and_go:1700000000000:active\"}]}",
-    "ride_straight": "{\"algorithmVersion\":3,\"flags\":[],\"inputDigest\":\"91522ec0650a53c9\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436949661,\"lonE7\":-793800000,\"t\":1700000500000}],\"stats\":{\"fixes_in\":51,\"fixes_used\":51,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":5000,\"deadheadM\":0,\"personalM\":0,\"totalM\":5000},\"trips\":[{\"distanceM\":5000,\"endLatE7\":436949661,\"endLonE7\":-793800000,\"endedAt\":1700000500000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"synthetic-straight:1700000000000:active\"}]}",
-    "scenario_dead_battery": "{\"algorithmVersion\":3,\"flags\":[{\"at\":1700000600000,\"code\":\"shift_auto_closed\"}],\"inputDigest\":\"6cb84cd3a33ea73c\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":437039593,\"lonE7\":-793800000,\"t\":1700000600000}],\"stats\":{\"fixes_in\":61,\"fixes_used\":61,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":6000,\"deadheadM\":0,\"personalM\":0,\"totalM\":6000},\"trips\":[{\"distanceM\":6000,\"endLatE7\":437039593,\"endLonE7\":-793800000,\"endedAt\":1700000600000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:active\"}]}",
-    "scenario_delivery_run": "{\"algorithmVersion\":3,\"flags\":[{\"at\":1700001150000,\"code\":\"long_stop\",\"detail\":\"scn:1700001150000:stop\"}],\"inputDigest\":\"93b3cb734276d2d3\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":437066573,\"lonE7\":-793800000,\"t\":1700003330000}],\"stats\":{\"fixes_in\":113,\"fixes_used\":64,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":49},\"stops\":[{\"confidence\":\"medium\",\"dwellS\":300,\"endedAt\":1700000500000,\"estRole\":\"pickup\",\"latE7\":436679864,\"lonE7\":-793800000,\"role\":\"pickup\",\"startedAt\":1700000200000,\"stopKey\":\"scn:1700000200000:stop\"},{\"confidence\":\"medium\",\"dwellS\":240,\"endedAt\":1700000940000,\"estRole\":\"dropoff\",\"latE7\":436859729,\"lonE7\":-793800000,\"role\":\"dropoff\",\"startedAt\":1700000700000,\"stopKey\":\"scn:1700000700000:stop\"},{\"confidence\":\"high\",\"dwellS\":2100,\"endedAt\":1700003250000,\"estRole\":\"none\",\"latE7\":436994627,\"lonE7\":-793800000,\"role\":\"none\",\"startedAt\":1700001150000,\"stopKey\":\"scn:1700001150000:stop\"}],\"totals\":{\"activeM\":2000,\"deadheadM\":4300,\"personalM\":0,\"totalM\":6300},\"trips\":[{\"distanceM\":2000,\"endLatE7\":436679864,\"endLonE7\":-793800000,\"endedAt\":1700000200000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:deadhead\"},{\"distanceM\":2000,\"endLatE7\":436859729,\"endLonE7\":-793800000,\"endedAt\":1700000700000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Delivery (estimated)\",\"startLatE7\":436679864,\"startLonE7\":-793800000,\"startedAt\":1700000200000,\"tripKey\":\"scn:1700000200000:active\"},{\"distanceM\":2300,\"endLatE7\":437066573,\"endLonE7\":-793800000,\"endedAt\":1700003330000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436859729,\"startLonE7\":-793800000,\"startedAt\":1700000700000,\"tripKey\":\"scn:1700000700000:deadhead\"}]}",
-    "scenario_gap_spike": "{\"algorithmVersion\":3,\"flags\":[{\"at\":1700000100000,\"code\":\"gap_counted\",\"detail\":\"dt_s=200,chord_m=500\"},{\"at\":1700000100000,\"code\":\"gap_dropped\",\"detail\":\"dt_s=180,chord_m=199000\"}],\"inputDigest\":\"c0ed8dcc5c69fbbe\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436724830,\"lonE7\":-793800000,\"t\":1700000400000}],\"stats\":{\"fixes_in\":23,\"fixes_used\":22,\"gap_m\":500,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":1,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":2500,\"deadheadM\":0,\"personalM\":0,\"totalM\":2500},\"trips\":[{\"distanceM\":2500,\"endLatE7\":436724830,\"endLonE7\":-793800000,\"endedAt\":1700000400000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:active\"}]}",
-    "scenario_killed_app": "{\"algorithmVersion\":3,\"flags\":[{\"at\":1700000200000,\"code\":\"gap_counted\",\"detail\":\"dt_s=720,chord_m=6000\"},{\"at\":1700000200000,\"code\":\"gap_large\",\"detail\":\"dt_s=720,chord_m=6000\"},{\"at\":1700000200000,\"code\":\"tracking_interrupted\",\"detail\":\"to=1700000900000\"}],\"inputDigest\":\"282caaa01d3d5003\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":437381335,\"lonE7\":-793800000,\"t\":1700001100000}],\"stats\":{\"fixes_in\":40,\"fixes_used\":40,\"gap_m\":6000,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":9800,\"deadheadM\":0,\"personalM\":0,\"totalM\":9800},\"trips\":[{\"distanceM\":9800,\"endLatE7\":437381335,\"endLonE7\":-793800000,\"endedAt\":1700001100000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:active\"}]}",
-    "scenario_parked_wait": "{\"algorithmVersion\":3,\"flags\":[],\"inputDigest\":\"9a1538d3b7cfd48d\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":437039593,\"lonE7\":-793800000,\"t\":1700000780000}],\"stats\":{\"fixes_in\":62,\"fixes_used\":61,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":1},\"stops\":[],\"totals\":{\"activeM\":6000,\"deadheadM\":0,\"personalM\":0,\"totalM\":6000},\"trips\":[{\"distanceM\":6000,\"endLatE7\":437039593,\"endLonE7\":-793800000,\"endedAt\":1700000780000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:active\"}]}",
-    "scenario_queue_creep": "{\"algorithmVersion\":3,\"flags\":[],\"inputDigest\":\"a4dcc2b101b9e7e5\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436682292,\"lonE7\":-793800000,\"t\":1700000380000}],\"stats\":{\"fixes_in\":39,\"fixes_used\":22,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":17},\"stops\":[{\"confidence\":\"medium\",\"dwellS\":180,\"endedAt\":1700000280000,\"estRole\":\"pickup\",\"latE7\":436589932,\"lonE7\":-793800000,\"role\":\"pickup\",\"startedAt\":1700000100000,\"stopKey\":\"scn:1700000100000:stop\"}],\"totals\":{\"activeM\":1006,\"deadheadM\":1021,\"personalM\":0,\"totalM\":2027},\"trips\":[{\"distanceM\":1021,\"endLatE7\":436591821,\"endLonE7\":-793800000,\"endedAt\":1700000240000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:deadhead\"},{\"distanceM\":1006,\"endLatE7\":436682292,\"endLonE7\":-793800000,\"endedAt\":1700000380000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Delivery (estimated)\",\"startLatE7\":436591821,\"startLonE7\":-793800000,\"startedAt\":1700000240000,\"tripKey\":\"scn:1700000240000:active\"}]}",
-    "scenario_stacked_orders": "{\"algorithmVersion\":3,\"flags\":[],\"inputDigest\":\"e871ab2e34cbf793\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436904695,\"lonE7\":-793800000,\"t\":1700001650000}],\"stats\":{\"fixes_in\":74,\"fixes_used\":46,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":28},\"stops\":[{\"confidence\":\"medium\",\"dwellS\":300,\"endedAt\":1700000450000,\"estRole\":\"pickup\",\"latE7\":436634898,\"lonE7\":-793800000,\"role\":\"pickup\",\"startedAt\":1700000150000,\"stopKey\":\"scn:1700000150000:stop\"},{\"confidence\":\"medium\",\"dwellS\":300,\"endedAt\":1700000780000,\"estRole\":\"dropoff\",\"latE7\":436661878,\"lonE7\":-793800000,\"role\":\"dropoff\",\"startedAt\":1700000480000,\"stopKey\":\"scn:1700000480000:stop\"},{\"confidence\":\"medium\",\"dwellS\":300,\"endedAt\":1700001200000,\"estRole\":\"pickup\",\"latE7\":436769796,\"lonE7\":-793800000,\"role\":\"pickup\",\"startedAt\":1700000900000,\"stopKey\":\"scn:1700000900000:stop\"},{\"confidence\":\"medium\",\"dwellS\":300,\"endedAt\":1700001590000,\"estRole\":\"dropoff\",\"latE7\":436850735,\"lonE7\":-793800000,\"role\":\"dropoff\",\"startedAt\":1700001290000,\"stopKey\":\"scn:1700001290000:stop\"}],\"totals\":{\"activeM\":1200,\"deadheadM\":3300,\"personalM\":0,\"totalM\":4500},\"trips\":[{\"distanceM\":1500,\"endLatE7\":436634898,\"endLonE7\":-793800000,\"endedAt\":1700000150000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:deadhead\"},{\"distanceM\":300,\"endLatE7\":436661878,\"endLonE7\":-793800000,\"endedAt\":1700000480000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Delivery (estimated)\",\"startLatE7\":436634898,\"startLonE7\":-793800000,\"startedAt\":1700000150000,\"tripKey\":\"scn:1700000150000:active\"},{\"distanceM\":1200,\"endLatE7\":436769796,\"endLonE7\":-793800000,\"endedAt\":1700000900000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436661878,\"startLonE7\":-793800000,\"startedAt\":1700000480000,\"tripKey\":\"scn:1700000480000:deadhead\"},{\"distanceM\":900,\"endLatE7\":436850735,\"endLonE7\":-793800000,\"endedAt\":1700001290000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Delivery (estimated)\",\"startLatE7\":436769796,\"startLonE7\":-793800000,\"startedAt\":1700000900000,\"tripKey\":\"scn:1700000900000:active\"},{\"distanceM\":600,\"endLatE7\":436904695,\"endLonE7\":-793800000,\"endedAt\":1700001650000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436850735,\"startLonE7\":-793800000,\"startedAt\":1700001290000,\"tripKey\":\"scn:1700001290000:deadhead\"}]}",
-    "scenario_start_wait": "{\"algorithmVersion\":3,\"flags\":[{\"code\":\"no_stops_detected\"}],\"inputDigest\":\"025d032e5229051e\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436679864,\"lonE7\":-793800000,\"t\":1700000450000}],\"stats\":{\"fixes_in\":37,\"fixes_used\":21,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":16},\"stops\":[{\"confidence\":\"medium\",\"dwellS\":250,\"endedAt\":1700000250000,\"estRole\":\"none\",\"latE7\":436500000,\"lonE7\":-793800000,\"role\":\"none\",\"startedAt\":1700000000000,\"stopKey\":\"scn:1700000000000:stop\"}],\"totals\":{\"activeM\":2000,\"deadheadM\":0,\"personalM\":0,\"totalM\":2000},\"trips\":[{\"distanceM\":2000,\"endLatE7\":436679864,\"endLonE7\":-793800000,\"endedAt\":1700000450000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:active\"}]}",
-    "scenario_tunnel": "{\"algorithmVersion\":3,\"flags\":[{\"at\":1700000200000,\"code\":\"gap_counted\",\"detail\":\"dt_s=100,chord_m=600\"}],\"inputDigest\":\"aa6dbcd2c213ec68\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436913688,\"lonE7\":-793800000,\"t\":1700000500000}],\"stats\":{\"fixes_in\":42,\"fixes_used\":42,\"gap_m\":600,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":4600,\"deadheadM\":0,\"personalM\":0,\"totalM\":4600},\"trips\":[{\"distanceM\":4600,\"endLatE7\":436913688,\"endLonE7\":-793800000,\"endedAt\":1700000500000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:active\"}]}",
-    "scenario_wake_up": "{\"algorithmVersion\":3,\"flags\":[{\"at\":1700000150000,\"code\":\"gap_counted\",\"detail\":\"dt_s=600,chord_m=100\"}],\"inputDigest\":\"dac643a028a9dc85\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436778790,\"lonE7\":-793800000,\"t\":1700000900000}],\"stats\":{\"fixes_in\":32,\"fixes_used\":32,\"gap_m\":100,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[{\"confidence\":\"high\",\"dwellS\":600,\"endedAt\":1700000750000,\"estRole\":\"pickup\",\"latE7\":436634898,\"lonE7\":-793800000,\"role\":\"pickup\",\"startedAt\":1700000150000,\"stopKey\":\"scn:1700000150000:stop\"}],\"totals\":{\"activeM\":1600,\"deadheadM\":1500,\"personalM\":0,\"totalM\":3100},\"trips\":[{\"distanceM\":1500,\"endLatE7\":436634898,\"endLonE7\":-793800000,\"endedAt\":1700000150000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:deadhead\"},{\"distanceM\":1600,\"endLatE7\":436778790,\"endLonE7\":-793800000,\"endedAt\":1700000900000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Delivery (estimated)\",\"startLatE7\":436634898,\"startLonE7\":-793800000,\"startedAt\":1700000150000,\"tripKey\":\"scn:1700000150000:active\"}]}"
+    "ride_grid": "{\"algorithmVersion\":4,\"flags\":[],\"inputDigest\":\"17a1bf7d4accd95b\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436517986,\"lonE7\":-793800000,\"t\":1700000020000},{\"latE7\":436517986,\"lonE7\":-793775142,\"t\":1700000040000},{\"latE7\":436535973,\"lonE7\":-793775142,\"t\":1700000060000},{\"latE7\":436535973,\"lonE7\":-793750284,\"t\":1700000080000},{\"latE7\":436517986,\"lonE7\":-793750284,\"t\":1700000100000},{\"latE7\":436517986,\"lonE7\":-793725426,\"t\":1700000120000},{\"latE7\":436553959,\"lonE7\":-793725426,\"t\":1700000160000}],\"stats\":{\"fixes_in\":17,\"fixes_used\":17,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":1600,\"deadheadM\":0,\"personalM\":0,\"totalM\":1600},\"trips\":[{\"distanceM\":1600,\"endLatE7\":436553959,\"endLonE7\":-793725426,\"endedAt\":1700000160000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"synthetic-grid:1700000000000:active\"}]}",
+    "ride_loop": "{\"algorithmVersion\":4,\"flags\":[],\"inputDigest\":\"ef4d8b723b50461a\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436501320,\"lonE7\":-793788478,\"t\":1700000009416},{\"latE7\":436507902,\"lonE7\":-793773634,\"t\":1700000023540},{\"latE7\":436518642,\"lonE7\":-793764538,\"t\":1700000037664},{\"latE7\":436526980,\"lonE7\":-793762713,\"t\":1700000047080},{\"latE7\":436535317,\"lonE7\":-793764538,\"t\":1700000056496},{\"latE7\":436546057,\"lonE7\":-793773634,\"t\":1700000070620},{\"latE7\":436551019,\"lonE7\":-793783072,\"t\":1700000080036},{\"latE7\":436553959,\"lonE7\":-793800000,\"t\":1700000094160},{\"latE7\":436551019,\"lonE7\":-793816928,\"t\":1700000108284},{\"latE7\":436546057,\"lonE7\":-793826366,\"t\":1700000117700},{\"latE7\":436535317,\"lonE7\":-793835462,\"t\":1700000131824},{\"latE7\":436526980,\"lonE7\":-793837287,\"t\":1700000141240},{\"latE7\":436518642,\"lonE7\":-793835462,\"t\":1700000150656},{\"latE7\":436507902,\"lonE7\":-793826366,\"t\":1700000164780},{\"latE7\":436501320,\"lonE7\":-793811522,\"t\":1700000178904},{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000188320}],\"stats\":{\"fixes_in\":41,\"fixes_used\":41,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":1884,\"deadheadM\":0,\"personalM\":0,\"totalM\":1884},\"trips\":[{\"distanceM\":1884,\"endLatE7\":436500000,\"endLonE7\":-793800000,\"endedAt\":1700000188320,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"synthetic-loop:1700000000000:active\"}]}",
+    "ride_stop_and_go": "{\"algorithmVersion\":4,\"flags\":[],\"inputDigest\":\"37267328573f2b90\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436679864,\"lonE7\":-793800000,\"t\":1700000740000}],\"stats\":{\"fixes_in\":93,\"fixes_used\":21,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":72},\"stops\":[],\"totals\":{\"activeM\":2000,\"deadheadM\":0,\"personalM\":0,\"totalM\":2000},\"trips\":[{\"distanceM\":2000,\"endLatE7\":436679864,\"endLonE7\":-793800000,\"endedAt\":1700000740000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"synthetic-stop_and_go:1700000000000:active\"}]}",
+    "ride_straight": "{\"algorithmVersion\":4,\"flags\":[],\"inputDigest\":\"91522ec0650a53c9\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436949661,\"lonE7\":-793800000,\"t\":1700000500000}],\"stats\":{\"fixes_in\":51,\"fixes_used\":51,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":5000,\"deadheadM\":0,\"personalM\":0,\"totalM\":5000},\"trips\":[{\"distanceM\":5000,\"endLatE7\":436949661,\"endLonE7\":-793800000,\"endedAt\":1700000500000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"synthetic-straight:1700000000000:active\"}]}",
+    "scenario_dead_battery": "{\"algorithmVersion\":4,\"flags\":[{\"at\":1700000600000,\"code\":\"shift_auto_closed\"}],\"inputDigest\":\"6cb84cd3a33ea73c\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":437039593,\"lonE7\":-793800000,\"t\":1700000600000}],\"stats\":{\"fixes_in\":61,\"fixes_used\":61,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":6000,\"deadheadM\":0,\"personalM\":0,\"totalM\":6000},\"trips\":[{\"distanceM\":6000,\"endLatE7\":437039593,\"endLonE7\":-793800000,\"endedAt\":1700000600000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:active\"}]}",
+    "scenario_delivery_run": "{\"algorithmVersion\":4,\"flags\":[{\"at\":1700001150000,\"code\":\"long_stop\",\"detail\":\"scn:1700001150000:stop\"}],\"inputDigest\":\"93b3cb734276d2d3\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":437066573,\"lonE7\":-793800000,\"t\":1700003330000}],\"stats\":{\"fixes_in\":113,\"fixes_used\":64,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":49},\"stops\":[{\"confidence\":\"medium\",\"dwellS\":300,\"endedAt\":1700000500000,\"estRole\":\"pickup\",\"latE7\":436679864,\"lonE7\":-793800000,\"role\":\"pickup\",\"startedAt\":1700000200000,\"stopKey\":\"scn:1700000200000:stop\"},{\"confidence\":\"medium\",\"dwellS\":240,\"endedAt\":1700000940000,\"estRole\":\"dropoff\",\"latE7\":436859729,\"lonE7\":-793800000,\"role\":\"dropoff\",\"startedAt\":1700000700000,\"stopKey\":\"scn:1700000700000:stop\"},{\"confidence\":\"high\",\"dwellS\":2100,\"endedAt\":1700003250000,\"estRole\":\"none\",\"latE7\":436994627,\"lonE7\":-793800000,\"role\":\"none\",\"startedAt\":1700001150000,\"stopKey\":\"scn:1700001150000:stop\"}],\"totals\":{\"activeM\":2000,\"deadheadM\":4300,\"personalM\":0,\"totalM\":6300},\"trips\":[{\"distanceM\":2000,\"endLatE7\":436679864,\"endLonE7\":-793800000,\"endedAt\":1700000200000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:deadhead\"},{\"distanceM\":2000,\"endLatE7\":436859729,\"endLonE7\":-793800000,\"endedAt\":1700000700000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Delivery (estimated)\",\"startLatE7\":436679864,\"startLonE7\":-793800000,\"startedAt\":1700000200000,\"tripKey\":\"scn:1700000200000:active\"},{\"distanceM\":2300,\"endLatE7\":437066573,\"endLonE7\":-793800000,\"endedAt\":1700003330000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436859729,\"startLonE7\":-793800000,\"startedAt\":1700000700000,\"tripKey\":\"scn:1700000700000:deadhead\"}]}",
+    "scenario_gap_spike": "{\"algorithmVersion\":4,\"flags\":[{\"at\":1700000100000,\"code\":\"gap_counted\",\"detail\":\"dt_s=200,chord_m=500\"},{\"at\":1700000100000,\"code\":\"gap_dropped\",\"detail\":\"dt_s=180,chord_m=199000\"}],\"inputDigest\":\"c0ed8dcc5c69fbbe\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436724830,\"lonE7\":-793800000,\"t\":1700000400000}],\"stats\":{\"fixes_in\":23,\"fixes_used\":22,\"gap_m\":500,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":1,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":2500,\"deadheadM\":0,\"personalM\":0,\"totalM\":2500},\"trips\":[{\"distanceM\":2500,\"endLatE7\":436724830,\"endLonE7\":-793800000,\"endedAt\":1700000400000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:active\"}]}",
+    "scenario_killed_app": "{\"algorithmVersion\":4,\"flags\":[{\"at\":1700000200000,\"code\":\"gap_counted\",\"detail\":\"dt_s=720,chord_m=6000\"},{\"at\":1700000200000,\"code\":\"gap_large\",\"detail\":\"dt_s=720,chord_m=6000\"},{\"at\":1700000200000,\"code\":\"tracking_interrupted\",\"detail\":\"to=1700000900000\"}],\"inputDigest\":\"282caaa01d3d5003\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":437381335,\"lonE7\":-793800000,\"t\":1700001100000}],\"stats\":{\"fixes_in\":40,\"fixes_used\":40,\"gap_m\":6000,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":9800,\"deadheadM\":0,\"personalM\":0,\"totalM\":9800},\"trips\":[{\"distanceM\":9800,\"endLatE7\":437381335,\"endLonE7\":-793800000,\"endedAt\":1700001100000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:active\"}]}",
+    "scenario_parked_poor_accuracy": "{\"algorithmVersion\":4,\"flags\":[{\"code\":\"no_stops_detected\"}],\"inputDigest\":\"31b9d8a0543a6834\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436679864,\"lonE7\":-793800000,\"t\":1700001080000}],\"stats\":{\"fixes_in\":109,\"fixes_used\":36,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":73},\"stops\":[],\"totals\":{\"activeM\":2000,\"deadheadM\":0,\"personalM\":0,\"totalM\":2000},\"trips\":[{\"distanceM\":2000,\"endLatE7\":436679864,\"endLonE7\":-793800000,\"endedAt\":1700001080000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:active\"}]}",
+    "scenario_parked_wait": "{\"algorithmVersion\":4,\"flags\":[],\"inputDigest\":\"9a1538d3b7cfd48d\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":437039593,\"lonE7\":-793800000,\"t\":1700000780000}],\"stats\":{\"fixes_in\":62,\"fixes_used\":61,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":1},\"stops\":[],\"totals\":{\"activeM\":6000,\"deadheadM\":0,\"personalM\":0,\"totalM\":6000},\"trips\":[{\"distanceM\":6000,\"endLatE7\":437039593,\"endLonE7\":-793800000,\"endedAt\":1700000780000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:active\"}]}",
+    "scenario_queue_creep": "{\"algorithmVersion\":4,\"flags\":[],\"inputDigest\":\"a4dcc2b101b9e7e5\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436682292,\"lonE7\":-793800000,\"t\":1700000380000}],\"stats\":{\"fixes_in\":39,\"fixes_used\":22,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":17},\"stops\":[{\"confidence\":\"medium\",\"dwellS\":180,\"endedAt\":1700000280000,\"estRole\":\"pickup\",\"latE7\":436589932,\"lonE7\":-793800000,\"role\":\"pickup\",\"startedAt\":1700000100000,\"stopKey\":\"scn:1700000100000:stop\"}],\"totals\":{\"activeM\":1006,\"deadheadM\":1021,\"personalM\":0,\"totalM\":2027},\"trips\":[{\"distanceM\":1021,\"endLatE7\":436591821,\"endLonE7\":-793800000,\"endedAt\":1700000240000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:deadhead\"},{\"distanceM\":1006,\"endLatE7\":436682292,\"endLonE7\":-793800000,\"endedAt\":1700000380000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Delivery (estimated)\",\"startLatE7\":436591821,\"startLonE7\":-793800000,\"startedAt\":1700000240000,\"tripKey\":\"scn:1700000240000:active\"}]}",
+    "scenario_stacked_orders": "{\"algorithmVersion\":4,\"flags\":[],\"inputDigest\":\"e871ab2e34cbf793\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436904695,\"lonE7\":-793800000,\"t\":1700001650000}],\"stats\":{\"fixes_in\":74,\"fixes_used\":46,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":28},\"stops\":[{\"confidence\":\"medium\",\"dwellS\":300,\"endedAt\":1700000450000,\"estRole\":\"pickup\",\"latE7\":436634898,\"lonE7\":-793800000,\"role\":\"pickup\",\"startedAt\":1700000150000,\"stopKey\":\"scn:1700000150000:stop\"},{\"confidence\":\"medium\",\"dwellS\":300,\"endedAt\":1700000780000,\"estRole\":\"dropoff\",\"latE7\":436661878,\"lonE7\":-793800000,\"role\":\"dropoff\",\"startedAt\":1700000480000,\"stopKey\":\"scn:1700000480000:stop\"},{\"confidence\":\"medium\",\"dwellS\":300,\"endedAt\":1700001200000,\"estRole\":\"pickup\",\"latE7\":436769796,\"lonE7\":-793800000,\"role\":\"pickup\",\"startedAt\":1700000900000,\"stopKey\":\"scn:1700000900000:stop\"},{\"confidence\":\"medium\",\"dwellS\":300,\"endedAt\":1700001590000,\"estRole\":\"dropoff\",\"latE7\":436850735,\"lonE7\":-793800000,\"role\":\"dropoff\",\"startedAt\":1700001290000,\"stopKey\":\"scn:1700001290000:stop\"}],\"totals\":{\"activeM\":1200,\"deadheadM\":3300,\"personalM\":0,\"totalM\":4500},\"trips\":[{\"distanceM\":1500,\"endLatE7\":436634898,\"endLonE7\":-793800000,\"endedAt\":1700000150000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:deadhead\"},{\"distanceM\":300,\"endLatE7\":436661878,\"endLonE7\":-793800000,\"endedAt\":1700000480000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Delivery (estimated)\",\"startLatE7\":436634898,\"startLonE7\":-793800000,\"startedAt\":1700000150000,\"tripKey\":\"scn:1700000150000:active\"},{\"distanceM\":1200,\"endLatE7\":436769796,\"endLonE7\":-793800000,\"endedAt\":1700000900000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436661878,\"startLonE7\":-793800000,\"startedAt\":1700000480000,\"tripKey\":\"scn:1700000480000:deadhead\"},{\"distanceM\":900,\"endLatE7\":436850735,\"endLonE7\":-793800000,\"endedAt\":1700001290000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Delivery (estimated)\",\"startLatE7\":436769796,\"startLonE7\":-793800000,\"startedAt\":1700000900000,\"tripKey\":\"scn:1700000900000:active\"},{\"distanceM\":600,\"endLatE7\":436904695,\"endLonE7\":-793800000,\"endedAt\":1700001650000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436850735,\"startLonE7\":-793800000,\"startedAt\":1700001290000,\"tripKey\":\"scn:1700001290000:deadhead\"}]}",
+    "scenario_start_wait": "{\"algorithmVersion\":4,\"flags\":[{\"code\":\"no_stops_detected\"}],\"inputDigest\":\"025d032e5229051e\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436679864,\"lonE7\":-793800000,\"t\":1700000450000}],\"stats\":{\"fixes_in\":37,\"fixes_used\":21,\"gap_m\":0,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":16},\"stops\":[{\"confidence\":\"medium\",\"dwellS\":250,\"endedAt\":1700000250000,\"estRole\":\"none\",\"latE7\":436500000,\"lonE7\":-793800000,\"role\":\"none\",\"startedAt\":1700000000000,\"stopKey\":\"scn:1700000000000:stop\"}],\"totals\":{\"activeM\":2000,\"deadheadM\":0,\"personalM\":0,\"totalM\":2000},\"trips\":[{\"distanceM\":2000,\"endLatE7\":436679864,\"endLonE7\":-793800000,\"endedAt\":1700000450000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:active\"}]}",
+    "scenario_tunnel": "{\"algorithmVersion\":4,\"flags\":[{\"at\":1700000200000,\"code\":\"gap_counted\",\"detail\":\"dt_s=100,chord_m=600\"}],\"inputDigest\":\"aa6dbcd2c213ec68\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436913688,\"lonE7\":-793800000,\"t\":1700000500000}],\"stats\":{\"fixes_in\":42,\"fixes_used\":42,\"gap_m\":600,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[],\"totals\":{\"activeM\":4600,\"deadheadM\":0,\"personalM\":0,\"totalM\":4600},\"trips\":[{\"distanceM\":4600,\"endLatE7\":436913688,\"endLonE7\":-793800000,\"endedAt\":1700000500000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Business driving\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:active\"}]}",
+    "scenario_wake_up": "{\"algorithmVersion\":4,\"flags\":[{\"at\":1700000150000,\"code\":\"gap_counted\",\"detail\":\"dt_s=600,chord_m=100\"}],\"inputDigest\":\"dac643a028a9dc85\",\"route\":[{\"latE7\":436500000,\"lonE7\":-793800000,\"t\":1700000000000},{\"latE7\":436778790,\"lonE7\":-793800000,\"t\":1700000900000}],\"stats\":{\"fixes_in\":32,\"fixes_used\":32,\"gap_m\":100,\"low_accuracy\":0,\"non_positive_dt\":0,\"speed_spike\":0,\"within_gate\":0},\"stops\":[{\"confidence\":\"high\",\"dwellS\":600,\"endedAt\":1700000750000,\"estRole\":\"pickup\",\"latE7\":436634898,\"lonE7\":-793800000,\"role\":\"pickup\",\"startedAt\":1700000150000,\"stopKey\":\"scn:1700000150000:stop\"}],\"totals\":{\"activeM\":1600,\"deadheadM\":1500,\"personalM\":0,\"totalM\":3100},\"trips\":[{\"distanceM\":1500,\"endLatE7\":436634898,\"endLonE7\":-793800000,\"endedAt\":1700000150000,\"kind\":\"deadhead\",\"originalKind\":\"deadhead\",\"purpose\":\"Between deliveries (estimated)\",\"startLatE7\":436500000,\"startLonE7\":-793800000,\"startedAt\":1700000000000,\"tripKey\":\"scn:1700000000000:deadhead\"},{\"distanceM\":1600,\"endLatE7\":436778790,\"endLonE7\":-793800000,\"endedAt\":1700000900000,\"kind\":\"active\",\"originalKind\":\"active\",\"purpose\":\"Delivery (estimated)\",\"startLatE7\":436634898,\"startLonE7\":-793800000,\"startedAt\":1700000150000,\"tripKey\":\"scn:1700000150000:active\"}]}"
   }
 }

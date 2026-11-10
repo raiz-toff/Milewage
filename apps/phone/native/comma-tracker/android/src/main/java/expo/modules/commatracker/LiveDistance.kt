@@ -28,7 +28,7 @@ class LiveDistance(private val startedAt: Long) {
             if (dtMs <= 0) return
             val dDm = haversineDm(a.latE7, a.lonE7, p.latE7, p.lonE7)
             if (dDm * 1000 > MAX_SPEED_DMPS * dtMs) return
-            if (dDm < MIN_MOVE_DM) return
+            if (dDm < minMoveDm(a.accuracyM, p.accuracyM)) return
             totalDm += dDm
         }
         anchor = p
@@ -42,6 +42,11 @@ class LiveDistance(private val startedAt: Long) {
         const val MAX_ACCURACY_M = 50L
         const val MAX_SPEED_DMPS = 420L
         const val MIN_MOVE_DM = 200L
+
+        /** As `minMoveDm` in the engine (ADR 0006): max(20 m, the worse of the two accuracies), in dm. */
+        fun minMoveDm(anchorAccuracyM: Long, fixAccuracyM: Long): Long =
+            maxOf(MIN_MOVE_DM, maxOf(anchorAccuracyM, fixAccuracyM) * 10)
+
         private const val EARTH_RADIUS_M = 6_371_000.0
 
         /** As `haversineDm` in the engine: degrees from e7, rounded once to whole decimetres. */

@@ -35,6 +35,38 @@ class LiveDistanceTest {
     fun `nothing counted is zero`() {
         assertEquals(0L, LiveDistance(start).runningTotalM())
     }
+
+    // `northM` metres north of 43.65, -79.38 (1 m of latitude is about 89.93 e7 units).
+    private fun north(seq: Long, tS: Long, northM: Double, acc: Long) =
+        p(seq, tS * 1000, 436_500_000L + Math.round(northM * 89.932), -793_800_000L, acc)
+
+    @Test
+    fun `the minimum move follows the worse accuracy of anchor and fix (ADR 0006)`() {
+        assertEquals(200L, LiveDistance.minMoveDm(5, 5))
+        assertEquals(200L, LiveDistance.minMoveDm(20, 3))
+        assertEquals(210L, LiveDistance.minMoveDm(21, 3))
+        assertEquals(350L, LiveDistance.minMoveDm(3, 35))
+        assertEquals(500L, LiveDistance.minMoveDm(50, 50))
+        val d = LiveDistance(start)
+        d.push(north(1, 0, 0.0, 35))
+        d.push(north(2, 10, 30.0, 5))
+        assertEquals("30 m from a 35 m anchor is jitter", 0L, d.runningTotalM())
+        d.push(north(3, 20, 36.0, 5))
+        assertEquals(36L, d.runningTotalM())
+    }
+
+    @Test
+    fun `a parked phone with poor accuracy wandering 20 to 45 m adds nothing`() {
+        val d = LiveDistance(start)
+        for (i in 0..10) d.push(north(i + 1L, i * 10L, i * 100.0, 5))
+        for (i in 1..30) {
+            val w = 20 + (i * 11) % 26
+            d.push(north(20L + i, 100L + i * 10, 1000.0 + if (i % 2 == 0) w else -w, minOf(50L, w + 1L)))
+        }
+        assertEquals(1000L, d.runningTotalM())
+        d.push(north(99, 500, 1100.0, 5))
+        assertEquals(1100L, d.runningTotalM())
+    }
 }
 
 class ShiftNoticeTest {

@@ -13,6 +13,13 @@ Fixes for AI assistants behind the owner's own reverse proxy or a private certif
 assistant endpoint off again, as it was in 0.1.0. Set `MILEWAGE_MODULE_MCP=1` in
 `infra/docker/.env` to turn it on.
 
+**After upgrading:** the track engine is now version 4 (ADR 0006). Install the phone app built
+from this release too, so the phone and the server count the same way; until then a shift whose
+totals differ is marked as differing because of the engine version. Stored shifts keep their
+figures. Run `milewage-cli recalc --dry-run` once to see which shifts the new rule would change
+(only shifts with GPS accuracy worse than 20 metres can). To apply it to one of them, use
+`POST /api/v1/shifts/<id>/recalculate`; a finalized shift is never changed.
+
 ### Added
 
 - `MILEWAGE_TRUSTED_PROXIES` in `infra/docker/.env`: the address of a reverse proxy of your own in
@@ -27,6 +34,12 @@ assistant endpoint off again, as it was in 0.1.0. Set `MILEWAGE_MODULE_MCP=1` in
 
 ### Changed
 
+- Miles: the smallest move that counts now follows GPS accuracy. It is 20 metres, or the worse
+  reported accuracy of the new point and the last counted one when that is larger, up to 50
+  metres. A parked phone with poor GPS no longer adds distance that was never driven, and a
+  point held back is counted later in the distance from the last counted point. Tracks with
+  accuracy of 20 metres or better give exactly the same totals as before. Engine version 4
+  (ADR 0006); the phone's notification counter follows the same rule.
 - The sign-in documents for assistants (`/.well-known/oauth-protected-resource`,
   `/.well-known/oauth-authorization-server`) and the endpoint's 401 use `MILEWAGE_PUBLIC_URL` or
   `MILEWAGE_HOME_URL`, https included, when the request came for that host name. Before, a proxy

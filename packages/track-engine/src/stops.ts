@@ -67,7 +67,8 @@ function dist(a: { latE7: number; lonE7: number }, b: { latE7: number; lonE7: nu
 
 /**
  * Stage 5. `qualified` is the stage 2 output (sorted, de-duplicated, accuracy at most 50 m),
- * BEFORE the 20 m gate: the gate drops the fixes inside a dwell, so it cannot be the input.
+ * BEFORE the gate (stage 3): the gate drops the fixes inside a dwell, so it cannot be the input.
+ * Nothing here reads the gate's minimum move.
  * One left-to-right scan; a cluster only looks ahead over fixes inside the radius.
  */
 export function detectStops(

@@ -170,4 +170,23 @@ export const SCENARIOS: Record<string, () => ShiftInput> = {
     p.rows.push([p.t, p.y]);
     return p.ride(1500).input();
   },
+  // Parked with poor GPS (ADR 0006): 1 km in with good fixes, 8 minutes parked while the fixes
+  // wander 20-45 m with a reported accuracy of 30-50 m, then 1 km out at 2 m/s with 35 m accuracy.
+  // The wander adds nothing and the crawl out is counted in full: 2000 m.
+  parked_poor_accuracy: () => {
+    const rows: [number, number, number, number][] = [];
+    for (let t = 0; t <= 100; t += 10) rows.push([t, t * 10, 0, 5]);
+    for (let i = 1; i <= 48; i++) {
+      const d = 20 + ((i * 7) % 26);
+      const a = (i * 137 * Math.PI) / 180;
+      rows.push([
+        100 + i * 10,
+        1000 + d * Math.cos(a),
+        d * Math.sin(a),
+        Math.min(50, Math.max(30, d + 5)),
+      ]);
+    }
+    for (let i = 1; i <= 50; i++) rows.push([580 + i * 10, 1000 + i * 20, 0, 35]);
+    return shift(track(rows), 1080, { segmenter: 'stops' });
+  },
 };
