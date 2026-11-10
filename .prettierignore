@@ -15,3 +15,8 @@ apps/phone/nativewind-env.d.ts
 
 # Third-party skills installed by `npx skills add` (mattpocock/skills); not ours to format.
 .agents/
+
+# Native Android app: Gradle output, and Room's generated schema files (committed as Room writes them).
+apps/android/.gradle/
+apps/android/**/build/
+apps/android/data/schemas/

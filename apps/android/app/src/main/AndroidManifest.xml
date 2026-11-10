@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Manifest policy (09 section 5.3, carried over from apps/phone/plugins/manifestPolicy.js):
+  the permissions below and those of :tracking (location, foreground service, notifications, boot)
+  and :data (internet, network state) are the whole list. Changed from the Expo app:
+  - ACTIVITY_RECOGNITION is gone: it served Google Play Services activity transitions, and this app
+    has no Google Play Services (it runs on de-Googled phones).
+  - RECEIVE_BOOT_COMPLETED is requested (decision 2026-11-10, native app): to resume a running shift
+    after a restart. Its receiver stays disabled until the tracking task implements it.
+  - ACCESS_COARSE_LOCATION is listed: Android 12+ requires it next to fine location.
+  The build fails when the merged manifest asks for anything else, a library's permission included
+  (checkReleaseManifestPolicy in app/build.gradle.kts): a new permission is a decision, not an accident.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Pairing: scanning the QR code from the web app (owner decision 2026-11-06). -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <!-- Android 11+ hides other apps unless they are named: only Tailscale is (plan 19 section 3.5). -->
+    <queries>
+        <package android:name="com.tailscale.ipn" />
+    </queries>
+
+    <application
+        android:name=".MileWageApp"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
+        android:enableOnBackInvokedCallback="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MileWage"
+        tools:targetApi="36">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.MileWage.Starting"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- milewage://pair links from the web app's pairing page; the pairing task reads them. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="milewage" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

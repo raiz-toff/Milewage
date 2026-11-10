@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The window behind Compose. Its background is the theme's surface, so nothing flashes
+         between the splash screen and the first frame. -->
+    <style name="Theme.MileWage" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+
+    <!-- Android 12+ splash screen API (androidx.core:core-splashscreen on older versions). -->
+    <style name="Theme.MileWage.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/window_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.MileWage</item>
+    </style>
+</resources>

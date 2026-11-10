@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Location while a shift runs, including with the screen off (Android 10+ asks for "Allow all
+         the time" separately). Coarse is listed because Android 12+ requires it next to fine. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- The running-shift notification; on Android 16+ it may show as a status bar chip. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
+    <!-- Resuming a shift that was running when the phone restarted. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+
+    <application>
+        <!-- Placeholder: declared so the manifest policy is settled; it stops itself until the tracking task fills it. -->
+        <service
+            android:name="app.milewage.tracking.LocationTrackingService"
+            android:exported="false"
+            android:foregroundServiceType="location"
+            android:stopWithTask="false" />
+
+        <!-- Disabled until a shift can be resumed after a restart (the tracking task enables it). -->
+        <receiver
+            android:name="app.milewage.tracking.BootReceiver"
+            android:enabled="false"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

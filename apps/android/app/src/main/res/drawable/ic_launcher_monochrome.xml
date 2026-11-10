@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Coin Road (branding/coin-thin), drawn from its SVG by hand: the dashes are explicit segments
+     because vector drawables have no stroke-dasharray, and the monochrome cut-out uses even-odd
+     filling because they have no masks. -->
+<!-- Themed (monochrome) icon: branding/coin-thin/app/adaptive-monochrome.svg. The launcher tints it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <group android:translateX="26" android:translateY="26" android:scaleX="0.56" android:scaleY="0.56">
+            <group>
+                <clip-path android:pathData="M50,4 A46,46 0 1,1 50,96 A46,46 0 1,1 50,4 Z" />
+                <!-- The disc with the road cut out (even-odd), then the centre-line dashes. -->
+                <path android:fillColor="#FF000000" android:fillType="evenOdd" android:pathData="M50,4 A46,46 0 1,1 50,96 A46,46 0 1,1 50,4 Z M-6.538,94.847 L41.895,75.895 L69.895,39.895 L113.462,22.847 L106.538,5.153 L58.105,24.105 L30.105,60.105 L-13.462,77.153 Z" />
+                <path android:strokeColor="#FF000000" android:strokeWidth="3" android:pathData="M-10,86 L-3.481,83.449 M3.037,80.898 L9.556,78.348 M16.075,75.797 L22.593,73.246 M29.112,70.695 L35.631,68.144 M40.054,62.787 L44.352,57.262 M48.649,51.736 L52.947,46.211 M57.245,40.686 L61.542,35.16 M66.791,30.908 L73.309,28.357 M79.828,25.806 L86.347,23.256 M92.865,20.705 L99.384,18.154 M105.903,15.603 L110,14" />
+            </group>
+    </group>
+</vector>

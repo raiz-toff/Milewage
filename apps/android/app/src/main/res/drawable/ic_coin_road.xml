@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Coin Road (branding/coin-thin), drawn from its SVG by hand: the dashes are explicit segments
+     because vector drawables have no stroke-dasharray, and the monochrome cut-out uses even-odd
+     filling because they have no masks. -->
+<!-- The symbol on its own: branding/coin-thin/symbol.svg. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="100dp" android:height="100dp" android:viewportWidth="100" android:viewportHeight="100">
+    <path android:fillColor="#FFC21F" android:pathData="M50,4 A46,46 0 1,1 50,96 A46,46 0 1,1 50,4 Z" />
+    <group>
+        <clip-path android:pathData="M50,4 A46,46 0 1,1 50,96 A46,46 0 1,1 50,4 Z" />
+        <path android:strokeColor="#101214" android:strokeWidth="19" android:strokeLineJoin="miter"
+            android:strokeMiterLimit="4" android:pathData="M-10,86 L36,68 L64,32 L110,14" />
+        <path android:strokeColor="#FFC21F" android:strokeWidth="3" android:pathData="M-10,86 L-3.481,83.449 M3.037,80.898 L9.556,78.348 M16.075,75.797 L22.593,73.246 M29.112,70.695 L35.631,68.144 M40.054,62.787 L44.352,57.262 M48.649,51.736 L52.947,46.211 M57.245,40.686 L61.542,35.16 M66.791,30.908 L73.309,28.357 M79.828,25.806 L86.347,23.256 M92.865,20.705 L99.384,18.154 M105.903,15.603 L110,14" />
+    </group>
+</vector>

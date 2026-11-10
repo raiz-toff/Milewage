@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Every string a driver reads. Voice: short sentences, plain words, say what it is and what to do
+     next, no exclamation marks, no "please", no jargon (see .claude/skills/milewage-design). -->
+<resources>
+    <string name="app_name" translatable="false">MileWage</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_shifts">Shifts</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Common -->
+    <string name="back">Back</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- First run -->
+    <string name="welcome_title">Welcome to MileWage</string>
+    <string name="welcome_body">MileWage records the miles you drive on a shift and sends them to your own MileWage server.</string>
+    <string name="welcome_get_started">Get started</string>
+
+    <!-- Home -->
+    <string name="home_week_distance">This week</string>
+    <string name="home_week_earned">Earned this week</string>
+    <string name="home_no_shift_title">No shift running</string>
+    <string name="home_no_shift_body">Starting a shift from this screen comes in the next build.</string>
+
+    <!-- Shifts -->
+    <string name="shifts_empty_title">No shifts yet</string>
+    <string name="shifts_empty_body">Shifts you record on this phone show here.</string>
+    <string name="shift_title">Shift</string>
+
+    <!-- Settings -->
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_wallpaper_colours">Use wallpaper colours</string>
+    <string name="settings_wallpaper_colours_body">Colours from your wallpaper instead of MileWage yellow.</string>
+    <string name="settings_wallpaper_colours_unavailable">Needs Android 12 or later.</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_version_value">%1$s (build %2$d)</string>
+</resources>

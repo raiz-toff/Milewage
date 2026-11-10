@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MileWage's transport rule (owner decision 2026-11-08, plan 28): https everywhere; plain http only
+  to a home address (private IPv4, link-local, IPv6 unique/link-local, *.local, *.lan, *.home.arpa).
+
+  This file cannot express that rule: a domain-config matches names and single addresses, never an
+  address range like 192.168.0.0/16, and the server's home address is learned when the phone pairs.
+  So the platform allows cleartext here and the rule is enforced in code, before any request leaves
+  the phone: HomeOnlyCleartext in :data (data/net/HttpClients.kt) refuses http to anything that is
+  not a home address, as an application interceptor and again as a network interceptor so a redirect
+  cannot leave the home network. The rule itself is HomeAddress in :core, a port of
+  packages/shared/src/home-address.ts with the same tests. Debug builds may use http anywhere
+  (BuildConfig.ANY_HTTP) for a server on a laptop.
+
+  Trust: the system's certificate authorities only. Certificates the user installed are not
+  trusted, so a profile installed on the phone cannot read the driver's traffic.
+-->
+<network-security-config xmlns:tools="http://schemas.android.com/tools">
+    <!-- Lint flags this; it is deliberate, see above. -->
+    <base-config cleartextTrafficPermitted="true" tools:ignore="InsecureBaseConfiguration">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

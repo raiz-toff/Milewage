@@ -24,3 +24,8 @@ infra/vm-tests/artifacts/
 # Signing keys never go in git (scripts/phone-keystore.sh writes them to ~/.milewage)
 *.keystore
 *.jks
+# Native Android app (apps/android): Gradle output and the machine-local SDK path
+apps/android/.gradle/
+apps/android/.kotlin/
+apps/android/**/build/
+apps/android/local.properties
