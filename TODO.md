@@ -52,7 +52,7 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
       Combobox style, default to the browser's zone
       (`Intl.DateTimeFormat().resolvedOptions().timeZone`), the zones of the chosen country first,
       and the current UTC offset shown next to each name. Server keeps validating the name.
-- [ ] Badge colour picker for platforms; the API already accepts a colour (PL4b).
+- [x] Badge colour picker for platforms; the API already accepts a colour (PL4b).
 - [ ] Shifts list cannot show platform badges: the shifts API has no platforms per shift (PL2).
 - [x] Edit and delete a hand-made trip on the web (W2i). Done 2026-11-10: the "..." menu of a
       manual trip in a shift's timeline. Joining trips is not built: it needs a new engine edit kind

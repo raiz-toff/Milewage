@@ -10,15 +10,15 @@ export function CheckStep({ ctx, next, steps }: StepProps) {
   };
   return (
     <StepForm save={save} next={next} skip={null} submit="Finish">
-      <dl className="divide-y rounded-lg border text-sm">
+      <dl className="divide-y divide-outline-variant rounded-lg border border-outline-variant text-body-medium">
         {rows.map((s) => (
           <div key={s.id} className="grid gap-1 p-3 sm:grid-cols-[10rem_1fr_auto] sm:gap-4">
-            <dt className="font-medium">{s.title}</dt>
+            <dt className="text-title-small">{s.title}</dt>
             <dd className="text-muted-foreground">{s.summary!(ctx)}</dd>
             <dd>
               <Link
                 to={`/onboarding/${s.id}?change=1`}
-                className="text-sm underline underline-offset-4"
+                className="rounded-extra-small text-label-large underline decoration-primary decoration-2 underline-offset-4 focus-ring hover:decoration-[3px]"
               >
                 Change <span className="sr-only">{s.title.toLowerCase()}</span>
               </Link>
@@ -26,7 +26,9 @@ export function CheckStep({ ctx, next, steps }: StepProps) {
           </div>
         ))}
       </dl>
-      <p className="text-sm text-muted-foreground">You can change all of this later in Settings.</p>
+      <p className="text-body-medium text-muted-foreground">
+        You can change all of this later in Settings.
+      </p>
     </StepForm>
   );
 }

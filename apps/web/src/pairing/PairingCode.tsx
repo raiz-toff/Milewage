@@ -25,7 +25,7 @@ const SOURCE: Record<Pairing['base_url_source'], string> = {
 export function PairingCode({ session }: { session: PairingSession }) {
   const { code: pairing, busy, error, renew } = session;
   const { api } = useSession();
-  const { timezone } = useSettings();
+  const { timezone, time_format: tf } = useSettings();
   const available = useAppAvailable(api);
   const [address, setAddress] = useState<string | null>(null); // non-null while changing
 
@@ -48,9 +48,9 @@ export function PairingCode({ session }: { session: PairingSession }) {
         )}
         <div className="min-w-0 flex-1 basis-64 space-y-3">
           {problem === 'local' ? null : (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-body-medium text-muted-foreground">
               Open MileWage on your phone and tap Scan the code. Valid once, until{' '}
-              {formatTime(pairing.expires_at, timezone)}.
+              {formatTime(pairing.expires_at, timezone, tf)}.
             </p>
           )}
           <AppButtons link={pairing.qr_payload} available={available} />
@@ -97,9 +97,11 @@ export function PairingCode({ session }: { session: PairingSession }) {
               </div>
             </div>
           )}
-          <details className="text-sm text-muted-foreground">
-            <summary className="cursor-pointer">Show code text</summary>
-            <code className="mt-1 block break-all font-mono text-xs">{pairing.qr_payload}</code>
+          <details className="text-body-medium text-muted-foreground">
+            <summary className="cursor-pointer text-label-large">Show code text</summary>
+            <code className="mt-1 block font-mono text-body-small break-all">
+              {pairing.qr_payload}
+            </code>
           </details>
           {/* A new code that could not be made when this one ran out. */}
           {address === null && session.state === 'expired' ? <FormError message={error} /> : null}
@@ -119,20 +121,20 @@ function Addresses({ pairing }: { pairing: Pairing }) {
     url === base ? <span className="text-muted-foreground"> ({SOURCE[source]})</span> : null;
   if (!home && !away) {
     return (
-      <p className="text-sm">
+      <p className="text-body-medium">
         Your phone will connect to <span className="font-medium break-all">{base}</span>
         {from(base)}
       </p>
     );
   }
   return (
-    <ul className="space-y-1 text-sm">
+    <ul className="space-y-1 text-body-medium">
       {home ? (
         <li>
           <span className="font-medium">At home:</span> <span className="break-all">{home}</span>
           {from(home)}, used when the phone is on your Wi-Fi.
           {home.startsWith('http:') ? (
-            <span className="block text-xs text-muted-foreground">
+            <span className="block text-body-small text-muted-foreground">
               Plain http: not encrypted on your home network.
             </span>
           ) : null}

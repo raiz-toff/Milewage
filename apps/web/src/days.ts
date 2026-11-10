@@ -146,6 +146,17 @@ export function formatDay(iso: string, locale: string): string {
   );
 }
 
+/** A month (any day in it) in the driver's country's style: "Nov 2026". */
+export function formatMonth(iso: string, locale: string): string {
+  const d = isoToDate(iso);
+  if (!d) return '';
+  return new Intl.DateTimeFormat(locale, {
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(Date.UTC(d.getFullYear(), d.getMonth(), 1));
+}
+
 const MONTHS = Array.from({ length: 12 }, (_, i) =>
   new Intl.DateTimeFormat('en', { month: 'long', timeZone: 'UTC' })
     .format(Date.UTC(2026, i, 1))

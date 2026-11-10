@@ -27,9 +27,9 @@ export function GoalBar({ goal }: { goal: Goal }) {
   const p = goal.progress;
   return (
     <div>
-      <div className="flex justify-between text-sm">
-        <span className="font-medium">{goal.label}</span>
-        <span className="text-muted-foreground">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+        <span className="text-title-medium">{goal.label}</span>
+        <span className="text-body-medium text-muted-foreground tabular-nums">
           {p.value === null
             ? (p.note ?? 'unknown')
             : `${valueText(goal.metric, p.value, unit, currency)} of ${valueText(goal.metric, p.target, unit, currency)}${p.estimated ? ' (estimated)' : ''}`}
@@ -148,7 +148,7 @@ export function GoalsPage() {
         </form>
       </Section>
       {goals === null ? (
-        <p className="text-sm text-muted-foreground">Loading</p>
+        <p className="text-body-medium text-muted-foreground">Loading</p>
       ) : goals.length === 0 ? (
         <EmptyState>No goals yet.</EmptyState>
       ) : (
@@ -156,7 +156,7 @@ export function GoalsPage() {
           {goals.map((g) => (
             <li key={g.id} className="space-y-3 rounded-medium bg-card p-4">
               <GoalBar goal={g} />
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 text-body-medium text-muted-foreground">
                 <Badge variant="secondary">{g.period}</Badge>
                 {g.active ? null : <Badge variant="outline">paused</Badge>}
                 <span className="flex-1" />

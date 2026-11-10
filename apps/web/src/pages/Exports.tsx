@@ -215,7 +215,7 @@ export function ExportsPage() {
     >
       <div className="min-w-0 space-y-1">
         <p className="font-medium">{NAME[f]}</p>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-body-medium text-muted-foreground">
           {HINT[f].replace('{year}', from.slice(0, 4))}
         </p>
       </div>
@@ -282,14 +282,14 @@ export function ExportsPage() {
             className="flex flex-wrap gap-x-5 gap-y-3"
           >
             {PRESETS.map((p) => (
-              <label key={p.id} className="flex items-center gap-2 text-sm">
+              <label key={p.id} className="flex items-center gap-2 text-body-large">
                 <RadioGroupItem value={p.id} />
                 {p.label}
               </label>
             ))}
           </RadioGroup>
           {preset !== 'custom' ? (
-            <p className="text-sm text-muted-foreground tabular-nums">
+            <p className="text-body-medium text-muted-foreground tabular-nums">
               {`${formatDay(from, locale)} – ${formatDay(to, locale)}`}
             </p>
           ) : null}
@@ -316,7 +316,7 @@ export function ExportsPage() {
           </div>
         ) : null}
         {problem ? (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" className="text-body-medium text-destructive">
             {problem}
           </p>
         ) : null}

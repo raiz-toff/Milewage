@@ -94,14 +94,14 @@ function ModuleFlags({ modules }: { modules: Settings['modules'] }) {
           {flags.map(([name, on]) => (
             <li
               key={name}
-              className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
+              className="flex items-center justify-between gap-2 rounded-small border border-outline-variant px-3 py-2 text-body-medium"
             >
-              <span className="tabular-nums text-xs">{name}</span>
+              <span className="min-w-0 truncate">{name}</span>
               <Badge variant={on ? 'secondary' : 'outline'}>{on ? 'On' : 'Off'}</Badge>
             </li>
           ))}
         </ul>
-        <div className="flex flex-wrap items-center gap-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2 text-body-medium">
           <span className="text-muted-foreground">Exporters</span>
           {modules.exporters.length > 0 ? (
             modules.exporters.map((f) => (
@@ -278,9 +278,9 @@ function SectionHeader({ section }: { section: Section }) {
   return (
     <div className="space-y-1">
       <h2 className="text-title-large text-on-surface">{section.label}</h2>
-      <p className="text-sm text-muted-foreground">{section.description}</p>
+      <p className="text-body-medium text-muted-foreground">{section.description}</p>
       {section.saves ? (
-        <p className="text-xs text-muted-foreground">{SAVES[section.saves]}</p>
+        <p className="text-body-small text-muted-foreground">{SAVES[section.saves]}</p>
       ) : null}
     </div>
   );
@@ -346,7 +346,7 @@ function PrefsForm({ prefs, children }: { prefs: Prefs; children: ReactNode }) {
           dirty && 'sticky bottom-4 z-10 border-primary/40 shadow-lg backdrop-blur',
         )}
       >
-        <div className="min-h-5 text-sm">
+        <div className="min-h-5 text-body-medium">
           {error ? (
             <FormError message={error} />
           ) : note ? (
@@ -424,7 +424,7 @@ function ProfileSection({ prefs }: { prefs: Prefs }) {
           />
         ) : null}
         {country?.regional_rules && !draft.region ? (
-          <p role="note" className="text-sm text-muted-foreground sm:col-span-2">
+          <p role="note" className="text-body-medium text-muted-foreground sm:col-span-2">
             Set your {word.toLowerCase()} to include its own rules. Until then, only the national
             rules apply.
           </p>
@@ -492,10 +492,10 @@ function TrackingSection({ prefs }: { prefs: Prefs }) {
       <div className="space-y-6">
         <div className="flex items-start justify-between gap-6">
           <div className="space-y-1">
-            <label htmlFor="stops-enabled" className="text-sm font-medium">
+            <label htmlFor="stops-enabled" className="text-body-large">
               Detect stops and estimate active vs deadhead
             </label>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-body-medium text-muted-foreground">
               Shifts started afterwards follow this. Past shifts, stored stops and labels do not
               change.
             </p>
@@ -530,7 +530,7 @@ function TrackingSection({ prefs }: { prefs: Prefs }) {
             />
           ) : null}
         </div>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-body-medium text-muted-foreground">
           What the phone and this server record, and who else sees something:{' '}
           <PrivacyLink className="font-medium text-foreground underline" />.
         </p>
@@ -546,10 +546,10 @@ function HelpSection({ prefs }: { prefs: Prefs }) {
     <SettingsCard>
       <div className="flex items-start justify-between gap-6">
         <div className="space-y-1">
-          <label htmlFor="help-enabled" className="text-sm font-medium">
+          <label htmlFor="help-enabled" className="text-body-large">
             Show help pages
           </label>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-body-medium text-muted-foreground">
             Turn it off to hide Help from the sidebar and the help links on screens. Nothing else
             changes.
           </p>
@@ -572,8 +572,8 @@ function RunSetupAgain() {
   return (
     <SettingsCard>
       <section aria-label="Setup" className="space-y-3">
-        <h3 className="text-base leading-snug font-medium">Setup</h3>
-        <p className="text-sm text-muted-foreground">
+        <h3 className="text-title-medium">Setup</h3>
+        <p className="text-body-medium text-muted-foreground">
           Go through the first-run questions again. Your answers stay until you change them.
         </p>
         <UiButton variant="outline" asChild>

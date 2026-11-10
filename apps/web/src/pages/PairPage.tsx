@@ -30,7 +30,7 @@ export function PairPage() {
           </p>
           <AppButtons link={link} available={available} />
           {available ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-body-medium text-muted-foreground">
               No app yet? Get the app, install it, then come back to this page and tap Open in the
               MileWage app.
             </p>

@@ -84,6 +84,7 @@ export function ShiftFigures({
       {earned !== undefined ? (
         <StatCard
           label="Earned"
+          tone={earned?.cents == null ? undefined : 'earned'}
           value={
             earned === null ? (
               <Skeleton className="h-7 w-20" />
@@ -113,7 +114,7 @@ export function CheckList({ shift }: { shift: Shift }) {
   );
   if (flags.length === 0 && !shift.recon_status) return null;
   return (
-    <ul aria-label="Checks" className="space-y-2 text-sm">
+    <ul aria-label="Checks" className="space-y-2 text-body-medium">
       {flags.map((f, i) => (
         <li key={`${f.code}-${i}`} className="flex items-start justify-between gap-3">
           <span className={f.severity === 'review' ? '' : 'text-muted-foreground'}>
@@ -138,8 +139,11 @@ export function AdviceList({ advice, title = 'What to do' }: { advice: string[];
   if (advice.length === 0) return null;
   return (
     <div className="space-y-1.5">
-      <h3 className="text-sm font-medium">{title}</h3>
-      <ul aria-label={title} className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+      <h3 className="text-title-small">{title}</h3>
+      <ul
+        aria-label={title}
+        className="list-disc space-y-1 pl-5 text-body-medium text-muted-foreground"
+      >
         {advice.map((a) => (
           <li key={a}>{a}</li>
         ))}
@@ -158,7 +162,7 @@ export function ShiftChecks({ shift }: { shift: Shift }) {
     >
       <CheckList shift={shift} />
       {!shift.flags?.length && !shift.recon_status ? (
-        <p className="text-sm text-muted-foreground">Nothing to check.</p>
+        <p className="text-body-medium text-muted-foreground">Nothing to check.</p>
       ) : (
         <AdviceList advice={adviceFor(shift)} />
       )}

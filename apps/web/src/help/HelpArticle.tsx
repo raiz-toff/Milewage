@@ -6,15 +6,19 @@ import type { HelpPage } from './catalog';
 import { HelpMarkdown } from './HelpMarkdown';
 import { githubUrl } from './source';
 
-const link = 'font-medium text-foreground underline underline-offset-4';
+const link =
+  'text-on-surface underline decoration-primary decoration-2 underline-offset-4 hover:decoration-[3px]';
 
 /** A page's `##` headings as in-page links, for pages long enough to need them. */
 function OnThisPage({ page }: { page: HelpPage }) {
   const top = page.headings.filter((h) => h.depth === 2);
   if (top.length < 3) return null;
   return (
-    <nav aria-label="On this page" className="space-y-2 rounded-xl border p-4 text-sm">
-      <p className="font-medium">On this page</p>
+    <nav
+      aria-label="On this page"
+      className="space-y-2 rounded-xl border border-outline-variant p-4 text-body-medium"
+    >
+      <p className="text-title-small text-on-surface">On this page</p>
       <ul className="space-y-1">
         {top.map((h) => (
           <li key={h.id}>
@@ -67,7 +71,7 @@ export function HelpArticle({
       ) : (
         <>
           <OnThisPage page={page} />
-          <article className="space-y-4">
+          <article className="space-y-4 text-body-large text-on-surface">
             <HelpMarkdown
               markdown={page.body}
               source={page.source}
@@ -75,7 +79,7 @@ export function HelpArticle({
               version={version}
             />
           </article>
-          <footer className="border-t pt-4 text-sm text-muted-foreground">
+          <footer className="border-t border-outline-variant pt-4 text-body-medium text-muted-foreground">
             This page describes MileWage {version}.{' '}
             <a
               href={githubUrl(page.source, version)}

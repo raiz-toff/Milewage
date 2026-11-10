@@ -102,14 +102,14 @@ export function ImportCard() {
   if (kind === 'mileiq')
     return (
       <section aria-label="Import" className="space-y-3">
-        <h3 className="text-base leading-snug font-medium">Import a CSV file</h3>
+        <h3 className="text-title-medium">Import a CSV file</h3>
         {picker}
         <MileIqImport />
       </section>
     );
   return (
     <section aria-label="Import" className="space-y-3">
-      <h3 className="text-base leading-snug font-medium">Import a CSV file</h3>
+      <h3 className="text-title-medium">Import a CSV file</h3>
       <FormError message={error} />
       {picker}
       <Field
@@ -151,7 +151,7 @@ export function ImportCard() {
               Import {preview.summary.ok} rows
             </Button>
           </div>
-          <ul id="import-problems" className="text-sm text-muted-foreground">
+          <ul id="import-problems" className="text-body-medium text-muted-foreground">
             {(allProblems ? preview.problems : preview.problems.slice(0, FIRST)).map((r) => (
               <li key={r.row}>
                 Row {r.row}: {r.message}
@@ -172,7 +172,7 @@ export function ImportCard() {
             </UiButton>
           ) : null}
           {unlisted > 0 && (allProblems || preview.problems.length <= FIRST) ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-body-medium text-muted-foreground">
               And {unlisted} more rows with problems, not listed. Fix these first, then check again.
             </p>
           ) : null}
@@ -184,7 +184,7 @@ export function ImportCard() {
           {result.errors} had problems.
         </p>
       ) : null}
-      <p className="text-xs text-muted-foreground">
+      <p className="text-body-small text-muted-foreground">
         Dates are YYYY-MM-DD and times HH:MM. Imported shifts are marked as imported in every
         export, because their distance was typed, not tracked.
       </p>
@@ -410,7 +410,7 @@ function MileIqImport() {
             </TableBox>
           ) : null}
           {p.problems.length ? (
-            <ul aria-label="Problems" className="text-sm text-muted-foreground">
+            <ul aria-label="Problems" className="text-body-medium text-muted-foreground">
               {p.problems.map((r) => (
                 <li key={r.line}>
                   Line {r.line}: {r.message}
@@ -434,7 +434,7 @@ function MileIqImport() {
           {result.expenses ? ` Added ${plural(result.expenses, 'parking or toll expense')}.` : ''}
         </p>
       ) : null}
-      <p className="text-xs text-muted-foreground">
+      <p className="text-body-small text-muted-foreground">
         In MileIQ, download your drive report as CSV, not PDF or Excel. Each drive becomes a shift
         marked as imported, because MileIQ recorded it, not this server.
       </p>

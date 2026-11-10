@@ -15,7 +15,8 @@ const MapView = lazy(() => import('./MapView'));
 const STEPS = 1000;
 
 const NONE: never[] = [];
-const NOTE = 'rounded-xl border border-dashed p-4 text-sm text-muted-foreground';
+const NOTE =
+  'rounded-xl border border-dashed border-outline-variant p-4 text-body-medium text-muted-foreground';
 
 /** A shift's recorded route; `points` is null while it loads and empty when there is none. */
 export interface ShiftRoute {
@@ -103,6 +104,7 @@ export function RouteView({
     );
 
   const tz = settings.timezone;
+  const tf = settings.time_format;
   return (
     <Section
       label="Route"
@@ -130,17 +132,17 @@ export function RouteView({
         onValueChange={setStep}
         formatValue={() =>
           cursor
-            ? `${formatTime(cursor.t, tz)} · ${speedIn(cursor.speed, settings.distance_unit)}`
+            ? `${formatTime(cursor.t, tz, tf)} · ${speedIn(cursor.speed, settings.distance_unit)}`
             : ''
         }
       />
       {cursor ? (
-        <p className="tabular-nums text-xs text-muted-foreground">
+        <p className="tabular-nums text-body-small text-muted-foreground">
           {cursor.lat.toFixed(5)}, {cursor.lon.toFixed(5)}
         </p>
       ) : null}
       {source === 'archive' ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-body-medium text-muted-foreground">
           Simplified route: raw points were archived (speed unavailable).
         </p>
       ) : null}

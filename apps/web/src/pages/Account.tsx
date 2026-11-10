@@ -28,8 +28,8 @@ export function Account() {
 
   return (
     <section aria-label="Account" className="space-y-3">
-      <h3 className="text-base leading-snug font-medium">Change password</h3>
-      <p className="text-sm text-muted-foreground">
+      <h3 className="text-title-medium">Change password</h3>
+      <p className="text-body-medium text-muted-foreground">
         The new password needs at least {MIN} characters.
       </p>
       <form onSubmit={(e) => void save(e)} className="space-y-3">
@@ -56,7 +56,7 @@ export function Account() {
         />
         <FormError message={error} />
         {note ? (
-          <p role="status" className="text-sm font-medium">
+          <p role="status" className="text-body-medium">
             {note}
           </p>
         ) : null}

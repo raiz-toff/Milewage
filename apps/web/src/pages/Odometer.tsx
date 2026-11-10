@@ -183,7 +183,7 @@ function ReadingsTable({
   rows: Reading[];
   onDelete?: (r: Reading) => void;
 }) {
-  const { distance_unit: unit, timezone } = useSettings();
+  const { distance_unit: unit, timezone, time_format: tf } = useSettings();
   return (
     <Section label={title} title={<>{title}</>}>
       {rows.length === 0 ? (
@@ -204,7 +204,7 @@ function ReadingsTable({
               {rows.map((r) => (
                 <tr key={r.id} className="border-t border-border">
                   <td className="whitespace-nowrap tabular-nums">
-                    {formatDateTime(r.recorded_at, timezone)}
+                    {formatDateTime(r.recorded_at, timezone, tf)}
                   </td>
                   <td className="whitespace-nowrap text-muted-foreground">{KIND_TEXT[r.kind]}</td>
                   <td className="text-right whitespace-nowrap tabular-nums">

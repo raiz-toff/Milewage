@@ -11,6 +11,8 @@ import { formatDistance, formatMoney } from '../format';
 import { useSettings } from '../session';
 import { PERIODS, dateWords, dayOf, weekWords } from '../days';
 import { Est } from '../ui/Est';
+import { moneyText } from '../ui/layout';
+import { cn } from '@/lib/utils';
 
 type Summary = Schemas['Summary'];
 type Range = { from: string; to: string };
@@ -114,10 +116,15 @@ function PeriodFigures({
       <Card role="region" aria-label="Earned">
         <CardContent className="space-y-2 py-2">
           <p className="text-label-medium text-on-surface-variant">Earned, after app fees</p>
-          <p className="text-display-small font-medium tabular-nums sm:text-display-medium">
+          <p
+            className={cn(
+              'text-display-small font-medium tabular-nums sm:text-display-medium',
+              earned !== null && earned > 0 && moneyText.earned,
+            )}
+          >
             {earned === null ? missing.value : money(earned)}
           </p>
-          <p className="text-sm text-muted-foreground tabular-nums">
+          <p className="text-body-medium text-muted-foreground tabular-nums">
             {earned === null ? missing.why : line}
           </p>
         </CardContent>
@@ -134,23 +141,26 @@ function PeriodFigures({
         />
       </div>
       {split ? (
-        <p className="text-xs text-muted-foreground tabular-nums">
+        <p className="text-body-small text-muted-foreground tabular-nums">
           Of that, {formatDistance(summary.active_m, unit)} active
           <Est /> and {formatDistance(summary.deadhead_m, unit)} deadhead
           <Est />. * Estimated from detected stops.
         </p>
       ) : null}
       {summary.deduction_cents !== null && summary.deduction_cents > 0 ? (
-        <Card size="sm" role="note" aria-label={deduction} className="bg-muted/40">
-          <CardContent className="text-sm text-muted-foreground">
+        <Card size="sm" variant="outlined" role="note" aria-label={deduction}>
+          <CardContent className="text-body-medium text-muted-foreground">
             Estimated {deduction.toLowerCase()}:{' '}
-            <span className="font-semibold text-foreground tabular-nums">
+            <span className="font-medium text-foreground tabular-nums">
               {money(summary.deduction_cents)}
             </span>{' '}
             on {business} of business driving. It lowers your taxable income; it is not money paid
             to you.{' '}
             {settings.modules.tax ? (
-              <Link to="/tax" className="font-medium text-foreground underline underline-offset-4">
+              <Link
+                to="/tax"
+                className="text-foreground underline decoration-primary decoration-2 underline-offset-4 hover:decoration-[3px]"
+              >
                 Open Tax
               </Link>
             ) : null}
@@ -197,11 +207,11 @@ export function DashboardHero({
             </TabsTrigger>
           ))}
         </TabsList>
-        <p className="text-sm text-muted-foreground tabular-nums">{words}</p>
+        <p className="text-body-medium text-muted-foreground tabular-nums">{words}</p>
       </div>
       <TabsContent value={period}>
         {error ? (
-          <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
+          <div role="alert" className="flex flex-wrap items-center gap-3 text-body-medium">
             <span className="text-destructive">{error}</span>
             <Button type="button" variant="outline" size="sm" onClick={retry}>
               Try again

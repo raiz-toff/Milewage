@@ -5,9 +5,12 @@ import { Button as UiButton } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import {
   dateLocale,
   dateToIso,
+  formatDay,
+  formatMonth,
   isoToDate,
   period,
   periodOffset,
@@ -16,7 +19,8 @@ import {
 } from '../days';
 import type { PeriodKind } from '../days';
 import { SegmentedButtons } from '../ui/chips';
-import { EmptyState, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
+import { EmptyState, moneyText, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
+import type { MoneyTone } from '../ui/layout';
 import { HourBars } from '../ui/HourBars';
 import { describe, unwrap } from '../api/client';
 import { apiKey } from '../api/query';
@@ -87,21 +91,28 @@ export function AnalyticsPage() {
   const error = failed ? describe(failed) : null;
 
   const cards = data?.cards as Data | undefined;
-  const tiles: [string, string | null][] = cards
+  // Money in and out carry the earned and spent colours (the label says which); the net by its sign.
+  const inOut = (cents: number | null | undefined, tone: MoneyTone) =>
+    cents ? (cents < 0 ? 'spent' : tone) : undefined;
+  const tiles: [string, string | null, MoneyTone?][] = cards
     ? [
-        ['Gross', money(cards.gross_cents)],
+        ['Gross', money(cards.gross_cents), inOut(cards.gross_cents, 'earned')],
         ...(cards.expenses_cents === undefined
           ? []
           : ([
-              ['Expenses', money(cards.expenses_cents)],
+              ['Expenses', money(cards.expenses_cents), inOut(cards.expenses_cents, 'spent')],
               [
                 'Burn ratio',
                 cards.burn_ratio == null
                   ? 'not available'
                   : `${(cards.burn_ratio * 100).toFixed(1)}%`,
               ],
-              ['Net take-home', money(cards.net_take_home_cents)],
-            ] as [string, string][])),
+              [
+                'Net take-home',
+                money(cards.net_take_home_cents),
+                inOut(cards.net_take_home_cents, 'earned'),
+              ],
+            ] as [string, string, MoneyTone?][])),
         ...(cards.tax_set_aside_cents === undefined
           ? []
           : ([['Tax set-aside', money(cards.tax_set_aside_cents)]] as [string, string][])),
@@ -185,7 +196,9 @@ export function AnalyticsPage() {
             {cards ? money(cards.gross_cents) : <Skeleton className="mx-auto mt-1 h-10 w-40" />}
           </div>
           {cards ? (
-            <div className="mt-1 text-xs text-muted-foreground">gross · {cards.total_hours} h</div>
+            <div className="mt-1 text-body-small text-muted-foreground">
+              gross · {cards.total_hours} h
+            </div>
           ) : null}
         </div>
         <UiButton
@@ -200,14 +213,21 @@ export function AnalyticsPage() {
         </UiButton>
       </div>
       {data === null ? (
-        <p className="text-sm text-muted-foreground">Loading</p>
+        <p className="text-body-medium text-muted-foreground">Loading</p>
       ) : (
         <>
           <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" aria-label="Figures">
-            {tiles.map(([k, v]) => (
+            {tiles.map(([k, v, tone]) => (
               <div key={k} className="space-y-1 rounded-medium bg-card p-4">
-                <dt className="text-xs text-muted-foreground">{k}</dt>
-                <dd className="text-title-large font-medium tabular-nums">{v}</dd>
+                <dt className="text-label-medium text-muted-foreground">{k}</dt>
+                <dd
+                  className={cn(
+                    'text-title-large font-medium tabular-nums',
+                    tone && moneyText[tone],
+                  )}
+                >
+                  {v}
+                </dd>
               </div>
             ))}
           </dl>
@@ -220,34 +240,38 @@ export function AnalyticsPage() {
                   <thead>
                     <tr>
                       <th>Period</th>
-                      <th>Shifts</th>
-                      <th>Hours</th>
-                      <th>Earnings</th>
-                      <th>Per hour</th>
+                      <th className="text-right">Shifts</th>
+                      <th className="text-right">Hours</th>
+                      <th className="text-right">Earnings</th>
+                      <th className="text-right">Per hour</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.trends.buckets.map((b: Data) => (
-                      <tr key={b.start} className="border-t border-border">
-                        <td className="whitespace-nowrap tabular-nums">{b.start}</td>
-                        <td>{b.shifts}</td>
-                        <td>{b.hours}</td>
-                        <td>{money(b.earnings_cents)}</td>
-                        <td>{money(b.hourly_cents)}</td>
+                      <tr key={b.start}>
+                        <td className="whitespace-nowrap tabular-nums">
+                          {mode === 'year'
+                            ? formatMonth(b.start, dateLocale(country))
+                            : formatDay(b.start, dateLocale(country))}
+                        </td>
+                        <td className="text-right tabular-nums">{b.shifts}</td>
+                        <td className="text-right tabular-nums">{b.hours}</td>
+                        <td className="text-right tabular-nums">{money(b.earnings_cents)}</td>
+                        <td className="text-right tabular-nums">{money(b.hourly_cents)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </TableBox>
             )}
-            <p className="text-sm text-muted-foreground">
+            <p className="text-body-medium text-muted-foreground">
               Previous period: {money(data.trends.previous.earnings_cents)},{' '}
               {data.trends.previous.hours} h
             </p>
           </Section>
           {data.sources.length > 0 ? (
             <Section label="Income sources" title="Income sources">
-              <ul className="space-y-3 text-sm">
+              <ul className="space-y-3 text-body-medium">
                 {data.sources.map((s: Data) => (
                   <li key={s.platform} className="space-y-1.5">
                     <PlatformName platform={platformOf(s.platform)} className="tabular-nums">
@@ -266,7 +290,7 @@ export function AnalyticsPage() {
             </Section>
           ) : null}
           <div className="grid items-start gap-4 lg:grid-cols-3">
-            <Section label="Outlook" title="Outlook" className="text-sm">
+            <Section label="Outlook" title="Outlook" className="text-body-medium">
               {data.outlook.projected_earnings_cents === null ? (
                 <p className="text-muted-foreground">
                   Not enough shifts to project ({data.outlook.note}).
@@ -278,7 +302,7 @@ export function AnalyticsPage() {
                 </p>
               )}
             </Section>
-            <Section label="Efficiency" title="Efficiency" className="text-sm">
+            <Section label="Efficiency" title="Efficiency" className="text-body-medium">
               {data.efficiency.active_share === null ? (
                 <p className="text-muted-foreground">No stop-based split for these shifts.</p>
               ) : (
@@ -296,7 +320,7 @@ export function AnalyticsPage() {
                 </p>
               ) : null}
             </Section>
-            <Section label="Work rhythm" title="Work rhythm" className="text-sm">
+            <Section label="Work rhythm" title="Work rhythm" className="text-body-medium">
               <p>
                 Average shift:{' '}
                 {data.rhythm.average_shift_minutes === null

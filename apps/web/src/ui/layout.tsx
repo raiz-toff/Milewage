@@ -74,23 +74,43 @@ export function Section({
   );
 }
 
+/**
+ * Money in or out: the `earned` or `spent` colour for a figure whose label already says which
+ * (never the only signal, never for status). Android's `StatTone`.
+ */
+export type MoneyTone = 'earned' | 'spent';
+export const moneyText: Record<MoneyTone, string> = {
+  earned: 'text-earned',
+  spent: 'text-spent',
+};
+
 /** One figure with its label, and an optional line under it (label-medium, title-large figure). */
 export function StatCard({
   label,
   value,
   sub,
+  tone,
   className,
 }: {
   label: ReactNode;
   value: ReactNode;
   sub?: ReactNode;
+  /** Only for a money figure whose label says in words whether it came in or went out. */
+  tone?: MoneyTone;
   className?: string;
 }) {
   return (
     <Card size="sm" className={className}>
       <CardContent className="space-y-1">
         <div className="text-label-medium text-on-surface-variant">{label}</div>
-        <div className="text-title-large font-medium text-on-surface tabular-nums">{value}</div>
+        <div
+          className={cn(
+            'text-title-large font-medium text-on-surface tabular-nums',
+            tone && moneyText[tone],
+          )}
+        >
+          {value}
+        </div>
         {sub ? (
           <div className="text-body-small text-on-surface-variant tabular-nums">{sub}</div>
         ) : null}

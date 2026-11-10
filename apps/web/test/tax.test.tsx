@@ -122,7 +122,8 @@ describe('tax screen (module tax)', () => {
       `${formatDay(`${YEAR + 1}-04-30`, 'en-CA')}Balance due`,
     ]);
     expect(items[0]!.className).toMatch(/text-muted-foreground/);
-    expect(screen.getByText(/expect a T4A/)).toBeTruthy();
+    // The alert names the platform as the driver knows it, not by its slug.
+    expect(screen.getByText(/expect a T4A/).textContent).toMatch(/^DoorDash: /);
   });
 
   it('folds the working, the settings and the jar entries under Details', async () => {

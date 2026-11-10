@@ -157,12 +157,14 @@ export function VehicleStep({ ctx, next }: StepProps) {
   return (
     <StepForm save={save} next={next} skip={vehicles.length ? 'Skip this step' : null}>
       {vehicles.length ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-body-medium text-muted-foreground">
           Your vehicles: {vehicles.map((v) => v.name).join(', ')}. You can add another one or
           continue.
         </p>
       ) : (
-        <p className="text-sm text-muted-foreground">A shift is recorded with a vehicle.</p>
+        <p className="text-body-medium text-muted-foreground">
+          A shift is recorded with a vehicle.
+        </p>
       )}
       <Field
         label="Name"
@@ -178,7 +180,7 @@ export function VehicleStep({ ctx, next }: StepProps) {
         onChange={(v) => setOwnership(v as Ownership)}
         options={OWNERSHIP}
       />
-      <p role="note" className="text-sm">
+      <p role="note" className="text-body-medium">
         {rateLine(kind, country)}
       </p>
       {ownRate ? (

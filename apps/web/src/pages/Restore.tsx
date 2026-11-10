@@ -39,13 +39,13 @@ export function Restore({ onBack }: { onBack: () => void }) {
   if (done) {
     return (
       <Card title="Backup restored">
-        <ul className="space-y-1 text-sm">
+        <ul className="space-y-1 text-body-medium">
           <li>Integrity check: {done.integrity_ok ? 'passed' : 'FAILED'}</li>
           <li>Shifts: {done.shift_count}</li>
           <li>Stop labels: {done.stop_label_count}</li>
           <li>Recorded points: {done.point_count}</li>
         </ul>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-body-medium text-muted-foreground">
           Sign in with the account from the backup. Paired phones keep their pairing and will catch
           up on their own.
         </p>

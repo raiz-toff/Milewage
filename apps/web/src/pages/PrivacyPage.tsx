@@ -12,11 +12,11 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function List({ children }: { children: ReactNode }) {
-  return <ul className="list-disc space-y-2 pl-5">{children}</ul>;
+  return <ul className="list-disc space-y-2 pl-6 marker:text-on-surface-variant">{children}</ul>;
 }
 
 const Cmd = ({ children }: { children: string }) => (
-  <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em] break-words">
+  <code className="rounded-extra-small bg-surface-container-highest px-1 py-0.5 font-mono text-[0.875em] break-words">
     {children}
   </code>
 );
@@ -57,7 +57,7 @@ export function PrivacyPage({
   }, []);
 
   return (
-    <main className="mx-auto max-w-2xl space-y-8 px-4 py-8 text-sm leading-relaxed sm:text-base">
+    <main className="mx-auto max-w-2xl space-y-8 px-4 py-8 text-body-large text-on-surface">
       <header className="space-y-3">
         <h1 className="text-headline-small text-on-surface md:text-headline-medium">Privacy</h1>
         <p className="text-muted-foreground">

@@ -110,7 +110,7 @@ export interface ShiftView {
  */
 export function shiftView(record: ShiftParts, settings: Settings): ShiftView {
   const { shift, trips, stops, route, earned, vehicle } = record;
-  const { modules, timezone: tz } = settings;
+  const { modules, timezone: tz, time_format: tf } = settings;
   const active = shift.status === 'active';
   const replay = modules.replay;
   const showEarnings = modules.earnings && !active;
@@ -134,7 +134,7 @@ export function shiftView(record: ShiftParts, settings: Settings): ShiftView {
     split: showsSplit(shift, settings) && !!shift.total_m,
     review: reviewCount(shift),
     context: [
-      `${formatTime(shift.started_at, tz)} – ${shift.ended_at ? formatTime(shift.ended_at, tz) : 'now'}`,
+      `${formatTime(shift.started_at, tz, tf)} – ${shift.ended_at ? formatTime(shift.ended_at, tz, tf) : 'now'}`,
       formatDuration(shift.started_at, shift.ended_at),
       vehicle,
     ]

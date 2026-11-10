@@ -40,8 +40,10 @@ export function InstallCard() {
   const { state, dismissed } = useInstall();
   if (!cardShows(state, dismissed)) return null;
   return (
+    // The drawer is surface-container-low, so the card sits a step higher, not on its own tone.
     <Card
       size="sm"
+      variant="highest"
       role="region"
       aria-label="Install MileWage"
       className="relative group-data-[collapsible=icon]:hidden"
@@ -56,14 +58,14 @@ export function InstallCard() {
         <CloseIcon />
       </Button>
       <CardContent className="space-y-2">
-        <p className="pr-6 text-sm font-medium">Install MileWage</p>
-        <p className="text-xs text-muted-foreground">
+        <p className="pr-6 text-title-small">Install MileWage</p>
+        <p className="text-body-small text-muted-foreground">
           Open it from your dock or home screen, in its own window.
         </p>
         {state === 'prompt' ? (
           <InstallButton size="sm" />
         ) : (
-          <p className="text-xs">{STEPS[state]}</p>
+          <p className="text-body-small">{STEPS[state]}</p>
         )}
       </CardContent>
     </Card>
@@ -89,9 +91,9 @@ export function InstallSection() {
   const { state } = useInstall();
   return (
     <section aria-label="Install" className="space-y-3">
-      <p className="text-sm text-muted-foreground">{TEXT[state]}</p>
+      <p className="text-body-medium text-muted-foreground">{TEXT[state]}</p>
       {state === 'prompt' ? <InstallButton /> : null}
-      {STEPS[state] ? <p className="text-sm font-medium">{STEPS[state]}</p> : null}
+      {STEPS[state] ? <p className="text-title-small">{STEPS[state]}</p> : null}
     </section>
   );
 }

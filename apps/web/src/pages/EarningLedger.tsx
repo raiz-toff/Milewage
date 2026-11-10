@@ -92,7 +92,7 @@ export function EarningLedger({
     <div className="space-y-3">
       {rows.map((r) => (
         <div key={r.platform} className="space-y-1">
-          <p className="flex items-start gap-2 text-sm">
+          <p className="flex items-start gap-2 text-body-medium">
             {options.find((o) => o.value === r.platform)?.icon}
             <span>
               {label(r.platform)}: fees {money(-r.fees_cents)}, tax withheld{' '}
@@ -102,7 +102,7 @@ export function EarningLedger({
                 : `Balance with the app: ${money(r.balance_cents)}.`}
             </span>
           </p>
-          <ul className="text-sm text-muted-foreground">
+          <ul className="text-body-medium text-muted-foreground">
             {r.ledger.map((x) => {
               const text = `${ENTRY_LABELS[x.type]} ${money(x.amount_cents)}`;
               return (
@@ -168,7 +168,7 @@ export function EarningLedger({
           Add line
         </Button>
       </form>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-body-small text-muted-foreground">
         For cash orders, commission, fees, tax the app kept, top-ups and payouts. Type the amount
         without a sign. A cash order is a fare plus the cash you collected.
       </p>

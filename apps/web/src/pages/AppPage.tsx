@@ -27,7 +27,7 @@ export function AppPage() {
         The MileWage app records your shifts on this phone and sends them to your own server.
       </p>
       {info === undefined ? (
-        <p className="text-sm text-muted-foreground">Loading</p>
+        <p className="text-body-medium text-muted-foreground">Loading</p>
       ) : info === null ? (
         <p role="alert">This server did not answer. Reload the page to try again.</p>
       ) : !store && !apk ? (
@@ -47,7 +47,7 @@ export function AppPage() {
           {apk ? (
             <section className="space-y-3" aria-label="Download from your server">
               {store ? (
-                <p className="text-sm text-muted-foreground">Or download it directly:</p>
+                <p className="text-body-medium text-muted-foreground">Or download it directly:</p>
               ) : null}
               <Button asChild size="lg" variant={store ? 'outline' : 'default'} className="w-full">
                 <a href={APK_URL} download="milewage.apk">
@@ -55,9 +55,9 @@ export function AppPage() {
                   Download MileWage
                 </a>
               </Button>
-              <p className="text-center text-sm text-muted-foreground">{apkFacts(apk)}</p>
-              <h2 className="pt-2 font-medium">Installing the download</h2>
-              <ol className="list-decimal space-y-1 pl-5 text-sm">
+              <p className="text-center text-body-medium text-muted-foreground">{apkFacts(apk)}</p>
+              <h2 className="pt-2 text-title-medium">Installing the download</h2>
+              <ol className="list-decimal space-y-1 pl-5 text-body-medium">
                 <li>Open the file from the download notification, or from Downloads.</li>
                 <li>
                   The first time, Android asks to let your browser install apps: tap Settings, turn
@@ -67,12 +67,12 @@ export function AppPage() {
               </ol>
             </section>
           ) : null}
-          <p className="text-sm text-muted-foreground">
+          <p className="text-body-medium text-muted-foreground">
             Next: on your computer, open MileWage and scan the pairing code with the app.
           </p>
         </>
       )}
-      <p className="border-t pt-4 text-sm text-muted-foreground">
+      <p className="border-t pt-4 text-body-medium text-muted-foreground">
         What the app records and who else sees it:{' '}
         <a href="/privacy" className="underline underline-offset-4 hover:text-foreground">
           Privacy

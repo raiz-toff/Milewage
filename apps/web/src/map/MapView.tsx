@@ -29,8 +29,8 @@ function markerElement(text: string, className: string) {
   return el;
 }
 const STOP =
-  'grid size-6 cursor-pointer place-items-center rounded-full border-2 border-background bg-foreground text-[11px] font-semibold text-background shadow-sm tabular-nums data-[picked=true]:ring-3 data-[picked=true]:ring-primary';
-const END = 'rounded-full border bg-background px-1.5 text-[10px] font-semibold text-foreground';
+  'grid size-6 cursor-pointer place-items-center rounded-full border-2 border-background bg-foreground text-label-small text-background shadow-sm tabular-nums data-[picked=true]:ring-3 data-[picked=true]:ring-primary';
+const END = 'rounded-full border bg-background px-1.5 text-label-small text-foreground';
 
 const fitTo = (m: MapLibreMap, points: RoutePoint[], duration: number) => {
   const b = boundsOf(points);
@@ -217,7 +217,10 @@ export default function MapView({
 
   if (failed) {
     return (
-      <p role="status" className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
+      <p
+        role="status"
+        className="rounded-xl border border-outline-variant p-4 text-body-medium text-muted-foreground"
+      >
         The map could not start in this browser. The timeline lists the same trips and stops.
       </p>
     );
@@ -230,7 +233,7 @@ export default function MapView({
         className="h-72 w-full overflow-hidden rounded-xl border sm:h-96"
       />
       {fallback ? (
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1 text-body-small text-muted-foreground">
           Basemap unavailable; showing the route only.
         </p>
       ) : null}

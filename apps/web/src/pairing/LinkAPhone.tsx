@@ -24,12 +24,12 @@ export function LinkAPhone() {
 
   return (
     <div role="region" aria-label="Link a phone on your Wi-Fi" className="space-y-3">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-body-medium text-muted-foreground">
         Open MileWage on your phone, on your home Wi-Fi. It finds this server by itself: tap it,
         then type here the code the phone shows.
       </p>
       {linked ? (
-        <p role="status" className="text-sm font-medium">
+        <p role="status" className="text-body-medium">
           {linked} is linked.
         </p>
       ) : null}
@@ -40,7 +40,7 @@ export function LinkAPhone() {
           ))}
         </ul>
       ) : waiting && !linked ? (
-        <p role="status" className="text-sm text-muted-foreground">
+        <p role="status" className="text-body-medium text-muted-foreground">
           No phone is waiting to link yet.
         </p>
       ) : null}
@@ -72,7 +72,7 @@ function WaitingPhone({ phone, onLinked }: { phone: Waiting; onLinked: (name: st
       className="space-y-2 rounded-lg border p-3"
       aria-label={`${phone.device_name} wants to link`}
     >
-      <p className="flex items-center gap-2 text-sm">
+      <p className="flex items-center gap-2 text-body-medium">
         <DevicesIcon className="size-5 shrink-0" />
         <span>
           <span className="font-medium">{phone.device_name}</span> wants to link{' '}

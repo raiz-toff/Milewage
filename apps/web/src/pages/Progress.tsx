@@ -7,7 +7,7 @@ import { FormError } from '../ui/form';
 
 /** Progress (module `progress`, off by default): level, streak, weekly challenges, badges. Derived, never typed in. */
 export function ProgressPage() {
-  const { currency, timezone } = useSettings();
+  const { currency, timezone, time_format: tf } = useSettings();
   const asked = useApiQuery('/progress');
   const p = asked.data;
   const error = asked.error ? describe(asked.error) : null;
@@ -32,7 +32,7 @@ export function ProgressPage() {
             style={{ width: `${(p.xp_into_level / p.xp_per_level) * 100}%` }}
           />
         </div>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-body-medium text-muted-foreground">
           {p.xp} XP in total, {p.xp_per_level - p.xp_into_level} to the next level.
         </p>
       </div>
@@ -43,13 +43,13 @@ export function ProgressPage() {
             {p.streak.freezes_held === 1 ? 'freeze' : 'freezes'} held.
           </p>
           {p.streak.at_risk ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-body-medium text-muted-foreground">
               No shift yet today: work one to keep the streak.
             </p>
           ) : null}
         </Section>
         <Section label="Weekly challenges" title="This week">
-          <ul className="divide-y text-sm">
+          <ul className="divide-y divide-outline-variant text-body-medium">
             {p.challenges.map((c) => (
               <li key={c.id} className="flex justify-between gap-4 py-2 first:pt-0 last:pb-0">
                 <span>{c.label}</span>
@@ -73,8 +73,8 @@ export function ProgressPage() {
               className={`rounded-medium border p-3 text-body-medium ${b.unlocked_at ? 'border-transparent bg-secondary-container text-on-secondary-container' : 'border-outline-variant text-on-surface-variant'}`}
             >
               {b.label}
-              <span className="block text-xs">
-                {b.unlocked_at ? formatDateTime(b.unlocked_at, timezone) : 'locked'}
+              <span className="block text-body-small">
+                {b.unlocked_at ? formatDateTime(b.unlocked_at, timezone, tf) : 'locked'}
               </span>
             </li>
           ))}

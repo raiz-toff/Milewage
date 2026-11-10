@@ -44,20 +44,20 @@ export function NoRouteCard({
       }
     >
       {short ? (
-        <p className="text-sm">
+        <p className="text-body-medium">
           It lasted under {SHORT_MIN} minutes, so it may have been started by mistake. With no
           distance it adds nothing to your totals.
         </p>
       ) : null}
       {found ? (
         <div className="space-y-1.5">
-          <h3 className="text-sm font-medium">What the checks found</h3>
+          <h3 className="text-title-small">What the checks found</h3>
           <CheckList shift={checks} />
         </div>
       ) : null}
       <AdviceList title="What you can do" advice={adviceFor(shift, [PERMISSIONS])} />
       {onAdd && shift.status === 'ended' ? (
-        <div className="flex flex-wrap items-center gap-3 text-sm">
+        <div className="flex flex-wrap items-center gap-3 text-body-medium">
           <span className="text-muted-foreground">
             If you know the distance (from the odometer or the platform), add it by hand.
           </span>
@@ -74,12 +74,12 @@ export function NoRouteCard({
 export function InProgressCard({ earnings }: { earnings: boolean }) {
   return (
     <Section label="In progress" title="Shift in progress">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-body-medium text-muted-foreground">
         The phone is still recording. It sends its positions in batches, about once a minute. The
         route, trips and stops are worked out when the shift ends, and appear here then.
       </p>
       {earnings ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-body-medium text-muted-foreground">
           Earnings can be entered once the shift has ended.
         </p>
       ) : null}
@@ -135,7 +135,7 @@ export function ShiftNotes({ shift, bare }: { shift: Shift; bare?: boolean }) {
           Save notes
         </Button>
         {saved ? (
-          <span role="status" className="text-sm text-muted-foreground">
+          <span role="status" className="text-body-medium text-muted-foreground">
             Saved.
           </span>
         ) : null}

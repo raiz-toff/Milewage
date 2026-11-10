@@ -95,7 +95,7 @@ function Unreachable({ message }: { message: string }) {
       <h1 className="text-title-large text-on-surface">
         {offline ? 'You are offline' : 'MileWage is not answering'}
       </h1>
-      <p className="max-w-sm text-sm text-muted-foreground">
+      <p className="max-w-sm text-body-medium text-muted-foreground">
         {offline ? 'MileWage needs a connection to your server. Your data is safe there.' : message}
       </p>
       <Button onClick={() => void retry()} disabled={busy}>
@@ -143,9 +143,9 @@ function AccountMenu({ name }: { name: string | null }) {
             <div className="flex aspect-square size-8 items-center justify-center rounded-full bg-sidebar-accent text-title-small text-sidebar-accent-foreground uppercase">
               {name?.trim()[0] ?? <PersonIcon className="size-4" />}
             </div>
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-medium">{shown}</span>
-              <span className="truncate text-xs text-muted-foreground">Signed in</span>
+            <div className="grid flex-1 text-left">
+              <span className="truncate text-label-large">{shown}</span>
+              <span className="truncate text-body-small text-muted-foreground">Signed in</span>
             </div>
             <UnfoldMoreIcon className="ml-auto size-4" />
           </SidebarMenuButton>
@@ -201,9 +201,9 @@ function AppSidebar({ list, name }: { list: Screen[]; name: string | null }) {
                 {/* `size-8!`: the menu button shrinks every svg to 16 px; the mark must fill the
                     32 px button when the sidebar is collapsed, or the text leaks past it. */}
                 <LogoMark size={32} className="size-8! shrink-0" />
-                <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                  <span className="truncate font-semibold">MileWage</span>
-                  <span className="truncate text-xs text-muted-foreground">
+                <div className="grid flex-1 text-left group-data-[collapsible=icon]:hidden">
+                  <span className="truncate text-title-medium text-on-surface">MileWage</span>
+                  <span className="truncate text-body-small text-muted-foreground">
                     Mileage and earnings
                   </span>
                 </div>

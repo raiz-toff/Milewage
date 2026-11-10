@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import type { Schemas } from '../api/client';
 import { useApiQuery, useChange } from '../api/query';
 import { levelWord, useCountries } from '../countries';
@@ -52,7 +53,7 @@ export function GoalRing() {
             <p className="text-label-medium text-on-surface-variant">
               {PERIOD_WORD[goal.period] ?? 'Goal'}
             </p>
-            <h2 className="truncate text-base font-medium">{goal.label}</h2>
+            <h2 className="truncate text-title-medium">{goal.label}</h2>
           </div>
           <p className="text-headline-small font-medium tabular-nums">
             {pct === null ? '—' : `${pct}%`}
@@ -71,7 +72,7 @@ export function GoalRing() {
             style={{ width: `${Math.min(100, pct ?? 0)}%` }}
           />
         </div>
-        <p className="text-sm text-muted-foreground tabular-nums">
+        <p className="text-body-medium text-muted-foreground tabular-nums">
           {p.value === null
             ? (p.note ?? 'Progress unknown')
             : `${text(p.value)} of ${text(p.target)}${p.estimated ? ' (estimated)' : ''}`}
@@ -84,7 +85,7 @@ export function GoalRing() {
           ) : (
             <span />
           )}
-          <Link to="/goals" className="text-sm font-medium underline underline-offset-4">
+          <Link to="/goals" className={cn(linkClass, 'text-label-large')}>
             Open Goals
           </Link>
         </div>
@@ -109,7 +110,9 @@ interface Item {
 type Step = Pick<Item, 'id' | 'text' | 'why' | 'to' | 'optional'> & { done: boolean };
 type SetupStep = Schemas['SetupStep'];
 
-const linkClass = 'font-medium underline underline-offset-4';
+/** An inline link: on-surface text over the primary underline the `link` button draws. */
+const linkClass =
+  'rounded-extra-small text-foreground underline decoration-primary decoration-2 underline-offset-4 focus-ring hover:decoration-[3px]';
 
 const HIDDEN_KEY = 'mw-setup-hidden';
 /** "Hide for now" is kept per browser; storage can be blocked, which just means not hidden. */
@@ -217,7 +220,7 @@ export function SetupChecklist() {
   };
   if (hidden)
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-body-medium text-muted-foreground">
         Setup steps hidden ({open.length} left).{' '}
         <button type="button" className={linkClass} onClick={() => hide(false)}>
           Show them
@@ -229,8 +232,8 @@ export function SetupChecklist() {
       <CardContent className="space-y-4">
         <div className="flex items-start justify-between gap-2">
           <div className="space-y-1">
-            <h2 className="text-base font-medium">Finish setting up</h2>
-            <p className="text-sm text-muted-foreground tabular-nums">
+            <h2 className="text-title-medium">Finish setting up</h2>
+            <p className="text-body-medium text-muted-foreground tabular-nums">
               {done.length} of {state.length} done
             </p>
           </div>
@@ -261,7 +264,7 @@ export function SetupChecklist() {
           {open.map((i, n) => (
             <li
               key={i.id}
-              className={`flex items-center gap-1 rounded-medium ${n === 0 ? 'bg-secondary-container text-on-secondary-container' : ''}`}
+              className={`flex items-center gap-1 rounded-medium ${n === 0 ? 'bg-surface-container-highest' : ''}`}
             >
               <Link
                 to={i.to}
@@ -269,11 +272,11 @@ export function SetupChecklist() {
               >
                 <CircleIcon className="size-5 shrink-0 text-on-surface-variant" />
                 <span className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-center gap-2 font-medium">
+                  <span className="flex flex-wrap items-center gap-2 text-body-large">
                     {i.text}
-                    {n === 0 ? <Badge>Next</Badge> : null}
+                    {n === 0 ? <Badge variant="secondary">Next</Badge> : null}
                   </span>
-                  <span className="block text-xs text-muted-foreground">{i.why}</span>
+                  <span className="block text-body-small text-muted-foreground">{i.why}</span>
                 </span>
                 <ChevronRightIcon
                   aria-hidden="true"
@@ -301,7 +304,7 @@ export function SetupChecklist() {
               type="button"
               aria-expanded={showDone}
               onClick={() => setShowDone(!showDone)}
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+              className="flex items-center gap-1 rounded-small text-label-large text-muted-foreground focus-ring hover:text-foreground"
             >
               <ExpandMoreIcon
                 aria-hidden="true"
@@ -310,7 +313,7 @@ export function SetupChecklist() {
               {done.length} done
             </button>
             {showDone ? (
-              <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+              <ul className="mt-2 space-y-1 text-body-medium text-muted-foreground">
                 {done.map((i) => (
                   <li key={i.id} className="flex items-center gap-3">
                     <CheckCircleIcon className="size-5 shrink-0 text-primary" />

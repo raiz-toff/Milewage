@@ -63,9 +63,9 @@ export function VehicleMaintenance({ vehicleId, name }: { vehicleId: number; nam
     <section aria-label={`Maintenance of ${name}`} className="mt-2 space-y-2 rounded-lg border p-3">
       <FormError message={error} />
       {logs === null ? null : logs.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No service entries yet.</p>
+        <p className="text-body-medium text-muted-foreground">No service entries yet.</p>
       ) : (
-        <ul className="space-y-1 text-sm">
+        <ul className="space-y-1 text-body-medium">
           {logs.map((l) => (
             <li key={l.id} className="flex flex-wrap gap-3">
               <span className="tabular-nums">{day(l.serviced_on)}</span>

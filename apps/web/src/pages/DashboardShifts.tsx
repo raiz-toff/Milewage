@@ -49,7 +49,7 @@ function ShiftRow({
   platformOf: (slug: string) => PlatformLike;
 }) {
   const settings = useSettings();
-  const { modules, currency, timezone: tz } = settings;
+  const { modules, currency, timezone: tz, time_format: tf } = settings;
   const [ref, seen] = useSeen<HTMLAnchorElement>();
   const path = { params: { path: { ref: String(shift.id) } } };
   const earnings = useApiQuery('/shifts/{ref}/earnings', path, {
@@ -73,7 +73,7 @@ function ShiftRow({
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
           {extra && extra.platforms.length > 0 ? (
-            <span className="flex min-w-0 items-center gap-2 font-medium">
+            <span className="flex min-w-0 items-center gap-2 text-body-large">
               <span className="flex shrink-0 -space-x-1">
                 {extra.platforms.map((slug) => (
                   <PlatformBadge
@@ -88,7 +88,7 @@ function ShiftRow({
               </span>
             </span>
           ) : (
-            <span className="truncate font-medium">Shift</span>
+            <span className="truncate text-body-large">Shift</span>
           )}
           {shift.status === 'active' ? <Badge variant="outline">In progress</Badge> : null}
           {review > 0 ? (
@@ -97,23 +97,23 @@ function ShiftRow({
             </Badge>
           ) : null}
         </div>
-        <p className="flex flex-wrap gap-x-1.5 text-sm text-muted-foreground tabular-nums *:whitespace-nowrap">
+        <p className="flex flex-wrap gap-x-1.5 text-body-medium text-muted-foreground tabular-nums *:whitespace-nowrap">
           <span>
             {dateWords(shift.local_date, { weekday: 'short', month: 'short', day: 'numeric' })} ·
           </span>
           <span>
-            {formatTime(shift.started_at, tz)}–
-            {shift.ended_at ? formatTime(shift.ended_at, tz) : 'now'} ·
+            {formatTime(shift.started_at, tz, tf)}–
+            {shift.ended_at ? formatTime(shift.ended_at, tz, tf) : 'now'} ·
           </span>
           <span>{formatDistance(shift.total_m, settings.distance_unit)}</span>
         </p>
       </div>
       {modules.earnings ? (
         <div className="shrink-0 text-right tabular-nums">
-          <div className="font-semibold">
+          <div className="text-title-medium">
             {extra ? (cents === null ? '—' : formatMoney(cents, currency)) : null}
           </div>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-body-small text-muted-foreground">
             {!extra
               ? null
               : cents === null
@@ -151,7 +151,7 @@ export function RecentShifts() {
       }
     >
       {error ? (
-        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
+        <div role="alert" className="flex flex-wrap items-center gap-3 text-body-medium">
           <span className="text-destructive">{error}</span>
           <Button type="button" variant="outline" size="sm" onClick={() => void recent.refetch()}>
             Try again

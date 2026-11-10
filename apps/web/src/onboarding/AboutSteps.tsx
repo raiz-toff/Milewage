@@ -21,7 +21,7 @@ export function RegionStep({ ctx, next }: StepProps) {
   };
   return (
     <StepForm save={save} next={next}>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-body-medium text-muted-foreground">
         {country.regional_rules
           ? `Some places in ${country.name} have their own rules. Until you choose your ${word.toLowerCase()}, only the national rules apply.`
           : 'You can change this later in Settings.'}

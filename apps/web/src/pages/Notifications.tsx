@@ -18,7 +18,7 @@ type Prefs = Schemas['NotificationPrefs'];
 /** Notifications (module `notifications`, 18 section 11): the in-app inbox. */
 export function NotificationsPage() {
   const { api } = useSession();
-  const { timezone } = useSettings();
+  const { timezone, time_format: tf } = useSettings();
   // Read 50 at a time, newest first.
   const asked = usePagedList(['/notifications', {}], ({ limit, cursor }, signal) =>
     unwrap(
@@ -44,7 +44,7 @@ export function NotificationsPage() {
       <PageHeader title="Notifications" />
       <FormError message={error} />
       {items === null ? (
-        <p className="text-sm text-muted-foreground">Loading</p>
+        <p className="text-body-medium text-muted-foreground">Loading</p>
       ) : items.length === 0 ? (
         <EmptyState>Nothing new.</EmptyState>
       ) : (
@@ -57,12 +57,12 @@ export function NotificationsPage() {
               />
               <div className="min-w-0 flex-1 space-y-1">
                 <p
-                  className={`text-sm ${n.read_at === null ? 'font-medium' : 'text-muted-foreground'}`}
+                  className={`text-body-large ${n.read_at === null ? 'font-medium' : 'text-muted-foreground'}`}
                 >
                   {messageOf(n)}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatDateTime(n.created_at, timezone)}
+                <p className="text-body-small text-muted-foreground">
+                  {formatDateTime(n.created_at, timezone, tf)}
                 </p>
               </div>
               <RowMenu
@@ -116,13 +116,13 @@ export function AlertsCard() {
     );
   return (
     <section aria-label="Alerts" className="space-y-3">
-      <h3 className="text-base leading-snug font-medium">Tell me about</h3>
+      <h3 className="text-title-medium">Tell me about</h3>
       <FormError message={error} />
       {prefs ? (
         <ul className="divide-y rounded-lg border">
           {LABELS.map(([k, text]) => (
             <li key={k} className="flex items-center justify-between gap-3 px-3 py-2">
-              <label htmlFor={`alert-${k}`} className="text-sm">
+              <label htmlFor={`alert-${k}`} className="text-body-large">
                 {text}
               </label>
               <Switch

@@ -29,6 +29,7 @@ const buttonVariants = cva(
         filled: 'bg-primary text-on-primary hover:shadow-elevation-1 disabled:bg-on-surface/12',
         tonal:
           'bg-secondary-container text-on-secondary-container hover:shadow-elevation-1 disabled:bg-on-surface/12',
+        // The old shadcn name for `tonal`, kept so nothing outside breaks. Use `tonal`.
         secondary:
           'bg-secondary-container text-on-secondary-container hover:shadow-elevation-1 disabled:bg-on-surface/12',
         elevated:

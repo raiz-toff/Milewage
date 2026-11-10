@@ -2,6 +2,8 @@ import { useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { builtinPlatform } from '@milewage/shared';
 import { cn } from '@/lib/utils';
+import { badgeColours } from './tones';
+import type { BadgeColours } from './tones';
 
 /** What a badge needs: a row of `GET /platforms`, or a slug and its name. */
 export interface PlatformLike {
@@ -15,20 +17,34 @@ export interface PlatformLike {
 }
 
 /**
- * Colours for a custom platform without its own (plan 25 section 4.2): not the brand's yellow or
- * blue, not Earned green or Spent red; each passes 4.5:1 with white letters.
+ * The colours a driver can pick for a platform's badge (Settings > Platforms), each with a name
+ * for screen readers. They are stored as given; the badge draws each one at Material's custom-colour
+ * tones for the theme (`tones.ts`).
  */
-export const CUSTOM_COLORS = [
-  '#0F766E',
-  '#6D28D9',
-  '#A21CAF',
-  '#475569',
-  '#92400E',
-  '#0E7490',
+export const PRESET_COLORS = [
+  { name: 'Red', color: '#dc2626' },
+  { name: 'Orange', color: '#ea580c' },
+  { name: 'Green', color: '#16a34a' },
+  { name: 'Teal', color: '#0f766e' },
+  { name: 'Cyan', color: '#0e7490' },
+  { name: 'Blue', color: '#2563eb' },
+  { name: 'Violet', color: '#6d28d9' },
+  { name: 'Magenta', color: '#a21caf' },
+  { name: 'Slate', color: '#475569' },
 ] as const;
 
-const INK = '#101214';
-const WHITE = '#FFFFFF';
+/**
+ * Colours for a custom platform without its own (plan 25 section 4.2): not the brand's yellow or
+ * blue, not Earned green or Spent red.
+ */
+export const CUSTOM_COLORS = [
+  '#0f766e',
+  '#6d28d9',
+  '#a21caf',
+  '#475569',
+  '#92400e',
+  '#0e7490',
+] as const;
 
 function luminance(hex: string) {
   const [r, g, b] = [1, 3, 5].map((i) => {
@@ -43,9 +59,6 @@ export function contrast(a: string, b: string) {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (hi! + 0.05) / (lo! + 0.05);
 }
-
-/** White or asphalt, whichever reads better on `bg`. */
-export const inkOn = (bg: string) => (contrast(bg, WHITE) >= contrast(bg, INK) ? WHITE : INK);
 
 /** A custom platform's colour when the driver set none: the same slug always gets the same one. */
 export function customColor(slug: string) {
@@ -69,26 +82,27 @@ export interface BadgeLook {
   kind: 'image' | 'emoji' | 'initials';
   /** The image's address, the emoji or the letters. */
   text: string;
-  bg: string | null;
-  fg: string | null;
+  /** The platform's colour as stored or built in; null: the theme's neutral. */
+  color: string | null;
+  /** How it is drawn in each theme (`tones.ts`); null with the neutral. */
+  tones: BadgeColours | null;
 }
 
 /**
  * What the badge shows for a platform (plan 25 section 4.1): the logo the driver uploaded, else
  * their emoji, else initials. MileWage ships no platform's logo (owner decision, plan 25 section 5).
- * `bg` null: the neutral.
  */
 export function platformLook(p: PlatformLike): BadgeLook {
   const built = builtinPlatform(p.slug);
   const own = p.color && /^#[0-9a-f]{6}$/i.test(p.color) ? p.color : null;
-  const bg = own ?? (built ? built.color : customColor(p.slug));
-  const fg = bg ? inkOn(bg) : null;
+  const color = own ?? (built ? built.color : customColor(p.slug));
+  const tones = color ? badgeColours(color) : null;
   if (p.logo_version) {
     const src = `/api/v1/platforms/${p.slug}/logo?v=${encodeURIComponent(p.logo_version)}`;
-    return { kind: 'image', text: src, bg, fg };
+    return { kind: 'image', text: src, color, tones };
   }
-  if (p.emoji) return { kind: 'emoji', text: p.emoji, bg, fg };
-  return { kind: 'initials', text: built ? built.initials : initialsOf(p.label), bg, fg };
+  if (p.emoji) return { kind: 'emoji', text: p.emoji, color, tones };
+  return { kind: 'initials', text: built ? built.initials : initialsOf(p.label), color, tones };
 }
 
 /**
@@ -113,8 +127,13 @@ export function PlatformBadge({
     first.kind === 'image' && failed === first.text
       ? platformLook({ ...platform, logo_version: null })
       : first;
-  const style: CSSProperties | undefined = look.bg
-    ? { backgroundColor: look.bg, color: look.fg!, boxShadow: `inset 0 0 0 1px ${look.fg}1f` }
+  const style = look.tones
+    ? ({
+        '--badge-bg': look.tones.light.bg,
+        '--badge-fg': look.tones.light.fg,
+        '--badge-bg-dark': look.tones.dark.bg,
+        '--badge-fg-dark': look.tones.dark.fg,
+      } as CSSProperties)
     : undefined;
   return (
     <span
@@ -122,9 +141,11 @@ export function PlatformBadge({
       data-platform={platform.slug}
       data-look={look.kind}
       className={cn(
-        'inline-flex shrink-0 items-center justify-center rounded-[22%] leading-none font-semibold select-none',
-        size === 'sm' ? 'size-5 text-[9px]' : 'size-7 text-xs',
-        look.bg === null && 'bg-muted text-muted-foreground shadow-[inset_0_0_0_1px_var(--border)]',
+        'inline-flex shrink-0 items-center justify-center rounded-[22%] leading-none select-none',
+        size === 'sm' ? 'size-5 text-label-small' : 'size-7 text-label-medium',
+        look.tones
+          ? 'bg-(--badge-bg) text-(--badge-fg) dark:bg-(--badge-bg-dark) dark:text-(--badge-fg-dark)'
+          : 'bg-surface-container-highest text-on-surface-variant shadow-[inset_0_0_0_1px_var(--color-outline-variant)]',
         className,
       )}
       style={style}
@@ -137,7 +158,7 @@ export function PlatformBadge({
           onError={() => setFailed(look.text)}
         />
       ) : look.kind === 'emoji' ? (
-        <span className={size === 'sm' ? 'text-xs' : 'text-base'}>{look.text}</span>
+        <span className={size === 'sm' ? 'text-body-small' : 'text-body-large'}>{look.text}</span>
       ) : (
         look.text
       )}

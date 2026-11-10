@@ -11,6 +11,7 @@ import { formatMoney, parseMoney } from '../format';
 import { useSettings } from '../session';
 import { Button, CheckField, Field, FormError } from '../ui/form';
 import { MoreCard } from '../ui/MoreCard';
+import { usePlatformOf } from '../platforms/usePlatforms';
 
 /** A line of the working: label, figure, and whether it is muted ($0.00 or not estimated). */
 type Line = [string, string, boolean];
@@ -52,6 +53,7 @@ export function TaxPage() {
   const error = errorText(change, asked, jarQuery);
   const money = (c: number | null | undefined) => (c == null ? '—' : formatMoney(c, currency));
   const day = (iso: string | undefined) => formatDay(iso ?? '', dateLocale(country));
+  const platformOf = usePlatformOf();
 
   const putYear = (body: { set_aside_bp?: number; sales_tax_registered?: boolean }) =>
     change.run((api) => api.PUT('/tax/{year}', { params: { path: { year } }, body }));
@@ -119,7 +121,7 @@ export function TaxPage() {
             title: 'How this is worked out',
             hint: `Taxable income ${money(est.taxable_income_cents)}, then each amount to set aside`,
             body: (
-              <table className="w-full text-left text-sm">
+              <table className="w-full text-left text-body-medium">
                 <caption className="sr-only">How this is worked out</caption>
                 <tbody>
                   {working.map(([k, v, quiet]) => (
@@ -127,8 +129,8 @@ export function TaxPage() {
                       key={k}
                       className={cn(
                         k === TOTAL
-                          ? 'border-t-2 border-foreground/20 font-semibold'
-                          : 'border-t first:border-t-0',
+                          ? 'border-t-2 border-outline font-medium'
+                          : 'border-t border-outline-variant first:border-t-0',
                         quiet && 'text-muted-foreground',
                       )}
                     >
@@ -136,7 +138,7 @@ export function TaxPage() {
                         scope="row"
                         className={cn(
                           'py-2 pr-4 font-normal',
-                          k === TOTAL ? 'font-semibold' : 'text-muted-foreground',
+                          k === TOTAL ? 'font-medium' : 'text-muted-foreground',
                         )}
                       >
                         {k}
@@ -197,7 +199,7 @@ export function TaxPage() {
             title: 'Tax jar entries',
             hint: `${jar.entries.length} added for ${year}`,
             body: (
-              <ul className="divide-y text-sm">
+              <ul className="divide-y divide-outline-variant text-body-medium">
                 {jar.entries.map((e) => (
                   <li key={e.id} className="flex items-center gap-3 py-1.5">
                     <span className="tabular-nums">{day(e.entered_on)}</span>
@@ -208,7 +210,7 @@ export function TaxPage() {
                       variant="ghost"
                       size="sm"
                       className="text-error"
-                      aria-label={`Delete jar entry ${e.entered_on} ${money(e.amount_cents)}`}
+                      aria-label={`Delete jar entry ${day(e.entered_on)} ${money(e.amount_cents)}`}
                       onClick={() =>
                         void change.run((api) =>
                           api.DELETE('/tax/jar/{id}', { params: { path: { id: e.id } } }),
@@ -268,7 +270,7 @@ export function TaxPage() {
                 {money(est.total_set_aside_cents)}
               </p>
               {next ? (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-body-medium text-muted-foreground">
                   Next: <span className="font-medium text-foreground">{next.label}</span>,{' '}
                   {day(next.date)}
                   {next.kind === 'instalment' ? `, ${money(est.instalment_cents)}` : ''}
@@ -278,13 +280,13 @@ export function TaxPage() {
           ) : null}
           {/* One quiet note instead of three banners: the server's notices (unverified rates for
               this country, an estimate and not advice, nothing filed) together, by the figure. */}
-          <p role="note" className="flex gap-2 text-sm text-muted-foreground">
+          <p role="note" className="flex gap-2 text-body-medium text-muted-foreground">
             <InfoIcon className="size-5 shrink-0" />
             <span>{report.notices.join(' ')}</span>
           </p>
           {jar ? (
             <div className="space-y-3 border-t pt-4">
-              <p className="text-sm">
+              <p className="text-body-medium">
                 <span className="font-medium">Tax jar:</span>{' '}
                 <span className="tabular-nums">
                   {money(jar.balance_cents)}
@@ -329,7 +331,7 @@ export function TaxPage() {
                   Add to jar
                 </Button>
               </form>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-body-small text-muted-foreground">
                 Your own record of what you set aside; no money moves.
               </p>
             </div>
@@ -338,7 +340,7 @@ export function TaxPage() {
 
         {deadlines.length > 0 || report.slip_alerts.length > 0 ? (
           <Section label="Deadlines" title="Deadlines">
-            <ul className="divide-y text-sm">
+            <ul className="divide-y divide-outline-variant text-body-medium">
               {deadlines.map((d) => {
                 const past = (d.date ?? '') < today;
                 return (
@@ -356,15 +358,15 @@ export function TaxPage() {
                       {d.label}
                       {past ? <span className="sr-only"> (past)</span> : null}
                     </span>
-                    {d === next ? <Badge>Next</Badge> : null}
+                    {d === next ? <Badge variant="secondary">Next</Badge> : null}
                   </li>
                 );
               })}
             </ul>
             {report.slip_alerts.map((a) => (
-              <p key={a.platform} className="border-t pt-3 text-sm">
-                {a.platform}: {money(a.total_cents)} is above {money(a.threshold_cents)}, so expect
-                a {a.slip}.
+              <p key={a.platform} className="border-t border-outline-variant pt-3 text-body-medium">
+                {a.platform ? `${platformOf(a.platform).label}: ` : ''}
+                {money(a.total_cents)} is above {money(a.threshold_cents)}, so expect a {a.slip}.
               </p>
             ))}
           </Section>

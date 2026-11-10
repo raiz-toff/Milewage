@@ -62,13 +62,13 @@ export function ConnectAssistant() {
       {ask.error ? (
         <Section label="Cannot connect">
           <FormError message={errorText(ask)} />
-          <p className="text-sm text-muted-foreground">
+          <p className="text-body-medium text-muted-foreground">
             Close this tab and start connecting again from your assistant.
           </p>
         </Section>
       ) : !info ? null : leaving ? (
         <Section label="Done">
-          <p className="text-sm">
+          <p className="text-body-medium">
             Going back to {info.client_name}. If nothing happens, close this tab and return to it.
           </p>
         </Section>
@@ -79,14 +79,14 @@ export function ConnectAssistant() {
               <span className="font-medium">{info.client_name}</span> wants to reach your MileWage
               records.
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-body-medium text-muted-foreground">
               With Read only it can read your shifts, earnings, expenses, goals and tax estimate.
               With Read and change it can also add expenses, earnings lines, odometer readings and
               trips, and fix a shift&rsquo;s notes. It cannot delete anything, see your password,
               backups or GPS points, or change settings.
             </p>
             <SelectField label="Access" value={chosen} onChange={setAccess} options={ACCESS} />
-            <p className="text-sm text-muted-foreground">
+            <p className="text-body-medium text-muted-foreground">
               After you answer, this page sends you back to{' '}
               <span className="font-mono">{destination(info.redirect_uri)}</span>. Only allow it if
               you started connecting just now. You can disconnect it at any time in Settings &gt; AI

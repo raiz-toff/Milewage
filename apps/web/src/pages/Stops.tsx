@@ -99,7 +99,7 @@ export function StopsPanel({
   /** The shift's stops from the shift record. */
   data: Read<Stop[]>;
 }) {
-  const { currency, timezone } = useSettings();
+  const { currency, timezone, time_format: tf } = useSettings();
   const navigate = useNavigate();
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   // One change for the panel; its error and busy flag show on the row it was about.
@@ -176,7 +176,7 @@ export function StopsPanel({
     };
     const input = (s: Stop, key: 'platform' | 'place' | 'payout' | 'tip', label: string) => (
       <input
-        aria-label={`${label} at ${formatTime(s.started_at, timezone)}`}
+        aria-label={`${label} at ${formatTime(s.started_at, timezone, tf)}`}
         className={FIELD}
         inputMode={key === 'payout' || key === 'tip' ? 'decimal' : undefined}
         value={(drafts[s.stop_key] ?? draftOf(s, currency))[key]}
@@ -188,8 +188,8 @@ export function StopsPanel({
         key: 'time',
         label: 'Time',
         sortValue: (s) => s.started_at,
-        render: (s) => formatTime(s.started_at, timezone),
-        text: (s) => formatTime(s.started_at, timezone),
+        render: (s) => formatTime(s.started_at, timezone, tf),
+        text: (s) => formatTime(s.started_at, timezone, tf),
       },
       {
         key: 'dwell',
@@ -219,7 +219,7 @@ export function StopsPanel({
         text: (s) => s.label?.role ?? '',
         render: (s) => (
           <Picker
-            label={`Label at ${formatTime(s.started_at, timezone)}`}
+            label={`Label at ${formatTime(s.started_at, timezone, tf)}`}
             size="sm"
             className="min-w-32"
             value={(drafts[s.stop_key] ?? draftOf(s, currency)).role}
@@ -255,7 +255,7 @@ export function StopsPanel({
               type="button"
               variant="ghost"
               size="sm"
-              aria-label={`Save the stop at ${formatTime(s.started_at, timezone)} as a place`}
+              aria-label={`Save the stop at ${formatTime(s.started_at, timezone, tf)} as a place`}
               onClick={() => void navigate('/places', { state: { draft: draftFromStop(s) } })}
             >
               Save as a place
@@ -361,7 +361,7 @@ export function StopsPanel({
             rowKey={(s) => s.stop_key}
             initialSort={{ key: 'time', dir: 'asc' }}
           />
-          <p className="text-sm text-muted-foreground">
+          <p className="text-body-medium text-muted-foreground">
             * The engine&apos;s estimate. A label replaces it for that stop, and labelling is
             optional. Earnings count labels only.
           </p>

@@ -120,17 +120,14 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
             <div className="flex flex-wrap items-center gap-2">
               <h2
                 id={titleId}
-                className={cn(
-                  'truncate text-base leading-snug font-medium',
-                  archived && 'text-muted-foreground',
-                )}
+                className={cn('truncate text-title-medium', archived && 'text-muted-foreground')}
               >
                 {vehicle.name}
               </h2>
               {isDefault ? <Badge variant="secondary">Default</Badge> : null}
               {archived ? <Badge variant="outline">Archived</Badge> : null}
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-body-medium text-muted-foreground">
               {details.map((d, i) => (
                 <span key={i}>
                   {i > 0 ? ' · ' : null}
@@ -360,7 +357,7 @@ export function VehiclesPage() {
       ) : null}
       <FormError message={error} />
       {vehicles === null ? (
-        <p className="text-sm text-muted-foreground">Loading</p>
+        <p className="text-body-medium text-muted-foreground">Loading</p>
       ) : empty ? (
         <EmptyState className="space-y-3">
           <p>No vehicles yet. Add the one you drive for work: its type sets the mileage rate.</p>

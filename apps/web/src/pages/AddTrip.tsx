@@ -130,7 +130,7 @@ export function AddTrip({
       className="grid grid-cols-2 gap-3 rounded-lg border p-3"
       onSubmit={(e) => void save(e)}
     >
-      <p className="col-span-2 text-sm text-muted-foreground">
+      <p className="col-span-2 text-body-medium text-muted-foreground">
         {trip
           ? 'A trip you added by hand. Changes count in your totals at once.'
           : 'A trip the phone did not record. It counts in your totals and shows as edited.'}

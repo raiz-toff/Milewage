@@ -16,7 +16,7 @@ import { usePairingSession } from '../pairing/session';
 type Device = Schemas['Device'];
 
 function DeviceRow({ device }: { device: Device }) {
-  const { timezone } = useSettings();
+  const { timezone, time_format: tf } = useSettings();
   const [name, setName] = useState<string | null>(null); // non-null while renaming
   const [confirming, setConfirming] = useState(false);
   const change = useChange();
@@ -46,8 +46,8 @@ function DeviceRow({ device }: { device: Device }) {
         <FormError message={error} />
       </td>
       <td className="pr-4 text-muted-foreground">{device.platform}</td>
-      <td className="pr-4 tabular-nums text-sm text-muted-foreground">
-        {device.last_seen_at ? formatDateTime(device.last_seen_at, timezone) : 'never'}
+      <td className="pr-4 text-muted-foreground tabular-nums">
+        {device.last_seen_at ? formatDateTime(device.last_seen_at, timezone, tf) : 'never'}
       </td>
       <td className="pr-4 text-muted-foreground">{revoked ? 'revoked' : 'active'}</td>
       <td className="space-x-3 text-right whitespace-nowrap">
@@ -154,7 +154,7 @@ export function Devices() {
       ) : null}
       <Section title="Paired phones">
         {devices === null ? (
-          <p className="text-sm text-muted-foreground">Loading</p>
+          <p className="text-body-medium text-muted-foreground">Loading</p>
         ) : devices.length === 0 ? (
           <EmptyState>No phone is paired yet.</EmptyState>
         ) : (

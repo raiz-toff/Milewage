@@ -119,6 +119,51 @@ describe('platforms card (module platforms)', () => {
     expect(badge().querySelector('img')).toBeNull();
   });
 
+  it('picks a badge colour from named presets, and goes back to the brand colour', async () => {
+    const s = server();
+    await screen.findByLabelText('DoorDash');
+    menu('DoorDash', 'Change colour');
+    const group = screen.getByRole('group', { name: 'Badge colour for DoorDash' });
+    const radios = within(group).getAllByRole('radio');
+    // The default first, then every preset, each named for a screen reader.
+    expect(radios.map((r) => r.getAttribute('aria-label'))).toEqual([
+      'Brand colour',
+      'Red',
+      'Orange',
+      'Green',
+      'Teal',
+      'Cyan',
+      'Blue',
+      'Violet',
+      'Magenta',
+      'Slate',
+    ]);
+    // Each choice shows the badge it would give.
+    expect(radios.map((r) => r.closest('label')!.textContent)).toEqual(radios.map(() => 'DD'));
+    expect(
+      (within(group).getByRole('radio', { name: 'Brand colour' }) as HTMLInputElement).checked,
+    ).toBe(true);
+    fireEvent.click(within(group).getByRole('radio', { name: 'Teal' }));
+    await waitFor(() =>
+      expect(s.calls.findLast((c) => c.path === '/platforms/doordash')?.body).toEqual({
+        color: '#0f766e',
+      }),
+    );
+    await waitFor(() =>
+      expect((within(group).getByRole('radio', { name: 'Teal' }) as HTMLInputElement).checked).toBe(
+        true,
+      ),
+    );
+    fireEvent.click(within(group).getByRole('radio', { name: 'Brand colour' }));
+    await waitFor(() =>
+      expect(s.calls.findLast((c) => c.path === '/platforms/doordash')?.body).toEqual({
+        color: null,
+      }),
+    );
+    fireEvent.click(within(group).getByRole('button', { name: 'Done' }));
+    expect(screen.queryByRole('group', { name: 'Badge colour for DoorDash' })).toBeNull();
+  });
+
   it('is absent when the module is off, and asks the server for nothing', async () => {
     const s = server({ platforms: false });
     await screen.findByLabelText('Name');

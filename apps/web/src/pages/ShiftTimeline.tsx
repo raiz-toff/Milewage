@@ -36,7 +36,7 @@ export function StopDot({ n, muted }: { n: number; muted?: boolean }) {
     <span
       aria-hidden="true"
       className={cn(
-        'grid size-5 shrink-0 place-items-center rounded-full bg-foreground text-[11px] font-semibold text-background tabular-nums',
+        'grid size-5 shrink-0 place-items-center rounded-full bg-foreground text-label-small text-background tabular-nums',
         muted && 'opacity-55',
       )}
     >
@@ -47,6 +47,7 @@ export function StopDot({ n, muted }: { n: number; muted?: boolean }) {
 
 function Row({
   time,
+  wide,
   mark,
   title,
   detail,
@@ -55,6 +56,8 @@ function Row({
   menu,
 }: {
   time: string;
+  /** 12-hour clock times ("11:52 p.m.") need a wider column than "23:52". */
+  wide: boolean;
   mark: ReactNode;
   title: ReactNode;
   detail?: ReactNode;
@@ -65,12 +68,19 @@ function Row({
 }) {
   const body = (
     <>
-      <span className="w-11 shrink-0 pt-px text-xs text-muted-foreground tabular-nums">{time}</span>
+      <span
+        className={cn(
+          'shrink-0 pt-0.5 text-body-small whitespace-nowrap text-muted-foreground tabular-nums',
+          wide ? 'w-[4.75rem]' : 'w-11',
+        )}
+      >
+        {time}
+      </span>
       <span className="flex w-5 shrink-0 justify-center self-stretch">{mark}</span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm">{title}</span>
+        <span className="block text-body-medium">{title}</span>
         {detail ? (
-          <span className="block text-xs text-muted-foreground tabular-nums">{detail}</span>
+          <span className="block text-body-small text-muted-foreground tabular-nums">{detail}</span>
         ) : null}
       </span>
     </>
@@ -139,11 +149,17 @@ export function ShiftTimeline({
   /** Given while the shift can be changed: a manual trip's row offers Delete. */
   onDeleteTrip?: (t: Trip) => void;
 }) {
-  const { timezone: tz, distance_unit: unit } = useSettings();
+  const { timezone: tz, distance_unit: unit, time_format: tf } = useSettings();
+  const wide = tf === '12h';
   const flag = <FlagIcon aria-hidden="true" className="mt-0.5 size-4 text-muted-foreground" />;
   return (
-    <ol aria-label="Timeline" className="-mx-2 space-y-0.5">
-      <Row time={formatTime(shift.started_at, tz)} mark={flag} title="Shift started" />
+    <ol aria-label="Timeline" className="space-y-0.5">
+      <Row
+        time={formatTime(shift.started_at, tz, tf)}
+        wide={wide}
+        mark={flag}
+        title="Shift started"
+      />
       {timelineOf(trips, stops).map((e) => {
         if (e.kind === 'trip') {
           const t = e.trip;
@@ -152,7 +168,8 @@ export function ShiftTimeline({
           return (
             <Row
               key={`t${t.id}`}
-              time={formatTime(t.started_at, tz)}
+              time={formatTime(t.started_at, tz, tf)}
+              wide={wide}
               mark={
                 <span
                   className={cn(
@@ -169,7 +186,7 @@ export function ShiftTimeline({
                 </>
               }
               detail={[
-                `${formatTime(t.started_at, tz)} – ${formatTime(t.ended_at, tz)}`,
+                `${formatTime(t.started_at, tz, tf)} – ${formatTime(t.ended_at, tz, tf)}`,
                 minutes(t.ended_at - t.started_at),
                 t.purpose,
                 t.source === 'manual' ? 'edited' : '',
@@ -181,7 +198,7 @@ export function ShiftTimeline({
               menu={
                 t.source === 'manual' && onEditTrip && onDeleteTrip ? (
                   <RowMenu
-                    name={`trip at ${formatTime(t.started_at, tz)}`}
+                    name={`trip at ${formatTime(t.started_at, tz, tf)}`}
                     actions={[
                       { label: 'Edit', icon: EditIcon, onSelect: () => onEditTrip(t) },
                       {
@@ -212,7 +229,8 @@ export function ShiftTimeline({
         return (
           <Row
             key={s.stop_key}
-            time={formatTime(s.started_at, tz)}
+            time={formatTime(s.started_at, tz, tf)}
+            wide={wide}
             mark={<StopDot n={e.n} muted={s.confidence === 'low'} />}
             title={
               <>
@@ -230,7 +248,8 @@ export function ShiftTimeline({
         );
       })}
       <Row
-        time={shift.ended_at ? formatTime(shift.ended_at, tz) : 'now'}
+        time={shift.ended_at ? formatTime(shift.ended_at, tz, tf) : 'now'}
+        wide={wide}
         mark={flag}
         title={shift.ended_at ? 'Shift ended' : 'Shift in progress'}
       />

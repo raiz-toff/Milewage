@@ -37,7 +37,7 @@ const mb = (n: number) => `${(n / 1_000_000).toFixed(1)} MB`;
  * toggled; only the download link follows `modules.backup_download`.
  */
 export function Backups() {
-  const { timezone, modules } = useSettings();
+  const { timezone, modules, time_format: tf } = useSettings();
   const list = useApiQuery('/backups');
   const system = useApiQuery('/system/status');
   // Both or neither, so the warnings and the list appear together.
@@ -105,7 +105,7 @@ export function Backups() {
       ) : null}
       <Section title="Backups on this server">
         {backups === null ? (
-          <p className="text-sm text-muted-foreground">Loading</p>
+          <p className="text-body-medium text-muted-foreground">Loading</p>
         ) : backups.length === 0 ? (
           <EmptyState>No backup has been made yet.</EmptyState>
         ) : (
@@ -124,7 +124,7 @@ export function Backups() {
                 {backups.map((b) => (
                   <tr key={b.id} className="border-t border-border">
                     <td className="whitespace-nowrap tabular-nums">
-                      {formatDateTime(b.created_at, timezone)}
+                      {formatDateTime(b.created_at, timezone, tf)}
                     </td>
                     <td className="pr-4 text-muted-foreground">{TRIGGER[b.trigger]}</td>
                     <td className="whitespace-nowrap text-muted-foreground">{mb(b.size_bytes)}</td>
@@ -174,18 +174,18 @@ function Offsite({
   downloaded: boolean;
   onChange: (synced: boolean) => void;
 }) {
-  const { timezone } = useSettings();
+  const { timezone, time_format: tf } = useSettings();
   const at = offsite.synced_elsewhere_at;
   const stale = at !== null && Date.now() - at > 90 * DAY;
   return (
     <Section label="Off-site copy" title="Off-site copy">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-body-medium text-muted-foreground">
         Last download:{' '}
         {downloaded
           ? 'just now'
           : offsite.last_download_at === null
             ? 'never'
-            : formatDateTime(offsite.last_download_at, timezone)}
+            : formatDateTime(offsite.last_download_at, timezone, tf)}
       </p>
       <CheckField
         label="My backup folder is copied to another place"
@@ -193,10 +193,10 @@ function Offsite({
         onChange={onChange}
       />
       {at !== null ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-body-medium text-muted-foreground">
           {stale
-            ? `Confirmed ${formatDateTime(at, timezone)}. That is over 90 days ago: tick the box again if it is still true.`
-            : `Confirmed ${formatDateTime(at, timezone)}. You will be asked again after 90 days.`}
+            ? `Confirmed ${formatDateTime(at, timezone, tf)}. That is over 90 days ago: tick the box again if it is still true.`
+            : `Confirmed ${formatDateTime(at, timezone, tf)}. You will be asked again after 90 days.`}
         </p>
       ) : null}
     </Section>

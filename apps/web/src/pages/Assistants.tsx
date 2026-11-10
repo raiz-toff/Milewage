@@ -67,7 +67,7 @@ function Copyable({ label, text }: { label: string; text: string }) {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium">{label}</span>
+        <span className="text-title-small">{label}</span>
         <UiButton
           type="button"
           variant="outline"
@@ -77,7 +77,7 @@ function Copyable({ label, text }: { label: string; text: string }) {
           {done ? 'Copied' : 'Copy'}
         </UiButton>
       </div>
-      <pre className="overflow-x-auto rounded-md bg-muted p-2 font-mono text-xs whitespace-pre-wrap break-all">
+      <pre className="overflow-x-auto rounded-small bg-muted p-2 font-mono text-body-small break-all whitespace-pre-wrap">
         {text}
       </pre>
     </div>
@@ -88,15 +88,19 @@ function Copyable({ label, text }: { label: string; text: string }) {
 function MadeToken({ made, onDone }: { made: Made; onDone: () => void }) {
   const c = connectText(globalThis.location?.origin ?? '');
   return (
-    <div role="region" aria-label="New token" className="space-y-3 rounded-lg border p-3">
-      <p className="text-sm font-medium">
+    <div
+      role="region"
+      aria-label="New token"
+      className="space-y-3 rounded-lg border border-outline-variant p-3"
+    >
+      <p className="text-title-small">
         Copy this token now. You will not see it again; MileWage keeps only a fingerprint of it.
       </p>
       <Copyable label="Token" text={made.token} />
-      <p className="text-sm">
+      <p className="text-body-medium">
         Do not paste this token into a chat or a ticket. Anyone who has it can reach your records.
       </p>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-body-small text-muted-foreground">
         Claude Code, on a computer in your tailnet: run the first line and paste the token when it
         waits (nothing shows as you paste). Then run the second. Claude Code reads the token from{' '}
         {TOKEN_VAR} each time it connects, so set {TOKEN_VAR} wherever you start it.
@@ -107,7 +111,7 @@ function MadeToken({ made, onDone }: { made: Made; onDone: () => void }) {
         label="Claude Desktop (claude_desktop_config.json): paste the token where it says"
         text={c.desktop}
       />
-      <p className="text-xs text-muted-foreground">
+      <p className="text-body-small text-muted-foreground">
         Address of this server's MCP endpoint: {c.url}
       </p>
       <UiButton type="button" variant="ghost" size="sm" onClick={onDone}>
@@ -122,11 +126,11 @@ function MadeToken({ made, onDone }: { made: Made; onDone: () => void }) {
  * once, when the old one is lost) or revoked; a signed-in assistant can only be revoked.
  */
 function TokenRow({ t, onMade }: { t: Token; onMade: (made: Made) => void }) {
-  const { timezone } = useSettings();
+  const { timezone, time_format: tf } = useSettings();
   const [confirming, setConfirming] = useState<'revoke' | 'replace' | null>(null);
   const { run, error } = useChange();
   const at = (ms: number | null, none: string) =>
-    ms === null ? none : formatDateTime(ms, timezone);
+    ms === null ? none : formatDateTime(ms, timezone, tf);
   const expired = t.expires_at !== null && t.expires_at <= Date.now();
   const state = t.revoked_at !== null ? 'revoked' : expired ? 'expired' : 'active';
   const params = { params: { path: { id: t.id } } };
@@ -174,7 +178,7 @@ function TokenRow({ t, onMade }: { t: Token; onMade: (made: Made) => void }) {
       <td className={state === 'active' ? '' : 'text-muted-foreground line-through'}>
         {t.name}
         {confirming === 'replace' ? (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-body-small text-muted-foreground">
             The old token stops working at once. Give the new one to the assistant.
           </p>
         ) : null}
@@ -208,7 +212,7 @@ function TestConnection() {
   return (
     <Section title="Test the connection" label="Test the connection">
       <div className="space-y-3">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-body-medium text-muted-foreground">
           An assistant that cannot connect only says "Failed to connect". This checks the address
           MileWage gives assistants from where you are now, and what a proxy in front of MileWage
           changed on the way.
@@ -224,13 +228,13 @@ function TestConnection() {
         </UiButton>
         <FormError message={errorText(query)} />
         {check ? (
-          <div role="status" className="space-y-2 text-sm">
-            <p className="font-medium">
+          <div role="status" className="space-y-2 text-body-medium">
+            <p className="text-title-small">
               {check.ok
                 ? `Assistants get the right address: ${check.mcp_url}`
                 : `Assistants would be sent to ${check.mcp_url}, not ${check.address}/api/v1/mcp.`}
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-body-small text-muted-foreground">
               MileWage saw {check.seen.protocol}://{check.seen.host}
               {check.seen.via ? `, from ${check.seen.via}` : ''}.
               {check.public_url ? ` MILEWAGE_PUBLIC_URL is ${check.public_url}.` : ''}
@@ -242,7 +246,7 @@ function TestConnection() {
                 ))}
               </ul>
             ) : null}
-            {note ? <p className="text-xs text-muted-foreground">{note.message}</p> : null}
+            {note ? <p className="text-body-small text-muted-foreground">{note.message}</p> : null}
           </div>
         ) : null}
       </div>
@@ -254,7 +258,7 @@ function TestConnection() {
 const NO_CHANGES: Change[] = [];
 
 export function AssistantsCard() {
-  const { timezone } = useSettings();
+  const { timezone, time_format: tf } = useSettings();
   const tokenList = useApiQuery('/mcp/tokens');
   const audit = useApiQuery('/mcp/audit');
   // Both or neither, as one answer.
@@ -287,21 +291,21 @@ export function AssistantsCard() {
     <div className="space-y-4">
       <Section title="Connect by signing in" label="Connect by signing in">
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-body-medium text-muted-foreground">
             The easy way. Give your assistant this address. It opens MileWage in your browser, you
             sign in and press Allow. No code to copy. It works with assistants that run on a
             computer in your tailnet, such as Claude Code, Cursor and VS Code.
           </p>
           <Copyable label="MileWage address for assistants" text={signIn.url} />
           <Copyable label="Claude Code" text={signIn.code} />
-          <p className="text-xs text-muted-foreground">
+          <p className="text-body-small text-muted-foreground">
             Then type /mcp in Claude Code, choose milewage and sign in.
           </p>
         </div>
       </Section>
       <TestConnection />
       <Section title="Connect an AI assistant" label="Connect an AI assistant">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-body-medium text-muted-foreground">
           A token is the secret code you make for one assistant so it can reach your server. You can
           revoke it at any time. An assistant such as Claude can read your shifts, earnings,
           expenses, goals and tax estimate, and with a "Read and change" token add expenses,
@@ -359,7 +363,7 @@ export function AssistantsCard() {
         {changes.length === 0 ? (
           <EmptyState>No changes yet.</EmptyState>
         ) : (
-          <ul className="divide-y text-sm">
+          <ul className="divide-y divide-outline-variant text-body-medium">
             {changes.map((c) => (
               <li key={c.id} className="flex flex-wrap justify-between gap-2 py-2">
                 <span>
@@ -368,7 +372,7 @@ export function AssistantsCard() {
                   {c.outcome === 'ok' ? '' : ` — refused: ${c.outcome.replace(/^error: /, '')}`}
                 </span>
                 <span className="text-muted-foreground tabular-nums">
-                  {c.token_name}, {formatDateTime(c.at, timezone)}
+                  {c.token_name}, {formatDateTime(c.at, timezone, tf)}
                 </span>
               </li>
             ))}

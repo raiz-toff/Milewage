@@ -211,7 +211,10 @@ export default function PlacesMap({
 
   if (failed) {
     return (
-      <p role="status" className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
+      <p
+        role="status"
+        className="rounded-xl border border-outline-variant p-4 text-body-medium text-muted-foreground"
+      >
         The map could not start in this browser. Type the centre of the place in the form instead.
       </p>
     );
@@ -224,7 +227,7 @@ export default function PlacesMap({
         className="h-72 w-full cursor-crosshair overflow-hidden rounded-xl border sm:h-96"
       />
       {blank ? (
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1 text-body-small text-muted-foreground">
           Basemap unavailable; your places are drawn on a plain background.
         </p>
       ) : null}

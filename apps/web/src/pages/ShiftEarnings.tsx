@@ -116,7 +116,7 @@ export function ShiftEarnings({
                 {label(r.platform)}: {formatMoney(r.total_cents, currency)}
                 {r.orders !== null ? `, ${r.orders} orders` : ''}
               </PlatformName>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-body-medium text-muted-foreground">
                 {r.source === 'labels' ? 'from stop labels' : 'entered by you'}
               </span>
               {data.entries.some((x) => x.platform === r.platform) ? (
@@ -172,7 +172,7 @@ export function ShiftEarnings({
         </Button>
       </form>
       {none ? null : (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-body-small text-muted-foreground">
           Type the figure the platform shows for this shift. It replaces that platform&apos;s stop
           labels in your totals.
         </p>

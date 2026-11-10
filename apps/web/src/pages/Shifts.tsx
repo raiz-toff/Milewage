@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { PageHeader, Section, StatCard } from '../ui/layout';
+import { EmptyState, PageHeader, Section, StatCard } from '../ui/layout';
 import { Link, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
 import { ChevronLeftIcon, ChevronRightIcon } from '@/ui/icons';
 import { Badge } from '@/components/ui/badge';
@@ -110,6 +110,7 @@ function StatusBadge({ shift }: { shift: Shift }) {
 export function ShiftCard({ shift, settings }: { shift: Shift; settings: Settings }) {
   const unit = settings.distance_unit;
   const tz = settings.timezone;
+  const tf = settings.time_format;
   const split = showsSplit(shift, settings);
   const review = reviewCount(shift);
   return (
@@ -120,7 +121,7 @@ export function ShiftCard({ shift, settings }: { shift: Shift; settings: Setting
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium">
+            <span className="text-title-medium">
               {dateWords(shift.local_date, { weekday: 'long', month: 'short', day: 'numeric' })}
             </span>
             <StatusBadge shift={shift} />
@@ -130,13 +131,15 @@ export function ShiftCard({ shift, settings }: { shift: Shift; settings: Setting
               </Badge>
             ) : null}
           </div>
-          <p className="text-sm text-muted-foreground tabular-nums">
-            {formatTime(shift.started_at, tz)} –{' '}
-            {shift.ended_at ? formatTime(shift.ended_at, tz) : 'now'} ·{' '}
+          <p className="text-body-medium text-muted-foreground tabular-nums">
+            {formatTime(shift.started_at, tz, tf)} –{' '}
+            {shift.ended_at ? formatTime(shift.ended_at, tz, tf) : 'now'} ·{' '}
             {formatDuration(shift.started_at, shift.ended_at)}
           </p>
           {shift.notes ? (
-            <p className="truncate text-sm text-muted-foreground italic">“{shift.notes}”</p>
+            <p className="truncate text-body-medium text-muted-foreground italic">
+              “{shift.notes}”
+            </p>
           ) : null}
         </div>
         <div className="shrink-0 text-right">
@@ -144,13 +147,13 @@ export function ShiftCard({ shift, settings }: { shift: Shift; settings: Setting
             {formatDistance(shift.total_m, unit)}
           </div>
           {split ? (
-            <div className="text-xs text-muted-foreground tabular-nums">
+            <div className="text-body-small text-muted-foreground tabular-nums">
               {formatDistance(shift.active_m, unit)} active
               <Est />
             </div>
           ) : null}
           {shift.deduction_cents !== null ? (
-            <div className="text-xs text-muted-foreground tabular-nums">
+            <div className="text-body-small text-muted-foreground tabular-nums">
               {formatMoney(shift.deduction_cents, settings.currency)}{' '}
               {deductionWord({
                 mileage_rate: settings.mileage_rate,
@@ -234,7 +237,7 @@ export function ShiftList() {
           <ChevronLeftIcon />
         </UiButton>
         <div className="min-w-0 text-center">
-          <div className="text-sm text-muted-foreground">{heroLabel}</div>
+          <div className="text-title-small text-muted-foreground">{heroLabel}</div>
           <div
             aria-live="polite"
             className="truncate text-display-small font-medium tabular-nums sm:text-display-medium"
@@ -242,7 +245,7 @@ export function ShiftList() {
             {data ? hero : <Skeleton className="mx-auto mt-1 h-10 w-40" />}
           </div>
           {data ? (
-            <div className="mt-1 text-xs text-muted-foreground">
+            <div className="mt-1 text-body-small text-muted-foreground">
               {byMoney || (!picked && earnedWeek !== null) ? 'earned' : 'driven'} ·{' '}
               {picked ? picked.shifts.length : data.summary.shift_count}{' '}
               {(picked ? picked.shifts.length : data.summary.shift_count) === 1
@@ -268,7 +271,7 @@ export function ShiftList() {
             {high > 0 ? (
               <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-2">
                 <div className="flex-1 border-t border-dashed" />
-                <span className="text-[11px] text-muted-foreground tabular-nums">
+                <span className="text-label-small text-muted-foreground tabular-nums">
                   High {byMoney ? formatMoney(high, currency) : formatDistance(high, unit)}
                 </span>
               </div>
@@ -300,10 +303,8 @@ export function ShiftList() {
                   </div>
                   <span
                     className={cn(
-                      'text-xs',
-                      selected || d.date === today
-                        ? 'font-semibold text-foreground'
-                        : 'text-muted-foreground',
+                      'text-label-medium',
+                      selected || d.date === today ? 'text-foreground' : 'text-muted-foreground',
                     )}
                   >
                     {dateWords(d.date, { weekday: 'short' })}
@@ -348,7 +349,7 @@ export function ShiftList() {
       ) : null}
 
       <div className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground">
+        <h2 className="text-title-small text-muted-foreground">
           {picked ? `Shifts on ${dateWords(picked.date, { weekday: 'long' })}` : 'Shifts this week'}
         </h2>
         <FormError message={error} />
@@ -358,9 +359,9 @@ export function ShiftList() {
             <Skeleton className="h-20 w-full rounded-xl" />
           </div>
         ) : data && listed.length === 0 ? (
-          <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+          <EmptyState>
             {picked ? 'No shifts on this day.' : 'No shifts this week. Shifts start on the phone.'}
-          </div>
+          </EmptyState>
         ) : (
           <ul aria-label="Shifts" className="space-y-3">
             {listed.map((s) => (
@@ -371,7 +372,7 @@ export function ShiftList() {
           </ul>
         )}
         {anySplit ? (
-          <p className="text-xs text-muted-foreground">* estimated from detected stops</p>
+          <p className="text-body-small text-muted-foreground">* estimated from detected stops</p>
         ) : null}
       </div>
     </section>
@@ -443,7 +444,7 @@ export function ShiftDetail() {
           est={<Est />}
         />
         {view.split ? (
-          <p className="text-xs text-muted-foreground">* estimated from detected stops</p>
+          <p className="text-body-small text-muted-foreground">* estimated from detected stops</p>
         ) : null}
       </div>
 
@@ -473,7 +474,7 @@ export function ShiftDetail() {
               onPick={setPicked}
             />
           ) : (
-            <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+            <p className="rounded-xl border border-dashed p-4 text-body-medium text-muted-foreground">
               The route map is off on this server, so the shift is shown as a list only.
             </p>
           )}
@@ -506,9 +507,16 @@ export function ShiftDetail() {
           ) : trips.data === null ? (
             <p className="text-muted-foreground">Loading trips</p>
           ) : (
-            <div data-timeline-scroll className="@3xl:max-h-[30rem] @3xl:overflow-y-auto">
+            // The negative margin lines the rows' text up with the card's; it sits on the scroll
+            // box, not the list, so the list is never wider than the box and cannot scroll sideways
+            // (which cut the first digit off the times). Where the box scrolls, 6 px of padding
+            // (taken back by the margin) leaves room for the focus rings, which it would clip.
+            <div
+              data-timeline-scroll
+              className="-mx-2 @3xl:-m-1.5 @3xl:-mx-3.5 @3xl:max-h-[30rem] @3xl:overflow-x-hidden @3xl:overflow-y-auto @3xl:p-1.5"
+            >
               {view.noTrips ? (
-                <p className="mb-2 text-muted-foreground">No trips were recorded.</p>
+                <p className="mb-2 px-2 text-muted-foreground">No trips were recorded.</p>
               ) : null}
               <ShiftTimeline
                 shift={shift}

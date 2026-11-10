@@ -82,7 +82,7 @@ export function ShiftOdometer({
               Save
             </Button>
             {saved === kind ? (
-              <span role="status" className="ml-2 text-sm font-medium">
+              <span role="status" className="ml-2 text-body-medium">
                 Saved.
               </span>
             ) : null}
@@ -90,7 +90,9 @@ export function ShiftOdometer({
         ))}
       </div>
       {locked ? (
-        <p className="text-sm text-muted-foreground">A finalized shift cannot be changed.</p>
+        <p className="text-body-medium text-muted-foreground">
+          A finalized shift cannot be changed.
+        </p>
       ) : null}
       <FormError message={error} />
     </Section>

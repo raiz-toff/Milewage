@@ -62,9 +62,7 @@ export function SectionNav({
           {groups.map((g, i) => (
             <DropdownMenuGroup key={g.label}>
               {i > 0 ? <DropdownMenuSeparator /> : null}
-              <DropdownMenuLabel className="text-xs text-muted-foreground">
-                {g.label}
-              </DropdownMenuLabel>
+              <DropdownMenuLabel>{g.label}</DropdownMenuLabel>
               {g.items.map((s) => (
                 <DropdownMenuItem key={s.to} asChild>
                   <Link

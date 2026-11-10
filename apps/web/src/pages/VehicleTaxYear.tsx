@@ -43,7 +43,7 @@ export function VehicleTaxYear({
   return (
     <div className="grid min-w-0 gap-1">
       <div className="flex flex-wrap items-center gap-2">
-        <label htmlFor={id} className="text-sm font-medium">{`${year} deduction`}</label>
+        <label htmlFor={id} className="text-title-small">{`${year} deduction`}</label>
         <Picker
           id={id}
           label={`${year} deduction for ${name}`}
@@ -58,11 +58,11 @@ export function VehicleTaxYear({
           ]}
         />
       </div>
-      <p id={`${id}-why`} className="text-xs text-muted-foreground">
+      <p id={`${id}-why`} className="text-body-small text-muted-foreground">
         {why}
       </p>
       {error ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-body-medium text-destructive">
           {error}
         </p>
       ) : null}

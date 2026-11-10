@@ -10,7 +10,7 @@ function GroupList({ label, pages }: { label: string; pages: HelpPage[] }) {
   const id = useId();
   return (
     <section aria-labelledby={id} className="space-y-2">
-      <h2 id={id} className="text-base leading-snug font-medium">
+      <h2 id={id} className="text-title-medium text-on-surface">
         {label}
       </h2>
       <Card className="py-0">

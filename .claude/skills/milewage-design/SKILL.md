@@ -63,7 +63,10 @@ or an `ExtendedFloatingActionButton`, whose Material default is primary-containe
 
 **Money colours.** `earned` (green) is money in and `spent` (harmonised to a red-orange) is money
 out. Use them only on money figures, never as the only signal: the label says it in words. They
-never mark status. Destructive actions use Material's `error`, never `spent`.
+never mark status. Destructive actions use Material's `error`, never `spent`. On the web they mark
+only headline figures (the dashboard's earned figure, a shift's Earned, Expenses' total spend,
+Analytics' gross, expenses and net by its sign), through `StatCard tone` or `moneyText`; tables
+and lists stay plain.
 
 **Themes.** On the web, light is the default. The app follows the OS or the Settings choice:
 `apps/web/src/theme.ts` toggles `.dark` on `<html>`, and `THEME_COLORS` feeds `theme-color`.
@@ -169,7 +172,8 @@ The screens (Home, Shifts, shift detail, Settings, pairing) are **in progress**.
 - **Never hard-code a colour.** Use a role: a Tailwind class (`bg-surface-container`,
   `text-on-surface-variant`) or `MaterialTheme.colorScheme.*`. A missing role is added to the
   generator, never written as hex in a page. The QR plate (`qr-ink`, `qr-plate`) and the logo's
-  brand constants are the only fixed colours.
+  brand constants are the only fixed colours. A platform's badge colour is the driver's data, drawn
+  at Material tones by `platforms/tones.ts`.
 - **`bg-primary` is not the brand yellow.** Use `bg-primary-container` for the yellow, and only for
   the one main action or a brand mark. `primary` is for text buttons, links, checked controls and
   progress.

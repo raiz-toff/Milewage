@@ -27,7 +27,7 @@ import { fileBody, unwrap } from '../api/client';
 import { usePagedList } from '../api/paged';
 import { errorText, useApiQuery, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
-import { addDays, todayIn } from '../days';
+import { addDays, dateLocale, formatDay, todayIn } from '../days';
 import { formatMoney } from '../format';
 import { useSession, useSettings } from '../session';
 import { FilterChip } from '../ui/chips';
@@ -103,7 +103,7 @@ export function bodyOf(d: Draft, currency: string): Schemas['ExpenseCreate'] {
  */
 export function ExpensesPage() {
   const { api } = useSession();
-  const { currency, modules, default_vehicle_id, timezone } = useSettings();
+  const { currency, modules, default_vehicle_id, timezone, country } = useSettings();
   const today = todayIn(timezone);
   // Vehicle costs go on the driver's default vehicle unless they choose another.
   const auto = default_vehicle_id === null ? '' : String(default_vehicle_id);
@@ -215,6 +215,7 @@ export function ExpensesPage() {
     );
   }
   const money = (c: number) => formatMoney(c, currency);
+  const day = (iso: string) => formatDay(iso, dateLocale(country)) || iso;
 
   return (
     <section className="space-y-6">
@@ -244,7 +245,11 @@ export function ExpensesPage() {
       {totals ? (
         <div className="grid grid-cols-2 gap-3 sm:max-w-xl" aria-label="Year to date">
           <StatCard label={`Deductible ${totals.year}`} value={money(totals.deductible_cents)} />
-          <StatCard label={`Total spend ${totals.year}`} value={money(totals.total_cents)} />
+          <StatCard
+            label={`Total spend ${totals.year}`}
+            value={money(totals.total_cents)}
+            tone="spent"
+          />
         </div>
       ) : null}
       {due.length > 0 ? (
@@ -252,7 +257,8 @@ export function ExpensesPage() {
           {due.map((d) => (
             <div key={d.id} className="flex items-center gap-3">
               <span>
-                {d.merchant || cat(d.category)?.label} {money(d.amount_cents)} (due {d.next_due})
+                {d.merchant || cat(d.category)?.label} {money(d.amount_cents)} (due{' '}
+                {day(d.next_due ?? '')})
               </span>
               <UiButton
                 type="button"
@@ -308,7 +314,7 @@ export function ExpensesPage() {
               />
             </div>
             <div role="group" aria-labelledby={`${ids}-cat`} className="space-y-2">
-              <div id={`${ids}-cat`} className="text-sm font-medium">
+              <div id={`${ids}-cat`} className="text-title-small text-on-surface">
                 Category
               </div>
               <div className="flex flex-wrap gap-2">
@@ -346,7 +352,7 @@ export function ExpensesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-body-small text-muted-foreground">
                 {!draft.deductible
                   ? 'Not deductible.'
                   : draft.business_pct === 100
@@ -366,7 +372,7 @@ export function ExpensesPage() {
                 type="button"
                 aria-expanded={more}
                 onClick={() => setMore(!more)}
-                className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+                className="flex items-center gap-1 rounded-small text-label-large text-muted-foreground focus-ring hover:text-foreground"
               >
                 <ExpandMoreIcon
                   aria-hidden="true"
@@ -375,7 +381,7 @@ export function ExpensesPage() {
                 More details
               </button>
               {more ? null : (
-                <p className="pl-5 text-xs text-muted-foreground">
+                <p className="pl-5 text-body-small text-muted-foreground">
                   Merchant, deductible share, vehicle, shift, repeats, notes
                 </p>
               )}
@@ -402,7 +408,7 @@ export function ExpensesPage() {
                   />
                   {draft.deductible ? (
                     <div role="group" aria-label="Business use" className="flex flex-wrap gap-2">
-                      <span className="self-center text-sm text-muted-foreground">
+                      <span className="self-center text-body-medium text-muted-foreground">
                         Business use
                       </span>
                       {PICKS.map((p) => (
@@ -514,7 +520,7 @@ export function ExpensesPage() {
           />
         </div>
         {items === null ? (
-          <p className="text-sm text-muted-foreground">Loading</p>
+          <p className="text-body-medium text-muted-foreground">Loading</p>
         ) : items.length === 0 ? (
           <EmptyState>No expenses yet.</EmptyState>
         ) : (
@@ -534,8 +540,8 @@ export function ExpensesPage() {
               </thead>
               <tbody>
                 {items.map((x) => (
-                  <tr key={x.id} className="border-t border-border">
-                    <td className="whitespace-nowrap tabular-nums">{x.spent_on}</td>
+                  <tr key={x.id}>
+                    <td className="whitespace-nowrap tabular-nums">{day(x.spent_on)}</td>
                     <td className="pr-3">{cat(x.category)?.label ?? x.category}</td>
                     <td className="pr-3">{x.merchant}</td>
                     <td className="text-right tabular-nums">{money(x.amount_cents)}</td>
@@ -560,7 +566,7 @@ export function ExpensesPage() {
                             <input
                               type="file"
                               accept="image/jpeg,image/png,image/webp,application/pdf"
-                              aria-label={`Attach receipt to ${x.merchant || x.category} ${x.spent_on}`}
+                              aria-label={`Attach receipt to ${x.merchant || x.category} ${day(x.spent_on)}`}
                               className="sr-only"
                               onChange={(e) => {
                                 const f = e.target.files?.[0];
@@ -575,7 +581,7 @@ export function ExpensesPage() {
                     ) : null}
                     <td className="text-right whitespace-nowrap">
                       <RowMenu
-                        name={`${x.merchant || cat(x.category)?.label || x.category} ${x.spent_on}`}
+                        name={`${x.merchant || cat(x.category)?.label || x.category} ${day(x.spent_on)}`}
                         actions={[
                           {
                             label: 'Edit',

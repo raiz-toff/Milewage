@@ -72,7 +72,7 @@ function ResetPassword({ onBack }: { onBack: () => void }) {
 
   return (
     <Card title="Choose a new password">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-body-medium text-muted-foreground">
         Enter the recovery key you saved when you set up MileWage. It starts with AGE-SECRET-KEY-1.
         Every other browser is signed out. Your data and the key stay as they are.
       </p>
@@ -105,7 +105,7 @@ function ResetPassword({ onBack }: { onBack: () => void }) {
           </UiButton>
         </div>
       </form>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-body-small text-muted-foreground">
         Lost the recovery key too? On the server machine, stop the api service and run{' '}
         <span className="font-mono">milewage-cli reset-password</span>. It prints a new password.
       </p>

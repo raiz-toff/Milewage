@@ -29,7 +29,7 @@ export function GoalStep({ ctx, next }: StepProps) {
   return (
     <StepForm save={save} next={next}>
       {goal ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-body-medium text-muted-foreground">
           You have a weekly goal: {goal.label}
           {goal.metric === 'earnings' ? `, ${formatMoney(goal.target, currency)}` : ''}.
         </p>
@@ -63,18 +63,18 @@ export function PairStep({ ctx, next }: StepProps) {
   return (
     <StepForm save={async () => {}} next={next} skip={paired.length ? null : 'Pair later'}>
       {paired.length ? (
-        <p role="status" className="text-sm">
+        <p role="status" className="text-body-medium">
           Paired: {paired.map((d) => d.name).join(', ')}.
         </p>
       ) : (
         <>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-body-medium text-muted-foreground">
             Pair your phone with this server. The phone records your shifts and sends them here.
           </p>
           <LinkAPhone />
-          <p className="text-sm font-medium">Or scan a code</p>
+          <p className="text-title-small">Or scan a code</p>
           <PairingCode session={session} />
-          <p role="status" className="text-sm text-muted-foreground">
+          <p role="status" className="text-body-medium text-muted-foreground">
             Waiting for your phone…
           </p>
         </>
