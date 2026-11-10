@@ -79,8 +79,10 @@ export default defineConfig({
     proxy: {
       // The server leaves `Secure` off the session cookie on an http page itself (plan 28 H2), so
       // the dev server opened by IP over the LAN signs in without a workaround here.
-      '/api': api,
-      '/healthz': api,
+      // Object form on purpose: a string target makes Vite rewrite Host to the API's address
+      // (changeOrigin), and the server refuses every write whose Origin does not match Host.
+      '/api': { target: api },
+      '/healthz': { target: api },
     },
   },
   build: { outDir: 'dist', sourcemap: false },

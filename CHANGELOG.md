@@ -58,6 +58,7 @@ All notable changes to MileWage are listed here. The format follows
 
 ### Fixed
 
+- `npm run dev`: signing in and every other write failed with "The Origin header is missing or does not match", because Vite rewrote the Host header on its way to the API; the proxy now leaves Host alone.
 - With the tracking module switched off, a failed backup now produces the `backup_failed` inbox item
   and the diagnostics record. Before, the event emitter was only wired when tracking registered its
   routes, so those events were dropped.
