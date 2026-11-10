@@ -53,6 +53,7 @@ its OpenAPI 3.1 support is labelled beta (it also rejects the spec's YAML withou
 `--skip-validate-spec`). Hand-written models with this two-way check catch the same drift.
 
 When the spec changes:
+
 1. Run `./gradlew :core:test`. The failures name each field and operation.
 2. Update the answer in `src/test/.../support/ContractFixtures.kt` if an answer changed, then the
    model in `Models.kt` (and `Endpoints.kt` for a new or moved operation; a new operation needs a
@@ -171,25 +172,25 @@ cannot disagree with it. The rule: **a row is only ever sent to the server its s
   `(instance_id, server_id)`. `MigrationTest` builds a version 1 database from `1.json` with rows,
   opens it with the current code (Room migrates, then validates every table, column, index and
   foreign key against the entities) and checks the rows and the claim.
- The native app
-**starts empty**: nothing is imported from the Expo app's SQLite files (`milewage-app.db`,
-`tracker.db`). The driver pairs again after installing it, and anything the Expo app had not sent
-must be sent before updating (release notes).
+  The native app
+  **starts empty**: nothing is imported from the Expo app's SQLite files (`milewage-app.db`,
+  `tracker.db`). The driver pairs again after installing it, and anything the Expo app had not sent
+  must be sent before updating (release notes).
 
-| Table               | Holds                                                                                                                                                       |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `shifts`            | One row per shift, the running one too: status, segmenter, times, local date, totals (null until a result), digest, version, flags (phone and server), manifest, recon, send state, server deduction, battery, notes, and `instance_id`, the server it belongs to. |
+| Table               | Holds                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `shifts`            | One row per shift, the running one too: status, segmenter, times, local date, totals (null until a result), digest, version, flags (phone and server), manifest, recon, send state, server deduction, battery, notes, and `instance_id`, the server it belongs to.                                                                                                |
 | `fixes`             | The record: every fix with `seq` INTEGER PRIMARY KEY AUTOINCREMENT (strictly increasing, never reused), the wire fields, the local-only `provider`, `elapsed_realtime_ms`, `phone_time_ms`, and `send_state` 0 pending / 1 sent (`sent_at`) / 2 set aside (refused for good; kept, left out of results). No foreign key: a fix is never lost to a missing parent. |
-| `interruptions`     | The tracker's interruptions, copied to the shift at its end.                                                                                                |
-| `trips`             | Automatic trips (with the driver's trip edit applied in place, `edited_at` set) and manual trips. Cascades from `shifts`.                                    |
-| `stops`, `routes`   | The result's stops and the simplified route (one JSON row per shift, out of the list queries). Cascade.                                                     |
-| `odometer_readings` | `(shift, shift_start/shift_end)`. Cascade.                                                                                                                  |
-| `vehicles`          | From `GET /vehicles` and the change log: a shift starts offline.                                                                                            |
-| `outbox`            | The queue of changes (`kind`, `entity_key`, exact request `body`, `status` pending/parked). An answered row is deleted.                                    |
-| `overwrite_log`     | The phone's side of the overwrite log: what it had when the server's value replaced it (`recon_diff`, `superseded_by_server`, `deleted_on_server`).          |
-| `resend_marks`      | One per shift to send again after a server restore (`gen`, `phase` todo/queued, `after_seq`).                                                               |
-| `bookkeeping`       | Small values: change-log cursor, restore generation, last pull, last vehicle, odometer checks, reminder state, diagnostics state.                          |
-| `diag_events`       | The diagnostics ring, validated events only.                                                                                                                |
+| `interruptions`     | The tracker's interruptions, copied to the shift at its end.                                                                                                                                                                                                                                                                                                      |
+| `trips`             | Automatic trips (with the driver's trip edit applied in place, `edited_at` set) and manual trips. Cascades from `shifts`.                                                                                                                                                                                                                                         |
+| `stops`, `routes`   | The result's stops and the simplified route (one JSON row per shift, out of the list queries). Cascade.                                                                                                                                                                                                                                                           |
+| `odometer_readings` | `(shift, shift_start/shift_end)`. Cascade.                                                                                                                                                                                                                                                                                                                        |
+| `vehicles`          | From `GET /vehicles` and the change log: a shift starts offline.                                                                                                                                                                                                                                                                                                  |
+| `outbox`            | The queue of changes (`kind`, `entity_key`, exact request `body`, `status` pending/parked). An answered row is deleted.                                                                                                                                                                                                                                           |
+| `overwrite_log`     | The phone's side of the overwrite log: what it had when the server's value replaced it (`recon_diff`, `superseded_by_server`, `deleted_on_server`).                                                                                                                                                                                                               |
+| `resend_marks`      | One per shift to send again after a server restore (`gen`, `phase` todo/queued, `after_seq`).                                                                                                                                                                                                                                                                     |
+| `bookkeeping`       | Small values: change-log cursor, restore generation, last pull, last vehicle, odometer checks, reminder state, diagnostics state.                                                                                                                                                                                                                                 |
+| `diag_events`       | The diagnostics ring, validated events only.                                                                                                                                                                                                                                                                                                                      |
 
 Write-ahead logging, foreign keys on, and `synchronous = FULL` on every connection (`DurableDriver`
 turns Room's `NORMAL` into `FULL`): a commit is on storage before the call returns, also across a

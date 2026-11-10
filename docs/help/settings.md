@@ -117,7 +117,7 @@ The menu at the foot of the sidebar shows your name and holds:
 
 The phone app has its own Settings tab. Units, currency, time zone and time format are not set there: they come from your server, and the phone shows them under "Units and formats". Change them on the web.
 
-- **Server**: the server this phone sends to, both its addresses, and Check, which tries the connection now. "Connect to a different server" disconnects this phone; shifts not yet sent stay on it, and it asks you to send them first.
+- **Server**: the server this phone sends to, both its addresses, and Check, which tries the connection now. "Connect to a different server" disconnects this phone; shifts not yet sent stay on it and go only to the server they were recorded for, and it asks you to send them first.
 - **Permissions**: the same screen as at first run, to fix location, notifications or battery.
 - **Ask to start a shift when I seem to be driving**: off unless you turn it on. When it is on and no shift runs, MileWage watches for a drive and asks "You seem to be driving." with Start and Not now. Start begins a shift that counts from when the drive began. Not now quiets it for that drive and an hour. It needs location "Allow all the time", because it runs with no app on screen, and it shows a silent notification, "Watching for drives", while it is on. It uses a network position about once a minute and short GPS checks, so it costs some battery.
 - **"Still on shift?" reminder**: during a shift, asks once when you have not moved for this long: 15, 30 (the default), 45, 60, 90 or 120 minutes, or Off. Keep going carries on; End shift ends it. It never ends a shift by itself.

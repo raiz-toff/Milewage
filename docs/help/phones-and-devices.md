@@ -87,6 +87,8 @@ A revoked phone says "This phone was removed from your server. Re-pair to send y
 
 A phone paired again with the same server sends the shifts it was still holding. The old entry stays on the Devices page. If it still says active, revoke it, so only the phone's new pairing works.
 
+A shift is only ever sent to the server it was recorded for. If you pair the phone with a different server, shifts not yet sent to the old one stay on the phone. Home and Settings show them as "recorded for another server", and the shifts list marks each one "Recorded for another server". You have two ways forward: "Connect to that server" to pair with the old server again, which sends them, or "Delete from this phone", which asks first and removes them for good.
+
 ## What the phone keeps
 
 The phone keeps the shifts it has not sent yet, and the GPS points of sent shifts for up to 14 days. The details, and what is lost with the phone, are in [If your phone is lost](if-your-phone-is-lost.md#what-is-on-the-phone).
