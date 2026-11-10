@@ -118,7 +118,7 @@ function PeriodFigures({
           <p className="text-label-medium text-on-surface-variant">Earned, after app fees</p>
           <p
             className={cn(
-              'text-display-small font-medium tabular-nums sm:text-display-medium',
+              'text-display-small font-medium tracking-tight tabular-nums sm:text-display-medium lg:text-display-large',
               earned !== null && earned > 0 && moneyText.earned,
             )}
           >

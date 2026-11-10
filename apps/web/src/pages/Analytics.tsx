@@ -280,7 +280,7 @@ export function AnalyticsPage() {
                     </PlatformName>
                     <div className="h-2 overflow-hidden rounded-full bg-secondary-container">
                       <div
-                        className="h-2 rounded-full bg-primary"
+                        className="h-2 rounded-full bg-chart-1"
                         style={{ width: `${Math.round((s.share ?? 0) * 100)}%` }}
                       />
                     </div>

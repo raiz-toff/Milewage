@@ -94,9 +94,9 @@ describe('map style', () => {
       (blankStyle(d).layers[0] as { paint: { 'background-color': string } }).paint[
         'background-color'
       ];
-    // The card surface (surface-container-low) of each theme.
-    expect(bg(true)).toBe('#201b11');
-    expect(bg(false)).toBe('#fef2e1');
+    // A step off the card: surface-container-low in light, the Asphalt page in dark.
+    expect(bg(true)).toBe('#111416');
+    expect(bg(false)).toBe('#f3f3f6');
     // The route is Lane yellow itself in both themes.
     expect(routeColor(true)).toBe('#ffc21f');
     expect(routeColor(false)).toBe('#ffc21f');

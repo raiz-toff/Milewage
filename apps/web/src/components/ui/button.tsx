@@ -9,15 +9,17 @@ import { withRipple } from '@/components/ui/ripple';
  * text, a state layer for hover and focus and a ripple on press.
  *
  * - `default`: the screen's one primary action. Material's filled button in the brand's colour:
- *   primary-container, which the Fidelity scheme sets to Lane yellow itself in both themes (the
- *   colour Material gives the most important action on a screen, the FAB's). One per screen.
- * - `filled`: Material's filled button in `primary`, for a strong action that is not the brand one.
- * - `tonal` (`secondary` is the same): the filled tonal button, secondary-container.
- * - `elevated`: surface-container-low with the level 1 shadow.
+ *   primary-container, Lane yellow itself in both themes, with an Asphalt label (the colour
+ *   Material gives the most important action on a screen, the FAB's). One per screen: it is the
+ *   only yellow control in the app.
+ * - `filled`: Material's filled button in `primary`, which is ink (an Asphalt pill in light, a
+ *   near-white one in dark), for a strong action that is not the brand one. Rare.
+ * - `tonal` (`secondary` is the same): the filled tonal button, secondary-container: a cool grey.
+ * - `elevated`: the card colour with the level 1 shadow.
  * - `outline`: the outlined button.
- * - `ghost`: the text button.
+ * - `ghost`: the text button, in ink.
  * - `destructive`: a tonal button in the error container colours.
- * - `link`: inline text with the brand underline, for a link inside a sentence.
+ * - `link`: inline text with an ink underline, for a link inside a sentence.
  */
 const buttonVariants = cva(
   "group/button relative inline-flex shrink-0 items-center justify-center rounded-full border border-transparent text-label-large whitespace-nowrap transition-[background-color,color,box-shadow,border-color] duration-200 ease-standard select-none state-layer focus-ring disabled:pointer-events-none disabled:text-on-surface/38 disabled:shadow-none aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5",
@@ -33,7 +35,7 @@ const buttonVariants = cva(
         secondary:
           'bg-secondary-container text-on-secondary-container hover:shadow-elevation-1 disabled:bg-on-surface/12',
         elevated:
-          'bg-surface-container-low text-primary shadow-elevation-1 hover:shadow-elevation-2 disabled:bg-on-surface/12',
+          'bg-card text-primary shadow-elevation-1 hover:shadow-elevation-2 disabled:bg-on-surface/12',
         outline: 'border-outline bg-transparent text-primary disabled:border-on-surface/12',
         ghost: 'bg-transparent text-primary',
         destructive: 'bg-error-container text-on-error-container disabled:bg-on-surface/12',

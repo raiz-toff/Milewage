@@ -3,13 +3,14 @@ import scheme from '../theme/m3-scheme.json';
 
 /**
  * Map colours from the Material scheme (src/theme/m3-scheme.json; MapLibre needs the values, not
- * CSS variables): the card surface (surface-container-low), the route in Lane yellow
- * (primary-container, the brand itself in both themes), and a near-black edge under the route
- * (on-primary-fixed) so the yellow stays visible on a light basemap.
+ * CSS variables): a canvas one step off the card (surface-container-low in light, the Asphalt
+ * page in dark), the route in Lane yellow (primary-container, the brand itself in both themes),
+ * and a near-black edge under the route (on-primary-fixed) so the yellow stays visible on a light
+ * basemap.
  */
 const palette = {
   dark: {
-    canvas: scheme.dark.surfaceContainerLow,
+    canvas: scheme.dark.background,
     route: scheme.dark.primaryContainer,
     casing: scheme.dark.onPrimaryFixed,
   },

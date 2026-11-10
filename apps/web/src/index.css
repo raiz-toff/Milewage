@@ -36,6 +36,20 @@
   --color-spent: var(--spent);
   --color-signal: var(--signal);
   --color-chart-5: var(--chart-5);
+  --color-chart-series-1: var(--md-extended-color-chart-series-1);
+  --color-chart-series-2: var(--md-extended-color-chart-series-2);
+  --color-chart-series-3: var(--md-extended-color-chart-series-3);
+  --color-chart-series-4: var(--md-extended-color-chart-series-4);
+  --color-chart-series-5: var(--md-extended-color-chart-series-5);
+  --color-chart-series-6: var(--md-extended-color-chart-series-6);
+  --color-chart-series-7: var(--md-extended-color-chart-series-7);
+  --color-chart-series-8: var(--md-extended-color-chart-series-8);
+  --color-chart-earned: var(--md-extended-color-chart-earned);
+  --color-chart-spent: var(--md-extended-color-chart-spent);
+  --color-chart-measure: var(--md-extended-color-chart-measure);
+  --color-chart-other: var(--md-extended-color-chart-other);
+  --color-chart-grid: var(--md-extended-color-chart-grid);
+  --color-chart-axis: var(--md-extended-color-chart-axis);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
@@ -335,50 +349,62 @@
   --md-sys-motion-duration-extra-long4: 1000ms;
 
   /*
-   * shadcn names onto Material roles. Pages: surface; cards: surface-container-low (tonal
-   * elevation 1, no shadow); menus and popovers: surface-container (elevation 2, with its shadow).
-   * `primary` is Material's primary (#795900 in light, a 6.2:1 mark on the page); the brand
-   * yellow itself is `primary-container`, which the one primary action wears (button.tsx).
-   * Green (earned) is money in only; spent is money out; `destructive` is Material's error.
+   * The surface model ("Asphalt and lane", 2026-11-10). shadcn's names resolve to Material roles,
+   * and the light and dark themes build depth differently, as Material's own apps do:
+   *
+   *            page (`background`)       card (`card`)               on a card (`muted`)      menu, dialog (`popover`)
+   *   light    background, cool grey     surface-container-lowest    surface-container-high     surface-container-lowest + shadow
+   *   dark     background = surface      surface-container           surface-container-highest  surface-container-high + shadow
+   *
+   * In light a card is white on a grey page and reads by lightness alone: no border, no shadow,
+   * no tint. In dark the page is Asphalt and a card is one step lighter. The drawer is the page.
+   * `primary` is ink (on-surface's family), not the brand: the brand yellow is
+   * `primary-container`, which only the one main action wears (button.tsx), the map's route and
+   * the logo. Earned is money in only, spent is money out; `destructive` is Material's error.
    */
-  --background: var(--md-sys-color-surface);
+  --background: var(--md-sys-color-background);
   --foreground: var(--md-sys-color-on-surface);
-  --card: var(--md-sys-color-surface-container-low);
+  --card: var(--md-sys-color-surface-container-lowest);
   --card-foreground: var(--md-sys-color-on-surface);
-  --popover: var(--md-sys-color-surface-container);
+  --popover: var(--md-sys-color-surface-container-lowest);
   --popover-foreground: var(--md-sys-color-on-surface);
   --primary: var(--md-sys-color-primary);
   --primary-foreground: var(--md-sys-color-on-primary);
   --secondary: var(--md-sys-color-secondary-container);
   --secondary-foreground: var(--md-sys-color-on-secondary-container);
-  --muted: var(--md-sys-color-surface-container-highest);
+  --muted: var(--md-sys-color-surface-container-high);
   --muted-foreground: var(--md-sys-color-on-surface-variant);
-  --accent: var(--md-sys-color-surface-container-highest);
+  --accent: var(--md-sys-color-surface-container-high);
   --accent-foreground: var(--md-sys-color-on-surface);
   --destructive: var(--md-sys-color-error);
   --destructive-foreground: var(--md-sys-color-on-error);
   --border: var(--md-sys-color-outline-variant);
   --input: var(--md-sys-color-outline);
-  /* Material's focus indicator colour is secondary. */
-  --ring: var(--md-sys-color-secondary);
+  /* The focus ring is ink: the strongest mark the scheme has, 3:1 or more on every surface. */
+  --ring: var(--md-sys-color-primary);
   --earned: var(--md-extended-color-earned);
   --spent: var(--md-extended-color-spent);
   --signal: var(--md-extended-color-signal);
-  /* Chart marks need 3:1 on a card: primary in light; the brand yellow in dark (primary-container). */
-  --chart-1: var(--md-sys-color-primary);
-  --chart-2: var(--md-extended-color-earned);
-  --chart-3: var(--md-extended-color-signal);
-  --chart-4: var(--md-extended-color-spent);
-  --chart-5: var(--md-sys-color-outline);
-  /* Navigation drawer and rail: the active destination is a secondary-container pill. */
-  --sidebar: var(--md-sys-color-surface-container-low);
+  /*
+   * Charts (generated, scripts/m3-theme.mjs): `chart-series-1` … `-8` for identity, in order;
+   * `chart-earned`, `chart-spent` and the steel `chart-measure` (distance, time) for the
+   * product's own series; `chart-other`, `chart-grid` and `chart-axis`. `chart-1` … `5` are the
+   * older short names: measure, earned, spent, the first series, other.
+   */
+  --chart-1: var(--md-extended-color-chart-measure);
+  --chart-2: var(--md-extended-color-chart-earned);
+  --chart-3: var(--md-extended-color-chart-spent);
+  --chart-4: var(--md-extended-color-chart-series-1);
+  --chart-5: var(--md-extended-color-chart-other);
+  /* Navigation drawer and rail: on the page itself; the active destination is a grey pill. */
+  --sidebar: var(--md-sys-color-background);
   --sidebar-foreground: var(--md-sys-color-on-surface-variant);
   --sidebar-primary: var(--md-sys-color-primary-container);
   --sidebar-primary-foreground: var(--md-sys-color-on-primary-container);
   --sidebar-accent: var(--md-sys-color-secondary-container);
   --sidebar-accent-foreground: var(--md-sys-color-on-secondary-container);
   --sidebar-border: var(--md-sys-color-outline-variant);
-  --sidebar-ring: var(--md-sys-color-secondary);
+  --sidebar-ring: var(--md-sys-color-primary);
   /*
    * A QR code is black modules on a white plate in both themes: scanners need the dark-on-light
    * contrast, so these two do not follow the theme.
@@ -389,7 +415,10 @@
 
 .dark {
   color-scheme: dark;
-  --chart-1: var(--md-sys-color-primary-container);
+  --card: var(--md-sys-color-surface-container);
+  --popover: var(--md-sys-color-surface-container-high);
+  --muted: var(--md-sys-color-surface-container-highest);
+  --accent: var(--md-sys-color-surface-container-highest);
 }
 
 @layer base {

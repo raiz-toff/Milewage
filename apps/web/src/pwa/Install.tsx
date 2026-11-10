@@ -40,10 +40,9 @@ export function InstallCard() {
   const { state, dismissed } = useInstall();
   if (!cardShows(state, dismissed)) return null;
   return (
-    // The drawer is surface-container-low, so the card sits a step higher, not on its own tone.
+    // The drawer is the page's own colour, so a plain card stands on it as it does on a page.
     <Card
       size="sm"
-      variant="highest"
       role="region"
       aria-label="Install MileWage"
       className="relative group-data-[collapsible=icon]:hidden"

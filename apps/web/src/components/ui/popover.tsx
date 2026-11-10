@@ -12,7 +12,8 @@ function PopoverTrigger({ ...props }: React.ComponentProps<typeof PopoverPrimiti
 
 /**
  * A floating surface anchored to its trigger, as Material 3 draws menus and the docked date
- * picker: surface-container, medium corners, elevation level 2.
+ * picker: `bg-popover` (surface-container-lowest in light, surface-container-high in dark),
+ * medium corners, elevation level 2.
  */
 function PopoverContent({
   className,

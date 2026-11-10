@@ -40,7 +40,8 @@ function DialogOverlay({
 }
 
 /**
- * Material 3 basic dialog (m3.material.io/components/dialogs): surface-container-high, 28 px
+ * Material 3 basic dialog (m3.material.io/components/dialogs): `bg-popover` (white in light,
+ * surface-container-high in dark), 28 px
  * corners, 24 px padding, elevation level 3 over a 32 % scrim; a headline-small title,
  * body-medium supporting text and the actions at the end, right-aligned.
  */
@@ -58,7 +59,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          'fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-3rem)] min-w-[min(280px,calc(100%-3rem))] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-extra-large bg-surface-container-high p-6 text-body-medium text-on-surface-variant shadow-elevation-3 duration-200 ease-emphasized-decelerate outline-none sm:max-w-[560px] data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
+          'fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-3rem)] min-w-[min(280px,calc(100%-3rem))] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-extra-large bg-popover p-6 text-body-medium text-on-surface-variant shadow-elevation-3 duration-200 ease-emphasized-decelerate outline-none sm:max-w-[560px] data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
           className,
         )}
         {...props}

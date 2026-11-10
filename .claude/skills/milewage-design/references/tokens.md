@@ -3,11 +3,12 @@
 Sources of truth:
 
 - `apps/web/scripts/m3-theme.mjs` generates `apps/web/src/theme/m3-scheme.css` (the roles as
-  `--md-sys-color-*` and `--md-extended-color-*`, light on `:root`, dark on `.dark`) and
-  `m3-scheme.json` (the same values, read by `theme.ts`, `map/style.ts` and Android's test). Never
-  edit these two by hand.
+  `--md-sys-color-*`, money and chart colours as `--md-extended-color-*`, light on `:root`, dark
+  on `.dark`) and `m3-scheme.json` (the same values plus the palettes, the override table and the
+  custom colours' tones, read by `theme.ts`, `map/style.ts` and Android's test). Never edit these
+  two by hand.
 - `apps/web/src/index.css` holds the other Material tokens (type, shape, elevation, state, motion),
-  maps the roles to Tailwind colours, and maps shadcn's names onto the roles.
+  maps the roles to Tailwind colours, and maps shadcn's names onto the roles (the surface model).
 - Android: `ui/theme/BrandColors.kt` (generated, pinned by `BrandSchemeTest`), `ExtendedColors.kt`
   and `Theme.kt` under `apps/android/app/src/main/kotlin/app/milewage/phone/`.
 
@@ -16,97 +17,203 @@ Sources of truth:
 | Name        | Hex       | Where it is used directly                                                     |
 | ----------- | --------- | ----------------------------------------------------------------------------- |
 | Lane yellow | `#FFC21F` | The scheme's seed and `primary-container`; the logo                           |
-| Asphalt     | `#101214` | The logo's ink, the Android adaptive-icon tile (`ic_launcher_background`)     |
-| Earned      | `#34D399` | Seed of `earned`, harmonised toward the yellow                                |
-| Spent       | `#FF6B5E` | Seed of `spent`, harmonised (it comes out red-orange)                         |
+| Asphalt     | `#101214` | The logo's ink, the Android adaptive-icon tile; the neutrals' hue and chroma  |
+| Earned      | `#34D399` | Seed of `earned`, not harmonised                                              |
+| Spent       | `#EA6A0A` | Seed of `spent`, not harmonised: an orange, held apart from `error`           |
 | Signal blue | `#4C8DFF` | Seed of `signal`, not harmonised; reserved for a live position marker, unused |
 
-Everything in the UI uses the generated roles below, not these hex values.
+Everything in the UI uses the generated roles below, not these hex values. Spent's seed moved on
+2026-11-10 from the brand guide's `#FF6B5E`, which has the hue of Material's `error`.
 
-## Colour roles (seed `#FFC21F`, Fidelity, spec 2021, contrast 0)
+## How the scheme is built ("Asphalt and lane", 2026-11-10)
 
-Tailwind class stem in the second column (`bg-…`, `text-…`, `border-…`). For `primary`, `earned`,
-`spent` and `signal` the stem goes through the shadcn alias of the same name.
+Material 3's role model and Google's material-color-utilities, with explicit palettes instead of
+one seed (`DynamicScheme`, Fidelity variant, spec 2021, standard contrast):
 
-| Role                      | Tailwind                    | Light     | Dark      |
-| ------------------------- | --------------------------- | --------- | --------- |
-| primary                   | `primary`                   | `#795900` | `#ffe5b3` |
-| on-primary                | `on-primary`                | `#ffffff` | `#402d00` |
-| primary-container         | `primary-container`         | `#ffc21f` | `#ffc21f` |
-| on-primary-container      | `on-primary-container`      | `#6e5100` | `#6e5100` |
-| inverse-primary           | `inverse-primary`           | `#f9bd17` | `#795900` |
-| secondary                 | `md-secondary`              | `#745b22` | `#e3c27f` |
-| on-secondary              | `on-secondary`              | `#ffffff` | `#402d00` |
-| secondary-container       | `secondary-container`       | `#fedb95` | `#5c460d` |
-| on-secondary-container    | `on-secondary-container`    | `#785f26` | `#d4b472` |
-| tertiary (unused)         | `tertiary`                  | `#006877` | `#b7f1ff` |
-| on-tertiary               | `on-tertiary`               | `#ffffff` | `#00363f` |
-| tertiary-container        | `tertiary-container`        | `#00dffe` | `#00dffe` |
-| on-tertiary-container     | `on-tertiary-container`     | `#005f6d` | `#005f6d` |
-| error                     | `error`                     | `#ba1a1a` | `#ffb4ab` |
-| on-error                  | `on-error`                  | `#ffffff` | `#690005` |
-| error-container           | `error-container`           | `#ffdad6` | `#93000a` |
-| on-error-container        | `on-error-container`        | `#93000a` | `#ffdad6` |
-| surface                   | `surface`                   | `#fff8f2` | `#171309` |
-| on-surface                | `on-surface`                | `#201b11` | `#ece1d1` |
-| surface-variant           | `surface-variant`           | `#f0e1c7` | `#4f4633` |
-| on-surface-variant        | `on-surface-variant`        | `#4f4633` | `#d3c5ac` |
-| surface-dim               | `surface-dim`               | `#e4d9c8` | `#171309` |
-| surface-bright            | `surface-bright`            | `#fff8f2` | `#3f382d` |
-| surface-container-lowest  | `surface-container-lowest`  | `#ffffff` | `#120e05` |
-| surface-container-low     | `surface-container-low`     | `#fef2e1` | `#201b11` |
-| surface-container         | `surface-container`         | `#f8ecdc` | `#241f15` |
-| surface-container-high    | `surface-container-high`    | `#f2e7d6` | `#2f291f` |
-| surface-container-highest | `surface-container-highest` | `#ece1d1` | `#3a3429` |
-| outline                   | `outline`                   | `#817660` | `#9c8f79` |
-| outline-variant           | `outline-variant`           | `#d3c5ac` | `#4f4633` |
-| inverse-surface           | `inverse-surface`           | `#363025` | `#ece1d1` |
-| inverse-on-surface        | `inverse-on-surface`        | `#fbefdf` | `#363025` |
-| scrim / shadow            | `scrim` / `shadow`          | `#000000` | `#000000` |
+| Palette         | HCT hue / chroma | Gives                                                                                      |
+| --------------- | ---------------- | ------------------------------------------------------------------------------------------ |
+| primary         | the seed's       | `primary-container` = `#FFC21F` exactly, inverse-primary, the fixed roles (the map casing) |
+| neutral         | 243 / 4          | Every surface, on-surface, the ink (Asphalt's own hue and chroma)                          |
+| neutral variant | 243 / 8          | Outlines, on-surface-variant, surface-variant                                              |
+| secondary       | 243 / 8          | Selection: the active navigation pill, chosen chips and segments, tonal buttons            |
+| tertiary, error | Material's       | Tertiary (teal) unused; error is Material's red                                            |
 
-The scheme also has `background`/`on-background` (equal to surface/on-surface), `surface-tint`
-and the `*-fixed*` roles. They are CSS variables only, with no Tailwind class. The map's route
-casing reads `onPrimaryFixed` from the JSON.
+Then a short table of overrides, each with its reason in the script (`OVERRIDES`):
 
-## Extended colours (Material custom colours)
+- `primary`, `on-primary`, `surface-tint`: **ink, not gold**. Neutral tone 15 in light, 90 in
+  dark. Text buttons, links, checked controls, progress, the tab indicator, a focused field and
+  the focus ring are Asphalt ink in light and near-white in dark. `surface-tint` follows so
+  Android's tonal elevation never turns yellow.
+- `on-primary-container`: Asphalt (neutral tone 6) on Lane yellow, the logo's pairing (11:1),
+  instead of Fidelity's brown.
+- `on-secondary-container`: tone 10 / 90 of the secondary palette, a crisp label on the grey
+  selection pill (Fidelity's mid tone read weak).
+- `background`: **the page**. Light: neutral tone 95, a cool grey under white cards. Dark: tone 6,
+  Asphalt, equal to `surface`. Android's Scaffold paints `background`, so the page carries over.
+- Money: `earned` and `spent` are custom colours that are not harmonised, with Material's tones
+  except spent at tone 44 in light and both at tone 70 in dark (their `tones` are in the JSON).
 
-| Role                | Tailwind              | Light     | Dark      | For                |
-| ------------------- | --------------------- | --------- | --------- | ------------------ |
-| earned              | `earned`              | `#006e2e` | `#72dc86` | Money in, only     |
-| on-earned           | `on-earned`           | `#ffffff` | `#003914` |                    |
-| earned-container    | `earned-container`    | `#8ef99f` | `#005321` |                    |
-| on-earned-container | `on-earned-container` | `#002109` | `#8ef99f` |                    |
-| spent               | `spent`               | `#a63b00` | `#ffb599` | Money out, only    |
-| on-spent            | `on-spent`            | `#ffffff` | `#5a1c00` |                    |
-| spent-container     | `spent-container`     | `#ffdbce` | `#7f2b00` |                    |
-| on-spent-container  | `on-spent-container`  | `#370e00` | `#ffdbce` |                    |
-| signal (+ 3 roles)  | `signal`, ...         | `#005ac3` | `#aec6ff` | Reserved; web only |
+## The surface model
 
-## shadcn names → roles (`index.css`, `:root`)
+Light and dark build depth differently, as Material's own apps do. `index.css` maps shadcn's
+names per theme:
 
-| shadcn                                   | Role                                                       |
-| ---------------------------------------- | ---------------------------------------------------------- |
-| `background` / `foreground`              | surface / on-surface                                       |
-| `card` / `card-foreground`               | surface-container-low / on-surface                         |
-| `popover` / `popover-foreground`         | surface-container / on-surface                             |
-| `primary` / `primary-foreground`         | primary / on-primary (not the yellow)                      |
-| `secondary` / `secondary-foreground`     | secondary-container / on-secondary-container               |
-| `muted`, `accent`                        | surface-container-highest                                  |
-| `muted-foreground`                       | on-surface-variant                                         |
-| `accent-foreground`                      | on-surface                                                 |
-| `destructive` / `destructive-foreground` | error / on-error                                           |
-| `border` / `input`                       | outline-variant / outline                                  |
-| `ring`, `sidebar-ring`                   | secondary (Material's focus colour)                        |
-| `chart-1`                                | primary in light, primary-container (the yellow) in dark   |
-| `chart-2` / `3` / `4` / `5`              | earned / signal / spent / outline                          |
-| `sidebar` / `sidebar-foreground`         | surface-container-low / on-surface-variant                 |
-| `sidebar-primary` (+ foreground)         | primary-container / on-primary-container                   |
-| `sidebar-accent` (+ foreground)          | secondary-container / on-secondary-container (active pill) |
-| `sidebar-border`                         | outline-variant                                            |
-| `qr-ink` / `qr-plate`                    | `#000000` / `#ffffff` in both themes (scanners need it)    |
+| Level                                     | Light                                    | Dark                                         |
+| ----------------------------------------- | ---------------------------------------- | -------------------------------------------- |
+| Page, top bar, drawer (`bg-background`)   | background `#f0f0f3`                     | background = surface `#111416` (Asphalt)     |
+| Card, section, stat tile (`bg-card`)      | surface-container-lowest `#ffffff`       | surface-container `#1e2022`                  |
+| A fill on a card (`bg-muted`, `accent`)   | surface-container-high                   | surface-container-highest                    |
+| Menu, popover, dialog, date picker, sheet | `bg-popover`: lowest (white), shadow 2–3 | `bg-popover`: surface-container-high, shadow |
+
+A card reads by lightness alone: no border, no shadow, no tint. Tables have no header fill, only
+a hairline under the header. An `Alert` is the card colour inside an outline-variant hairline.
+
+## Colour roles
+
+Generated by `node .claude/skills/milewage-design/scripts/tokens-table.mjs` from the JSON; paste
+its output between the markers after `npm run theme -w apps/web`. For `primary`, `earned`,
+`spent` and `signal` the Tailwind stem goes through the shadcn alias of the same name.
+
+<!-- tokens-table:start -->
+
+### Material roles
+
+| Role                                     | Tailwind                    | Light     | Dark      |
+| ---------------------------------------- | --------------------------- | --------- | --------- |
+| background (the page, override)          | `background`                | `#f0f0f3` | `#111416` |
+| surface                                  | `surface`                   | `#f9f9fc` | `#111416` |
+| surface-container-lowest                 | `surface-container-lowest`  | `#ffffff` | `#0c0e11` |
+| surface-container-low                    | `surface-container-low`     | `#f3f3f6` | `#1a1c1e` |
+| surface-container                        | `surface-container`         | `#edeef1` | `#1e2022` |
+| surface-container-high                   | `surface-container-high`    | `#e8e8eb` | `#282a2d` |
+| surface-container-highest                | `surface-container-highest` | `#e2e2e5` | `#333537` |
+| surface-variant                          | `surface-variant`           | `#dde3ea` | `#41474d` |
+| surface-dim                              | `surface-dim`               | `#d9dadd` | `#111416` |
+| surface-bright                           | `surface-bright`            | `#f9f9fc` | `#37393c` |
+| on-surface                               | `on-surface`                | `#1a1c1e` | `#e2e2e5` |
+| on-surface-variant                       | `on-surface-variant`        | `#41474d` | `#c1c7ce` |
+| outline                                  | `outline`                   | `#72787e` | `#8b9198` |
+| outline-variant                          | `outline-variant`           | `#c1c7ce` | `#41474d` |
+| primary (ink, override)                  | `primary`                   | `#242628` | `#e2e2e5` |
+| on-primary (override)                    | `on-primary`                | `#ffffff` | `#1a1c1e` |
+| primary-container (Lane yellow)          | `primary-container`         | `#ffc21f` | `#ffc21f` |
+| on-primary-container (Asphalt, override) | `on-primary-container`      | `#111416` | `#111416` |
+| inverse-primary                          | `inverse-primary`           | `#f9bd17` | `#795900` |
+| secondary                                | `md-secondary`              | `#595f65` | `#c1c7ce` |
+| on-secondary                             | `on-secondary`              | `#ffffff` | `#2b3137` |
+| secondary-container                      | `secondary-container`       | `#dde3ea` | `#41474d` |
+| on-secondary-container (override)        | `on-secondary-container`    | `#161c21` | `#dde3ea` |
+| tertiary (unused)                        | `tertiary`                  | `#006877` | `#b7f1ff` |
+| on-tertiary                              | `on-tertiary`               | `#ffffff` | `#00363f` |
+| tertiary-container                       | `tertiary-container`        | `#00dffe` | `#00dffe` |
+| on-tertiary-container                    | `on-tertiary-container`     | `#005f6d` | `#005f6d` |
+| error                                    | `error`                     | `#ba1a1a` | `#ffb4ab` |
+| on-error                                 | `on-error`                  | `#ffffff` | `#690005` |
+| error-container                          | `error-container`           | `#ffdad6` | `#93000a` |
+| on-error-container                       | `on-error-container`        | `#93000a` | `#ffdad6` |
+| inverse-surface                          | `inverse-surface`           | `#2e3133` | `#e2e2e5` |
+| inverse-on-surface                       | `inverse-on-surface`        | `#f0f0f3` | `#2e3133` |
+| surface-tint (override)                  | (CSS variable only)         | `#242628` | `#e2e2e5` |
+| scrim                                    | `scrim`                     | `#000000` | `#000000` |
+
+### Fixed roles (the same in both themes; CSS variables only)
+
+| Role                       | Light     | Dark      |
+| -------------------------- | --------- | --------- |
+| primary-fixed              | `#ffdf9e` | `#ffdf9e` |
+| primary-fixed-dim          | `#f9bd17` | `#f9bd17` |
+| on-primary-fixed           | `#261a00` | `#261a00` |
+| on-primary-fixed-variant   | `#5b4300` | `#5b4300` |
+| secondary-fixed            | `#dde3ea` | `#dde3ea` |
+| secondary-fixed-dim        | `#c1c7ce` | `#c1c7ce` |
+| on-secondary-fixed         | `#161c21` | `#161c21` |
+| on-secondary-fixed-variant | `#41474d` | `#41474d` |
+| tertiary-fixed             | `#a5eeff` | `#a5eeff` |
+| tertiary-fixed-dim         | `#00daf8` | `#00daf8` |
+| on-tertiary-fixed          | `#001f25` | `#001f25` |
+| on-tertiary-fixed-variant  | `#004e5a` | `#004e5a` |
+
+### Extended colours (Material custom colours, not harmonised)
+
+| Role                | Tailwind              | Light     | Dark      |
+| ------------------- | --------------------- | --------- | --------- |
+| earned              | `earned`              | `#006c4b` | `#11c28a` |
+| on-earned           | `on-earned`           | `#ffffff` | `#002114` |
+| earned-container    | `earned-container`    | `#68fcbf` | `#005137` |
+| on-earned-container | `on-earned-container` | `#002114` | `#68fcbf` |
+| spent               | `spent`               | `#ac4b00` | `#ff8d4a` |
+| on-spent            | `on-spent`            | `#ffffff` | `#331100` |
+| spent-container     | `spent-container`     | `#ffdbca` | `#783200` |
+| on-spent-container  | `on-spent-container`  | `#331100` | `#ffdbca` |
+| signal              | `signal`              | `#005ac3` | `#aec6ff` |
+| on-signal           | `on-signal`           | `#ffffff` | `#002e6a` |
+| signal-container    | `signal-container`    | `#d8e2ff` | `#004395` |
+| on-signal-container | `on-signal-container` | `#001a42` | `#d8e2ff` |
+
+### Chart colours (`--md-extended-color-chart-*`, Tailwind `chart-*`)
+
+| Token            | Light     | Dark      |
+| ---------------- | --------- | --------- |
+| `chart-series-1` | `#2a78d6` | `#3987e5` |
+| `chart-series-2` | `#d4561f` | `#d95926` |
+| `chart-series-3` | `#0f8a72` | `#199e70` |
+| `chart-series-4` | `#a07000` | `#c98500` |
+| `chart-series-5` | `#c4487b` | `#d55181` |
+| `chart-series-6` | `#2f7d00` | `#008300` |
+| `chart-series-7` | `#6250d6` | `#9085e9` |
+| `chart-series-8` | `#d03b3b` | `#e66767` |
+| `chart-earned`   | `#006c4b` | `#11c28a` |
+| `chart-spent`    | `#ac4b00` | `#ff8d4a` |
+| `chart-measure`  | `#5c6c7b` | `#a2b3c3` |
+| `chart-other`    | `#8b9198` | `#656b72` |
+| `chart-grid`     | `#c1c7ce` | `#41474d` |
+| `chart-axis`     | `#72787e` | `#8b9198` |
+
+### Overrides (palette and tone per theme)
+
+| Role                   | Light        | Dark         |
+| ---------------------- | ------------ | ------------ |
+| primary                | neutral 15   | neutral 90   |
+| on-primary             | neutral 100  | neutral 10   |
+| surface-tint           | neutral 15   | neutral 90   |
+| on-primary-container   | neutral 6    | neutral 6    |
+| on-secondary-container | secondary 10 | secondary 90 |
+| background             | neutral 95   | neutral 6    |
+
+<!-- tokens-table:end -->
+
+Chart rules: assign `chart-series-1` … `8` in order for identity, never cycled; past eight, fold
+into `chart-other`. Every series reaches 3:1 on the card in both themes, and neighbours are apart
+for colour-blind readers (validated with the data-viz skill: adjacent CVD ΔE ≥ 10.4 light / 8.4
+dark). Money series use `chart-earned` and `chart-spent`; distance and time use the steel
+`chart-measure`. Grid lines are `chart-grid` (outline-variant), axes `chart-axis` (outline). Text
+in a chart wears the text roles, never a series colour. The brand yellow is not a chart colour.
+
+## shadcn names → roles (`index.css`)
+
+| shadcn                                   | Light                                        | Dark (`.dark`)              |
+| ---------------------------------------- | -------------------------------------------- | --------------------------- |
+| `background` / `foreground`              | background / on-surface                      | (same roles)                |
+| `card` / `card-foreground`               | surface-container-lowest / on-surface        | surface-container           |
+| `popover` / `popover-foreground`         | surface-container-lowest / on-surface        | surface-container-high      |
+| `primary` / `primary-foreground`         | primary / on-primary (ink, not the yellow)   | (same roles)                |
+| `secondary` / `secondary-foreground`     | secondary-container / on-secondary-container | (same roles)                |
+| `muted`, `accent`                        | surface-container-high                       | surface-container-highest   |
+| `muted-foreground`                       | on-surface-variant                           | (same)                      |
+| `accent-foreground`                      | on-surface                                   | (same)                      |
+| `destructive` / `destructive-foreground` | error / on-error                             | (same)                      |
+| `border` / `input`                       | outline-variant / outline                    | (same)                      |
+| `ring`, `sidebar-ring`                   | primary (ink)                                | (same: near-white)          |
+| `chart-1` … `chart-5`                    | measure, earned, spent, series-1, other      | (same tokens)               |
+| `sidebar` / `sidebar-foreground`         | background / on-surface-variant              | (same)                      |
+| `sidebar-primary` (+ foreground)         | primary-container / on-primary-container     | (same)                      |
+| `sidebar-accent` (+ foreground)          | secondary-container / on-secondary-container | (same: the active pill)     |
+| `sidebar-border`                         | outline-variant                              | (same)                      |
+| `qr-ink` / `qr-plate`                    | `#000000` / `#ffffff`                        | the same (scanners need it) |
 
 Old classes (`bg-card`, `text-muted-foreground`, `border`) keep working. For new work, prefer the
-role names: they say which surface you mean.
+role names when you mean a specific step, and `bg-card` / `bg-popover` / `bg-muted` when you mean
+a level of the surface model: they follow the theme.
 
 ## Type
 
@@ -158,8 +265,9 @@ Flex as the drop-in. On Android, pass a `FontFamily` into `MileWageTypography` i
 
 `shadow-elevation-0` … `shadow-elevation-5` (`--md-sys-elevation-level*`, key and ambient shadows
 from `shadow`). Tailwind's `shadow-xs`/`sm` = level 1, `md` = 2, `lg` = 3, `xl` = 4, `2xl` = 5.
-Elevation is tonal first: higher means a higher `surface-container-*`. Add a shadow only as
-Material does: elevated button/card 1, menu/popover/map control group 2, dialog/date picker 3.
+Elevation follows the surface model above: in light a raised thing is whiter, in dark it is
+lighter. Add a shadow only as Material does: elevated button/card 1, menu/popover/map control
+group 2, dialog/date picker 3, and the Settings save bar while it holds changes.
 On Android, use the components' defaults (`CardDefaults`, `AlertDialog`), which are tonal.
 
 ## State layers
@@ -170,7 +278,7 @@ On Android, use the components' defaults (`CardDefaults`, `AlertDialog`), which 
   `[data-highlighted]` and open state. The control needs `relative` (or `absolute`).
 - `withRipple(onPointerDown)` / `ripple` (`components/ui/ripple.ts`): the press ripple, on the Web
   Animations API. `data-ripple="off"` opts a control out (a button drawn as a text field).
-- `focus-ring`: a 3 px outline in `ring` (secondary), offset 2 px.
+- `focus-ring`: a 3 px outline in `ring` (primary: ink in light, near-white in dark), offset 2 px.
 - Android: Material components draw their own ripples and state layers. Use `Modifier.clickable`
   (which ripples) for a custom tappable row, as `ListRow` does.
 
@@ -193,25 +301,31 @@ dialogs). `prefers-reduced-motion` cuts every transition to near zero and skips 
 | `theme.ts` (light default, choice)  | `isSystemInDarkTheme()`; `MileWageTheme(wallpaperColours = …)`                                                 |
 
 `signal` has no Android role. With wallpaper colours on, `extendedColors(sourceArgb, isDark)`
-re-harmonises earned and spent toward the wallpaper's primary, using tones 40/100/90/10 in light
-and 80/20/30/90 in dark. The window background before Compose draws is `window_background`
-(`res/values/colors.xml`, the light surface `#FFF8F2`). The dark window comes from
-`values-night/themes.xml` on the platform's dark Material theme.
+re-harmonises earned and spent toward the wallpaper's primary. The window background before
+Compose draws is `window_background` (`res/values/colors.xml`). The dark window comes from
+`values-night/themes.xml` on the platform's dark Material theme. As of 2026-11-10 the Android
+app still carries the previous, yellow-seeded scheme; a follow-up brings `BrandColors`,
+`ExtendedColors`, `window_background` and the surface model in line with `m3-scheme.json`.
 
-## Regenerating, and changing the seed
+## Regenerating, and changing the scheme
 
 - `npm run theme -w apps/web` rewrites `m3-scheme.css` and `.json`. `node scripts/m3-theme.mjs
 --check` (from `apps/web`) fails when they are stale. So does `apps/web/test/m3-theme.test.ts`,
-  which also checks that the seed stays the primary container and that every role `index.css`
-  reads exists in both themes.
-- `apps/web/test/m3-contrast.test.ts` holds the contrast floors (text on each container 4.5:1,
-  text roles on every surface 4.5:1, marks 3:1, `chart-1` 3:1 on cards).
-- `BrandSchemeTest` (`apps/android/app/src/test/.../ui/theme/`) regenerates Android's scheme with
-  materialkolor. It writes the expected source to `app/build/brand-colors/BrandColors.kt`, which
-  you copy over `BrandColors.kt` when it fails. `matchesTheWebScheme` compares every role with
-  `m3-scheme.json`.
-- **To change the seed or the variant:** edit `SEED` / `VARIANT` / `CUSTOM` in `m3-theme.mjs`, run
-  the theme script, run the web tests, then run `./gradlew :app:test` in `apps/android` and copy
-  the generated `BrandColors.kt`. Also change `SEED` in `BrandSchemeTest` and `ExtendedSeeds` if
-  the money seeds moved. The `window_background` and `theme-color` values (`index.html`,
-  `manifest.webmanifest`; `test/theme.test.ts` checks them) follow the new surface.
+  which also checks that the seed stays the primary container, that no neutral role carries
+  yellow (OKLCH chroma under 0.02), that `primary` is ink, that every override has a reason, and
+  that every role `index.css` reads exists in both themes.
+- `apps/web/test/m3-contrast.test.ts` holds the floors in both themes: text on each container
+  4.5:1 (the brand button's Asphalt label included), text roles and error on every surface 4.5:1,
+  earned and spent as text 4.5:1 wherever money is shown, marks (outline, primary, which is also
+  the focus ring, earned, spent) 3:1 on every surface, every chart colour 3:1 on the card,
+  neighbouring series apart, and `spent` at least ΔE 7 from `error`.
+- Then update this file's tables:
+  `node .claude/skills/milewage-design/scripts/tokens-table.mjs`, pasted between the markers.
+- `BrandSchemeTest` (`apps/android/app/src/test/.../ui/theme/`) compares Android's scheme with
+  `m3-scheme.json` role by role. Android must build the same palettes and apply the same
+  `overrides` (palette and tone per theme, in the JSON) and custom-colour `tones`.
+- **To change a palette, an override or a money seed:** edit `PALETTES`, `OVERRIDES` or `CUSTOM`
+  in `m3-theme.mjs` with the reason beside it, run the theme script and the web tests, then
+  bring Android in line. The `window_background` and `theme-color` values (`index.html`,
+  `manifest.webmanifest`; `test/theme.test.ts` and `test/manifest.test.ts` check them) follow
+  `background`.

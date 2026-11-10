@@ -42,7 +42,8 @@ function SheetOverlay({
 /**
  * Material 3 sheets (m3.material.io/components/side-sheets, /bottom-sheets), modal: a side sheet
  * with large corners on its open edge, or a bottom sheet with 28 px top corners and a drag
- * handle; surface-container-low at elevation level 1 over a 32 % scrim.
+ * handle; `bg-popover` (white in light, surface-container-high in dark) at elevation level 1 over
+ * a 32 % scrim. The navigation drawer's sheet wears the drawer's own colour (sidebar.tsx).
  */
 function SheetContent({
   className,
@@ -61,7 +62,7 @@ function SheetContent({
         data-slot="sheet-content"
         data-side={side}
         className={cn(
-          'fixed z-50 flex flex-col gap-4 bg-surface-container-low text-body-medium text-on-surface shadow-elevation-1 transition duration-300 ease-emphasized-decelerate data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:mx-auto data-[side=bottom]:h-auto data-[side=bottom]:max-h-[calc(100svh-4.5rem)] data-[side=bottom]:max-w-[640px] data-[side=bottom]:rounded-t-extra-large data-[side=bottom]:pt-4 data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-full data-[side=left]:w-3/4 data-[side=left]:rounded-r-large data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:h-full data-[side=right]:w-3/4 data-[side=right]:rounded-l-large data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto data-[side=top]:rounded-b-extra-large data-[side=left]:sm:max-w-[360px] data-[side=right]:sm:max-w-[400px] data-open:animate-in data-open:fade-in-0 data-[side=bottom]:data-open:slide-in-from-bottom-10 data-[side=left]:data-open:slide-in-from-left-10 data-[side=right]:data-open:slide-in-from-right-10 data-[side=top]:data-open:slide-in-from-top-10 data-closed:animate-out data-closed:fade-out-0 data-[side=bottom]:data-closed:slide-out-to-bottom-10 data-[side=left]:data-closed:slide-out-to-left-10 data-[side=right]:data-closed:slide-out-to-right-10 data-[side=top]:data-closed:slide-out-to-top-10',
+          'fixed z-50 flex flex-col gap-4 bg-popover text-body-medium text-on-surface shadow-elevation-1 transition duration-300 ease-emphasized-decelerate data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:mx-auto data-[side=bottom]:h-auto data-[side=bottom]:max-h-[calc(100svh-4.5rem)] data-[side=bottom]:max-w-[640px] data-[side=bottom]:rounded-t-extra-large data-[side=bottom]:pt-4 data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-full data-[side=left]:w-3/4 data-[side=left]:rounded-r-large data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:h-full data-[side=right]:w-3/4 data-[side=right]:rounded-l-large data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto data-[side=top]:rounded-b-extra-large data-[side=left]:sm:max-w-[360px] data-[side=right]:sm:max-w-[400px] data-open:animate-in data-open:fade-in-0 data-[side=bottom]:data-open:slide-in-from-bottom-10 data-[side=left]:data-open:slide-in-from-left-10 data-[side=right]:data-open:slide-in-from-right-10 data-[side=top]:data-open:slide-in-from-top-10 data-closed:animate-out data-closed:fade-out-0 data-[side=bottom]:data-closed:slide-out-to-bottom-10 data-[side=left]:data-closed:slide-out-to-left-10 data-[side=right]:data-closed:slide-out-to-right-10 data-[side=top]:data-closed:slide-out-to-top-10',
           className,
         )}
         {...props}

@@ -78,9 +78,10 @@ describe('platform badge (plan 25)', () => {
       '#00ff00',
       '#0000ff',
     ];
+    // The card surfaces of index.css: white in light, surface-container in dark.
     const card = {
-      light: scheme.light.surfaceContainerLow,
-      dark: scheme.dark.surfaceContainerLow,
+      light: scheme.light.surfaceContainerLowest,
+      dark: scheme.dark.surfaceContainer,
     };
     for (const c of colours) {
       const tones = badgeColours(c);

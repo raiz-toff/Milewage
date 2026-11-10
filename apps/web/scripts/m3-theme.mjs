@@ -1,37 +1,41 @@
 #!/usr/bin/env node
 /* global process, console, URL */
 /**
- * Writes the Material 3 colour scheme of the web app from the brand seed, with Google's
- * material-color-utilities (the algorithm Android's dynamic colour uses, so the phone and the web
- * get the same roles from the same seed):
+ * Writes the Material 3 colour scheme of the web app with Google's material-color-utilities (the
+ * algorithm Android's dynamic colour uses):
  *
- *   src/theme/m3-scheme.css   the roles as `--md-sys-color-*` (light on :root, dark on .dark), and
- *                             the money roles as `--md-extended-color-*`; index.css imports it
- *   src/theme/m3-scheme.json  the same values, for checking the Android app against
+ *   src/theme/m3-scheme.css   the roles as `--md-sys-color-*` (light on :root, dark on .dark), the
+ *                             money roles as `--md-extended-color-*` and the chart colours as
+ *                             `--md-extended-color-chart-*`; index.css imports it
+ *   src/theme/m3-scheme.json  the same values, the palettes and the override table, for the
+ *                             Android app to mirror
  *
- * Run `npm run theme -w apps/web` after changing the seed or the variant, and commit both files.
+ * Run `npm run theme -w apps/web` after changing anything here, and commit both files.
  * `node scripts/m3-theme.mjs --check` (and test/m3-theme.test.ts) fails when they are stale.
  *
- * The variant: Fidelity (SchemeFidelity, 2021 spec = the Material 3 baseline, standard contrast).
- * Compared from the seed #FFC21F (HCT hue 86, chroma 58, tone 82):
- *   - Tonal spot (the default) caps the primary palette at chroma 36: primary #785a0b and primary
- *     container #ffdf9e in light, #e9c16c in dark. A muted olive gold; the yellow is gone.
- *   - Vibrant (2021) keeps more chroma but its primary container is the pale #ffdf9e in light and
- *     the brown #5b4300 in dark, so the brand never appears as a filled area.
- *   - Content and Fidelity both keep the seed's own chroma, and set primary container to the seed
- *     itself: exactly #FFC21F in light and in dark, with on-primary-container #6e5100 (4.57:1)
- *     and primary #795900 in light (6.2:1 on surface). They differ only in tertiary: Content's is
- *     an analogous lime (#556500), which would read as green, and green means money in only;
- *     Fidelity's is the complementary teal (#006877). Fidelity therefore.
- * Every text and background pair of the scheme reaches 4.5:1 and every mark 3:1 in both themes;
- * test/m3-contrast.test.ts holds that.
+ * The idea ("Asphalt and lane", 2026-11-10). The brand guide names two colours: Lane yellow
+ * #FFC21F and Asphalt #101214. A lane line is a thin mark on a lot of asphalt, and the interface
+ * is built the same way: neutral, slightly cool surfaces at Asphalt's own hue, ink for structure,
+ * and the yellow only where it means MileWage or "go" (the one main action, the map's route, the
+ * logo). The previous scheme grew every role from the yellow seed, so the whole app was cream and
+ * gold; this one builds Material's roles from explicit palettes instead:
  *
- * Money colours are custom roles outside the scheme (Material's "custom colors"): Earned and Spent,
- * each a colour, an on-colour, a container and an on-container, harmonised towards the seed
- * (Blend.harmonize, a hue shift of at most 15 degrees) so they sit with the yellow. Signal blue
- * gets the same four roles but is not harmonised: from a yellow seed the shift would turn it
- * indigo, and it must read as the blue of the live position marker. It stays reserved; nothing
- * uses it.
+ *   primary palette     the seed itself, Fidelity (hue 86, chroma 58): primary-container stays
+ *                       exactly #FFC21F in both themes; inverse-primary and the fixed roles
+ *                       (the map's route casing reads on-primary-fixed) come from it too
+ *   neutral             hue 243 chroma 4: Asphalt's own hue and chroma. Surfaces, on-surface
+ *   neutral variant     hue 243 chroma 8: outlines, on-surface-variant, a touch of steel
+ *   secondary           hue 243 chroma 8: selection (the active navigation pill, a chosen chip
+ *                       or segment, the tonal button) is a cool grey, not a yellow tint
+ *   tertiary, error     Material's own (Fidelity's teal tertiary stays unused)
+ *
+ * The variant stays Fidelity (SchemeFidelity's rules over these palettes, spec 2021, standard
+ * contrast), so every role not in OVERRIDES is what Material computes. The overrides are the
+ * places where the role model needs MileWage's answer rather than the seed's; each says why.
+ *
+ * Money colours are Material custom colours (a colour, an on-colour, a container and an
+ * on-container from one palette) that are NOT harmonised: earned stays a clean green and spent a
+ * red-orange, held apart from `error` (destructive actions) by hue. Signal blue is reserved.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
@@ -51,21 +55,110 @@ registerHooks({
     }
   },
 });
-const { Hct, SchemeFidelity, argbFromHex, customColor, hexFromArgb } =
+const { DynamicScheme, Hct, TonalPalette, Variant, argbFromHex, hexFromArgb } =
   await import('@material/material-color-utilities');
 
 /** Lane yellow, the brand (branding/README). */
 export const SEED = '#FFC21F';
+/** Asphalt, the brand's ink (branding/README). The neutrals are built at its hue and chroma. */
+export const ASPHALT = '#101214';
 export const VARIANT = 'fidelity';
 export const SPEC_VERSION = '2021';
 export const CONTRAST_LEVEL = 0;
 
-/** The brand's money and signal hues, harmonised into the scheme as custom colours. */
+/** The palettes the scheme is built from, as HCT hue and chroma. `primary` is the seed's own. */
+export const PALETTES = {
+  neutral: { hue: 243, chroma: 4 },
+  neutralVariant: { hue: 243, chroma: 8 },
+  secondary: { hue: 243, chroma: 8 },
+};
+
+/**
+ * Every role MileWage sets itself, as [palette, tone] per theme, with the reason. Palettes:
+ * `neutral` and `secondary` (above), `primary` (the seed's). Everything else is Material's computation.
+ */
+export const OVERRIDES = {
+  primary: {
+    light: ['neutral', 15],
+    dark: ['neutral', 90],
+    why: 'Ink, not gold: text buttons, links, checked controls, progress, the tab indicator and a focused field are Asphalt ink in light and near-white in dark, so the interface is monochrome and the yellow is the one colour.',
+  },
+  onPrimary: {
+    light: ['neutral', 100],
+    dark: ['neutral', 10],
+    why: 'Follows primary: white on ink, ink on near-white.',
+  },
+  surfaceTint: {
+    light: ['neutral', 15],
+    dark: ['neutral', 90],
+    why: 'Material tints elevated surfaces with primary; it must be the ink too, or Android elevation turns yellow.',
+  },
+  onPrimaryContainer: {
+    light: ['neutral', 6],
+    dark: ['neutral', 6],
+    why: "Asphalt on Lane yellow, the logo's own pairing (11:1), instead of Fidelity's brown #6e5100 (4.6:1), which read muddy.",
+  },
+  onSecondaryContainer: {
+    light: ['secondary', 10],
+    dark: ['secondary', 90],
+    why: "Fidelity derives it at a mid tone (#5f656b, 4.6:1); the label of the active navigation item and of a chosen chip is crisp ink at Material's baseline tones instead.",
+  },
+  background: {
+    light: ['neutral', 95],
+    dark: ['neutral', 6],
+    why: 'The page. Light: a cool light grey under white cards (surface-container-lowest), so cards read by lightness without a border or a tint. Dark: Asphalt, equal to surface. Material 2021 sets background = surface; Android Scaffold paints background, so this one role carries the page to both apps.',
+  },
+};
+
+/**
+ * Money and signal colours: Material custom colours, not harmonised. Tones are Material's
+ * (40 / 100 / 90 / 10 in light, 80 / 20 / 30 / 90 in dark) except where `light` or `dark` says
+ * otherwise; the JSON's `customColors.*.tones` has the tones used.
+ */
 export const CUSTOM = [
-  { name: 'earned', value: '#34D399', blend: true },
-  { name: 'spent', value: '#FF6B5E', blend: true },
+  {
+    name: 'earned',
+    value: '#34D399',
+    blend: false,
+    dark: { color: 70, on: 10 },
+    why: 'Dark colour at tone 70 (Material 80): a green that still reads as green, not mint.',
+  },
+  {
+    name: 'spent',
+    value: '#EA6A0A',
+    blend: false,
+    light: { color: 44 },
+    dark: { color: 70, on: 10 },
+    why: "Seed moved from #FF6B5E (hue 25, the hue of Material's error) to an orange at hue 47, and the light colour to tone 44, so money out never looks like a destructive action (OKLab distance from error 7 or more in both themes; test/m3-contrast.test.ts). Dark colour at tone 70: Material's 80 is the same pastel as error's #ffb4ab.",
+  },
   { name: 'signal', value: '#4C8DFF', blend: false },
 ];
+
+const TONES = {
+  light: { color: 40, on: 100, container: 90, onContainer: 10 },
+  dark: { color: 80, on: 20, container: 30, onContainer: 90 },
+};
+
+/**
+ * Chart colours, for marks on a card (`card`: white in light, surface-container #1e2022 in dark).
+ * The categorical set is the data-viz skill's validated reference families (blue, orange, aqua,
+ * amber, magenta, green, violet, red) in its CVD-safe order, with the light steps of aqua, amber
+ * and magenta darkened until every slot reaches 3:1 on white. Validated with
+ * validate_palette.js: adjacent CVD ΔE ≥ 10.4 light / 8.4 dark, normal-vision ≥ 16.7 / 19.3.
+ * Assign in order, never cycled; past eight, fold into `other`. The semantic series are roles:
+ * money in, money out, and a steel `measure` for distance and time. Grid and axis are the
+ * outline roles.
+ */
+export const CHART = {
+  series: {
+    light: ['#2a78d6', '#d4561f', '#0f8a72', '#a07000', '#c4487b', '#2f7d00', '#6250d6', '#d03b3b'],
+    dark: ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'],
+  },
+  /** Steel: Asphalt's hue with more chroma, so a distance or time bar is calm but not grey. */
+  measure: { hue: 243, chroma: 16, light: 45, dark: 72 },
+  /** Everything folded into "Other": the neutral variant palette. */
+  other: { light: 60, dark: 45 },
+};
 
 /** The roles written out, in the order of the Material 3 colour roles reference. */
 export const ROLES = [
@@ -122,25 +215,56 @@ export const ROLES = [
 
 const kebab = (name) => name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 const cap = (name) => name[0].toUpperCase() + name.slice(1);
+const palette = ({ hue, chroma }) => TonalPalette.fromHueAndChroma(hue, chroma);
 
-/** One theme's roles as `{ primary: '#795900', ... }`, the custom colours included. */
+/** One theme's roles as `{ primary: '#25272a', ... }`, the custom colours included. */
 function theme(dark) {
-  const source = argbFromHex(SEED);
-  const scheme = new SchemeFidelity(Hct.fromInt(source), dark, CONTRAST_LEVEL, SPEC_VERSION);
+  const mode = dark ? 'dark' : 'light';
+  const scheme = new DynamicScheme({
+    sourceColorHct: Hct.fromInt(argbFromHex(SEED)),
+    variant: Variant.FIDELITY,
+    contrastLevel: CONTRAST_LEVEL,
+    isDark: dark,
+    specVersion: SPEC_VERSION,
+    neutralPalette: palette(PALETTES.neutral),
+    neutralVariantPalette: palette(PALETTES.neutralVariant),
+    secondaryPalette: palette(PALETTES.secondary),
+  });
+  const named = {
+    neutral: scheme.neutralPalette,
+    secondary: scheme.secondaryPalette,
+    primary: scheme.primaryPalette,
+  };
   const roles = Object.fromEntries(ROLES.map((r) => [r, hexFromArgb(scheme[r])]));
+  for (const [role, o] of Object.entries(OVERRIDES)) {
+    const [p, tone] = o[mode];
+    roles[role] = hexFromArgb(named[p].tone(tone));
+  }
   for (const c of CUSTOM) {
-    const group = customColor(source, {
-      name: c.name,
-      value: argbFromHex(c.value),
-      blend: c.blend,
-    });
-    const g = dark ? group.dark : group.light;
-    roles[c.name] = hexFromArgb(g.color);
-    roles[`on${cap(c.name)}`] = hexFromArgb(g.onColor);
-    roles[`${c.name}Container`] = hexFromArgb(g.colorContainer);
-    roles[`on${cap(c.name)}Container`] = hexFromArgb(g.onColorContainer);
+    const p = TonalPalette.fromInt(argbFromHex(c.value));
+    const t = { ...TONES[mode], ...c[mode] };
+    roles[c.name] = hexFromArgb(p.tone(t.color));
+    roles[`on${cap(c.name)}`] = hexFromArgb(p.tone(t.on));
+    roles[`${c.name}Container`] = hexFromArgb(p.tone(t.container));
+    roles[`on${cap(c.name)}Container`] = hexFromArgb(p.tone(t.onContainer));
   }
   return roles;
+}
+
+/** One theme's chart colours, keyed as they are written to CSS (`chart-series-1`, ...). */
+function chart(dark, roles) {
+  const mode = dark ? 'dark' : 'light';
+  const steel = palette(CHART.measure);
+  const nv = palette(PALETTES.neutralVariant);
+  return {
+    ...Object.fromEntries(CHART.series[mode].map((hex, i) => [`series${i + 1}`, hex])),
+    earned: roles.earned,
+    spent: roles.spent,
+    measure: hexFromArgb(steel.tone(CHART.measure[mode])),
+    other: hexFromArgb(nv.tone(CHART.other[mode])),
+    grid: roles.outlineVariant,
+    axis: roles.outline,
+  };
 }
 
 const customKeys = new Set(
@@ -154,35 +278,62 @@ const customKeys = new Set(
 
 /** The scheme as data: what the JSON file holds. */
 export function buildScheme() {
+  const light = theme(false);
+  const dark = theme(true);
   return {
     seed: SEED,
+    asphalt: ASPHALT,
     variant: VARIANT,
     specVersion: SPEC_VERSION,
     contrastLevel: CONTRAST_LEVEL,
-    customColors: Object.fromEntries(
-      CUSTOM.map((c) => [c.name, { value: c.value, harmonized: c.blend }]),
+    palettes: PALETTES,
+    overrides: Object.fromEntries(
+      Object.entries(OVERRIDES).map(([role, o]) => [
+        role,
+        {
+          light: { palette: o.light[0], tone: o.light[1] },
+          dark: { palette: o.dark[0], tone: o.dark[1] },
+        },
+      ]),
     ),
-    light: theme(false),
-    dark: theme(true),
+    customColors: Object.fromEntries(
+      CUSTOM.map((c) => [
+        c.name,
+        {
+          value: c.value,
+          harmonized: c.blend,
+          tones: { light: { ...TONES.light, ...c.light }, dark: { ...TONES.dark, ...c.dark } },
+        },
+      ]),
+    ),
+    light,
+    dark,
+    chart: { light: chart(false, light), dark: chart(true, dark) },
   };
 }
 
-function block(selector, roles) {
+function block(selector, roles, charts) {
   const lines = Object.entries(roles).map(([role, hex]) => {
     const prefix = customKeys.has(role) ? '--md-extended-color' : '--md-sys-color';
     return `  ${prefix}-${kebab(role)}: ${hex};`;
   });
-  return `${selector} {\n${lines.join('\n')}\n}\n`;
+  const chartLines = Object.entries(charts).map(
+    ([k, hex]) => `  --md-extended-color-chart-${kebab(k).replace(/(\D)(\d)/, '$1-$2')}: ${hex};`,
+  );
+  return `${selector} {\n${[...lines, ...chartLines].join('\n')}\n}\n`;
 }
 
 /** The two files, as their text. */
 export function buildFiles() {
   const scheme = buildScheme();
   const head =
-    `/* Generated by apps/web/scripts/m3-theme.mjs from the seed ${SEED} ` +
-    `(${VARIANT}, spec ${SPEC_VERSION}). Do not edit; run \`npm run theme -w apps/web\`. */\n`;
+    `/* Generated by apps/web/scripts/m3-theme.mjs: Lane yellow ${SEED} on Asphalt-hue neutrals ` +
+    `(${VARIANT}, spec ${SPEC_VERSION}, with MileWage's overrides). ` +
+    'Do not edit; run `npm run theme -w apps/web`. */\n';
   return {
-    css: `${head}${block(':root', scheme.light)}\n${block('.dark', scheme.dark)}`,
+    css:
+      `${head}${block(':root', scheme.light, scheme.chart.light)}\n` +
+      block('.dark', scheme.dark, scheme.chart.dark),
     json: `${JSON.stringify(scheme, null, 2)}\n`,
   };
 }

@@ -170,13 +170,11 @@ describe('dashboard recent shifts (Comma rows)', () => {
     const row = await (await recent()).findByRole('link', { name: /Shift/ });
     const svg = await within(row).findByTestId('route-sketch');
     expect(svg.getAttribute('aria-hidden')).toBe('true');
-    const [edge, line] = [...svg.querySelectorAll('polyline')];
-    expect(line!.getAttribute('points')!.split(' ')).toHaveLength(3);
-    // A near-black edge (on-primary-fixed) under the Lane yellow route (primary-container).
-    expect([edge!.getAttribute('stroke'), line!.getAttribute('stroke')]).toEqual([
-      '#261a00',
-      '#ffc21f',
-    ]);
+    const lines = [...svg.querySelectorAll('polyline')];
+    expect(lines).toHaveLength(1);
+    expect(lines[0]!.getAttribute('points')!.split(' ')).toHaveLength(3);
+    // A quiet line in the text colour: the yellow route belongs to the shift's own map.
+    expect(lines[0]!.getAttribute('stroke')).toBe('currentColor');
     cleanup();
     open({
       'GET /shifts': list,

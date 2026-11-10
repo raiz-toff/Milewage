@@ -464,8 +464,15 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<'li'>) {
   );
 }
 
+/*
+ * A destination: a full pill, 56 px on touch and 40 px with a mouse. The current one is a
+ * secondary-container (cool grey) pill with its icon filled, and a short Lane yellow dash at its
+ * leading edge, the lane marking: the one place besides the main action where the interface
+ * itself wears the yellow. The dash is decoration; the pill, the filled icon and aria-current
+ * carry the state.
+ */
 const sidebarMenuButtonVariants = cva(
-  'peer/menu-button group/menu-button relative flex w-full items-center gap-3 overflow-hidden rounded-full px-4 text-left text-label-large text-sidebar-foreground state-layer focus-ring transition-[width,height,padding,background-color] duration-200 ease-standard group-has-data-[sidebar=menu-action]/menu-item:pr-12 group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:h-8! group-data-[collapsible=icon]:w-14! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0! disabled:pointer-events-none disabled:opacity-[0.38] aria-disabled:pointer-events-none aria-disabled:opacity-[0.38] data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-open:bg-on-surface/10 [&_svg]:size-6 [&_svg]:shrink-0 [&>span:last-child]:truncate group-data-[collapsible=icon]:[&>span:last-child]:hidden',
+  'peer/menu-button group/menu-button relative flex w-full items-center gap-3 overflow-hidden rounded-full px-4 text-left text-label-large text-sidebar-foreground state-layer focus-ring transition-[width,height,padding,background-color] duration-200 ease-standard group-has-data-[sidebar=menu-action]/menu-item:pr-12 group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:h-8! group-data-[collapsible=icon]:w-14! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0! disabled:pointer-events-none disabled:opacity-[0.38] aria-disabled:pointer-events-none aria-disabled:opacity-[0.38] data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-active:after:absolute data-active:after:top-1/2 data-active:after:left-2 data-active:after:h-4 data-active:after:w-1 data-active:after:-translate-y-1/2 data-active:after:rounded-full data-active:after:bg-primary-container group-data-[collapsible=icon]:data-active:after:left-1 data-open:bg-on-surface/10 [&_svg]:size-6 [&_svg]:shrink-0 [&>span:last-child]:truncate group-data-[collapsible=icon]:[&>span:last-child]:hidden',
   {
     variants: {
       variant: {

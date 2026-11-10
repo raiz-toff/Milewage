@@ -139,7 +139,7 @@ export function EmptyState({ children, className }: { children: ReactNode; class
  * outline-variant rules, an on-surface wash on hover.
  */
 export const tableClass =
-  'w-full text-left text-body-medium [&_tbody_tr]:border-t [&_tbody_tr]:border-outline-variant [&_tbody_tr]:transition-colors [&_tbody_tr:hover]:bg-on-surface/8 [&_td]:h-[52px] [&_td]:px-4 [&_td]:py-1.5 [&_td]:align-middle [&_th]:h-12 [&_th]:px-4 [&_th]:text-title-small [&_th]:whitespace-nowrap [&_th]:text-on-surface-variant [&_thead]:bg-surface-container';
+  'w-full text-left text-body-medium [&_tbody_tr:not(:first-child)]:border-t [&_tbody_tr]:border-outline-variant [&_tbody_tr]:transition-colors [&_tbody_tr:hover]:bg-on-surface/8 [&_td]:h-[52px] [&_td]:px-4 [&_td]:py-1.5 [&_td]:align-middle [&_th]:h-12 [&_th]:px-4 [&_th]:text-title-small [&_th]:whitespace-nowrap [&_th]:text-on-surface-variant [&_thead_tr]:border-b [&_thead_tr]:border-outline-variant';
 
 /** The outlined, scrollable box a data table sits in (medium corners). */
 export function TableBox({ children }: { children: ReactNode }) {

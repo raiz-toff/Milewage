@@ -68,7 +68,7 @@ function ShiftRow({
     <Link
       ref={ref}
       to={`/shifts/${shift.id}`}
-      className="relative flex items-center gap-3 rounded-medium border border-outline-variant p-3 state-layer focus-ring"
+      className="relative -mx-3 flex items-center gap-3 rounded-medium px-3 py-3 state-layer focus-ring"
     >
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
@@ -125,7 +125,7 @@ function ShiftRow({
         </div>
       ) : null}
       {modules.replay ? (
-        <div className="hidden h-12 w-16 shrink-0 overflow-hidden rounded-md bg-muted/60 min-[360px]:block">
+        <div className="hidden h-12 w-16 shrink-0 overflow-hidden rounded-small bg-muted text-on-surface-variant min-[360px]:block">
           {route ? <RouteSketch route={route} /> : null}
         </div>
       ) : null}
@@ -172,7 +172,7 @@ export function RecentShifts() {
           ) : null}
         </EmptyState>
       ) : (
-        <ul className="space-y-2">
+        <ul className="divide-y divide-outline-variant">
           {rows.map((s) => (
             <li key={s.id}>
               <ShiftRow shift={s} platformOf={platformOf} />

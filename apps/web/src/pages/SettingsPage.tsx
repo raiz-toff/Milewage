@@ -342,8 +342,8 @@ function PrefsForm({ prefs, children }: { prefs: Prefs; children: ReactNode }) {
       {children}
       <div
         className={cn(
-          'flex flex-wrap items-center justify-between gap-3 rounded-large bg-surface-container px-4 py-3 shadow-elevation-2',
-          dirty && 'sticky bottom-4 z-10 border-primary/40 shadow-lg backdrop-blur',
+          'flex flex-wrap items-center justify-between gap-3 rounded-large bg-popover px-4 py-3 shadow-elevation-1',
+          dirty && 'sticky bottom-4 z-10 shadow-elevation-3',
         )}
       >
         <div className="min-h-5 text-body-medium">

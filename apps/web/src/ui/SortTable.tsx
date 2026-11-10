@@ -107,7 +107,7 @@ export function SortTable<T>({
       <div className="overflow-x-auto rounded-xl border border-outline-variant">
         <table className="w-full text-left text-body-medium">
           <caption className="sr-only">{caption}</caption>
-          <thead className="bg-surface-container text-on-surface-variant">
+          <thead className="border-b border-outline-variant text-on-surface-variant">
             <tr>
               {columns.map((c) => (
                 <th

@@ -3,8 +3,9 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 /**
- * A message in the page, as a Material 3 banner (m3.material.io/components/banners): a tonal
- * surface with medium corners, body-medium text, an optional leading icon and actions on the
+ * A message in the page, as a Material 3 banner (m3.material.io/components/banners): the card's
+ * colour inside an outline-variant hairline (so it reads on the page and on a card alike), medium
+ * corners, body-medium text, an optional leading icon in on-surface-variant and actions on the
  * right. `destructive` uses the error container colours.
  */
 const alertVariants = cva(
@@ -12,8 +13,7 @@ const alertVariants = cva(
   {
     variants: {
       variant: {
-        default:
-          'bg-surface-container-high text-on-surface *:[svg]:text-primary dark:*:[svg]:text-primary-container',
+        default: 'border-outline-variant bg-card text-on-surface *:[svg]:text-on-surface-variant',
         destructive:
           'bg-error-container text-on-error-container *:data-[slot=alert-description]:text-on-error-container',
       },

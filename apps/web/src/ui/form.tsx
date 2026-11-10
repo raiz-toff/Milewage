@@ -154,7 +154,7 @@ export function DateField({
         <PopoverContent
           aria-label={label}
           align="start"
-          className="w-auto overflow-hidden rounded-large bg-surface-container-high p-0 shadow-elevation-3"
+          className="w-auto overflow-hidden rounded-large bg-popover p-0 shadow-elevation-3"
         >
           <Calendar
             mode="single"

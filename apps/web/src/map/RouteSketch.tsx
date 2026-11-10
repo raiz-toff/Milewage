@@ -1,6 +1,5 @@
 import type { RouteData } from './route';
 import { toPoints } from './route';
-import { casingColor, routeColor } from './style';
 
 const W = 64;
 const H = 48;
@@ -36,8 +35,9 @@ export function sketchPath(route: RouteData, w = W, h = H, pad = PAD): string | 
 
 /**
  * Decorative: the row it sits in says the date, time, distance and earnings, and the shift page
- * has the full map, so it is hidden from screen readers. Route yellow over the Asphalt edge, as on
- * the shift map, so it reads on light and dark cards.
+ * has the full map, so it is hidden from screen readers. Drawn in the text colour (`currentColor`)
+ * as a quiet ink line: the Lane yellow route belongs to the shift's map, and five yellow sketches
+ * in a list would make the yellow the most common colour on the dashboard.
  */
 export function RouteSketch({ route }: { route: RouteData }) {
   const path = sketchPath(route);
@@ -52,8 +52,7 @@ export function RouteSketch({ route }: { route: RouteData }) {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <polyline points={path} stroke={casingColor(false)} strokeWidth={3.5} />
-      <polyline points={path} stroke={routeColor(false)} strokeWidth={2} />
+      <polyline points={path} stroke="currentColor" strokeWidth={2} />
     </svg>
   );
 }

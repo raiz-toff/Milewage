@@ -4,7 +4,8 @@ import { ArrowRightIcon, CheckIcon } from '@/ui/icons';
 import { cn } from '@/lib/utils';
 
 /*
- * Material 3 menus (m3.material.io/components/menus): surface-container at elevation level 2,
+ * Material 3 menus (m3.material.io/components/menus): `bg-popover` at elevation level 2 (white in
+ * light, surface-container-high in dark),
  * extra-small corners, 8 px above and below the list; items 48 px high on touch and 40 px with a
  * mouse, label-large text, 12 px padding, 20 px icons in on-surface-variant, an on-surface wash
  * when highlighted, and secondary-container behind the selected choice.

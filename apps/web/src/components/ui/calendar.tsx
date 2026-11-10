@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
  * react-day-picker drawn as the Material 3 docked date picker (m3.material.io/components/
  * date-pickers): 40 px round days in body-large, today ringed in primary, the chosen day filled
  * primary, weekday initials in body-large on-surface, month and year menus in label-large
- * on-surface-variant, round previous and next buttons. The container (surface-container-high,
+ * on-surface-variant, round previous and next buttons. The container (`bg-popover`,
  * large corners) is the popover that holds it.
  */
 function Calendar({
@@ -30,7 +30,7 @@ function Calendar({
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn(
-        'group/calendar bg-surface-container-high p-3 text-on-surface [--cell-radius:var(--md-sys-shape-corner-full)] [--cell-size:--spacing(10)] in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent',
+        'group/calendar bg-popover p-3 text-on-surface [--cell-radius:var(--md-sys-shape-corner-full)] [--cell-size:--spacing(10)] in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent',
         String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
         String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
         className,

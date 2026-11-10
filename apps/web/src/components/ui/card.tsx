@@ -3,10 +3,11 @@ import { cn } from '@/lib/utils';
 
 /**
  * Material 3 cards (m3.material.io/components/cards), medium corners (12 px), 16 px padding.
- * - `filled` (default): surface-container-low, tonal elevation without a shadow; the app's
- *   sections and figures. `bg-card` resolves to it.
- * - `outlined`: the page's surface with an outline-variant border.
- * - `elevated`: surface-container-low with the level 1 shadow.
+ * - `filled` (default): `bg-card`, the app's sections and figures, with no border and no shadow.
+ *   White on the grey page in light (surface-container-lowest), one step above the Asphalt page
+ *   in dark (surface-container); index.css has the surface model.
+ * - `outlined`: the page's own colour with an outline-variant hairline.
+ * - `elevated`: `bg-card` with the level 1 shadow.
  * - `highest`: Material's filled card in surface-container-highest, for a card that must stand
  *   out from the cards around it.
  */
@@ -14,7 +15,7 @@ type CardVariant = 'filled' | 'outlined' | 'elevated' | 'highest';
 
 const cardVariant: Record<CardVariant, string> = {
   filled: 'bg-card',
-  outlined: 'border border-outline-variant bg-surface',
+  outlined: 'border border-outline-variant bg-background',
   elevated: 'bg-card shadow-elevation-1',
   highest: 'bg-surface-container-highest',
 };

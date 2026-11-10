@@ -294,7 +294,7 @@ export function ShiftList() {
                     <div
                       className={cn(
                         'w-full max-w-12 rounded-md transition-all',
-                        value > 0 ? 'bg-primary' : 'bg-muted',
+                        value > 0 ? 'bg-chart-1' : 'bg-muted',
                         dim && 'opacity-35',
                         !dim && 'group-hover:opacity-90',
                       )}

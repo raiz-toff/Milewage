@@ -7,10 +7,14 @@ const KEY = 'mw-theme';
 const darkQuery = () => window.matchMedia('(prefers-color-scheme: dark)');
 
 /**
- * Each theme's page background (index.css `--background`, Material's surface), used as the window
- * and bar colour. index.html and public/manifest.webmanifest carry the same values (a test checks).
+ * Each theme's page background (index.css `--background`, Material's background role: the cool
+ * grey page in light, Asphalt in dark), used as the window and bar colour. index.html and
+ * public/manifest.webmanifest carry the same values (a test checks).
  */
-export const THEME_COLORS = { light: scheme.light.surface, dark: scheme.dark.surface } as const;
+export const THEME_COLORS = {
+  light: scheme.light.background,
+  dark: scheme.dark.background,
+} as const;
 
 /**
  * The `theme-color` metas in index.html follow the OS (one per `prefers-color-scheme`). A theme
