@@ -23,6 +23,7 @@ describe('settings structure', () => {
     expect(await heading('Profile and region')).toBeTruthy();
     expect(await links()).toEqual([
       'Profile and region',
+      'Mileage rate',
       'Units and format',
       'Alerts',
       'App on this device',
@@ -58,6 +59,7 @@ describe('settings structure', () => {
     expect(await heading('Profile and region')).toBeTruthy();
     expect(await links()).toEqual([
       'Profile and region',
+      'Mileage rate',
       'Units and format',
       'App on this device',
       'Help pages',

@@ -14,8 +14,8 @@ export function shiftPresenter(db: Db, deduction: MileageDeduction): ShiftPresen
   const processing = createProcessingRepository(db);
   const many = (rows: readonly ShiftRow[]) => {
     const flags = processing.flagsOf(rows.map((r) => r.id));
-    const cents = deduction.ofShifts(rows);
-    return rows.map((r, i) => shiftView(r, flags.get(r.id), cents[i] ?? null));
+    const values = deduction.valued(rows);
+    return rows.map((r, i) => shiftView(r, flags.get(r.id), values[i]));
   };
   return { one: (r) => many([r])[0]!, many };
 }

@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils';
 import { useChange } from '../api/query';
 import { levelWord, useCountries } from '../countries';
 import type { Schemas, Settings } from '../api/client';
-import { parseRate, rateInput } from '../format';
 import { settingsPatch, useSettings } from '../session';
 import { Button, Field, FormError, PrivacyLink, SelectField } from '../ui/form';
 import { PageHeader } from '../ui/layout';
@@ -20,6 +19,7 @@ import { ImportCard } from './Import';
 import { AlertsCard } from './Notifications';
 import { PlatformsCard } from './Platforms';
 import { InstallSection } from '../pwa/Install';
+import { MileageRateSection } from './MileageRates';
 
 type Patch = Schemas['SettingsPatch'];
 
@@ -36,8 +36,6 @@ interface Draft {
   region: string;
   week_start: '0' | '1';
   time_format: '12h' | '24h';
-  /** The driver's own mileage rate in major units (0.30), or ''. */
-  own_rate: string;
 }
 
 const draftOf = (s: Settings): Draft => ({
@@ -53,7 +51,6 @@ const draftOf = (s: Settings): Draft => ({
   region: s.region ?? '',
   week_start: s.week_start === 0 ? '0' : '1',
   time_format: s.time_format,
-  own_rate: s.own_mileage_rate ? rateInput(s.own_mileage_rate.cents_per_unit, s.currency) : '',
 });
 
 /** Only the fields that differ from the saved settings, so a save never rewrites the rest. */
@@ -63,13 +60,6 @@ export function changes(saved: Settings, draft: Draft): Patch {
   for (const key of Object.keys(draft) as (keyof Draft)[]) {
     if (draft[key] === was[key]) continue;
     const v = draft[key];
-    if (key === 'own_rate') {
-      patch.own_mileage_rate =
-        v === ''
-          ? null
-          : { cents_per_unit: parseRate(String(v), draft.currency), unit: draft.distance_unit };
-      continue;
-    }
     patch[key] =
       key === 'raw_retention_days' || key === 'week_start'
         ? Number(v)
@@ -130,6 +120,7 @@ function ModuleFlags({ modules }: { modules: Settings['modules'] }) {
 
 type SectionId =
   | 'profile'
+  | 'rate'
   | 'units'
   | 'alerts'
   | 'app'
@@ -168,6 +159,13 @@ const GROUPS: { label: string; sections: Section[] }[] = [
         label: 'Profile and region',
         description: 'Your name, and the country and region whose mileage and tax rules apply.',
         saves: 'shared',
+      },
+      {
+        id: 'rate',
+        label: 'Mileage rate',
+        description:
+          "The rate your mileage deduction uses: your country's, or your own from a date you choose.",
+        saves: 'instant',
       },
       {
         id: 'units',
@@ -254,7 +252,6 @@ const FIELD_SECTION: Record<keyof Draft, SectionId> = {
   display_name: 'profile',
   country: 'profile',
   region: 'profile',
-  own_rate: 'profile',
   distance_unit: 'units',
   currency: 'units',
   week_start: 'units',
@@ -425,19 +422,6 @@ function ProfileSection({ prefs }: { prefs: Prefs }) {
             value={draft.region}
             onChange={(e) => set({ region: e.target.value.toUpperCase() })}
           />
-        ) : null}
-        {country && !country.supports.mileage ? (
-          <div className="sm:col-span-2">
-            <Field
-              label={`Your mileage rate (${draft.currency} per ${draft.distance_unit})`}
-              hint="MileWage has no official rate for this country. Deductions use your rate and are always labelled your rate, never official."
-              type="number"
-              min={0}
-              step="any"
-              value={draft.own_rate}
-              onChange={(e) => set({ own_rate: e.target.value })}
-            />
-          </div>
         ) : null}
         {country?.regional_rules && !draft.region ? (
           <p role="note" className="text-sm text-muted-foreground sm:col-span-2">
@@ -616,6 +600,7 @@ export function SettingsPage() {
         <RunSetupAgain />
       </>
     ),
+    rate: <MileageRateSection />,
     units: (
       <PrefsForm prefs={prefs}>
         <UnitsSection prefs={prefs} />

@@ -33,6 +33,7 @@ function open(
       'GET /shifts/1/trips': () => ({ body: trips }),
       'GET /shifts/1/stops': () => ({ body: stops }),
       'GET /odometer': () => ({ body: [] }),
+      'GET /expenses': () => ({ body: { items: [], next_cursor: null } }),
       'PATCH /shifts/1': ({ body }) => ({ body: { ...theShift, ...(body as object) } }),
     },
     '/shifts/1',
@@ -99,13 +100,17 @@ describe('shift detail with little or nothing recorded', () => {
   it('folds odometer, notes and export into one More card, all closed, and saves notes there', async () => {
     const s = open(nothing);
     const more = await screen.findByRole('region', { name: 'More' });
-    const rows = within(more).getAllByRole('group');
+    // The folded rows (a row's own controls, such as a segmented choice, are groups too).
+    const rows = within(more)
+      .getAllByRole('group')
+      .filter((d) => d.tagName === 'DETAILS');
     expect(rows.map((d) => d.querySelector('summary')?.textContent)).toEqual([
       'OdometerStart and end readings, if you noted them',
       'NotesNone yet',
+      'Parking and tollsNone yet',
       'ExportDownload this shift as a file',
     ]);
-    expect(rows.map((d) => (d as HTMLDetailsElement).open)).toEqual([false, false, false]);
+    expect(rows.map((d) => (d as HTMLDetailsElement).open)).toEqual([false, false, false, false]);
     // No empty cards of their own, and no empty Label stops card.
     expect(screen.queryByRole('region', { name: 'Export' })).toBeNull();
     expect(screen.queryByRole('region', { name: 'Stops' })).toBeNull();
@@ -123,10 +128,13 @@ describe('shift detail with little or nothing recorded', () => {
   it('opens Notes when the shift has some; a running shift has no Export', async () => {
     open(shift({ status: 'active', ended_at: null, total_m: null, notes: 'Airport run' }));
     const more = await screen.findByRole('region', { name: 'More' });
-    const rows = within(more).getAllByRole('group') as HTMLDetailsElement[];
+    const rows = within(more)
+      .getAllByRole('group')
+      .filter((d) => d.tagName === 'DETAILS') as HTMLDetailsElement[];
     expect(rows.map((d) => [d.querySelector('summary')?.textContent, d.open])).toEqual([
       ['OdometerStart and end readings, if you noted them', false],
       ['NotesAirport run', true],
+      ['Parking and tollsNone yet', false],
     ]);
   });
 

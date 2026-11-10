@@ -20,8 +20,30 @@ figures. Run `milewage-cli recalc --dry-run` once to see which shifts the new ru
 (only shifts with GPS accuracy worse than 20 metres can). To apply it to one of them, use
 `POST /api/v1/shifts/<id>/recalculate`; a finalized shift is never changed.
 
+**After upgrading:** a mileage rate of your own set before this release becomes a rate "from the
+start" in Settings > Mileage rate. Nothing changes until you choose Your rate there; in a country
+without rates in MileWage it is used as before.
+
 ### Added
 
+- Settings > Mileage rate: your own mileage rate may replace the country's, for example an
+  employer's or your accountant's rate. Each rate starts on a day you choose and runs until your
+  next one; shifts before it keep the country rate, and one shift never mixes the two (ADR 0007).
+  Every deduction says which rate gave it: the shift and dashboard read "(your rate)" or "(country
+  and your rate)", the Tax page and the tax summary name it, and the shift-level mileage log has a
+  new last column, `Deduction_Rate`. API: `GET`/`POST /own-mileage-rates`,
+  `PATCH`/`DELETE /own-mileage-rates/{id}`, `use_own_mileage_rate` in the settings,
+  `deduction_rate` on shifts and the summary, `deductions.mileage_rate` in the tax report. Core
+  migration 0014.
+- Exports > Mileage and expenses report: a PDF for your accountant with a cover block, the summary
+  (distances, the mileage deduction and the rates used, expenses by category, earnings), the
+  mileage log with odometer readings and flags such as "distance estimated across a signal gap",
+  the expenses, and the unverified-rates and not-tax-advice notices. Page numbers, headings
+  repeated on every page, US Letter or A4 by country (or `paper=a4|letter`), tagged for screen
+  readers, with Roboto embedded so names and currency signs print. Made on the server with
+  pdfkit; the figures are the same as the CSV files and the tax summary for the period.
+- Parking and tolls on a shift's page: add what you paid as an ordinary expense linked to the
+  shift and its vehicle, and see the shift's total. `GET /expenses` takes `shift_id`.
 - `MILEWAGE_TRUSTED_PROXIES` in `infra/docker/.env`: the address of a reverse proxy of your own in
   front of MileWage. Caddy keeps its `X-Forwarded-Proto`, `-Host` and `-For` and the API believes
   its client addresses, with no edit to the Caddyfile or the compose file.
@@ -34,6 +56,11 @@ figures. Run `milewage-cli recalc --dry-run` once to see which shifts the new ru
 
 ### Changed
 
+- The server bundle's `require` banner aliases its import of `createRequire`, so a bundled ES
+  module that imports it too (pdfkit does) no longer breaks the build.
+- Help: "Mileage rates and tax", "For your accountant", "Settings", "Shifts and trips" and
+  "Expenses and receipts" describe your rate, the PDF report and parking and tolls; the mileage
+  deduction is described as business distance (ADR 0005), as it has been since 0.2.0.
 - Miles: the smallest move that counts now follows GPS accuracy. It is 20 metres, or the worse
   reported accuracy of the new point and the last counted one when that is larger, up to 50
   metres. A parked phone with poor GPS no longer adds distance that was never driven, and a

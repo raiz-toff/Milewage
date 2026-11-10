@@ -59,11 +59,59 @@ export interface OwnRate {
 }
 
 /**
+ * Your mileage rate from a date (ADR 0007). `effectiveFrom` null means "from the start": the rate a
+ * driver set before rates had dates, in force before every dated one.
+ */
+export interface DatedOwnRate extends OwnRate {
+  effectiveFrom: string | null;
+}
+
+/** The driver's own rates and whether they replace the country's (Settings > Mileage rate). */
+export interface OwnRates {
+  /** Any order; at most one has no date. */
+  rates: readonly DatedOwnRate[];
+  /** True: your rate replaces the country's from its date. Without country rates it applies anyway (Q5). */
+  use: boolean;
+}
+
+/** Where a deduction's rate came from: the country pack, or the driver's own rate. */
+export type RateSource = 'official' | 'yours';
+
+/** The own rate in force on a local date: the latest that starts on or before it, else null. */
+export function ownRateAt(rates: readonly DatedOwnRate[], date: string): DatedOwnRate | null {
+  let found: DatedOwnRate | null = null;
+  for (const r of rates) {
+    const start = r.effectiveFrom ?? '';
+    if (start > date) continue;
+    if (!found || start > (found.effectiveFrom ?? '')) found = r;
+  }
+  return found;
+}
+
+const hasRates = (c: CountryModule | undefined) => !!c && Object.keys(c.mileage.rates).length > 0;
+
+/**
+ * Which rate values mileage driven on a local date (ADR 0007): your rate in force that day when you
+ * chose it, or when the country has no rates at all (Q5); otherwise the country's rates; otherwise
+ * none. A date before your first rate keeps the country's. One rate per shift, never a mix.
+ */
+export function rateSourceAt(
+  c: CountryModule | undefined,
+  own: OwnRates,
+  date: string,
+): RateSource | 'none' {
+  const official = hasRates(c);
+  if ((own.use || !official) && ownRateAt(own.rates, date)) return 'yours';
+  return official ? 'official' : 'none';
+}
+
+/**
  * Which rate values the driver's mileage: the country's published rates, the driver's own rate
- * (only where the country has none; it never replaces an official rate), or none.
+ * (only where the country has none; it never replaces an official rate), or none. The phone's
+ * estimate reads this; the server decides by date with `rateSourceAt`.
  */
 export function mileageRateSource(c: CountryModule | undefined, own: OwnRate | null) {
-  if (c && Object.keys(c.mileage.rates).length > 0) return 'official' as const;
+  if (hasRates(c)) return 'official' as const;
   return own ? ('yours' as const) : ('none' as const);
 }
 

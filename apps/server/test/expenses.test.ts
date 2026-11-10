@@ -134,6 +134,45 @@ describe('list, totals, merchants', () => {
   });
 });
 
+describe('parking and tolls on a shift', () => {
+  test('linked to the shift, listed by it, fully deductible and never covered by the mileage rate', async () => {
+    await send('POST', '/vehicles', { name: 'Civic', kind: 'car' });
+    const shift = (
+      await send('POST', '/shifts', {
+        client_id: '0b1c8a52-8f0d-4c52-9d5b-5c8a0f3d1e22',
+        vehicle_id: 1,
+        started_at: h.clock.t,
+      })
+    ).json();
+    const park = await add({
+      category: 'parking',
+      amount_cents: 650,
+      vehicle_id: 1,
+      shift_id: shift.id,
+    });
+    const toll = await add({
+      category: 'tolls',
+      amount_cents: 375,
+      vehicle_id: 1,
+      shift_id: shift.id,
+    });
+    await add({ category: 'parking', amount_cents: 999 }); // not this shift
+    for (const e of [park, toll]) {
+      expect(e).toMatchObject({
+        deductible: true,
+        business_pct: 100,
+        double_counts: false,
+        shift_id: shift.id,
+      });
+    }
+    const list = (await send('GET', `/expenses?shift_id=${shift.id}`)).json();
+    expect(list.items.map((e: { amount_cents: number }) => e.amount_cents).sort()).toEqual([
+      375, 650,
+    ]);
+    expect((await send('GET', '/expenses?shift_id=0')).statusCode).toBe(422);
+  });
+});
+
 describe('recurring reminders', () => {
   test('nothing is created by itself; confirming makes one occurrence and moves the template on', async () => {
     const t = await add({

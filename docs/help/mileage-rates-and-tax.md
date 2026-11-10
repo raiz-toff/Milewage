@@ -23,7 +23,7 @@ In Canada the province sets the sales tax name (GST or HST), and for Quebec the 
 
 ## How the mileage deduction is worked out
 
-Each ended shift gets a deduction: its total distance times the pack's rate for the shift's date and vehicle type. These rates and thresholds are unverified.
+Each ended shift gets a deduction: its business distance times the rate for the shift's date and vehicle type. That is the pack's rate, or [your mileage rate](#your-mileage-rate) if you chose it. The pack's rates and thresholds are unverified.
 
 - **Canada**: per km for cars, vans and motorcycles, with a higher rate for the first 5,000 km of the calendar year. It is the provinces' rate; the territories' higher rate is not used.
 - **United States**: one rate per mile for cars, vans and motorcycles, taken at the shift's date.
@@ -31,13 +31,30 @@ Each ended shift gets a deduction: its total distance times the pack's rate for 
 
 Bicycles, e-bikes, scooters and walking get none. A threshold counts all your vehicles of the same type together.
 
-The deduction uses the shift's total distance. A trip you marked personal is still part of that total, and the dashboard shows the figure next to your business distance. Ask your accountant how to treat personal driving.
+Business distance is the shift's total less the trips you marked personal. A threshold counts business distance only, whichever rate valued it.
 
 A rate is dated. When a new year begins before its rate is in MileWage, shifts in that year show no deduction. Update the server when a release adds the rate; see [upgrading](../../infra/docs/upgrade.md).
 
 ## Your mileage rate
 
-Your mileage rate is for a country with no rates in MileWage. It never replaces a country's rate, and a deduction at it is labelled "your rate". All three countries you can pick have rates, so in this version its box in Settings > Profile and region does not appear.
+Your employer may pay you a rate per mile or kilometre, or your accountant may give you one to use. You can use that rate instead of the country's. Set it up in Settings > Mileage rate.
+
+1. Under **Add a rate**, choose the day it starts, type the rate in your currency per km or per mile, and add a note on where it comes from if you like. Then **Add rate**.
+2. Choose **Your rate** at the top. The line above it says which rate is in use today.
+
+Each rate is in force from its day until your next one. When your employer changes the rate in July, add the new rate from 1 July: shifts before then keep the old one.
+
+How the two kinds of rate meet:
+
+- A shift before your first rate's day keeps the country rate. A shift on or after it uses your rate. One shift never mixes the two.
+- Your rate is one flat amount. It has no threshold, so the country's 5,000 km or 10,000 miles tier does not apply to it. Distance at your rate still counts towards the threshold for the country rate.
+- Your rate is a date, not a tax year. If your rate should start with the UK tax year, choose 6 April.
+- It applies to cars, vans and motorcycles, as the country rates do. Bicycles, e-bikes, scooters and walking get none.
+- **Country rate** at the top switches every shift back to the country's rate. Your rates stay saved.
+
+A deduction at your rate is always called "your rate", never official: on the shift, the dashboard, the Tax page, the CSV files and the PDF report. Where a period mixes both, it says "country and your rate". MileWage does not check your rate. Ask your accountant whether you may use it.
+
+For a country with no rates in MileWage, your rate is used without the switch.
 
 ## How a vehicle is deducted
 
@@ -71,7 +88,7 @@ Tick "Registered for GST" (or HST) in Tax settings and type the sales tax you co
 
 ## Tax year
 
-Canada and the United States count the calendar year. The United Kingdom's starts on 6 April, which MileWage uses only for the 10,000-mile threshold. Expense totals, the deduction choice and the Tax page count calendar years. For a UK year, use a Custom period from 6 April to 5 April on the Exports page.
+Canada and the United States count the calendar year. The United Kingdom's starts on 6 April, which MileWage uses only for the 10,000-mile threshold. Expense totals, the deduction choice, the Tax page and the PDF report's default period count calendar years. For a UK year, use a Custom period from 6 April to 5 April on the Exports page.
 
 ## The tax jar
 
@@ -79,4 +96,4 @@ The tax jar is your own record of money you put away for tax; no money moves. In
 
 ## What to hand your accountant
 
-The Tax summary on the Exports page has the year's working, each vehicle's method and mileage deduction, the jar and the deadlines. Outside Canada it holds only notices, so hand over the mileage log and the expenses file. See [For your accountant](for-your-accountant.md).
+The Tax summary on the Exports page has the year's working, each vehicle's method and mileage deduction, the jar and the deadlines. Outside Canada it holds only notices. The Mileage and expenses report (PDF) works in every country. See [For your accountant](for-your-accountant.md).

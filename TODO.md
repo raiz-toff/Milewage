@@ -5,9 +5,8 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
 ## Open
 
 - [ ] **Findings from the Help writers, not yet fixed** (2026-11-09; details in PROGRESS.md, DG0 to
-      DG2). (a) "Your mileage rate" cannot be entered: it applies only where the pack has no rate,
-      and Canada, the US and Great Britain all have one; decide whether a driver may override the
-      pack's rate. (b) The unverified notice shows on the Tax page and in the tax summary export
+      DG2). (a) Done 2026-11-10: the owner decided a driver may override the pack's rate, with
+      dates; Settings > Mileage rate (ADR 0007). (b) The unverified notice shows on the Tax page and in the tax summary export
       only; dashboard, shift pages and the phone show deductions without it. (c) The country list
       says "United Kingdom" (CLDR via `Intl.DisplayNames`), the docs say "Great Britain". (d) Setting
       Repeats on a saved expense hides it from the list and totals; repeating expenses have no list,
@@ -68,11 +67,25 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
       `NotificationManagerCompat` plus an inexact `AlarmManager` alarm (recommended, same route as
       the ZXing scanner), or (c) exclude Firebase in Gradle (unsupported by Expo).
 
+- [ ] **Your rate, the PDF report, parking and tolls: owner checks** (2026-11-10). (1) Your rate
+      is one flat amount for cars, vans and motorcycles together, with no tier and no tax year of
+      its own (ADR 0007); say if a per-vehicle rate is wanted. (2) Parking and Tolls stay
+      deductible in full and outside what the mileage rate covers; no pack says so and nobody has
+      checked it against the IRS (Publication 463), CRA or HMRC pages. (3) The PDF's default period
+      is the calendar year, like the tax summary (the GB year question above decides it too).
+      (4) The phone's estimate for shifts not yet sent still prefers the pack's rate where one
+      exists; the native app should follow `rateSourceAt` and read `GET /own-mileage-rates` (a
+      web-session route today: a device-scoped read is needed). (5) Adding parking or a toll from
+      the phone needs a device-scoped endpoint: `POST /expenses` is web-session only. (6) The PDF
+      library added 2.7 MB to `dist/server.mjs`, 1.36 MB of it the `brotli` decoder fontkit
+      imports for WOFF2 fonts, which the report never uses; an esbuild alias in
+      `scripts/build-server.mjs` could drop it. (7) Look at the PDF in a real viewer and print one.
+
 ## Owner to confirm
 
 Decisions builders made and wrote as "Assumption (owner to confirm)" in `progress.md`. The main
-ones: existing vehicles count as owned; "earnings" means after app fees; the own mileage rate has
-no dates; Nova Scotia HST 14 % vs 15 %; the dashboard opens on Week.
+ones: existing vehicles count as owned; "earnings" means after app fees; Nova Scotia HST 14 % vs
+15 %; the dashboard opens on Week. (The own mileage rate now has dates: ADR 0007.)
 
 Added 2026-11-08 by the integration pass (details in `progress.md` under each PR):
 

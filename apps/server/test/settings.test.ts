@@ -40,7 +40,7 @@ test('the modules object follows the registry: registered is true, absent is fal
     tracking: true,
     stops: true,
     backup_download: true,
-    exporters: ['csv', 'gpx', 'geojson', 'expenses', 'tax_summary'],
+    exporters: ['csv', 'gpx', 'geojson', 'expenses', 'tax_summary', 'pdf'],
     countries: ['US', 'CA', 'GB'],
   });
 });

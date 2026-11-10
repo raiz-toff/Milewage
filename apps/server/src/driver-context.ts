@@ -1,10 +1,18 @@
 import {
   countryModules,
-  mileageRateSource,
+  ownRateAt,
+  rateSourceAt,
   type CountryModule,
   type OwnRate,
+  type OwnRates,
 } from '@milewage/shared';
-import { createBackupRepository, createSettingsRepository, type Db, type SettingsRow } from './db';
+import {
+  createBackupRepository,
+  createOwnRateRepository,
+  createSettingsRepository,
+  type Db,
+  type SettingsRow,
+} from './db';
 import { ProblemError } from './errors';
 import { localDate, localInstant } from './time';
 
@@ -31,9 +39,14 @@ export interface DriverContext {
   readonly region: string | null;
   /** The country pack, or undefined for a country MileWage has none for. */
   readonly pack: CountryModule | undefined;
-  /** Your mileage rate (owner decision Q5), or null. It values mileage only where `rateSource` is `yours`. */
+  /** Your mileage rate in force today (owner decision Q5, ADR 0007), or null. */
   readonly ownRate: OwnRate | null;
-  /** What values the driver's mileage: the pack's official rates, your mileage rate where there are none, or nothing. */
+  /** Every one of your mileage rates with its date, and whether they replace the country's (ADR 0007). */
+  readonly ownRates: OwnRates;
+  /**
+   * What values mileage driven today: the pack's official rates, your mileage rate (chosen, or
+   * where the country has none), or nothing. Older shifts may differ: `rateSourceAt` decides by date.
+   */
   readonly rateSource: 'official' | 'yours' | 'none';
   /** The driver's work kinds: the chosen ones the country offers, or its only one when none is chosen. */
   readonly workKinds: string[];
@@ -71,14 +84,18 @@ function workKindsOf(country: string, chosen: readonly string[] | null): string[
   return mine.length || kinds.length !== 1 ? mine : [...kinds];
 }
 
-function contextOf(row: SettingsRow, now: () => number, stopsModule: boolean): DriverContext {
+function contextOf(
+  row: SettingsRow,
+  rates: OwnRates['rates'],
+  now: () => number,
+  stopsModule: boolean,
+): DriverContext {
   const pack = countryModules.get(row.country);
-  // Hundredths of a cent: 0.305 €/km is entered as 30.5 cents and kept exactly.
-  const ownRate =
-    row.ownRateHundredths && row.ownRateUnit
-      ? { centsPerUnit: row.ownRateHundredths / 100, unit: row.ownRateUnit }
-      : null;
   const timeZone = row.timezone;
+  const today = localDate(now(), timeZone);
+  const ownRates = { rates, use: row.useOwnRate === 1 };
+  const inForce = ownRateAt(rates, today);
+  const ownRate = inForce && { centsPerUnit: inForce.centsPerUnit, unit: inForce.unit };
   return {
     userId: row.userId,
     settings: row,
@@ -90,7 +107,8 @@ function contextOf(row: SettingsRow, now: () => number, stopsModule: boolean): D
     region: row.region,
     pack,
     ownRate,
-    rateSource: mileageRateSource(pack, ownRate),
+    ownRates,
+    rateSource: rateSourceAt(pack, ownRates, today),
     workKinds: workKindsOf(row.country, row.workKinds),
     stopsOn: stopsModule && row.stopsEnabled === 1,
     today: () => localDate(now(), timeZone),
@@ -114,9 +132,17 @@ export function createDriverContexts({
 }): DriverContexts {
   const settings = createSettingsRepository(db);
   const owners = createBackupRepository(db);
+  const own = createOwnRateRepository(db);
   const find = (userId: number) => {
     const row = settings.get(userId);
-    return row && contextOf(row, now, stopsModule());
+    // Hundredths of a cent: 0.305 €/km is entered as 30.5 cents and kept exactly.
+    const rates = () =>
+      own.list(userId).map((r) => ({
+        effectiveFrom: r.effectiveFrom,
+        centsPerUnit: r.hundredths / 100,
+        unit: r.unit,
+      }));
+    return row && contextOf(row, rates(), now, stopsModule());
   };
   return {
     of(userId) {

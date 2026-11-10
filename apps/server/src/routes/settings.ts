@@ -3,6 +3,7 @@ import type { ModuleRegistry } from '@milewage/shared';
 import { countryModules, resolvePlace, WORK_KINDS } from '@milewage/shared';
 import { algorithmVersion } from '@milewage/track-engine';
 import {
+  createOwnRateRepository,
   createSettingsRepository,
   createVehicleRepository,
   type Db,
@@ -97,6 +98,7 @@ const patchSchema = strictObject(
         unit: { enum: ['km', 'mi'] },
       },
     },
+    use_own_mileage_rate: { type: 'boolean' },
     work_kinds: { type: 'array', items: { enum: [...WORK_KINDS] }, uniqueItems: true },
     onboarded: { type: 'boolean' },
     setup_done: { type: 'array', items: { enum: [...SETUP_STEPS] }, uniqueItems: true },
@@ -152,8 +154,10 @@ export function settingsReader(ctx: ReaderContext) {
       display_name: row.displayName,
       region: row.region,
       logbook: logbookOf(d),
+      // Your rate in force today; the dated list is `GET /own-mileage-rates` (ADR 0007).
       own_mileage_rate: own && { cents_per_unit: own.centsPerUnit, unit: own.unit },
       mileage_rate: d.rateSource,
+      use_own_mileage_rate: d.ownRates.use,
       week_start: row.weekStart,
       time_format: row.timeFormat,
       default_vehicle_id: row.defaultVehicleId,
@@ -228,12 +232,7 @@ export function settingsRoutes(
       }
       patch.defaultVehicleId = b.default_vehicle_id === null ? null : Number(b.default_vehicle_id);
     }
-    if (b.own_mileage_rate !== undefined) {
-      const r = b.own_mileage_rate as { cents_per_unit: number; unit: 'km' | 'mi' } | null;
-      // Hundredths of a cent: 0.305 €/km is entered as 30.5 cents and kept exactly.
-      patch.ownRateHundredths = r && Math.max(1, Math.round(r.cents_per_unit * 100));
-      patch.ownRateUnit = r && r.unit;
-    }
+    if (b.use_own_mileage_rate !== undefined) patch.useOwnRate = b.use_own_mileage_rate ? 1 : 0;
     if (b.work_kinds !== undefined || b.country) {
       // Kinds the (new) country does not offer: refused when sent, dropped on a country change.
       const sent = b.work_kinds as string[] | undefined;
@@ -271,6 +270,25 @@ export function settingsRoutes(
     if (b.diagnostics_level) {
       patch.diagnosticsLevel = b.diagnostics_level as SettingsRow['diagnosticsLevel'];
       patch.diagnosticsVerboseUntil = b.diagnostics_level === 'verbose' ? now + VERBOSE_MS : null;
+    }
+    if (b.own_mileage_rate !== undefined) {
+      // Before rates had dates (ADR 0007): this sets or clears the undated rate, "from the start".
+      const r = b.own_mileage_rate as { cents_per_unit: number; unit: 'km' | 'mi' } | null;
+      const own = createOwnRateRepository(ctx.db);
+      const undated = own.onDay(userId, null);
+      if (!r) {
+        if (undated) own.delete(userId, undated.id);
+      } else {
+        // Hundredths of a cent: 0.305 €/km is entered as 30.5 cents and kept exactly.
+        const row = {
+          effectiveFrom: null,
+          hundredths: Math.max(1, Math.round(r.cents_per_unit * 100)),
+          unit: r.unit,
+          note: undated?.note ?? null,
+        };
+        if (undated) own.update(userId, undated.id, row, now);
+        else own.create(userId, row, now);
+      }
     }
     repo.update(userId, patch);
     ctx.emit?.('settings.updated', { userId: String(userId) });

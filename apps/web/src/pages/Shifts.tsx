@@ -22,6 +22,7 @@ import type { Picked } from '../shift/view';
 import { FormError } from '../ui/form';
 import { ExportButtons } from './Exports';
 import { AddTrip } from './AddTrip';
+import { ShiftCosts, useShiftCosts } from './ShiftCosts';
 import { ShiftEarnings } from './ShiftEarnings';
 import { ShiftChecks, ShiftFigures } from './ShiftFacts';
 import { ShiftOdometer } from './ShiftOdometer';
@@ -150,7 +151,11 @@ export function ShiftCard({ shift, settings }: { shift: Shift; settings: Setting
           ) : null}
           {shift.deduction_cents !== null ? (
             <div className="text-xs text-muted-foreground tabular-nums">
-              {formatMoney(shift.deduction_cents, settings.currency)} {deductionWord(settings)}
+              {formatMoney(shift.deduction_cents, settings.currency)}{' '}
+              {deductionWord({
+                mileage_rate: settings.mileage_rate,
+                deduction_rate: shift.deduction_rate,
+              })}
             </div>
           ) : null}
         </div>
@@ -326,7 +331,13 @@ export function ShiftList() {
             }
           />
           <StatCard
-            label={deductionWord(settings, true)}
+            label={deductionWord(
+              {
+                mileage_rate: settings.mileage_rate,
+                deduction_rate: data.summary.deduction_rate,
+              },
+              true,
+            )}
             value={formatMoney(data.summary.deduction_cents, currency)}
           />
           <StatCard
@@ -374,6 +385,7 @@ export function ShiftDetail() {
   const { shift, view, trips, stops } = record;
   const [picked, setPicked] = useState<Picked>(null);
   const [adding, setAdding] = useState(false);
+  const costs = useShiftCosts(shift?.id, settings.modules.expenses);
 
   if (record.error && !shift)
     return (
@@ -534,6 +546,19 @@ export function ShiftDetail() {
                   open: !!shift.notes,
                   body: notes(true),
                 },
+                ...(view.costs
+                  ? [
+                      {
+                        key: 'costs',
+                        title: 'Parking and tolls',
+                        hint:
+                          costs.items && costs.items.length > 0
+                            ? `${formatMoney(costs.totalCents, settings.currency)} on this shift`
+                            : 'None yet',
+                        body: <ShiftCosts shift={shift} bare />,
+                      },
+                    ]
+                  : []),
                 ...(view.exporters
                   ? [
                       {
@@ -558,6 +583,7 @@ export function ShiftDetail() {
             <div id="checks" className="scroll-mt-20">
               <ShiftChecks shift={shift} />
             </div>
+            {view.costs ? <ShiftCosts shift={shift} /> : null}
             {notes()}
             {view.exporters ? (
               <Section label="Export" title="Export this shift">

@@ -43,6 +43,7 @@ const listQuery = strictObject(
     category: str(1, 40),
     deductible: { type: 'boolean' },
     vehicle_id: { type: 'integer', minimum: 1 },
+    shift_id: { type: 'integer', minimum: 1 },
     templates: { type: 'boolean' },
     limit: { type: 'integer', minimum: 1, maximum: 200 },
     cursor: str(1, 200),
@@ -228,6 +229,7 @@ export function expensesRoutes({
         category?: string;
         deductible?: boolean;
         vehicle_id?: number;
+        shift_id?: number;
         templates?: boolean;
         limit?: number;
         cursor?: string;
@@ -252,6 +254,7 @@ export function expensesRoutes({
         category: q.category,
         deductible: q.deductible,
         vehicleId: q.vehicle_id,
+        shiftId: q.shift_id,
         templates: q.templates,
         after,
         limit,

@@ -76,8 +76,10 @@ function* tripLevel(c: ExportContext) {
 
 function* shiftLevel(c: ExportContext) {
   const u = c.driver.unit === 'mi' ? 'Miles' : 'Km';
-  // A value at the driver's own rate is labelled as theirs, never as an official deduction (Q5).
-  const yours = c.driver.rateSource === 'yours';
+  // A value at the driver's own rate is labelled as theirs, never as an official deduction (Q5):
+  // the column says so when every value is at your rate, and each row names its rate (ADR 0007).
+  const rates = new Set(c.shifts.map((s) => c.readers.deduction(s).rate).filter((r) => r !== null));
+  const yours = rates.size === 1 && rates.has('yours');
   yield row([
     'Date',
     'Shift_ID',
@@ -102,6 +104,7 @@ function* shiftLevel(c: ExportContext) {
     'Year_Odometer_Check',
     'Bonus',
     'Imported',
+    'Deduction_Rate',
   ]);
   const odometer = createOdometerChecks(c.db, c.userId, c.driver.timeZone);
   // A shift made from a CSV file has a typed distance, not a tracked one; every export says so (18 section 12).
@@ -145,7 +148,7 @@ function* shiftLevel(c: ExportContext) {
       s.activeM === null ? '' : distance(s.activeM, c.driver.unit),
       s.deadheadM === null ? '' : distance(s.deadheadM, c.driver.unit),
       s.totalM === null ? '' : distance(s.totalM, c.driver.unit),
-      dv === null ? '' : money(dv),
+      dv.cents === null ? '' : money(dv.cents),
       s.segmenter === 'stops' ? 'yes' : 'no',
       s.notes,
       odo.startM === null ? '' : distance(odo.startM, c.driver.unit),
@@ -154,6 +157,7 @@ function* shiftLevel(c: ExportContext) {
       odometer.year(s),
       paid ? money(sum((r) => r.bonusCents)) : '',
       imported.get(s.id) ? 'yes' : '',
+      dv.rate === 'yours' ? 'your rate' : dv.rate === 'official' ? 'country rate' : '',
     ]);
   }
 }

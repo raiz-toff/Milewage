@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   distanceInput,
   formatDistance,
+  deductionWord,
   formatMoney,
   formatOdometer,
+  formatRate,
   fromMetres,
   minorDigits,
   moneyInput,
@@ -15,6 +17,26 @@ import {
 } from '../src/format';
 
 const plain = (s: string) => s.replace(/\s/g, ' ');
+
+describe('rates and the words of a deduction (ADR 0007)', () => {
+  it('a rate keeps its hundredths of a minor unit', () => {
+    expect(plain(formatRate(72.5, 'USD'))).toBe('US$0.725');
+    expect(plain(formatRate(55, 'GBP'))).toBe('£0.55');
+    expect(plain(formatRate(30, 'JPY'))).toMatch(/30(\.0+)?$/);
+  });
+
+  it("the figure's own rate wins over today's, and yours is never official", () => {
+    expect(deductionWord({ mileage_rate: 'official' })).toBe('deduction');
+    expect(deductionWord({ mileage_rate: 'yours' }, true)).toBe('Deduction (your rate)');
+    expect(deductionWord({ mileage_rate: 'yours', deduction_rate: 'official' })).toBe('deduction');
+    expect(deductionWord({ mileage_rate: 'official', deduction_rate: 'yours' })).toBe(
+      'deduction (your rate)',
+    );
+    expect(deductionWord({ mileage_rate: 'official', deduction_rate: 'mixed' }, true)).toBe(
+      'Deduction (country and your rate)',
+    );
+  });
+});
 
 describe('money follows the currency minor unit', () => {
   it('reads the places from Intl', () => {

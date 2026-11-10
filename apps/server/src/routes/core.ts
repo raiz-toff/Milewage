@@ -20,6 +20,7 @@ import type { DriverContexts } from '../driver-context';
 import type { MileageDeduction } from '../mileage-deduction';
 import type { ShiftPresenter } from '../processing/presenter';
 import { describeError, ProblemError } from '../errors';
+import { ownRateRoutes } from './own-rates';
 import { settingsRoutes } from './settings';
 import { statusRoute, type StatusContext } from './status';
 import type { ShiftBook } from '../processing/shift-book';
@@ -127,6 +128,7 @@ export function coreRoutes(
       exportFormats,
       captureFor,
     });
+    ownRateRoutes(app, { db, now, auth, emit });
     countriesRoute(app, {
       countries,
       taxShown: comma?.taxCountries ?? COMMA_DEFAULTS.taxCountries,

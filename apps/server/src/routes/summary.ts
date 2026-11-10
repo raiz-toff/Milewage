@@ -52,6 +52,7 @@ export function summaryRoute(app: FastifyInstance, ctx: SummaryContext) {
 
     const totals = repo.periodTotals(userId, from, to);
     const hours = Math.round((totals.ms / 3_600_000) * 1000) / 1000;
+    const deduction = ctx.deduction.ofPeriod(userId, from, to);
     // Earnings come from the driver's labels or typed totals (18 section 4.3); with neither they are null, never 0.
     const rows = ctx.earnings?.any(userId)
       ? createEarningsRepository(ctx.db).effective(
@@ -79,8 +80,10 @@ export function summaryRoute(app: FastifyInstance, ctx: SummaryContext) {
       deadhead_m: totals.deadhead_m,
       personal_m: totals.personal_m,
       total_m: totals.total_m,
-      // Each shift's value from the pack of its own date; null without a pack or a rate.
-      deduction_cents: ctx.deduction.ofPeriod(userId, from, to).cents,
+      // Each shift's value from the rate of its own date; null without a pack or a rate.
+      deduction_cents: deduction.cents,
+      // The country's rate, your rate, or both by date (ADR 0007).
+      deduction_rate: deduction.rate,
       hourly_earnings_cents:
         labelled && hours > 0 ? Math.round(labelled.earningsCents / hours) : null,
       // A shift that spans platforms has one distance; it is not split, so only earnings are filtered.

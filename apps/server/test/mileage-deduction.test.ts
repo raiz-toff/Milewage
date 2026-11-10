@@ -133,6 +133,7 @@ describe('tiered rates (Great Britain: 10,000 miles a tax year from 6 April)', (
     expect(d.ofPeriod(1, '2026-04-06', '2027-04-05')).toEqual({
       cents: 6000 * 55 + 4000 * 55 + 2000 * 25,
       byVehicle: new Map([[1, 6000 * 55 + 4000 * 55 + 2000 * 25]]),
+      rate: 'official',
     });
   });
 
@@ -143,6 +144,7 @@ describe('tiered rates (Great Britain: 10,000 miles a tax year from 6 April)', (
     expect(d.ofPeriod(1, '2026-12-01', '2026-12-31')).toEqual({
       cents: null,
       byVehicle: new Map(),
+      rate: null,
     });
   });
 });

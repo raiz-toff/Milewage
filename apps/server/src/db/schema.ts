@@ -31,8 +31,8 @@ export const settings = sqliteTable('settings', {
     .notNull()
     .default('24h'),
   defaultVehicleId: integer('default_vehicle_id'),
-  ownRateHundredths: integer('own_rate_hundredths'),
-  ownRateUnit: text('own_rate_unit', { enum: ['km', 'mi'] }),
+  /** ADR 0007: your mileage rate replaces the country's from its date (`own_mileage_rates`). */
+  useOwnRate: integer('use_own_rate').notNull().default(0),
   onboardedAt: integer('onboarded_at'),
   workKinds: text('work_kinds', { mode: 'json' }).$type<string[]>(),
   setupDone: text('setup_done', { mode: 'json' }).$type<string[]>(),

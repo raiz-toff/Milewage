@@ -13,6 +13,7 @@ export * from './resolve';
 export * from './registry';
 export * from './mileage';
 export * from './name';
+export * from './paper';
 export * from './tax';
 export * from './dimensions';
 export { caCountry, gbCountry, usCountry };

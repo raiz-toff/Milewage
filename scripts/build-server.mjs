@@ -33,9 +33,11 @@ export async function buildServer(outDir = join(root, 'dist')) {
     target: 'node22',
     format: 'esm',
     external: NATIVE,
-    // Bundled CommonJS dependencies call require(); give them one in the ESM output.
+    // Bundled CommonJS dependencies call require(); give them one in the ESM output. The import is
+    // aliased: a bundled ES module may import createRequire itself (pdfkit does), and the banner is
+    // text esbuild cannot rename.
     banner: {
-      js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);",
+      js: "import { createRequire as __milewageRequire } from 'node:module'; const require = __milewageRequire(import.meta.url);",
     },
     logLevel: 'warning',
   });

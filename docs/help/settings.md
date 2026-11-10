@@ -10,7 +10,7 @@ order: 110
 
 Settings has one page per section, listed in three groups: Preferences, Work and tracking, and Data and account. On a narrow screen it is a "Section:" menu at the top.
 
-Each section says how it saves. Profile and region, Units and format, Tracking and privacy and Help pages share one Save bar. It names the sections with unsaved changes; Save keeps them all, Discard drops them. Alerts and Platforms save each change at once. Account and security and AI assistants have their own buttons.
+Each section says how it saves. Profile and region, Units and format, Tracking and privacy and Help pages share one Save bar. It names the sections with unsaved changes; Save keeps them all, Discard drops them. Mileage rate, Alerts and Platforms save each change at once. Account and security and AI assistants have their own buttons.
 
 Some sections appear only when their module runs on your server. They are marked below.
 
@@ -19,11 +19,20 @@ Some sections appear only when their module runs on your server. They are marked
 - **Name**: shown in the account menu.
 - **Country**: decides which mileage rates and tax rules apply. Canada, the United States and Great Britain have country packs.
 - **Province or state**: optional. Without it only the national rules apply, and the page says so.
-- **Your mileage rate**: shown only for a country without a published rate. Deductions then use your rate and are always called your rate.
 
 There is no tax section: the Tax page works from these answers.
 
 "Run setup again" asks the first-run questions again. Your answers stay until you change them.
+
+## Mileage rate
+
+The rate your mileage deduction uses. The first line says which is in use today.
+
+- **Country rate** or **Your rate**: your rates replace the country's from the day each starts. Shown when your country has rates in MileWage; without them your rate is used anyway.
+- **Your mileage rates**: each with its amount, the day it starts and your note. The "..." menu edits or removes one. "From the start" is a rate you set before rates had days.
+- **Add a rate**: the day it starts, the rate in your currency per km or per mile, and an optional note.
+
+A deduction at your rate is always called your rate. See [Your mileage rate](mileage-rates-and-tax.md#your-mileage-rate).
 
 ## Units and format
 

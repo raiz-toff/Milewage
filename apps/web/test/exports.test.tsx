@@ -235,6 +235,42 @@ describe('exports screen', () => {
     expect(seen[0]).toBe('?shift_id=1');
   });
 
+  it('the PDF report: chosen paper in the query, the period and vehicle as for the CSV; not on a shift', async () => {
+    const seen: string[] = [];
+    open(
+      { exporters: ['csv', 'pdf'] },
+      {
+        'GET /exports/pdf': ({ url }) => {
+          seen.push(url.search);
+          return {
+            body: { pdf: true },
+            headers: { 'content-disposition': 'attachment; filename="milewage-pdf-2026.pdf"' },
+          };
+        },
+      },
+    );
+    const accountant = within(await screen.findByRole('region', { name: 'For your accountant' }));
+    expect(accountant.getByText(/ready to print \(PDF\)/)).toBeTruthy();
+    fireEvent.click(
+      accountant.getByRole('button', { name: 'Download Mileage and expenses report' }),
+    );
+    await waitFor(() => expect(saved.length).toBe(1));
+    expect(saved[0]!.name).toBe('milewage-pdf-2026.pdf');
+    expect(seen[0]).toBe('?from=2026-01-01&to=2026-03-15'); // this year so far; the paper of the country
+    pick(accountant.getByLabelText('Paper size'), 'a4');
+    pick(screen.getByLabelText('Vehicle'), '1');
+    fireEvent.click(
+      accountant.getByRole('button', { name: 'Download Mileage and expenses report' }),
+    );
+    await waitFor(() => expect(saved.length).toBe(2));
+    expect(seen[1]).toBe('?from=2026-01-01&to=2026-03-15&vehicle_id=1&paper=a4');
+    cleanup();
+
+    open({ exporters: ['pdf'] }, {}, '/shifts/1');
+    expect(await screen.findByRole('heading', { level: 1 })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Download PDF/ })).toBeNull();
+  });
+
   it('helpers: file name and period length', () => {
     expect(fileNameOf('attachment; filename="a b.csv"', 'x')).toBe('a b.csv');
     expect(fileNameOf("attachment; filename*=UTF-8''a%20b.csv", 'x')).toBe('a b.csv');

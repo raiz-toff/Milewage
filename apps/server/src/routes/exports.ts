@@ -12,7 +12,7 @@ import {
 } from '../db';
 import { ProblemError } from '../errors';
 import type { ExportContext, ExporterRegistry } from '../exporters/registry';
-import type { MileageDeduction } from '../mileage-deduction';
+import type { MileageDeduction, ValuedShift } from '../mileage-deduction';
 import type { EarningsPolicy } from './earnings';
 import type { TaxReport } from '../tax-report';
 import type { DriverContexts } from '../driver-context';
@@ -29,6 +29,7 @@ const query = strictObject(
     year: { type: 'integer', minimum: 2000, maximum: 2100 },
     category: { type: 'string', maxLength: 40 },
     format: { enum: ['csv', 'json'] },
+    paper: { enum: ['a4', 'letter'] },
   },
   [],
 );
@@ -49,6 +50,8 @@ export interface ExportsOptions {
   /** Formats switched on (`modules.export_<format>`); default every registered one. */
   formats?: () => readonly string[];
   earnings?: (registry: ServerRouteHost['registry']) => EarningsPolicy;
+  /** The server's clock; defaults to `Date.now`. */
+  now?: () => number;
   /** Builds the tax report of a year; supplied when the `tax` module exists. */
   taxReport?: (registry: ServerRouteHost['registry'], userId: number, year: number) => TaxReport;
 }
@@ -75,6 +78,7 @@ export function exportsRoutes({
   formats,
   earnings,
   taxReport,
+  now = Date.now,
 }: ExportsOptions) {
   return ({ app, registry }: ServerRouteHost) => {
     const processing = createProcessingRepository(db);
@@ -97,6 +101,7 @@ export function exportsRoutes({
         year?: number;
         category?: string;
         format?: string;
+        paper?: 'a4' | 'letter';
       };
       const driver = drivers.of(userId);
 
@@ -142,10 +147,10 @@ export function exportsRoutes({
         'SELECT recorded_at AS t, lat_e7 AS latE7, lon_e7 AS lonE7, speed_dmps AS speedDmps, altitude_m AS altitudeM FROM telemetry_points WHERE shift_id = ? ORDER BY recorded_at, seq',
       );
       // Every selected shift's deduction in one go, on first use (only the CSV asks).
-      let deductions: Map<number, number | null> | undefined;
+      let deductions: Map<number, ValuedShift> | undefined;
       const deductionOf = (s: ShiftRow) => {
-        deductions ??= new Map(deduction.ofShifts(shifts).map((v, i) => [shifts[i]!.id, v]));
-        return deductions.has(s.id) ? deductions.get(s.id)! : deduction.ofShifts([s])[0]!;
+        deductions ??= new Map(deduction.valued(shifts).map((v, i) => [shifts[i]!.id, v]));
+        return deductions.get(s.id) ?? deduction.valued([s])[0]!;
       };
       const context: ExportContext = {
         db,
@@ -155,7 +160,16 @@ export function exportsRoutes({
         driver,
         deduction,
         level: q.level ?? 'trip',
-        query: { from: q.from, to: q.to, year: q.year, category: q.category, format: q.format },
+        query: {
+          from: q.from,
+          to: q.to,
+          year: q.year,
+          category: q.category,
+          format: q.format,
+          vehicle_id: q.vehicle_id,
+          paper: q.paper,
+        },
+        now,
         enabled: (m) => registry.isEnabled(m),
         taxReport: taxReport && ((y) => taxReport(registry, userId, y)),
         readers: {
@@ -193,6 +207,15 @@ export function exportsRoutes({
               ? createEarningsRepository(db)
                   .effective(userId, s.localDate, s.localDate, earnings(registry).options(userId))
                   .filter((r) => r.shiftId === s.id)
+              : [],
+          earningsBetween: (from, to) =>
+            earnings && registry.isEnabled('earnings')
+              ? createEarningsRepository(db).effective(
+                  userId,
+                  from,
+                  to,
+                  earnings(registry).options(userId),
+                )
               : [],
         },
       };

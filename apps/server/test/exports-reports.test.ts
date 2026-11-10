@@ -139,7 +139,7 @@ describe('switches and modules', () => {
       const b = await noTax.signUp();
       const formats = (await noTax.call('GET', '/settings', undefined, { cookie: b.cookie })).json()
         .modules.exporters;
-      expect(formats).toEqual(['csv', 'gpx', 'geojson', 'expenses']);
+      expect(formats).toEqual(['csv', 'gpx', 'geojson', 'expenses', 'pdf']);
       expect(
         (await noTax.call('GET', '/exports/tax_summary', undefined, { cookie: b.cookie }))
           .statusCode,

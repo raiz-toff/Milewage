@@ -33,6 +33,8 @@ export interface ExpenseFilter {
   category?: string;
   deductible?: boolean;
   vehicleId?: number;
+  /** Only the expenses linked to this shift. */
+  shiftId?: number;
   /** Recurring templates instead of ordinary expenses. */
   templates?: boolean;
   after?: { spentOn: string; id: number };
@@ -57,6 +59,7 @@ export function createExpenseRepository(db: Db) {
     add('category = @category', 'category', f.category);
     add('deductible = @deductible', 'deductible', f.deductible);
     add('vehicle_id = @vehicleId', 'vehicleId', f.vehicleId);
+    add('shift_id = @shiftId', 'shiftId', f.shiftId);
     if (f.after) {
       sql.push('(spent_on < @aDate OR (spent_on = @aDate AND id < @aId))');
       args.aDate = f.after.spentOn;

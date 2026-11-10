@@ -47,7 +47,7 @@ tags:
 x-modules:
   core:
     toggle: never
-    operations: [getHealth, getSetupStatus, listCountries, getErrorType, createOwner, confirmRecoveryKey, login, logout, changePassword, resetPassword, getSettings, updateSettings, listVehicles, createVehicle, updateVehicle, getSystemStatus, getSummary, listShifts, startShift, getShift, updateShift, purgeShift, endShift, finalizeShift, recalculateShift, setShiftOdometer, listOdometerReadings, createYearOdometerReading, deleteOdometerReading, listShiftTrips, putManualTrip, updateTrip, deleteManualTrip]
+    operations: [getHealth, getSetupStatus, listCountries, getErrorType, createOwner, confirmRecoveryKey, login, logout, changePassword, resetPassword, getSettings, updateSettings, listVehicles, createVehicle, updateVehicle, getSystemStatus, getSummary, listShifts, startShift, getShift, updateShift, purgeShift, endShift, finalizeShift, recalculateShift, setShiftOdometer, listOdometerReadings, createYearOdometerReading, deleteOdometerReading, listShiftTrips, putManualTrip, updateTrip, deleteManualTrip, listOwnMileageRates, createOwnMileageRate, updateOwnMileageRate, deleteOwnMileageRate]
   devices:
     toggle: modules.devices
     default: true
@@ -910,6 +910,64 @@ paths:
               schema: { $ref: '#/components/schemas/Settings' }
         '422': { $ref: '#/components/responses/Unprocessable' }
 
+  /own-mileage-rates:
+    get:
+      tags: [settings]
+      operationId: listOwnMileageRates
+      summary: 'Your mileage rates with their dates, oldest first (ADR 0007). Each is in force from its date until the next. They value mileage from their date when settings.use_own_mileage_rate is true, or where the country has no rates. Web session only.'
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: The rates.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/DatedOwnMileageRate' } }
+    post:
+      tags: [settings]
+      operationId: createOwnMileageRate
+      summary: Add a rate from a date. One rate per day, and one without a date ("from the start").
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DatedOwnMileageRateCreate' }
+      responses:
+        '201':
+          description: Added.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DatedOwnMileageRate' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /own-mileage-rates/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [settings]
+      operationId: updateOwnMileageRate
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DatedOwnMileageRatePatch' }
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DatedOwnMileageRate' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    delete:
+      tags: [settings]
+      operationId: deleteOwnMileageRate
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Removed. Shifts on its days take the rate before it, or the country's. }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /vehicles:
     get:
       tags: [vehicles]
@@ -1652,6 +1710,7 @@ paths:
         - { name: category, in: query, schema: { type: string } }
         - { name: deductible, in: query, schema: { type: boolean } }
         - { name: vehicle_id, in: query, schema: { type: integer } }
+        - { name: shift_id, in: query, schema: { type: integer }, description: The expenses linked to one shift (its parking and tolls on the shift page). }
         - { name: templates, in: query, schema: { type: boolean } }
         - { $ref: '#/components/parameters/Limit' }
         - { $ref: '#/components/parameters/Cursor' }
@@ -2448,10 +2507,10 @@ paths:
     get:
       tags: [exports]
       operationId: exportData
-      summary: Download a file from a registered exporter (v1 ships csv, pdf, gpx, geojson). A disabled or unknown format returns 404.
+      summary: 'Download a file from a registered exporter (csv, pdf, gpx, geojson, expenses, tax_summary). A disabled or unknown format returns 404. pdf is the mileage and expenses report for an accountant: from/to (at most 366 days) or year (the calendar year, as the tax summary), default this year.'
       security: [{ sessionCookie: [] }]
       parameters:
-        - { name: format, in: path, required: true, schema: { enum: [csv, pdf, gpx, geojson, expenses, tax_summary] }, description: 'Only formats whose exporter is registered and enabled exist. expenses and tax_summary are reports over records, not shifts: from/to are optional for expenses, year selects the tax year, format=json is for tax_summary only.' }
+        - { name: format, in: path, required: true, schema: { enum: [csv, pdf, gpx, geojson, expenses, tax_summary] }, description: 'Only formats whose exporter is registered and enabled exist. expenses, tax_summary and pdf are reports over a period, not a selection of shifts: from/to are optional for them, year selects the tax year, format=json is for tax_summary only.' }
         - { $ref: '#/components/parameters/From' }
         - { $ref: '#/components/parameters/To' }
         - { name: shift_id, in: query, schema: { type: integer }, description: Alternative to from/to. }
@@ -2460,6 +2519,7 @@ paths:
         - { name: year, in: query, schema: { type: integer }, description: Tax year for tax_summary and the default year of expenses. }
         - { name: category, in: query, schema: { type: string }, description: expenses only. }
         - { name: format, in: query, schema: { enum: [csv, json], default: csv }, description: tax_summary only. }
+        - { name: paper, in: query, schema: { enum: [a4, letter] }, description: 'pdf only. Default: US Letter where the country uses it (Unicode CLDR), A4 elsewhere.' }
       responses:
         '200':
           description: The file, streamed.
@@ -2983,8 +3043,9 @@ components:
             notes: { type: array, items: { type: string } }
         own_mileage_rate:
           oneOf: [{ $ref: '#/components/schemas/OwnMileageRate' }, { type: 'null' }]
-          description: The driver's own rate (plan 21 Q5). Used only where the country has no official rates; it never replaces one.
-        mileage_rate: { enum: [official, yours, none], description: 'Which rate values mileage: the country''s published rates, the driver''s own (screens and exports label it "your rate", never official), or none.' }
+          description: 'Your mileage rate in force today (plan 21 Q5, ADR 0007), or null. The dated list is GET /own-mileage-rates. It values mileage where the country has no official rates, and replaces them from its date when use_own_mileage_rate is true.'
+        mileage_rate: { enum: [official, yours, none], description: 'Which rate values mileage driven today: the country''s published rates, the driver''s own (screens and exports label it "your rate", never official), or none. Older shifts may differ by date: Shift.deduction_rate says which valued each.' }
+        use_own_mileage_rate: { type: boolean, description: 'ADR 0007: your mileage rates replace the country''s from their dates. Default false. Without country rates your rate applies anyway.' }
         week_start: { enum: [0, 1], description: 0 Sunday, 1 Monday. Changes week boundaries, so the phone reads it. }
         time_format: { enum: [12h, 24h] }
         default_vehicle_id: { type: [integer, 'null'], description: Preselected when a shift starts; always an active vehicle. }
@@ -3012,7 +3073,8 @@ components:
         default_vehicle_id: { type: [integer, 'null'], minimum: 1 }
         own_mileage_rate:
           oneOf: [{ $ref: '#/components/schemas/OwnMileageRate' }, { type: 'null' }]
-          description: Stored even where the country has official rates, but used only where it has none.
+          description: 'Sets (or with null removes) your undated rate, "from the start" (ADR 0007). Dated rates are kept in /own-mileage-rates.'
+        use_own_mileage_rate: { type: boolean, description: 'true: your mileage rates replace the country''s from their dates (ADR 0007).' }
         work_kinds: { type: array, uniqueItems: true, items: { $ref: '#/components/schemas/WorkKind' }, description: 'Only kinds the country offers (422 otherwise); a new country drops the kinds it does not offer.' }
         onboarded: { type: boolean, description: 'true: onboarding finished (sets onboarded_at, keeping an earlier time); false: run it again (clears onboarded_at and setup_done).' }
         setup_done: { type: array, uniqueItems: true, items: { $ref: '#/components/schemas/SetupStep' }, description: 'Steps to add to setup_done; steps already listed are kept (it never removes one).' }
@@ -3025,6 +3087,35 @@ components:
       properties:
         cents_per_unit: { type: number, exclusiveMinimum: 0, maximum: 100000, description: 'Minor units of the currency per km or mile; hundredths are kept (30.5).' }
         unit: { enum: [km, mi] }
+    DatedOwnMileageRate:
+      type: object
+      additionalProperties: false
+      required: [id, effective_from, cents_per_unit, unit, note]
+      description: 'One of your mileage rates (ADR 0007): in force from effective_from until the next rate. Shown as "your rate", never as an official rate.'
+      properties:
+        id: { type: integer }
+        effective_from: { type: [string, 'null'], format: date, description: 'The first local date it values; null means from the start (the undated rate set before rates had dates).' }
+        cents_per_unit: { type: number, exclusiveMinimum: 0, maximum: 100000, description: 'Minor units of the currency per km or mile; hundredths are kept (72.5).' }
+        unit: { enum: [km, mi] }
+        note: { type: [string, 'null'], maxLength: 200, description: 'Where the figure comes from, for example "Employer reimbursement 2026".' }
+    DatedOwnMileageRateCreate:
+      type: object
+      additionalProperties: false
+      required: [effective_from, cents_per_unit, unit]
+      properties:
+        effective_from: { type: [string, 'null'], format: date, description: 'A calendar date; one rate per day. null: from the start (at most one).' }
+        cents_per_unit: { type: number, exclusiveMinimum: 0, maximum: 100000 }
+        unit: { enum: [km, mi] }
+        note: { type: [string, 'null'], maxLength: 200 }
+    DatedOwnMileageRatePatch:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        effective_from: { type: [string, 'null'], format: date }
+        cents_per_unit: { type: number, exclusiveMinimum: 0, maximum: 100000 }
+        unit: { enum: [km, mi] }
+        note: { type: [string, 'null'], maxLength: 200 }
     Device:
       type: object
       required: [id, name, platform, created_at, last_seen_at, revoked_at]
@@ -3377,6 +3468,7 @@ components:
             expenses_cents: { type: [integer, 'null'], description: null when the expenses module is off. }
             double_counted_cents: { type: [integer, 'null'] }
             mileage_cents: { type: [integer, 'null'], description: A deduction, never cash. }
+            mileage_rate: { enum: [official, yours, mixed, null], description: 'Which rate valued mileage_cents (ADR 0007); yours and mixed are never presented as official.' }
             vehicles: { type: array, items: { type: object, properties: { vehicle_id: { type: integer }, method: { enum: [standard_mileage, actual_expenses] } } } }
         estimate:
           type: [object, 'null']
@@ -3690,6 +3782,7 @@ components:
         calculated_at: { type: [integer, 'null'] }
         notes: { type: [string, 'null'] }
         deduction_cents: { type: [integer, 'null'], description: Computed at read time from the country registry; never stored. }
+        deduction_rate: { enum: [official, yours, null], description: 'Which rate valued deduction_cents (ADR 0007): the country''s, or your mileage rate in force on the shift''s date (always labelled "your rate"). null when there is no value.' }
         updated_at: { $ref: '#/components/schemas/EpochMs' }
         recon_status: { enum: [pending, match, differs, phone_missing] }
         recon_reasons: { type: array, items: { type: string } }
@@ -3931,6 +4024,7 @@ components:
         personal_m: { type: integer }
         total_m: { type: integer }
         deduction_cents: { type: [integer, 'null'], description: null when the selected country has no registered pack. }
+        deduction_rate: { enum: [official, yours, mixed, null], description: 'Which rate valued the period''s deduction (ADR 0007): the country''s, your own, or both by date (mixed). null when there is no value.' }
         hourly_earnings_cents: { type: [integer, 'null'], description: earnings_cents divided by hours; null when hours is 0. }
         platform_filter: { const: earnings_only, description: Present only when the platform query was given. }
 

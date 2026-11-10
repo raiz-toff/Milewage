@@ -23,6 +23,7 @@ import { openDiagnosticsStore, type DiagnosticsStore } from './diagnostics/store
 import { csvExporter } from './exporters/csv';
 import { geojsonExporter, gpxExporter } from './exporters/geo';
 import { createExporterRegistry, type ExporterRegistry } from './exporters/registry';
+import { pdfExporter } from './exporters/pdf';
 import { expensesExporter, taxSummaryExporter } from './exporters/reports';
 import { serverModules, type ServerModule } from './modules';
 import { shiftPresenter, type ShiftPresenter } from './processing/presenter';
@@ -52,7 +53,7 @@ export interface ServerTuning {
   mcpHousekeepingMs?: number;
   /** Passed to the restore service (forces a revert). */
   restoreVerify?: (db: Db) => void;
-  /** Exporters in place of csv, gpx, geojson, expenses and tax_summary. */
+  /** Exporters in place of csv, gpx, geojson, expenses, tax_summary and pdf. */
   exporters?: ExporterRegistry;
 }
 
@@ -197,6 +198,7 @@ export const serverExporters = () =>
     geojsonExporter,
     expensesExporter,
     taxSummaryExporter,
+    pdfExporter,
   ]);
 
 /** Builds the backup service for a connection; the time zone is the owner's, UTC before setup. */

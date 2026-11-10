@@ -21,7 +21,7 @@ More details opens the rest: merchant, deductible share, vehicle, shift, repeats
 
 To change an expense, open its row menu and choose Edit. Delete removes the expense and its receipt.
 
-A service you log on the Vehicles page with a cost is saved as a Maintenance and repairs expense too.
+A service you log on the Vehicles page with a cost is saved as a Maintenance and repairs expense too. Parking and tolls added on a shift's page are expenses linked to that shift; see [Parking and tolls](shifts-and-trips.md#parking-and-tolls).
 
 ## Categories and the deductible share
 
@@ -36,6 +36,8 @@ Most categories start as deductible in full. These start differently:
 | Out of pocket (not deductible)    | Not deductible          |
 
 These are starting points, not tax office rules. Your accountant can say what share fits.
+
+Parking and Tolls start as deductible in full, and the mileage rate never covers them, so they count next to it. No country pack in MileWage says otherwise yet, and no person has checked this against the tax offices' pages.
 
 ## Costs the mileage rate already covers
 

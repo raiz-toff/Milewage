@@ -96,7 +96,10 @@ export function ShiftFigures({
         />
       ) : null}
       <StatCard
-        label={deductionWord(settings, true)}
+        label={deductionWord(
+          { mileage_rate: settings.mileage_rate, deduction_rate: shift.deduction_rate },
+          true,
+        )}
         value={formatMoney(shift.deduction_cents, settings.currency)}
       />
     </div>

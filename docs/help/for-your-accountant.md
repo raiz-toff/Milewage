@@ -1,5 +1,5 @@
 ---
-summary: The exports, what a mileage log holds, and what the tax figure is and is not.
+summary: The exports, the PDF report, what a mileage log holds, and what the tax figure is and is not.
 group: using
 order: 80
 ---
@@ -12,12 +12,26 @@ This page explains what you can hand over, and what MileWage does and does not c
 
 Open the Exports page in the web app. Pick a period, then download:
 
-- **Mileage log (CSV).** One row per trip, or one row per shift. It opens in any spreadsheet. The shift file has the date, times, vehicle, platform, active, deadhead and total distance, the deduction value and your notes. It also has your odometer readings and a check against the GPS total. The active and deadhead columns are estimates, and a column says so.
+- **Mileage and expenses report (PDF).** The one file to print or email. See [the PDF report](#the-pdf-report) below.
+- **Mileage log (CSV).** One row per trip, or one row per shift. It opens in any spreadsheet. The shift file has the date, times, vehicle, platform, active, deadhead and total distance, the deduction value, which rate gave it (country rate or your rate) and your notes. It also has your odometer readings and a check against the GPS total. The active and deadhead columns are estimates, and a column says so.
 - **Expenses (CSV).** Your expenses for the period, with the category and the deductible part.
 - **Tax summary.** The numbers behind the year's tax estimate, with the working shown.
 - **GPX and GeoJSON.** Your routes, for map programs and for anyone who wants to look at them on a map. They never contain money, labels or customer details.
 
-There is no PDF export in this version.
+## The PDF report
+
+The Mileage and expenses report is one PDF for the period you pick. It is made on your server; nothing is sent anywhere.
+
+- **The first page** names you (Settings > Profile and region > Name), the period, your vehicles, your country, when the file was made and the MileWage version. Then the notices: rates not yet checked, your rate is not an official rate if you used one, and not tax advice.
+- **Summary**: your shifts, total, business and personal distance, the mileage deduction and which rate gave it, your expenses and the part you can deduct, and your earnings after app fees if the earnings module runs.
+- **Mileage rates used**: each rate with the day it starts, marked country rate or your rate.
+- **Expenses by category**, with what you spent and what you can deduct. Costs the mileage rate already covers show at zero.
+- **Mileage log**: one row per ended shift with the date, start and end time, vehicle, platform, business and personal distance, odometer readings where you noted them, the deduction, your notes and anything an accountant should know, such as "distance estimated across a signal gap" or "added by hand".
+- **Expenses**: one row per expense.
+
+Long tables run onto more pages with their headings repeated, and every page is numbered. The paper is US Letter in Canada and the United States and A4 elsewhere; pick another next to the Download button. With a vehicle chosen, the report holds only that vehicle's shifts and expenses.
+
+The figures are the same as in the CSV files and the Tax summary for the same period: money in your currency, times in your time zone, distance in your unit. Without a period it covers this calendar year. For a UK tax year, choose Custom, 6 April to 5 April.
 
 No file is made for a particular accounting program. MileWage does not claim that any file imports into one.
 
@@ -35,7 +49,9 @@ These lists come from the plans and have not been checked against the offices' o
 
 ## Rates are unverified
 
-Every mileage rate and every tax figure in MileWage is unverified until the owner checks it against the tax office's own page. The Tax page (for Canada) and the tax summary export say so in a notice. The dashboard, the shift pages and the phone show deductions without that notice, but they use the same unverified rates. Check any figure against the official source before you use it. A field for your own rate appears only for a country without a rate, and Canada, the United States and Great Britain all have one, so it does not appear yet. A rate you enter there is labelled as your rate, not an official one.
+Every mileage rate and every tax figure in MileWage is unverified until the owner checks it against the tax office's own page. The Tax page (for Canada), the tax summary export and the PDF report say so in a notice. The dashboard, the shift pages and the phone show deductions without that notice, but they use the same unverified rates. Check any figure against the official source before you use it.
+
+You can use your own rate instead, from a day you choose, in Settings > Mileage rate (see [Your mileage rate](mileage-rates-and-tax.md#your-mileage-rate)). Every file and screen labels a deduction at it as your rate, never an official one. Ask your accountant whether your rate is one you may claim.
 
 ## The tax figure is an estimate
 

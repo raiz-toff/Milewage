@@ -1,6 +1,6 @@
 import type { EffectiveRow } from '../db';
 import type { DriverContext } from '../driver-context';
-import type { MileageDeduction } from '../mileage-deduction';
+import type { MileageDeduction, ValuedShift } from '../mileage-deduction';
 import type { TaxReport } from '../tax-report';
 import type { Db, ShiftRow, StopLabelRow, StopRow, TripRow, VehicleRow } from '../db';
 
@@ -17,7 +17,17 @@ export interface ExportContext {
   /** CSV only. */
   level: 'trip' | 'shift';
   /** Query parameters of the request that the standalone report exporters read. */
-  query: { from?: string; to?: string; year?: number; category?: string; format?: string };
+  query: {
+    from?: string;
+    to?: string;
+    year?: number;
+    category?: string;
+    format?: string;
+    vehicle_id?: number;
+    paper?: 'a4' | 'letter';
+  };
+  /** The server's clock (the report's "generated" time). */
+  now: () => number;
   /** Whether a module is on (a report leaves out what a switched-off module would have said). */
   enabled(module: string): boolean;
   /** The tax report of a year; present when the `tax` module is on. */
@@ -36,9 +46,12 @@ export interface ExportContext {
     }>;
     /** True when the raw points were replaced by the simplified route archive (07 section 4.2). */
     simplified(shiftId: number): boolean;
-    deduction(shift: ShiftRow): number | null;
+    /** The shift's mileage deduction and the rate that valued it (the country's or yours). */
+    deduction(shift: ShiftRow): ValuedShift;
     /** The shift's effective earnings per platform (labels and typed totals); empty when none. */
     earnings(shift: ShiftRow): EffectiveRow[];
+    /** The effective earnings of every shift dated in `[from, to]`; empty when the earnings module is off. */
+    earningsBetween(from: string, to: string): EffectiveRow[];
   };
 }
 
@@ -53,8 +66,11 @@ export interface Exporter {
   standalone?: boolean;
   /** Content type and extension that depend on the request (`tax_summary` is CSV or JSON). */
   describe?(c: ExportContext): { contentType: string; extension: string };
-  /** Chunks of the file; produced lazily so a year of data never sits in memory. */
-  run(ctx: ExportContext): Iterable<string>;
+  /**
+   * Chunks of the file; produced lazily so a year of data never sits in memory. A binary file (the
+   * PDF) is a stream of bytes. A refusal (a bad period) is thrown before the first chunk.
+   */
+  run(ctx: ExportContext): Iterable<string> | AsyncIterable<string | Uint8Array>;
 }
 
 /** The only attach point for a new format: a file that calls `register` (08 section 16.3). */

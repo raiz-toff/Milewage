@@ -6,7 +6,14 @@ import type { ExportContext, Exporter } from './registry';
 
 const CRLF = '\r\n';
 const row = (cells: (string | number | null | undefined)[]) => cells.map(cell).join(',') + CRLF;
-const NOT_ADVICE = 'Estimate to bring to an accountant, not tax advice. Nothing here is filed.';
+export const NOT_ADVICE =
+  'Estimate to bring to an accountant, not tax advice. Nothing here is filed.';
+/** How a file names the rate that valued the mileage deduction. */
+export const RATE_WORDS = {
+  official: 'country rate',
+  yours: 'your rate (not an official rate)',
+  mixed: 'country rate, then your rate (not an official rate) from its date',
+} as const;
 
 /** Expenses of a date range for the accountant (18 section 10.3). Receipt files are not included. */
 export const expensesExporter: Exporter = {
@@ -147,6 +154,9 @@ export const taxSummaryExporter: Exporter = {
         v.mileage_deduction_cents === null ? '' : money(v.mileage_deduction_cents),
       ]);
     }
+    // Which rate valued the mileage: your rate is never presented as official (Q5, ADR 0007).
+    const rate = report.deductions?.mileage_rate;
+    if (rate) yield row(['Mileage_Rate', 'Source', RATE_WORDS[rate]]);
     const est = report.estimate;
     if (est) {
       yield row(['Estimate', 'Net_Income', money(est.net_income_cents)]);

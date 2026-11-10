@@ -43,6 +43,7 @@ describe('shiftView: the shift page from its record', () => {
       canAddTrip: true,
       noTrips: false,
       exporters: true,
+      costs: true,
       showEarnings: true,
       timelineNote: '2 trips · 1 stop',
       review: 0,
@@ -128,6 +129,8 @@ describe('shiftView: the shift page from its record', () => {
       earned: undefined,
       platforms: [],
       exporters: false,
+      // Parking and tolls are paid during a shift too.
+      costs: true,
       canAddTrip: false,
     });
     expect(v.context).toBe('17:13 – now · in progress · Corolla');
@@ -171,5 +174,12 @@ describe('shiftView: the shift page from its record', () => {
     const row = (total_cents: number) => ({ total_cents }) as never;
     expect(earnedOf({ effective: [row(1200), row(800)] } as never)).toBe(2000);
     expect(earnedOf({ effective: [] } as never)).toBeNull();
+  });
+});
+
+describe('shiftView: parking and tolls and the export row', () => {
+  it('follow the expenses module, and the PDF report alone gives no shift export', () => {
+    const off = settingsFixture({ modules: { expenses: false, exporters: ['pdf'] } });
+    expect(shiftView(parts(), off)).toMatchObject({ costs: false, exporters: false });
   });
 });

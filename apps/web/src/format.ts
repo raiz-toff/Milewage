@@ -106,9 +106,39 @@ export function formatMoney(minor: number | null, currency: string): string {
 export const moneyInput = (minor: number, currency: string): string =>
   (minor / scale(currency)).toFixed(minorDigits(currency));
 
-/** A deduction at the driver's own rate is always called theirs, never official (plan 21 Q5). */
-export function deductionWord(s: { mileage_rate: string }, start = false) {
-  const word = s.mileage_rate === 'yours' ? 'deduction (your rate)' : 'deduction';
+/**
+ * A per-distance rate in minor units with hundredths (72.5 cents) in the instance currency, with
+ * the two extra digits a rate can have: "$0.725".
+ */
+export function formatRate(minor: number, currency: string): string {
+  const digits = minorDigits(currency);
+  try {
+    return new Intl.NumberFormat(LOCALE, {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: digits + 2,
+    }).format(minor / scale(currency));
+  } catch {
+    return String(minor / scale(currency));
+  }
+}
+
+/**
+ * A deduction at the driver's own rate is always called theirs, never official (plan 21 Q5). The
+ * rate is the figure's own when it says (`deduction_rate` of a shift or a period, ADR 0007), else
+ * today's (`mileage_rate` of the settings).
+ */
+export function deductionWord(
+  s: { mileage_rate?: string; deduction_rate?: string | null },
+  start = false,
+) {
+  const rate = s.deduction_rate !== undefined ? s.deduction_rate : s.mileage_rate;
+  const word =
+    rate === 'yours'
+      ? 'deduction (your rate)'
+      : rate === 'mixed'
+        ? 'deduction (country and your rate)'
+        : 'deduction';
   return start ? word.charAt(0).toUpperCase() + word.slice(1) : word;
 }
 

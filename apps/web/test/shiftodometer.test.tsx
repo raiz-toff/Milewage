@@ -26,6 +26,7 @@ function open(rows: ReturnType<typeof reading>[], extra: Record<string, Handler>
         queries.push(url.search);
         return { body: rows.filter((r) => r.kind === url.searchParams.get('kind')) };
       },
+      'GET /expenses': () => ({ body: { items: [], next_cursor: null } }),
       ...extra,
     },
     '/shifts/1',

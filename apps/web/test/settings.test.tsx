@@ -147,27 +147,112 @@ describe('settings page', () => {
     expect(screen.getByLabelText('Nation')).toBeTruthy();
   });
 
-  it('offers your own mileage rate only where the country has no official rate', async () => {
-    const np = { ...countriesFixture()[0]!, code: 'NP', name: 'Nepal', regions: [] };
+  it('mileage rate: says which rate is in use, switches, and adds, edits and removes your rates', async () => {
+    let use = false;
+    let rates = [{ id: 1, effective_from: null, cents_per_unit: 50, unit: 'km', note: null }] as {
+      id: number;
+      effective_from: string | null;
+      cents_per_unit: number;
+      unit: string;
+      note: string | null;
+    }[];
     const { calls } = renderApp(
       {
-        ...signedIn(settingsFixture({ country: 'NP', currency: 'NPR' })),
+        ...signedIn(settingsFixture()),
+        'GET /settings': () => ({ body: settingsFixture({ use_own_mileage_rate: use }) }),
+        'PATCH /settings': ({ body }) => {
+          use = (body as { use_own_mileage_rate: boolean }).use_own_mileage_rate;
+          return { body: settingsFixture({ use_own_mileage_rate: use }) };
+        },
+        'GET /own-mileage-rates': () => ({ body: rates }),
+        'POST /own-mileage-rates': ({ body }) => {
+          const r = { id: 2, note: null, ...(body as object) } as (typeof rates)[number];
+          rates = [...rates, r];
+          return { status: 201, body: r };
+        },
+        'PATCH /own-mileage-rates/1': ({ body }) => {
+          rates = [{ ...rates[0]!, ...(body as object) }, ...rates.slice(1)];
+          return { body: rates[0] };
+        },
+        'DELETE /own-mileage-rates/1': () => {
+          rates = rates.slice(1);
+          return { status: 204 };
+        },
+      },
+      '/settings/rate',
+    );
+    const status = await screen.findByRole('status');
+    await waitFor(() =>
+      expect(status.textContent).toBe('In use today: the country rate for Canada.'),
+    );
+    expect(await screen.findByText('$0.50 per km')).toBeTruthy();
+    expect(screen.getByText('From the start')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Your rate' }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === 'PATCH' && c.path === '/settings')?.body).toEqual({
+        use_own_mileage_rate: true,
+      }),
+    );
+
+    // A new rate needs an amount; the day defaults to today.
+    fireEvent.click(screen.getByRole('button', { name: 'Add rate' }));
+    expect((await screen.findByRole('alert')).textContent).toMatch(/Enter your rate in CAD per km/);
+    fireEvent.change(screen.getByLabelText('Rate (CAD per km)'), { target: { value: '0.725' } });
+    fireEvent.change(screen.getByLabelText('Note (optional)'), { target: { value: 'Employer' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add rate' }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === 'POST')?.body).toMatchObject({
+        cents_per_unit: 72.5,
+        unit: 'km',
+        note: 'Employer',
+        effective_from: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      }),
+    );
+    expect(await screen.findByText('$0.725 per km')).toBeTruthy();
+
+    // Edit keeps the undated rate's "from the start" unless a day is chosen.
+    fireEvent.pointerDown(screen.getByRole('button', { name: /Actions for \$0\.50 per km/ }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }));
+    fireEvent.change(screen.getByLabelText('Rate (CAD per km)'), { target: { value: '0.55' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === 'PATCH' && c.path.endsWith('/1'))?.body).toEqual({
+        effective_from: null,
+        cents_per_unit: 55,
+        unit: 'km',
+        note: null,
+      }),
+    );
+    fireEvent.pointerDown(
+      await screen.findByRole('button', { name: /Actions for \$0\.55 per km/ }),
+      { button: 0, ctrlKey: false },
+    );
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Remove' }));
+    await waitFor(() => expect(calls.some((c) => c.method === 'DELETE')).toBe(true));
+  });
+
+  it('mileage rate: without a country rate there is no switch, and it says so', async () => {
+    const np = { ...countriesFixture()[0]!, code: 'NP', name: 'Nepal', regions: [] };
+    renderApp(
+      {
+        ...signedIn(settingsFixture({ country: 'NP', currency: 'NPR', mileage_rate: 'none' })),
         'GET /countries': () => ({
           body: [...countriesFixture(), { ...np, supports: { mileage: false, tax: false } }],
         }),
-        'PATCH /settings': ({ body }) => ({ body: settingsFixture(body as object) }),
+        'GET /own-mileage-rates': () => ({ body: [] }),
       },
-      '/settings',
+      '/settings/rate',
     );
-    const rate = await screen.findByLabelText('Your mileage rate (NPR per km)');
-    fireEvent.change(rate, { target: { value: '12.305' } });
-    fireEvent.click(save());
-    await screen.findByRole('status');
-    expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({
-      own_mileage_rate: { cents_per_unit: 1230.5, unit: 'km' },
-    });
-    pick('Country', 'CA');
-    expect(screen.queryByLabelText(/Your mileage rate/)).toBeNull();
+    const status = await screen.findByRole('status');
+    await waitFor(() =>
+      expect(status.textContent).toMatch(/No rate in use: MileWage has no country rate for Nepal/),
+    );
+    await screen.findByText(/No rates of your own/);
+    expect(screen.queryByRole('group', { name: 'Rate for your mileage deduction' })).toBeNull();
   });
 
   it('hides the diagnostics level when the diagnostics module is off', async () => {
@@ -191,7 +276,6 @@ describe('settings page', () => {
       region: '',
       week_start: '1' as const,
       time_format: '24h' as const,
-      own_rate: '',
     };
     expect(changes(s, same)).toEqual({});
     expect(changes(s, { ...same, raw_retention_days: '30' })).toEqual({ raw_retention_days: 30 });

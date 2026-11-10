@@ -480,7 +480,7 @@
               "type": "null"
             }
           ],
-          "description": "The driver's own rate (plan 21 Q5). Used only where the country has no official rates; it never replaces one."
+          "description": "Your mileage rate in force today (plan 21 Q5, ADR 0007), or null. The dated list is GET /own-mileage-rates. It values mileage where the country has no official rates, and replaces them from its date when use_own_mileage_rate is true."
         },
         "mileage_rate": {
           "enum": [
@@ -488,7 +488,11 @@
             "yours",
             "none"
           ],
-          "description": "Which rate values mileage: the country's published rates, the driver's own (screens and exports label it \"your rate\", never official), or none."
+          "description": "Which rate values mileage driven today: the country's published rates, the driver's own (screens and exports label it \"your rate\", never official), or none. Older shifts may differ by date: Shift.deduction_rate says which valued each."
+        },
+        "use_own_mileage_rate": {
+          "type": "boolean",
+          "description": "ADR 0007: your mileage rates replace the country's from their dates. Default false. Without country rates your rate applies anyway."
         },
         "week_start": {
           "enum": [
@@ -628,7 +632,11 @@
               "type": "null"
             }
           ],
-          "description": "Stored even where the country has official rates, but used only where it has none."
+          "description": "Sets (or with null removes) your undated rate, \"from the start\" (ADR 0007). Dated rates are kept in /own-mileage-rates."
+        },
+        "use_own_mileage_rate": {
+          "type": "boolean",
+          "description": "true: your mileage rates replace the country's from their dates (ADR 0007)."
         },
         "work_kinds": {
           "type": "array",
@@ -679,6 +687,120 @@
             "km",
             "mi"
           ]
+        }
+      }
+    },
+    "DatedOwnMileageRate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "effective_from",
+        "cents_per_unit",
+        "unit",
+        "note"
+      ],
+      "description": "One of your mileage rates (ADR 0007): in force from effective_from until the next rate. Shown as \"your rate\", never as an official rate.",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "effective_from": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date",
+          "description": "The first local date it values; null means from the start (the undated rate set before rates had dates)."
+        },
+        "cents_per_unit": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100000,
+          "description": "Minor units of the currency per km or mile; hundredths are kept (72.5)."
+        },
+        "unit": {
+          "enum": [
+            "km",
+            "mi"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200,
+          "description": "Where the figure comes from, for example \"Employer reimbursement 2026\"."
+        }
+      }
+    },
+    "DatedOwnMileageRateCreate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effective_from",
+        "cents_per_unit",
+        "unit"
+      ],
+      "properties": {
+        "effective_from": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date",
+          "description": "A calendar date; one rate per day. null: from the start (at most one)."
+        },
+        "cents_per_unit": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100000
+        },
+        "unit": {
+          "enum": [
+            "km",
+            "mi"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        }
+      }
+    },
+    "DatedOwnMileageRatePatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "effective_from": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "cents_per_unit": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100000
+        },
+        "unit": {
+          "enum": [
+            "km",
+            "mi"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
         }
       }
     },
@@ -2072,6 +2194,15 @@
               "description": "A deduction",
               "never cash.": null
             },
+            "mileage_rate": {
+              "enum": [
+                "official",
+                "yours",
+                "mixed",
+                null
+              ],
+              "description": "Which rate valued mileage_cents (ADR 0007); yours and mixed are never presented as official."
+            },
             "vehicles": {
               "type": "array",
               "items": {
@@ -3313,6 +3444,14 @@
           ],
           "description": "Computed at read time from the country registry; never stored."
         },
+        "deduction_rate": {
+          "enum": [
+            "official",
+            "yours",
+            null
+          ],
+          "description": "Which rate valued deduction_cents (ADR 0007): the country's, or your mileage rate in force on the shift's date (always labelled \"your rate\"). null when there is no value."
+        },
         "updated_at": {
           "$ref": "#/$defs/EpochMs"
         },
@@ -4195,6 +4334,15 @@
             "null"
           ],
           "description": "null when the selected country has no registered pack."
+        },
+        "deduction_rate": {
+          "enum": [
+            "official",
+            "yours",
+            "mixed",
+            null
+          ],
+          "description": "Which rate valued the period's deduction (ADR 0007): the country's, your own, or both by date (mixed). null when there is no value."
         },
         "hourly_earnings_cents": {
           "type": [

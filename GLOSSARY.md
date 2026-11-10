@@ -283,7 +283,7 @@ A country's published amount per mile or kilometre for a kind of vehicle, dated 
 _Avoid_: allowance, standard rate, official rate (unless it has been checked)
 
 **Your mileage rate**:
-A per-distance rate the driver sets where no country pack has one. It is always shown as "your rate", never as official.
+A per-distance rate the driver sets, such as an employer's or an accountant's, in force from its own date until the next one. Once chosen it replaces the country's rate from that date; where a country has no rate it is used anyway. It is always shown as "your rate", never as official.
 _Avoid_: own mileage rate, custom rate, override
 
 **Deduction**:
@@ -291,7 +291,7 @@ An amount that lowers the income that tax is worked out on. It is never cash in 
 _Avoid_: write-off (except where the tax office says so), credit, refund
 
 **Mileage deduction**:
-Distance times the mileage rate, or your mileage rate, for a shift, a trip or a period.
+Business distance times the mileage rate, or your mileage rate, for a shift, a trip or a period. One shift is valued at one rate, the one in force on its date.
 _Avoid_: mileage allowance, mileage claim
 
 **Deduction method**:
@@ -343,12 +343,16 @@ A file made from a period of the driver's data, for an accountant or a map progr
 _Avoid_: report, download, dump
 
 **Export format**:
-One kind of export: mileage log, expenses, tax summary, GPX or GeoJSON. Each can be switched off.
+One kind of export: mileage log, expenses, tax summary, mileage and expenses report, GPX or GeoJSON. Each can be switched off.
 _Avoid_: exporter
 
 **Mileage log**:
 The export of a period's trips or shifts with their dates, times, vehicle, platform, distances, deduction and notes, as tax offices ask drivers to keep.
 _Avoid_: trip log, mileage report
+
+**Mileage and expenses report**:
+The PDF export for an accountant: a period's summary, the rates used, the mileage log by shift and the expenses, with the unverified-rates notice.
+_Avoid_: PDF export, tax report, statement
 
 ### Backups and recovery
 

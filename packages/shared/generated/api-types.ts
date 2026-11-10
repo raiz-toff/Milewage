@@ -479,6 +479,42 @@ export interface paths {
         patch: operations["updateSettings"];
         trace?: never;
     };
+    "/own-mileage-rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Your mileage rates with their dates, oldest first (ADR 0007). Each is in force from its date until the next. They value mileage from their date when settings.use_own_mileage_rate is true, or where the country has no rates. Web session only. */
+        get: operations["listOwnMileageRates"];
+        put?: never;
+        /** Add a rate from a date. One rate per day, and one without a date ("from the start"). */
+        post: operations["createOwnMileageRate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/own-mileage-rates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteOwnMileageRate"];
+        options?: never;
+        head?: never;
+        patch: operations["updateOwnMileageRate"];
+        trace?: never;
+    };
     "/vehicles": {
         parameters: {
             query?: never;
@@ -1560,7 +1596,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Download a file from a registered exporter (v1 ships csv, pdf, gpx, geojson). A disabled or unknown format returns 404. */
+        /** Download a file from a registered exporter (csv, pdf, gpx, geojson, expenses, tax_summary). A disabled or unknown format returns 404. pdf is the mileage and expenses report for an accountant: from/to (at most 366 days) or year (the calendar year, as the tax summary), default this year. */
         get: operations["exportData"];
         put?: never;
         post?: never;
@@ -1967,13 +2003,15 @@ export interface components {
                 readings: string;
                 notes: string[];
             } | null;
-            /** @description The driver's own rate (plan 21 Q5). Used only where the country has no official rates; it never replaces one. */
+            /** @description Your mileage rate in force today (plan 21 Q5, ADR 0007), or null. The dated list is GET /own-mileage-rates. It values mileage where the country has no official rates, and replaces them from its date when use_own_mileage_rate is true. */
             own_mileage_rate: components["schemas"]["OwnMileageRate"] | null;
             /**
-             * @description Which rate values mileage: the country's published rates, the driver's own (screens and exports label it "your rate", never official), or none.
+             * @description Which rate values mileage driven today: the country's published rates, the driver's own (screens and exports label it "your rate", never official), or none. Older shifts may differ by date: Shift.deduction_rate says which valued each.
              * @enum {unknown}
              */
             mileage_rate: "official" | "yours" | "none";
+            /** @description ADR 0007: your mileage rates replace the country's from their dates. Default false. Without country rates your rate applies anyway. */
+            use_own_mileage_rate?: boolean;
             /**
              * @description 0 Sunday
              * @enum {unknown}
@@ -2013,8 +2051,10 @@ export interface components {
             /** @enum {unknown} */
             time_format?: "12h" | "24h";
             default_vehicle_id?: number | null;
-            /** @description Stored even where the country has official rates, but used only where it has none. */
+            /** @description Sets (or with null removes) your undated rate, "from the start" (ADR 0007). Dated rates are kept in /own-mileage-rates. */
             own_mileage_rate?: components["schemas"]["OwnMileageRate"] | null;
+            /** @description true: your mileage rates replace the country's from their dates (ADR 0007). */
+            use_own_mileage_rate?: boolean;
             /** @description Only kinds the country offers (422 otherwise); a new country drops the kinds it does not offer. */
             work_kinds?: components["schemas"]["WorkKind"][];
             /** @description true: onboarding finished (sets onboarded_at, keeping an earlier time); false: run it again (clears onboarded_at and setup_done). */
@@ -2029,6 +2069,40 @@ export interface components {
             cents_per_unit: number;
             /** @enum {unknown} */
             unit: "km" | "mi";
+        };
+        /** @description One of your mileage rates (ADR 0007): in force from effective_from until the next rate. Shown as "your rate", never as an official rate. */
+        DatedOwnMileageRate: {
+            id: number;
+            /**
+             * Format: date
+             * @description The first local date it values; null means from the start (the undated rate set before rates had dates).
+             */
+            effective_from: string | null;
+            /** @description Minor units of the currency per km or mile; hundredths are kept (72.5). */
+            cents_per_unit: number;
+            /** @enum {unknown} */
+            unit: "km" | "mi";
+            /** @description Where the figure comes from, for example "Employer reimbursement 2026". */
+            note: string | null;
+        };
+        DatedOwnMileageRateCreate: {
+            /**
+             * Format: date
+             * @description A calendar date; one rate per day. null: from the start (at most one).
+             */
+            effective_from: string | null;
+            cents_per_unit: number;
+            /** @enum {unknown} */
+            unit: "km" | "mi";
+            note?: string | null;
+        };
+        DatedOwnMileageRatePatch: {
+            /** Format: date */
+            effective_from?: string | null;
+            cents_per_unit?: number;
+            /** @enum {unknown} */
+            unit?: "km" | "mi";
+            note?: string | null;
         };
         Device: {
             id: number;
@@ -2388,6 +2462,11 @@ export interface components {
                 double_counted_cents?: number | null;
                 /** @description A deduction */
                 mileage_cents?: number | null;
+                /**
+                 * @description Which rate valued mileage_cents (ADR 0007); yours and mixed are never presented as official.
+                 * @enum {unknown}
+                 */
+                mileage_rate?: "official" | "yours" | "mixed" | null;
                 vehicles?: {
                     vehicle_id?: number;
                     /** @enum {unknown} */
@@ -2698,6 +2777,11 @@ export interface components {
             notes: string | null;
             /** @description Computed at read time from the country registry; never stored. */
             deduction_cents: number | null;
+            /**
+             * @description Which rate valued deduction_cents (ADR 0007): the country's, or your mileage rate in force on the shift's date (always labelled "your rate"). null when there is no value.
+             * @enum {unknown}
+             */
+            deduction_rate?: "official" | "yours" | null;
             updated_at?: components["schemas"]["EpochMs"];
             /** @enum {unknown} */
             recon_status?: "pending" | "match" | "differs" | "phone_missing";
@@ -2904,6 +2988,11 @@ export interface components {
             total_m: number;
             /** @description null when the selected country has no registered pack. */
             deduction_cents: number | null;
+            /**
+             * @description Which rate valued the period's deduction (ADR 0007): the country's, your own, or both by date (mixed). null when there is no value.
+             * @enum {unknown}
+             */
+            deduction_rate?: "official" | "yours" | "mixed" | null;
             /** @description earnings_cents divided by hours; null when hours is 0. */
             hourly_earnings_cents: number | null;
             /**
@@ -4300,6 +4389,100 @@ export interface operations {
             422: components["responses"]["Unprocessable"];
         };
     };
+    listOwnMileageRates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The rates. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatedOwnMileageRate"][];
+                };
+            };
+        };
+    };
+    createOwnMileageRate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DatedOwnMileageRateCreate"];
+            };
+        };
+        responses: {
+            /** @description Added. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatedOwnMileageRate"];
+                };
+            };
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    deleteOwnMileageRate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed. Shifts on its days take the rate before it */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateOwnMileageRate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DatedOwnMileageRatePatch"];
+            };
+        };
+        responses: {
+            /** @description Updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatedOwnMileageRate"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
     listVehicles: {
         parameters: {
             query?: {
@@ -5411,6 +5594,8 @@ export interface operations {
                 category?: string;
                 deductible?: boolean;
                 vehicle_id?: number;
+                /** @description The expenses linked to one shift (its parking and tolls on the shift page). */
+                shift_id?: number;
                 templates?: boolean;
                 limit?: components["parameters"]["Limit"];
                 cursor?: components["parameters"]["Cursor"];
@@ -6684,10 +6869,12 @@ export interface operations {
                 category?: string;
                 /** @description tax_summary only. */
                 format?: "csv" | "json";
+                /** @description pdf only. Default: US Letter where the country uses it (Unicode CLDR), A4 elsewhere. */
+                paper?: "a4" | "letter";
             };
             header?: never;
             path: {
-                /** @description Only formats whose exporter is registered and enabled exist. expenses and tax_summary are reports over records, not shifts: from/to are optional for expenses, year selects the tax year, format=json is for tax_summary only. */
+                /** @description Only formats whose exporter is registered and enabled exist. expenses, tax_summary and pdf are reports over a period, not a selection of shifts: from/to are optional for them, year selects the tax year, format=json is for tax_summary only. */
                 format: "csv" | "pdf" | "gpx" | "geojson" | "expenses" | "tax_summary";
             };
             cookie?: never;

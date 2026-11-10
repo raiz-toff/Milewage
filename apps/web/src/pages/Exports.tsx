@@ -51,7 +51,12 @@ export type Selection = { from: string; to: string } | { shift_id: number };
  * Fetches one export and saves it, so a refusal (rate limit, a range over 366 days) is shown on
  * the page and not as a raw error page. `error.format` is the file that was refused.
  */
-function useExport(selection: Selection, vehicleId?: number, level?: 'trip' | 'shift') {
+function useExport(
+  selection: Selection,
+  vehicleId?: number,
+  level?: 'trip' | 'shift',
+  paper?: 'a4' | 'letter',
+) {
   const { api } = useSession();
   const [busy, setBusy] = useState<Format | null>(null);
   const [error, setError] = useState<{ format: Format; message: string } | null>(null);
@@ -64,6 +69,7 @@ function useExport(selection: Selection, vehicleId?: number, level?: 'trip' | 's
         ...selection,
         ...(vehicleId ? { vehicle_id: vehicleId } : {}),
         ...(format === 'csv' && level ? { level } : {}),
+        ...(format === 'pdf' && paper ? { paper } : {}),
       };
       const r = await api.GET('/exports/{format}', {
         params: { path: { format }, query },
@@ -88,17 +94,21 @@ function useExport(selection: Selection, vehicleId?: number, level?: 'trip' | 's
   return { busy, error, run };
 }
 
-/** One button per registered exporter (`modules.exporters`), on a shift's detail page. */
+/**
+ * One button per registered exporter (`modules.exporters`), on a shift's detail page. The PDF
+ * report covers a period, so it is on the Exports screen only.
+ */
 export function ExportButtons({ selection }: { selection: Selection }) {
   const { modules } = useSettings();
   const { busy, error, run } = useExport(selection);
+  const formats = modules.exporters.filter((f) => f !== 'pdf');
 
-  if (modules.exporters.length === 0) return null;
+  if (formats.length === 0) return null;
 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-3">
-        {modules.exporters.map((f) => (
+        {formats.map((f) => (
           <UiButton
             key={f}
             type="button"
@@ -119,7 +129,7 @@ export function ExportButtons({ selection }: { selection: Selection }) {
 /** On the Exports screen a file is named by what it is for; the format is in its line. */
 const NAME: Record<Format, string> = {
   csv: 'Mileage log',
-  pdf: 'Mileage report',
+  pdf: 'Mileage and expenses report',
   expenses: 'Expenses',
   tax_summary: 'Tax summary',
   gpx: 'GPX',
@@ -127,7 +137,7 @@ const NAME: Record<Format, string> = {
 };
 const HINT: Record<Format, string> = {
   csv: 'Your trips or shifts in the period, as a spreadsheet (CSV).',
-  pdf: 'A summary page and the trip log (PDF).',
+  pdf: 'A summary, the rates used, the mileage log and your expenses, ready to print (PDF).',
   expenses: 'Your expenses in the period, as a spreadsheet (CSV). No receipt files.',
   tax_summary: 'The estimate for {year} with its working (CSV): an estimate, not tax advice.',
   gpx: 'The recorded routes, for map and GPS apps. No money, labels or notes.',
@@ -169,6 +179,8 @@ export function ExportsPage() {
   const vehicles = useApiQuery('/vehicles').data ?? [];
   const [vehicle, setVehicle] = useState('');
   const [level, setLevel] = useState<'trip' | 'shift'>('trip');
+  // '' is the paper of the driver's country (the server decides, from Unicode CLDR).
+  const [paper, setPaper] = useState<'' | 'a4' | 'letter'>('');
   const periodId = useId();
 
   const chosen = PRESETS.find((p) => p.id === preset)?.range?.(today, weekStart);
@@ -177,6 +189,7 @@ export function ExportsPage() {
     { from, to },
     vehicle ? Number(vehicle) : undefined,
     level,
+    paper || undefined,
   );
 
   function choose(id: string) {
@@ -217,6 +230,20 @@ export function ExportsPage() {
             options={[
               { value: 'trip', label: 'One row per trip' },
               { value: 'shift', label: 'One row per shift' },
+            ]}
+          />
+        ) : null}
+        {f === 'pdf' ? (
+          <Picker
+            label="Paper size"
+            size="sm"
+            className="w-auto"
+            value={paper}
+            onChange={(v) => setPaper(v === 'a4' || v === 'letter' ? v : '')}
+            options={[
+              { value: '', label: 'Paper for your country' },
+              { value: 'a4', label: 'A4' },
+              { value: 'letter', label: 'US Letter' },
             ]}
           />
         ) : null}

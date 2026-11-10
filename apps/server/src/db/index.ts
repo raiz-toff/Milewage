@@ -10,6 +10,7 @@ export * from './goal-repository';
 export * from './migrate';
 export * from './platform-repository';
 export * from './open';
+export * from './own-rate-repository';
 export * from './processing-repository';
 export * from './repositories';
 export * from './schema';

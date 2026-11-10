@@ -86,7 +86,7 @@ describe('csv (08 section 11)', () => {
   test('shift level: sums over labels, blank when nothing was labelled, split flagged as estimated', async () => {
     const before = lines(await text(`/exports/csv${range}&level=shift`));
     expect(before[0]).toBe(
-      'Date,Shift_ID,Vehicle_ID,Start_Time,End_Time,Start_Location,End_Location,Platform,Deliveries_Completed,Gross_Pay,Tips,Active_Miles,Deadhead_Miles,Total_Miles,Deduction_Value,Split_Estimated,Notes,Odometer_Start_Miles,Odometer_End_Miles,Odometer_Check,Year_Odometer_Check,Bonus,Imported',
+      'Date,Shift_ID,Vehicle_ID,Start_Time,End_Time,Start_Location,End_Location,Platform,Deliveries_Completed,Gross_Pay,Tips,Active_Miles,Deadhead_Miles,Total_Miles,Deduction_Value,Split_Estimated,Notes,Odometer_Start_Miles,Odometer_End_Miles,Odometer_Check,Year_Odometer_Check,Bonus,Imported,Deduction_Rate',
     );
     const empty = before[1]!.split(',');
     expect(empty.slice(7, 11)).toEqual(['', '', '', '']); // platform, deliveries, pay, tips: "not entered", never 0
@@ -221,7 +221,7 @@ describe('gpx and geojson', () => {
 });
 
 describe('which formats exist', () => {
-  test('GET /settings lists them; pdf is not registered; unknown and switched-off formats are 404', async () => {
+  test('GET /settings lists them; unknown and switched-off formats are 404', async () => {
     await setup({}, { enabledExportFormats: () => ['csv', 'gpx'] });
     expect((await web('/settings')).json().modules.exporters).toEqual(['csv', 'gpx']);
     for (const f of ['pdf', 'geojson', 'xlsx']) {
@@ -237,6 +237,7 @@ describe('which formats exist', () => {
       'csv',
       'expenses',
       'tax_summary',
+      'pdf',
     ]);
     expect((await web(`/exports/gpx${range}`)).statusCode).toBe(404);
     expect((await web(`/exports/geojson${range}`)).statusCode).toBe(404);

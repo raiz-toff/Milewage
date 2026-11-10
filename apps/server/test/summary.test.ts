@@ -57,6 +57,7 @@ describe('GET /summary (08 section 12)', () => {
       personal_m: 0,
       total_m: 0,
       deduction_cents: null,
+      deduction_rate: null,
       hourly_earnings_cents: null,
     });
   });

@@ -115,7 +115,8 @@ export function taxReport(o: TaxReportOptions, userId: number, year: number, col
       }
     }
   }
-  const mileage = o.deduction.ofPeriod(userId, from, to).cents;
+  const period = o.deduction.ofPeriod(userId, from, to);
+  const mileage = period.cents;
 
   const est = income
     ? pack.estimate(
@@ -153,6 +154,13 @@ export function taxReport(o: TaxReportOptions, userId: number, year: number, col
             `Unverified rates: these figures have not been checked against ${pack.checkedAgainst}.`,
           ]),
       'Estimates to bring to an accountant, not tax advice. Nothing here is filed.',
+      ...(period.rate === 'yours' || period.rate === 'mixed'
+        ? [
+            period.rate === 'yours'
+              ? 'The mileage deduction uses your mileage rate, not an official rate.'
+              : 'The mileage deduction uses the country rate before your mileage rate starts and your rate from then on. Your rate is not an official rate.',
+          ]
+        : []),
       ...(income
         ? []
         : ['No earnings are entered or labelled for this year, so there is no estimate.']),
@@ -162,6 +170,8 @@ export function taxReport(o: TaxReportOptions, userId: number, year: number, col
       expenses_cents: expensesOn ? expenses : null,
       double_counted_cents: expensesOn ? doubleCounted : null,
       mileage_cents: mileage,
+      // The country's rate, your rate, or both by date (ADR 0007); never presented as official when yours.
+      mileage_rate: period.rate,
       vehicles: tax
         .vehicleYears(userId, year)
         .map((v) => ({ vehicle_id: v.vehicleId, method: v.method })),

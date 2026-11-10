@@ -2,8 +2,14 @@ import {
   expenseCategory,
   mileageDeduction,
   notAutomobile,
+  ownRateAt,
   ownRateDeduction,
   periodStart,
+  rateSourceAt,
+  valueAt,
+  type CountryModule,
+  type Dated,
+  type RateSource,
   type VehicleKind,
 } from '@milewage/shared';
 import {
@@ -29,25 +35,59 @@ export type DeductionMethods = (
   year: number,
 ) => ReadonlyMap<number, DeductionMethod>;
 
+/** A shift's mileage deduction and the rate that valued it (null when there is no value). */
+export interface ValuedShift {
+  cents: number | null;
+  rate: RateSource | null;
+}
+
+/** Which rate valued the deductions of a period: one kind, both (by date), or none. */
+export type PeriodRate = RateSource | 'mixed' | null;
+
+/** One rate that valued at least one shift, for a report that names the rates it used. */
+export type RateUsed =
+  | {
+      source: 'official';
+      vehicleKind: VehicleKind;
+      /** The pack's own words: "Standard mileage rate, business", "First 5,000 km". */
+      label: string;
+      centsPerUnit: number;
+      unit: 'km' | 'mi';
+      /** The date this value of the published rate starts. */
+      from: string;
+    }
+  | {
+      source: 'yours';
+      centsPerUnit: number;
+      unit: 'km' | 'mi';
+      /** Null: from the start. */
+      from: string | null;
+    };
+
 export interface MileageDeduction {
   /**
    * The mileage deduction of each shift, in cents, in the order given: business distance (total
    * miles less personal miles) times the rate of the owner's country pack for the shift's date, with
    * the business metres of the same vehicle kind already driven in the rate period (calendar year,
-   * or the tax year from 6 April in Great Britain) so tiered rates split correctly. Where the country
-   * has no rates, your mileage rate (owner decision Q5). Null for a running shift, for no rate, and
-   * for a vehicle deducted through its actual expenses that year. A few queries for any number of shifts.
+   * or the tax year from 6 April in Great Britain) so tiered rates split correctly. Your mileage
+   * rate instead from its date when you chose it, or where the country has no rates (owner decision
+   * Q5, ADR 0007). Null for a running shift, for no rate, and for a vehicle deducted through its
+   * actual expenses that year. A few queries for any number of shifts.
    */
   ofShifts(rows: readonly ShiftRow[]): (number | null)[];
+  /** The same, each with the rate that valued it. */
+  valued(rows: readonly ShiftRow[]): ValuedShift[];
   /**
    * The ended and finalized shifts with a local date in `[from, to]`: the sum of their deductions
-   * (null when none has one) and the sum per vehicle (only vehicles with a value).
+   * (null when none has one), the sum per vehicle (only vehicles with a value) and which rate valued them.
    */
   ofPeriod(
     userId: number,
     from: string,
     to: string,
-  ): { cents: number | null; byVehicle: ReadonlyMap<number, number> };
+  ): { cents: number | null; byVehicle: ReadonlyMap<number, number>; rate: PeriodRate };
+  /** Each distinct rate that valued one of these shifts, in date order. */
+  ratesUsed(rows: readonly ShiftRow[]): RateUsed[];
   /** How a vehicle is deducted in a year. */
   method(userId: number, vehicleId: number, year: number): DeductionMethod;
   /**
@@ -55,6 +95,29 @@ export interface MileageDeduction {
    * the mileage rate that year, which already pays for it (18 section 5.2). Saved, but not deducted.
    */
   doubleCounts(userId: number, e: ExpenseRow): boolean;
+}
+
+/** One rate, both, or none: the words a period's deduction carries. */
+export function periodRate(values: readonly Pick<ValuedShift, 'rate'>[]): PeriodRate {
+  const rates = new Set(values.map((v) => v.rate).filter((r) => r !== null));
+  return rates.size === 0 ? null : rates.size > 1 ? 'mixed' : [...rates][0]!;
+}
+
+/** The start of the value of a dated rate in force on a date. */
+const startOf = (p: Dated<number>, date: string) =>
+  Object.keys(p.values)
+    .sort()
+    .filter((d) => d <= date)
+    .at(-1) ?? date;
+
+/** The published values a country's rate for a vehicle kind has on a date (both tiers of a tiered rate). */
+function officialValues(c: CountryModule, kind: VehicleKind, date: string) {
+  const rate = c.mileage.rates[kind];
+  const params = !rate ? [] : rate.kind === 'flat' ? [rate.perUnit] : [rate.first, rate.after];
+  return params.flatMap((p) => {
+    const v = valueAt(p, date);
+    return v === null ? [] : [{ label: p.label, centsPerUnit: v, from: startOf(p, date) }];
+  });
 }
 
 /** Business distance: what was driven for work, active plus deadhead, whatever the split. */
@@ -96,23 +159,38 @@ export function createMileageDeduction({
     };
   };
 
-  function ofUser(userId: number, rows: readonly ShiftRow[], out: (number | null)[], at: number[]) {
+  /** Shifts that get a value, with the rate source of their date; the rest stay null. */
+  function sourcesOf(userId: number, rows: readonly ShiftRow[]) {
     const driver = drivers.find(userId);
-    if (!driver || driver.rateSource === 'none') return;
-    const kinds = new Map(vehicles.list(userId, true).map((v) => [v.id, v.kind as VehicleKind]));
+    const out: (RateSource | null)[] = rows.map(() => null);
+    if (!driver) return { driver, out };
     const method = methodOf(userId);
-    // Shifts valued at official rates, by rate period and vehicle kind: one query per group.
-    const groups = new Map<string, { kind: VehicleKind; from: string; items: number[] }>();
     rows.forEach((r, n) => {
       if (r.totalM === null || r.status === 'active') return;
       // A vehicle deducted through its expenses has no mileage deduction value (18 section 7.1).
       if (method(r.vehicleId, Number(r.localDate.slice(0, 4))) === 'actual_expenses') return;
+      const source = rateSourceAt(driver.pack, driver.ownRates, r.localDate);
+      out[n] = source === 'none' ? null : source;
+    });
+    return { driver, out };
+  }
+
+  function ofUser(userId: number, rows: readonly ShiftRow[], out: ValuedShift[], at: number[]) {
+    const { driver, out: sources } = sourcesOf(userId, rows);
+    if (!driver) return;
+    const kinds = new Map(vehicles.list(userId, true).map((v) => [v.id, v.kind as VehicleKind]));
+    // Shifts valued at official rates, by rate period and vehicle kind: one query per group.
+    const groups = new Map<string, { kind: VehicleKind; from: string; items: number[] }>();
+    const value = (n: number, cents: number | null, rate: RateSource) =>
+      (out[at[n]!] = { cents, rate: cents === null ? null : rate });
+    rows.forEach((r, n) => {
+      const source = sources[n];
+      if (!source) return;
       const kind = kinds.get(r.vehicleId) ?? 'car';
-      if (driver.rateSource === 'yours') {
-        out[at[n]!] = ownRateDeduction(driver.ownRate!, {
-          totalM: businessM(r),
-          vehicleKind: kind,
-        });
+      if (source === 'yours') {
+        // One rate per shift: the one in force on its date, flat, with no tier (ADR 0007).
+        const own = ownRateAt(driver.ownRates.rates, r.localDate)!;
+        value(n, ownRateDeduction(own, { totalM: businessM(r), vehicleKind: kind }), 'yours');
         return;
       }
       const from = periodStart(driver.pack!.mileage, r.localDate);
@@ -124,6 +202,7 @@ export function createMileageDeduction({
     for (const g of groups.values()) {
       const targets = g.items.map((n) => rows[n]!).sort((a, b) => (before(a, b) ? -1 : 1));
       const last = targets.at(-1)!.localDate;
+      // Every business metre of the period fills the tier, whichever rate valued it.
       const earlier = driven.all(userId, g.kind, g.from, last) as (Key & {
         totalM: number | null;
         personalM: number | null;
@@ -138,18 +217,19 @@ export function createMileageDeduction({
       }
       for (const n of g.items) {
         const r = rows[n]!;
-        out[at[n]!] = mileageDeduction(driver.pack!, {
+        const cents = mileageDeduction(driver.pack!, {
           totalM: businessM(r),
           priorM: prior.get(r)!,
           date: r.localDate,
           vehicleKind: g.kind,
         });
+        value(n, cents, 'official');
       }
     }
   }
 
-  const ofShifts = (rows: readonly ShiftRow[]) => {
-    const out: (number | null)[] = rows.map(() => null);
+  const valued = (rows: readonly ShiftRow[]) => {
+    const out: ValuedShift[] = rows.map(() => ({ cents: null, rate: null }));
     const users = new Map<number, number[]>();
     rows.forEach((r, i) => users.set(r.userId, [...(users.get(r.userId) ?? []), i]));
     for (const [userId, at] of users) {
@@ -164,19 +244,50 @@ export function createMileageDeduction({
   };
 
   return {
-    ofShifts,
+    ofShifts: (rows) => valued(rows).map((v) => v.cents),
+    valued,
     ofPeriod(userId, from, to) {
       const rows = processing.shiftsInPeriod(userId, from, to);
-      const values = ofShifts(rows);
+      const values = valued(rows);
       const byVehicle = new Map<number, number>();
       let cents: number | null = null;
       values.forEach((v, i) => {
-        if (v === null) return;
-        cents = (cents ?? 0) + v;
+        if (v.cents === null) return;
+        cents = (cents ?? 0) + v.cents;
         const id = rows[i]!.vehicleId;
-        byVehicle.set(id, (byVehicle.get(id) ?? 0) + v);
+        byVehicle.set(id, (byVehicle.get(id) ?? 0) + v.cents);
       });
-      return { cents, byVehicle };
+      return { cents, byVehicle, rate: periodRate(values) };
+    },
+    ratesUsed(rows) {
+      const used = new Map<string, RateUsed>();
+      const values = valued(rows);
+      const contexts = new Map<number, ReturnType<DriverContexts['find']>>();
+      const driverOf = (userId: number) => {
+        if (!contexts.has(userId)) contexts.set(userId, drivers.find(userId));
+        return contexts.get(userId);
+      };
+      rows.forEach((r, n) => {
+        const v = values[n]!;
+        const driver = v.rate && driverOf(r.userId);
+        if (!driver || !v.rate) return;
+        if (v.rate === 'yours') {
+          const own = ownRateAt(driver.ownRates.rates, r.localDate)!;
+          const { centsPerUnit, unit, effectiveFrom: from } = own;
+          used.set(`yours|${from}`, { source: 'yours', centsPerUnit, unit, from });
+          return;
+        }
+        const kind = (vehicles.find(r.userId, r.vehicleId)?.kind ?? 'car') as VehicleKind;
+        for (const o of officialValues(driver.pack!, kind, r.localDate)) {
+          used.set(`official|${kind}|${o.label}|${o.from}`, {
+            source: 'official',
+            vehicleKind: kind,
+            unit: driver.pack!.unit,
+            ...o,
+          });
+        }
+      });
+      return [...used.values()].sort((a, b) => (a.from ?? '').localeCompare(b.from ?? ''));
     },
     method: (userId, vehicleId, year) => methodOf(userId)(vehicleId, year),
     doubleCounts(userId, e) {

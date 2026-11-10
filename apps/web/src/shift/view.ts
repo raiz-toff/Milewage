@@ -94,8 +94,10 @@ export interface ShiftView {
   folded: boolean;
   /** The checks card is shown (with nothing recorded, the checks are in that card instead). */
   checks: boolean;
-  /** The shift can be exported. */
+  /** The shift can be exported (the PDF report covers a period, so it does not count). */
   exporters: boolean;
+  /** Parking and tolls can be added to the shift (module `expenses`). */
+  costs: boolean;
   /** The stop-labelling card is shown. */
   stopsCard: boolean;
 }
@@ -153,7 +155,9 @@ export function shiftView(record: ShiftParts, settings: Settings): ShiftView {
     canAddTrip: shift.status === 'ended' && !empty,
     folded,
     checks: !sparse,
-    exporters: modules.exporters.length > 0 && !active,
+    exporters: modules.exporters.some((f) => f !== 'pdf') && !active,
+    // Parking and tolls are paid while the shift runs too.
+    costs: modules.expenses,
     stopsCard: showLabels && (!folded || orphans),
   };
 }

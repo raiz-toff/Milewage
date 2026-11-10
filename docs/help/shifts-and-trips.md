@@ -19,14 +19,24 @@ The header has the date, times, vehicle and platforms. Then the figures:
 - **Distance**: the total, from the GPS track.
 - **Business**: active plus deadhead miles. Where stops are on, the split is shown with a `*`. It is an estimate. See [Active and deadhead miles](active-and-deadhead.md).
 - **Earned**: your earnings after app fees, or "not entered". See [Earnings and platforms](earnings-and-platforms.md).
-- **Deduction**: the mileage deduction, or "Deduction (your rate)" with your mileage rate. No rate has yet been checked against the tax offices' own publications.
+- **Deduction**: the mileage deduction, or "Deduction (your rate)" when your mileage rate was in force on the shift's day. No rate has yet been checked against the tax offices' own publications.
 
 Below the figures:
 
 - **The map**: a simplified line through your route, for display only.
 - **The timeline**: each trip with its time, distance, kind and purpose, and each stop. Choose one to find it on the map.
 - **Checks**: facts about the recording, with "What to do" under them. Ones marked Review come first.
-- **Odometer**, **Notes**, **Export this shift**, and **Label stops** where stops were found.
+- **Odometer**, **Parking and tolls**, **Notes**, **Export this shift**, and **Label stops** where stops were found.
+
+## Parking and tolls
+
+Paid for parking or a toll during a shift? Add it on the shift page, under Parking and tolls (shown when the expenses module runs).
+
+1. Choose **Parking** or **Toll**.
+2. Type the amount and, if you like, where.
+3. Choose **Add parking** or **Add toll**.
+
+It is saved as an ordinary expense on the shift's day, with the shift's vehicle, and appears in Expenses like any other. Add a receipt or change it there. The shift page shows the shift's parking and toll total; the trash button removes one. A running shift takes them too. The phone app cannot add them yet.
 
 While a shift runs, the page says "Shift in progress". Trips and stops appear when it ends.
 

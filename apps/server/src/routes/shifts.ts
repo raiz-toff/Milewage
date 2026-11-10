@@ -11,6 +11,7 @@ import {
 } from '../db';
 import { ProblemError } from '../errors';
 import type { EventEmit } from '../events';
+import type { ValuedShift } from '../mileage-deduction';
 import type { ShiftPresenter } from '../processing/presenter';
 import type { ShiftBook } from '../processing/shift-book';
 import { refParam as ref, snakeKeys, str, strictObject, type AuthFn, type Principal } from './util';
@@ -105,7 +106,7 @@ const flagView = (f: FlagRow) => ({
 export const shiftView = (
   r: ShiftRow,
   flags: readonly FlagRow[] = [],
-  deductionCents: number | null = null,
+  deduction: ValuedShift = { cents: null, rate: null },
 ) => ({
   ...snakeKeys(
     r,
@@ -119,7 +120,9 @@ export const shiftView = (
   recon_reasons: r.reconReasons ? (JSON.parse(r.reconReasons) as string[]) : [],
   calc_mismatch: r.calcMismatch === 1,
   // Computed at read time by the mileage deduction, never stored.
-  deduction_cents: deductionCents,
+  deduction_cents: deduction.cents,
+  // Which rate valued it: the country's or your own (ADR 0007); null with no value.
+  deduction_rate: deduction.rate,
   flags: flags.map(flagView),
 });
 /** The `Trip` object; the client UUID of a manual trip is not part of it. */

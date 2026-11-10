@@ -91,7 +91,12 @@ export function TaxPage() {
             : []),
           line('Expenses you can deduct', `− ${money(report.deductions?.expenses_cents)}`),
           line(
-            'Mileage deduction (a deduction, not cash)',
+            // Your rate is always called yours, never official (Q5, ADR 0007).
+            report.deductions?.mileage_rate === 'yours'
+              ? 'Mileage deduction at your rate (a deduction, not cash)'
+              : report.deductions?.mileage_rate === 'mixed'
+                ? 'Mileage deduction, country rate then your rate (a deduction, not cash)'
+                : 'Mileage deduction (a deduction, not cash)',
             `− ${money(report.deductions?.mileage_cents)}`,
           ),
           line('Taxable income', money(est.taxable_income_cents)),

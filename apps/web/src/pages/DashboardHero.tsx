@@ -91,9 +91,15 @@ function PeriodFigures({
         : missing.value === 'Unavailable'
           ? 'Earnings are off'
           : 'No earnings entered';
-  // The driver's own rate is always called theirs, never official (plan 21 Q5, J8).
+  // The driver's own rate is always called theirs, never official (plan 21 Q5, J8, ADR 0007).
+  const rate =
+    summary.deduction_rate !== undefined ? summary.deduction_rate : settings.mileage_rate;
   const deduction =
-    settings.mileage_rate === 'yours' ? 'Deduction value (your rate)' : 'Deduction value';
+    rate === 'yours'
+      ? 'Deduction value (your rate)'
+      : rate === 'mixed'
+        ? 'Deduction value (country and your rate)'
+        : 'Deduction value';
   // With no shift there is nothing to enter, so the honest figure is zero, not "not entered".
   const earned = summary.earnings_cents ?? (summary.shift_count === 0 ? 0 : null);
   const earnedOf = (s: Summary) => money(s.earnings_cents ?? 0);
