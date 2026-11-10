@@ -10,7 +10,7 @@ order: 20
 
 - The raw GPS points of your shifts. They stay until your server confirms it has them, and for up to 14 days after that.
 - The results of your shifts: totals, trips, stops and odometer readings. Shifts that have not reached the server are the only copy.
-- The device token. It is the key that lets the phone talk to your server. It is kept in the phone's protected storage, not in a plain file.
+- The device token. It is the key that lets the phone talk to your server. It is stored encrypted, with a key the phone's Android Keystore holds and never lets out, not in a plain file. The app's data is left out of Android's backups, so it is not copied to a cloud either.
 
 The token is not your password. With it, someone can send data to your server and read the last 14 days. It cannot export your data or download backups.
 
@@ -20,7 +20,7 @@ The token is not your password. With it, someone can send data to your server an
 2. Go to the Devices page.
 3. Revoke the lost phone.
 
-The token stops working at once. Anything the phone tries to send after that is refused. Lock or wipe the phone with Google's Find My Device or your phone maker's tool as well. MileWage cannot do that for you.
+The token stops working at once. Anything the phone tries to send after that is refused. Lock or wipe the phone with Google's Find My Device, or your phone maker's tool on a phone without Google services, as well. MileWage cannot do that for you.
 
 If you find the phone, pair it again from the Devices page. Pairing the same phone to the same server lets it send what it was still holding.
 

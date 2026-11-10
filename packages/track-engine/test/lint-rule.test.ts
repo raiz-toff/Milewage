@@ -13,7 +13,6 @@ const bad = [
   "import fs from 'node:fs';\nexport const a = fs;",
   "import { readFileSync } from 'fs';\nexport const a = readFileSync;",
   "import Database from 'better-sqlite3';\nexport const a = Database;",
-  "import { Platform } from 'react-native';\nexport const a = Platform;",
   'export const a = Date.now();',
   'export const a = Math.random();',
   "export const a = fetch('/x');",

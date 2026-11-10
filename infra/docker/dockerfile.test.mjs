@@ -55,3 +55,8 @@ test('the web build sees the Help pages and the changelog (ADR 0001): the contex
   expect(dockerfile.indexOf('COPY . .')).toBeGreaterThan(-1);
   expect(dockerfile.indexOf('COPY . .')).toBeLessThan(dockerfile.indexOf('npm run build:web'));
 });
+
+test('the context leaves out the Android app: npm has no workspace there and Gradle output is large', () => {
+  const ignored = readFileSync(new URL('../../.dockerignore', import.meta.url), 'utf8').split('\n');
+  expect(ignored).toContain('apps/android');
+});

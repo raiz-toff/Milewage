@@ -130,9 +130,10 @@ The setup wizard's **Get the app** step offers the Android app from this server.
 out `milewage.apk` and `milewage.apk.json` from the `config` volume. Get both files one of these
 ways:
 
-- **Build here** (only if this host has Node 22, JDK 17 and the Android SDK):
-  `scripts/phone-release-build.sh --publish /tmp/mw/milewage.apk` (add
-  `-PreactNativeArchitectures=arm64-v8a` for a smaller, faster build for 64-bit phones).
+- **Build here** (only if this host has JDK 17 and the Android SDK):
+  `scripts/phone-release-build.sh --publish /tmp/mw/milewage.apk`.
+- **From the GitHub release**: download `milewage-<version>.apk` for this server's version, then
+  `scripts/publish-apk.sh milewage-<version>.apk /tmp/mw/milewage.apk`.
 - **Copy from the development machine** (ask the owner where the latest build is), for example
   `scp <dev-host>:<path>/milewage.apk <dev-host>:<path>/milewage.apk.json /tmp/mw/`.
 

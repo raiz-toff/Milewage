@@ -7,6 +7,14 @@
       "groupName": "minor and patch updates",
       "groupSlug": "minor-patch",
       "matchUpdateTypes": ["minor", "patch"]
+    },
+    {
+      "description": "The Android app (apps/android): the Gradle version catalog gradle/libs.versions.toml and the Gradle wrapper. Stable releases only (the catalog's rule), and minor and patch updates in a pull request of their own, because they need the Android CI job and a check on a real phone.",
+      "matchManagers": ["gradle", "gradle-wrapper"],
+      "ignoreUnstable": true,
+      "groupName": "Android minor and patch updates",
+      "groupSlug": "android-minor-patch",
+      "matchUpdateTypes": ["minor", "patch"]
     }
   ]
 }

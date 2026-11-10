@@ -7,6 +7,8 @@
   "main": "src/index.ts",
   "scripts": {
     "conformance": "vite-node scripts/conformance.ts --",
-    "comma-sanity": "vite-node scripts/comma-sanity.ts --"
+    "comma-sanity": "vite-node scripts/comma-sanity.ts --",
+    "conformance:fixtures": "vite-node scripts/conformance-fixtures.ts && prettier --write --log-level=warn conformance/fixtures.json",
+    "conformance:check": "vite-node scripts/conformance-fixtures.ts -- --check"
   }
 }

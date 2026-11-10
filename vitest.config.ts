@@ -11,14 +11,13 @@ export default defineConfig({
   // The web app imports its shadcn/ui components through `@/` (apps/web/vite.config.ts).
   resolve: { alias: { '@': fileURLToPath(new URL('apps/web/src', import.meta.url)) } },
   test: {
-    exclude: ['**/node_modules/**', 'apps/phone/**'], // phone tests run under jest-expo
+    exclude: ['**/node_modules/**', 'apps/android/**'], // the Android app is tested by Gradle
     // `npm run test:coverage`. Off in `npm test`. No thresholds yet (PR T1 records the baseline).
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
       include: ['apps/*/src/**', 'packages/*/src/**'],
       exclude: [
-        'apps/phone/**', // measured by jest-expo, not by vitest
         'apps/web/src/components/ui/**', // shadcn/ui components, copied in by its CLI
         '**/generated/**',
         '**/*.d.ts',

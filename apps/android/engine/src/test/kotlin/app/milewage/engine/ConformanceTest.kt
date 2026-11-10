@@ -11,25 +11,26 @@ import kotlin.test.assertTrue
 
 /**
  * The TypeScript engine's own fixture files, read in place (README rule 4):
- * - apps/phone/src/conformance/fixtures.json: the golden inputs and Node's canonical JSON of
- *   processShift for each (what the Expo app checked on Hermes);
+ * - packages/track-engine/conformance/fixtures.json: the golden inputs and Node's canonical JSON
+ *   of processShift for each (`npm run conformance:fixtures -w @milewage/track-engine` writes it;
+ *   `npm test` fails when it is stale);
  * - packages/track-engine/test/fixtures/golden-shift.json: the committed processShift results
  *   and their ledger digest;
  * - packages/track-engine/test/fixtures/golden.json: the stage 1-3 results of the rides and
  *   their ledger digest.
  */
 class ConformanceTest {
-    private val phone: JsonObject = TestFiles.json.parseToJsonElement(TestFiles.phoneFixturesJson.readText()).jsonObject
+    private val fixtures: JsonObject = TestFiles.json.parseToJsonElement(TestFiles.conformanceFixturesJson.readText()).jsonObject
     private val inputs: Map<String, ShiftInput> =
-        phone.getValue("inputs").jsonObject.mapValues { TestFiles.json.decodeFromJsonElement(ShiftInput.serializer(), it.value) }
+        fixtures.getValue("inputs").jsonObject.mapValues { TestFiles.json.decodeFromJsonElement(ShiftInput.serializer(), it.value) }
 
     private fun sha256(text: String): String =
         MessageDigest.getInstance("SHA-256").digest(text.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
 
     @Test
-    fun phoneFixturesAreByteIdentical() {
-        assertEquals(ALGORITHM_VERSION, phone.getValue("algorithmVersion").jsonPrimitive.int)
-        val expected = phone.getValue("expected").jsonObject
+    fun conformanceFixturesAreByteIdentical() {
+        assertEquals(ALGORITHM_VERSION, fixtures.getValue("algorithmVersion").jsonPrimitive.int)
+        val expected = fixtures.getValue("expected").jsonObject
         assertEquals(expected.keys, inputs.keys)
         assertTrue(inputs.size >= 15)
         val bad = inputs.keys.sorted().mapNotNull { name ->

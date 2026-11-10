@@ -73,3 +73,9 @@ The restore command (and the restore screen) prints what it found: shifts and th
 - A shift with a trip marked personal shows a smaller deduction than in 0.1.0: personal distance no longer counts. Nothing was lost; the earlier figure was wrong.
 - Install the new Android app, `milewage-0.2.0.apk` (versionCode 2), on every paired phone. The old app keeps working against the new server, but it sends every phone-added trip without a purpose, which the server parks.
 - The Help pages are on by default; Settings > Help pages turns them off.
+
+### The release after 0.2.0 (the native Android app)
+
+- The phone app is a new, native Android app. It installs over the old one but starts empty. Before installing it, open the old app and let it send everything (its banner says when everything is on the server), and end any running shift. Then install the new app, pair it again, and revoke the old entry on the Devices page. It needs Android 8.0 or later.
+- The track engine is version 4. Run `milewage-cli recalc --dry-run` to list the shifts the new rule would change; stored shifts keep their figures until they are worked out again.
+- Your own mileage rate from before becomes a rate "from the start", with the switch to use it off.

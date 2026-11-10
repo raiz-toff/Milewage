@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 # Release APK of the native Android app (apps/android), on a machine with JDK 17 and the Android SDK.
-# Output: apps/android/app/build/outputs/apk/release/app-release.apk
-# Signing: the upload key when $HOME/.milewage/keystore.env (or MILEWAGE_KEYSTORE_ENV) exists, read
-# by scripts/phone-signing-env.sh exactly as for the Expo app (same key, same applicationId
-# app.milewage.phone, so this APK installs over the Expo one); otherwise the debug key.
-# versionName: the VERSION file. versionCode: MILEWAGE_VERSION_CODE (default 3, above the Expo
-# app's last release, 2). Raise it for every build handed out.
-# Runs the unit tests and lint before building. --publish PATH (or MILEWAGE_APK_PUBLISH=PATH) then
-# copies the APK where the server hands it out (scripts/publish-apk.sh). Other arguments go to Gradle.
-# Not yet the release process: scripts/phone-release-build.sh still builds the Expo app.
+# The release process calls it through scripts/phone-release-build.sh (same flags).
+# Output: apps/android/app/build/outputs/apk/release/app-release.apk, and a copy beside it named
+# milewage-<VERSION>.apk, the file attached to the GitHub release.
+# Signing: the upload key when $HOME/.milewage/keystore.env (or MILEWAGE_KEYSTORE_ENV) exists, made
+# once by scripts/phone-keystore.sh and read by scripts/phone-signing-env.sh; otherwise the Android
+# debug key (not for Google Play). Same key and applicationId (app.milewage.phone) as the retired
+# Expo app, so this APK installs over it.
+# versionName: the VERSION file. versionCode: MILEWAGE_VERSION_CODE, or the default in
+# app/build.gradle.kts (`npm run version:check` keeps it at or above the last released one). Raise it
+# for every build handed out.
+# Runs the unit tests, lint and the manifest and dependency policy before building. --publish PATH
+# (or MILEWAGE_APK_PUBLISH=PATH) then copies the APK where the server hands it out
+# (scripts/publish-apk.sh). Other arguments go to Gradle.
 set -euo pipefail
 
 publish="${MILEWAGE_APK_PUBLISH:-}"
@@ -38,14 +42,18 @@ fi
 # shellcheck source=../../scripts/phone-signing-env.sh
 . "$ROOT/scripts/phone-signing-env.sh"
 milewage_signing_env
-[[ -n "${MILEWAGE_KEYSTORE_PATH:-}" ]] || echo "(For this app: the Android debug key.)"
+
+version="$(tr -d ' \n' <"$ROOT/VERSION")"
+echo "MileWage $version, versionCode ${MILEWAGE_VERSION_CODE:-default (app/build.gradle.kts)}."
 
 cd "$HERE"
 printf 'sdk.dir=%s\n' "$ANDROID_HOME" >local.properties
 ./gradlew --no-daemon test lint assembleRelease ${gradle_args[@]+"${gradle_args[@]}"}
 
 apk=app/build/outputs/apk/release/app-release.apk
-ls -l "$apk"
+named="app/build/outputs/apk/release/milewage-$version.apk"
+cp "$apk" "$named"
+ls -l "$apk" "$named"
 if [[ -n "$publish" ]]; then
   "$ROOT/scripts/publish-apk.sh" "$apk" "$publish"
 fi

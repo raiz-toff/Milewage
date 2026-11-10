@@ -19,7 +19,7 @@ version you ran. Do not include real location history or passwords.
 
 - The server (the API, the database, backups and restore).
 - The web app.
-- The Android phone app.
+- The Android phone app (`apps/android`, Android 8.0 or later).
 - The Docker images and the compose files in `infra/`.
 
 Out of scope: Tailscale, Docker, Android itself, and OpenFreeMap. Report those to their own
@@ -31,7 +31,10 @@ projects.
 - The server is meant to be reached over your Tailscale network, not the public internet. Nothing
   here is built or tested for public exposure.
 - A phone holds an opaque device token. It can send data and read the last 14 days. It cannot
-  export or download backups. You can revoke it on the web Devices page.
+  export or download backups. You can revoke it on the web Devices page. The app keeps the token
+  encrypted under a key in the Android Keystore, leaves its data out of Android backups, uses plain
+  http only to a home address and trusts only the system's certificate authorities. It contains no
+  Google Play Services, Firebase or other third-party service; the build fails if one appears.
 - Web sessions are opaque cookies stored on the server, so signing out or revoking works at once.
 - Backups are encrypted with age. The recovery key is shown once and the server never stores it.
 - Diagnostics stay on your server and never carry coordinates, addresses or free text.

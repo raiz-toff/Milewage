@@ -17,7 +17,7 @@ object TestFiles {
 
     val goldenJson = File(repoRoot, "packages/track-engine/test/fixtures/golden.json")
     val goldenShiftJson = File(repoRoot, "packages/track-engine/test/fixtures/golden-shift.json")
-    val phoneFixturesJson = File(repoRoot, "apps/phone/src/conformance/fixtures.json")
+    val conformanceFixturesJson = File(repoRoot, "packages/track-engine/conformance/fixtures.json")
 
     /** The large, generated, gitignored cross-check files (README "Cross-check"). */
     val crosscheckDir = File("build/crosscheck")

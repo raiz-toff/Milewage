@@ -20,19 +20,17 @@
     "test:coverage": "MILEWAGE_COVERAGE=1 vitest run --coverage",
     "build:server": "node scripts/build-server.mjs",
     "smoke:docker": "bash infra/docker/smoke.sh",
-    "typecheck:phone": "npm run typecheck -w apps/phone",
     "typecheck:web": "npm run typecheck -w apps/web",
     "build:web": "npm run build -w apps/web",
-    "test:phone": "npm test -w apps/phone",
-    "verify": "npm run typecheck && npm run typecheck:phone && npm run typecheck:web && npm run lint && npm run version:check && npm run openapi:check && npm run test && npm run test:phone",
+    "verify": "npm run verify:js && npm run verify:android",
+    "verify:js": "npm run typecheck && npm run typecheck:web && npm run lint && npm run version:check && npm run openapi:check && npm run test",
+    "verify:android": "bash scripts/verify-android.sh",
     "version:check": "node scripts/version.mjs check",
     "version:sync": "node scripts/version.mjs sync",
     "openapi:generate": "node scripts/openapi-generate.mjs generate",
-    "openapi:check": "node scripts/openapi-generate.mjs check && node scripts/openapi-generate.mjs lint"
-  },
-  "overrides": {
-    "hermes-parser": "0.36.1",
-    "babel-plugin-syntax-hermes-parser": "0.36.1"
+    "openapi:check": "node scripts/openapi-generate.mjs check && node scripts/openapi-generate.mjs lint",
+    "conformance:fixtures": "npm run conformance:fixtures -w @milewage/track-engine",
+    "crosscheck:engine": "vite-node apps/android/engine/tools/export-math.ts && vite-node apps/android/engine/tools/crosscheck.ts && bash scripts/verify-android.sh --only :engine:test --rerun"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

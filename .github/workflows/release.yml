@@ -3,8 +3,9 @@
 # ghcr.io/<owner>/milewage/server and ghcr.io/<owner>/milewage/caddy, tagged with the version and
 # `latest`. infra/docker/docker-compose.release.yml runs them with
 # MILEWAGE_IMAGE_REPO=ghcr.io/<owner>/milewage and MILEWAGE_VERSION=<tag>.
-# The phone APK is built on the owner's machine (scripts/phone-release-build.sh), because it needs
-# the upload keystore, and attached to the GitHub release by hand.
+# The Android app's APK (the native app in apps/android) is built and signed on the owner's machine
+# with scripts/phone-release-build.sh, because it needs the upload key, which never goes to CI, and
+# milewage-<version>.apk is attached to the GitHub release by hand (gh release upload).
 # infra/github-actions.test.mjs checks the shape of this file.
 name: release
 

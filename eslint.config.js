@@ -3,8 +3,6 @@ import tseslint from 'typescript-eslint';
 
 // Packages that must stay pure (14 section 3): no platform, DB, network, clock or randomness.
 const forbiddenModules = [
-  'react-native',
-  'react-native/*',
   'node:*',
   'fs',
   'fs/*',
@@ -51,17 +49,21 @@ export default tseslint.config(
       'coverage/**', // npm run test:coverage output
       '**/generated/**',
       '.claude/**',
-      'apps/phone/*.config.js', // CommonJS configs read by Expo/Metro/Babel
-      'apps/phone/android/**',
-      'apps/phone/ios/**',
-      'apps/phone/native/**/android/build/**',
-      'apps/phone/plugins/**', // CommonJS Expo config plugins
+      'apps/android/**/build/**', // Gradle output
+      'openmiles/**', // a local reference project, never part of this repository
     ],
   },
   js.configs.recommended,
   {
     files: ['scripts/**/*.mjs'],
     languageOptions: { globals: { process: 'readonly', console: 'readonly', URL: 'readonly' } },
+  },
+  {
+    // Node tools of the Android app (apps/android/scripts/material-symbols.mjs).
+    files: ['apps/android/scripts/**/*.mjs'],
+    languageOptions: {
+      globals: { process: 'readonly', console: 'readonly', URL: 'readonly', Buffer: 'readonly' },
+    },
   },
   {
     files: ['infra/vm-tests/**/*.mjs', 'infra/vm-tests/**/*.cjs'],
@@ -90,25 +92,6 @@ export default tseslint.config(
     files: ['apps/*/src/**/*.{ts,tsx}', 'packages/*/src/**/*.{ts,tsx}'],
     ignores: ['packages/shared/src/countries/**'],
     rules: { 'no-restricted-syntax': countryLiteralRule },
-  },
-  {
-    // The phone's sender (apps/phone/src/sync/sender.ts) is the one interface for sending to the
-    // server; the queue runner, the points, the restore resend and the change log stay behind it.
-    files: ['apps/phone/src/**/*.{ts,tsx}'],
-    ignores: ['apps/phone/src/sync/**'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['**/sync/runner', '**/sync/points', '**/sync/resend', '**/sync/pull'],
-              message: 'Internal to the sender: use sync/sender.',
-            },
-          ],
-        },
-      ],
-    },
   },
   {
     files: ['packages/track-engine/src/**/*.ts'],

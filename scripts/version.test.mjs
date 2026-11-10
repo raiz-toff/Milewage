@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
-import { APP_CONFIG, appConfigVersion, check, sync } from './version.mjs';
+import { GRADLE_APP, androidProblems, check, releasedVersionCodes, sync } from './version.mjs';
 
 const repo = fileURLToPath(new URL('..', import.meta.url));
 
@@ -44,41 +44,56 @@ test('sync rewrites mismatched files and then check passes', () => {
   expect(check(root)).toEqual([]);
 });
 
-// The phone app config reads VERSION itself; check() evaluates it under node with the given env.
-function withAppConfig(root, source) {
-  mkdirSync(join(root, 'apps', 'phone'), { recursive: true });
-  if (source) writeFileSync(join(root, APP_CONFIG), source);
-  else copyFileSync(join(repo, APP_CONFIG), join(root, APP_CONFIG));
+// The Android app reads VERSION itself; check() looks at its Gradle file and the changelog.
+function withAndroid(root, gradle, changelog) {
+  mkdirSync(join(root, 'apps', 'android', 'app'), { recursive: true });
+  if (gradle) writeFileSync(join(root, GRADLE_APP), gradle);
+  else copyFileSync(join(repo, GRADLE_APP), join(root, GRADLE_APP));
+  if (changelog) writeFileSync(join(root, 'CHANGELOG.md'), changelog);
   return root;
 }
-const noCode = { ...process.env, MILEWAGE_VERSION_CODE: '' };
+const changelog = (released) =>
+  `# Changelog\n\n## [Unreleased]\n\nInstall the new app (versionCode 99).\n\n## [0.2.0] - 2026-11-10\n\n${released}\n`;
 
-test('the real app config resolves to the VERSION of the tree it sits in', () => {
-  const root = withAppConfig(fixture('3.4.5', {}));
-  expect(appConfigVersion(root, noCode)).toBe('3.4.5');
-  expect(check(root, noCode)).toEqual([]);
+test('the real Gradle file reads VERSION and its default versionCode passes', () => {
+  const root = withAndroid(fixture('3.4.5', {}), null, changelog('(versionCode 2)'));
+  expect(androidProblems(root)).toEqual([]);
+  expect(check(root)).toEqual([]);
 });
 
-test('check fails when the app config resolves to another version', () => {
-  const root = withAppConfig(
-    fixture('1.2.3', {}),
-    "module.exports = { expo: { version: '1.0.0' } };",
-  );
-  expect(check(root, noCode)).toEqual([
-    { file: join(root, APP_CONFIG), found: '1.0.0', expected: '1.2.3' },
+test('only released sections count, and the highest versionCode there', () => {
+  expect(
+    releasedVersionCodes(
+      withAndroid(fixture('1.0.0', {}), null, changelog('versionCode 1, then versionCode 2')),
+    ),
+  ).toEqual([1, 2]);
+});
+
+test('a default versionCode below the last released one fails; equal passes', () => {
+  const gradle = (code) =>
+    `val milewageVersion = providers.fileContents(x.file("../../VERSION"))\n        if (raw.isNullOrEmpty()) return@let ${code}\n        versionName = milewageVersion\n`;
+  const root = withAndroid(fixture('1.2.3', {}), gradle(2), changelog('(versionCode 3)'));
+  expect(check(root)).toEqual([
+    {
+      file: join(root, GRADLE_APP),
+      found: 'default versionCode 2',
+      expected: 'at least 3, the last released versionCode (CHANGELOG.md)',
+    },
   ]);
+  writeFileSync(join(root, GRADLE_APP), gradle(3));
+  expect(check(root)).toEqual([]);
 });
 
-test('check fails loudly when MILEWAGE_VERSION_CODE is not a whole number', () => {
-  const root = withAppConfig(fixture('1.2.3', {}));
-  for (const code of ['12a', '1.5', '-3', '0', '2100000001']) {
-    const bad = check(root, { ...process.env, MILEWAGE_VERSION_CODE: code });
-    expect(bad).toHaveLength(1);
-    expect(bad[0].found).toMatch(/MILEWAGE_VERSION_CODE must be a whole number/);
-  }
-  expect(check(root, { ...process.env, MILEWAGE_VERSION_CODE: '42' })).toEqual([]);
+test('a versionName that no longer comes from VERSION fails', () => {
+  const root = withAndroid(
+    fixture('1.2.3', {}),
+    'versionName = "1.0"\n        if (raw.isNullOrEmpty()) return@let 3\n',
+    changelog(''),
+  );
+  expect(check(root).map((p) => p.found)).toEqual(['a versionName not read from VERSION']);
 });
 
-test('the repository itself is in sync, app config included', () => {
-  expect(check(repo, noCode)).toEqual([]);
+test('the repository itself is in sync, the Android app included', () => {
+  expect(check(repo)).toEqual([]);
+  expect(androidProblems(repo)).toEqual([]);
 });

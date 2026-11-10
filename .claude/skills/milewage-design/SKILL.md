@@ -1,6 +1,6 @@
 ---
 name: milewage-design
-description: The MileWage design system, Material Design 3 with the brand mixed in. It covers the colour roles generated from Lane yellow, earned and spent, Roboto Flex and the Material type scale, shape, elevation, state layers and ripple, Material Symbols, the restyled web components and the house primitives for the web app (apps/web), the native Android app's theme and house composables (apps/android, Kotlin and Jetpack Compose), plus the writing voice and the money, date, time and distance formats. Load this before building or changing ANY user-facing screen, component, page, dialog, chart, empty state, notification text or driver-facing copy in apps/web or apps/android, and before adding colours, fonts or icons anywhere. apps/phone is the retired Expo app; do not build there. Use it even when the request only says "add a page", "make a form", "a new screen", "show this on the dashboard", "a button for", "a card with", "restyle", "dark mode", "looks off", "make it match", or asks for a mockup, wireframe or design file for MileWage.
+description: The MileWage design system, Material Design 3 with the brand mixed in. It covers the colour roles generated from Lane yellow, earned and spent, Roboto Flex and the Material type scale, shape, elevation, state layers and ripple, Material Symbols, the restyled web components and the house primitives for the web app (apps/web), the native Android app's theme and house composables (apps/android, Kotlin and Jetpack Compose), plus the writing voice and the money, date, time and distance formats. Load this before building or changing ANY user-facing screen, component, page, dialog, chart, empty state, notification text or driver-facing copy in apps/web or apps/android, and before adding colours, fonts or icons anywhere. The retired Expo app (apps/phone) was removed on 2026-11-10. Use it even when the request only says "add a page", "make a form", "a new screen", "show this on the dashboard", "a button for", "a card with", "restyle", "dark mode", "looks off", "make it match", or asks for a mockup, wireframe or design file for MileWage.
 ---
 
 # MileWage design system
@@ -224,4 +224,4 @@ For anyone who knew the previous system:
   gone.
 - Cards lost their border and became tonal fills. Shadows exist at Material's elevation levels.
 - The phone is no longer always dark. It follows the system.
-- The Expo app (`apps/phone`) is retired, replaced by the native app in `apps/android`.
+- The Expo app (`apps/phone`) was retired and removed on 2026-11-10; the native app in `apps/android` replaces it.

@@ -6,26 +6,81 @@ All notable changes to MileWage are listed here. The format follows
 
 ## [Unreleased]
 
-Fixes for AI assistants behind the owner's own reverse proxy or a private certificate authority
-(GitHub issue #6).
+A new phone app and a new look. The phone app is now a native Android app (Kotlin, Jetpack
+Compose, Material 3) that needs nothing from Google; the Expo app is gone. The web app and the
+phone follow Google's Material Design 3 from one colour scheme (ADRs 0009 to 0011). Also: your own
+dated mileage rate, a PDF report for the accountant, parking and tolls on a shift, named places,
+editing a trip you added on the web, MileIQ import, and fixes for AI assistants behind the owner's
+own reverse proxy (GitHub issue #6).
 
-**After upgrading:** a server set up before 0.2.0 that never made an assistant code has the AI
-assistant endpoint off again, as it was in 0.1.0. Set `MILEWAGE_MODULE_MCP=1` in
-`infra/docker/.env` to turn it on.
+**After upgrading: the phone app.** The new Android app installs over the old one but starts
+empty: nothing is carried over. Before installing it, open the old app on a connection to your
+server, let it send every shift (its banner says when everything is on the server) and end any
+running shift; anything the old app has not sent is lost with the update. Then install the new
+app, pair it again (QR code, or the link code on your home Wi-Fi), and revoke the old entry on the
+Devices page. It needs Android 8.0 or later: Android 7 is no longer supported.
 
-**After upgrading:** the track engine is now version 4 (ADR 0006). Install the phone app built
-from this release too, so the phone and the server count the same way; until then a shift whose
-totals differ is marked as differing because of the engine version. Stored shifts keep their
-figures. Run `milewage-cli recalc --dry-run` once to see which shifts the new rule would change
-(only shifts with GPS accuracy worse than 20 metres can). To apply it to one of them, use
+**After upgrading: the engine.** The track engine is now version 4 (ADR 0006). Install the phone
+app built from this release too, so the phone and the server count the same way; until then a
+shift whose totals differ is marked as differing because of the engine version. Stored shifts keep
+their figures. Run `milewage-cli recalc --dry-run` once to see which shifts the new rule would
+change (only shifts with GPS accuracy worse than 20 metres can). To apply it to one of them, use
 `POST /api/v1/shifts/<id>/recalculate`; a finalized shift is never changed.
 
-**After upgrading:** a mileage rate of your own set before this release becomes a rate "from the
-start" in Settings > Mileage rate. Nothing changes until you choose Your rate there; in a country
-without rates in MileWage it is used as before.
+**After upgrading: your rate.** A mileage rate of your own set before this release becomes a rate
+"from the start" in Settings > Mileage rate. The switch to use it is off, so nothing changes until
+you choose Your rate there; in a country without rates in MileWage it is used as before.
+
+**After upgrading: AI assistants.** A server set up before 0.2.0 that never made an assistant code
+has the AI assistant endpoint off again, as it was in 0.1.0. Set `MILEWAGE_MODULE_MCP=1` in
+`infra/docker/.env` to turn it on.
+
+### Not yet verified
+
+- The new Android app has never run on a real phone. Everything below was tested on a computer
+  only (unit tests, the screens drawn by Robolectric, light and dark).
+- The engine's maths on a phone's processor (ART on arm64) and on an arm64 server (a Raspberry
+  Pi): checked bit for bit against Node on x86-64 only (2,000 and 5,000 random shifts, 900,195 maths
+  calls, 250,000 distance pairs, 0 differences). The phone's Settings > Diagnostics > Mileage maths
+  check runs the conformance set on the phone itself.
+- GPS waking up after a stop (the motion sensor and the one-minute watch), recording through a
+  tunnel, after the app is killed, after a force stop and after a reboot.
+- Battery over a long shift, and over a day with the drive prompt on.
+- Phone makers' battery savers that stop background apps (Samsung, Xiaomi, Huawei and others).
+- The drive prompt's thresholds for a car, a bicycle or scooter, walking and a bus.
+- The QR scanner (CameraX and ZXing) on real cameras, and finding the server on the Wi-Fi (NSD) on
+  real routers; a phone without Google services.
+- The MileIQ file layout: read from a third-party reader and template, not from a real MileIQ
+  export.
+- The tax treatment of parking and tolls (deducted in full, beside the mileage rate), and every
+  mileage rate and tax figure, against the tax offices' own pages.
+- The PDF report in a real viewer and printer.
+- No real shift over a real Tailscale network, as before.
 
 ### Added
 
+- The native Android app (`apps/android`): first run with pairing (the server found on the home
+  Wi-Fi with a 6-digit link code, the QR scanner, a pasted code or address, Tailscale), one
+  permissions screen, Home with the summary, the sending banner, the setup checklist and Start
+  shift, the running shift with time, distance and the deduction so far, Shifts by week, a shift's
+  detail with the route sketch, trips (change a trip's kind and purpose, add a trip), stops,
+  odometer and notes, Settings, and Diagnostics with the mileage maths check. It runs on phones
+  without Google services: no Google Play Services, Firebase or ML Kit, and the build fails if one
+  appears.
+- Tracking on the phone's own location service: a GPS position every 5 seconds while moving, every
+  one stored; after 2½ minutes still it checks once a minute and wakes on the motion sensor;
+  recording resumes by itself after the app is closed, updated or the phone restarts. Network
+  positions (Wi-Fi, mobile masts) are never stored or counted.
+- Settings > "Ask to start a shift when I seem to be driving" on the phone, off by default: with
+  "Allow all the time" location it watches for a drive (a silent "Watching for drives"
+  notification) and asks "You seem to be driving. Start a shift?". Start counts from when the
+  drive began; Not now quiets it for that drive and an hour. It never starts a shift by itself.
+- The "Still on shift?" reminder on the phone after a stop of 30 minutes (15 to 120 minutes, or
+  off, in Settings), with Keep going and End shift. It never ends a shift by itself.
+- The phone asks for an odometer reading at the start of a shift when a check is due ("Save and
+  start" or "Start without it"), and for the end reading after it.
+- The phone's own reminder, "Shifts only on this phone", after 3 days, with no push service.
+- Platforms: a badge colour picker, with the colours drawn as Material tones (PL4b).
 - Places: save the places you stop at often, with a name, a centre, a radius (100 m unless you
   change it, 25 to 1000 m) and the label for stops there (pickup, dropoff or other). A stop inside
   a place shows its name and takes its label unless you labelled it yourself; the nearest centre
@@ -77,6 +132,26 @@ without rates in MileWage it is used as before.
 
 ### Changed
 
+- The look is Material Design 3 on the web and the phone, from one colour scheme generated from
+  Lane yellow, with earned and spent as matching extra colours (ADR 0010). The web's components
+  are restyled in place: Roboto Flex on the Material type scale, Material shapes, elevation and
+  motion, a ripple, one yellow action per screen, money colours on the headline figures. Material
+  Symbols replace the lucide icons; they are bundled, nothing is fetched.
+- Every text on the web follows the Material type scale, and dates and times follow the driver's
+  formats everywhere.
+- `npm run verify` checks the Android app too (`verify:android`: Gradle unit tests, Android lint and
+  the Google-free policy check), after `verify:js`; it needs JDK 17 and the Android SDK. CI runs the
+  two as separate jobs, and the Android job keeps the debug APK and the screenshots for a week.
+- `scripts/phone-release-build.sh` builds the native app (through `apps/android/build-release.sh`):
+  tests, lint and policy, then the signed APK, also named `milewage-<version>.apk`. Same flags,
+  same upload key, no Node needed.
+- The conformance fixtures moved to `packages/track-engine/conformance/fixtures.json`
+  (`npm run conformance:fixtures`); `npm test` fails while they are stale.
+  `npm run crosscheck:engine` re-checks the Kotlin engine against Node after a Node upgrade.
+- `npm run version:check` checks that the Android app reads `VERSION` and that its default
+  `versionCode` is not below the last released one.
+- Renovate covers the Android app's Gradle catalog and wrapper, stable releases only, in a pull
+  request of their own.
 - The server bundle's `require` banner aliases its import of `createRequire`, so a bundled ES
   module that imports it too (pdfkit does) no longer breaks the build.
 - Help: "Mileage rates and tax", "For your accountant", "Settings", "Shifts and trips" and
@@ -98,8 +173,18 @@ without rates in MileWage it is used as before.
   has a place to paste it. The page says not to paste the token into a chat or a ticket.
 - `MILEWAGE_TRUST_PROXY` accepts addresses separated by spaces as well as commas.
 
+### Removed
+
+- The Expo and React Native phone app (`apps/phone`), its jest tests and its Expo, React Native
+  and Hermes dependencies (854 packages left the lockfile). Its Kotlin modules live on in the
+  native app.
+- Android 7 (API 24 and 25): the app needs Android 8.0 or later.
+
 ### Fixed
 
+- The web ignored the 12-hour time setting in 14 files; every time now follows Settings > Time
+  format.
+- The shift timeline's time column no longer clips, and tax alerts name the platform.
 - The AI assistant endpoint no longer turns itself on when a server from 0.1.0 is upgraded: one
   set up before 0.2.0 that never made an assistant code keeps it off until
   `MILEWAGE_MODULE_MCP=1`. `docker-compose.release.yml` said the endpoint was off by default while

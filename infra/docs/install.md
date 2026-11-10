@@ -10,6 +10,7 @@ Setting it up with an AI coding agent? Give it [`agent-setup.md`](./agent-setup.
 
 - A host with Docker and the Docker Compose plugin (`docker compose version` works), 1 GB RAM, and a few GB of disk. The stack is capped at 192 MB for the API and 64 MB for Caddy.
 - A tailnet (a free Tailscale account) and the Tailscale app on your phone.
+- An Android phone with Android 8.0 or later. Google services are not needed.
 - About 10 minutes, most of it the first image build.
 
 ## 2. Start MileWage
@@ -94,7 +95,7 @@ The setup wizard's **Get the app** step and the Devices page show a QR code for 
 
 The server hands out whatever file is at `MILEWAGE_APK_PATH`, by default `milewage.apk` in the `config` volume, and reads `milewage.apk.json` beside it for the version. It looks at the file on every request, so a new one is offered at once, without a restart. With no file there, the download is not offered. To put the app built from the same checkout there:
 
-1. `scripts/phone-release-build.sh --publish <path>` (needs Node 22, JDK 17 and the Android SDK) builds the app and copies it to `<path>` with its `.json` (`MILEWAGE_APK_PUBLISH=<path>` does the same). To publish an app you already built: `scripts/publish-apk.sh apps/phone/android/app/build/outputs/apk/release/app-release.apk <path>`.
+1. `scripts/phone-release-build.sh --publish <path>` (needs JDK 17 and the Android SDK) builds the native Android app in `apps/android` and copies it to `<path>` with its `.json` (`MILEWAGE_APK_PUBLISH=<path>` does the same). To publish an app you already built, or the `milewage-<version>.apk` from a GitHub release: `scripts/publish-apk.sh apps/android/app/build/outputs/apk/release/app-release.apk <path>`.
    - For `npm run dev`: `<path>` is `.dev/config/milewage.apk`, and that is all.
    - For the Docker stack: publish to a folder of your choice, for example `/tmp/mw/milewage.apk`, then copy both files in:
      `docker compose -f infra/docker/docker-compose.yml cp /tmp/mw/milewage.apk api:/app/config/milewage.apk` and the same for `milewage.apk.json`.

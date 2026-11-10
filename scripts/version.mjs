@@ -1,8 +1,7 @@
 #!/usr/bin/env node
-// Keeps every package.json version equal to the VERSION file, and checks that the phone app config
-// (apps/phone/app.config.js, which reads VERSION itself) resolves to it.
+// Keeps every package.json version equal to the VERSION file, and checks that the Android app
+// (apps/android, which reads VERSION itself) still does and will install over the last release.
 // Usage: node scripts/version.mjs check|sync
-import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -28,42 +27,56 @@ export function packageFiles(root) {
   return files;
 }
 
-export const APP_CONFIG = join('apps', 'phone', 'app.config.js');
+export const GRADLE_APP = join('apps', 'android', 'app', 'build.gradle.kts');
 
-/**
- * The version the phone app config resolves to, evaluated in a separate node process with `env`
- * (so MILEWAGE_VERSION_CODE is checked as a build would see it). Throws when the config fails.
- */
-export function appConfigVersion(root, env = process.env) {
-  const file = join(root, APP_CONFIG);
-  const r = spawnSync(
-    process.execPath,
-    ['-e', 'process.stdout.write(JSON.stringify(require(process.argv[1]).expo.version))', file],
-    { env, encoding: 'utf8' },
-  );
-  if (r.status !== 0) {
-    const why = (r.stderr || '').split('\n').find((l) => /^\w*Error: /.test(l)) || r.stderr;
-    throw new Error(`does not load (${why.trim()})`);
-  }
-  return JSON.parse(r.stdout);
+/** Every `versionCode N` named in the released sections of CHANGELOG.md (not Unreleased). */
+export function releasedVersionCodes(root) {
+  const file = join(root, 'CHANGELOG.md');
+  if (!existsSync(file)) return [];
+  const text = readFileSync(file, 'utf8');
+  const released = text.slice(Math.max(0, text.search(/^## \[\d/m)));
+  return [...released.matchAll(/versionCode (\d+)/g)].map((m) => Number(m[1]));
 }
 
-/** Returns the files (package.json, the phone app config) whose version differs from VERSION. */
-export function check(root, env = process.env) {
+/**
+ * The native Android app (apps/android) takes versionName from VERSION itself, so there is nothing
+ * to sync. Checked instead: its Gradle file still reads ../../VERSION, and the versionCode it uses
+ * without MILEWAGE_VERSION_CODE is not below the last released one (CHANGELOG.md), so a build
+ * from this tree installs over every released APK. Returns problems in check()'s shape.
+ */
+export function androidProblems(root) {
+  const file = join(root, GRADLE_APP);
+  if (!existsSync(file)) return [];
+  const gradle = readFileSync(file, 'utf8');
+  const problems = [];
+  if (
+    !/file\("\.\.\/\.\.\/VERSION"\)/.test(gradle) ||
+    !/versionName = milewageVersion\b/.test(gradle)
+  )
+    problems.push({ file, found: 'a versionName not read from VERSION', expected: 'VERSION' });
+  const m = /isNullOrEmpty\(\)\) return@let (\d+)/.exec(gradle);
+  const last = Math.max(0, ...releasedVersionCodes(root));
+  if (!m) problems.push({ file, found: 'no default versionCode', expected: `at least ${last}` });
+  else if (Number(m[1]) < last)
+    problems.push({
+      file,
+      found: `default versionCode ${m[1]}`,
+      expected: `at least ${last}, the last released versionCode (CHANGELOG.md)`,
+    });
+  return problems;
+}
+
+/** Returns the package.json files whose version differs from VERSION, and the Android problems. */
+export function check(root) {
   const version = readVersion(root);
   const found = packageFiles(root).map((file) => ({
     file,
     found: JSON.parse(readFileSync(file, 'utf8')).version,
   }));
-  if (existsSync(join(root, APP_CONFIG))) {
-    const file = join(root, APP_CONFIG);
-    try {
-      found.push({ file, found: appConfigVersion(root, env) });
-    } catch (e) {
-      found.push({ file, found: `error: ${e.message}` });
-    }
-  }
-  return found.filter((p) => p.found !== version).map((p) => ({ ...p, expected: version }));
+  return [
+    ...found.filter((p) => p.found !== version).map((p) => ({ ...p, expected: version })),
+    ...androidProblems(root),
+  ];
 }
 
 /** Rewrites every package.json version to VERSION; returns the files changed. */
@@ -85,9 +98,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const mode = process.argv[2];
   if (mode === 'check') {
     const bad = check(root);
-    for (const b of bad) console.error(`${b.file}: version ${b.found} != VERSION ${b.expected}`);
+    for (const b of bad) console.error(`${b.file}: ${b.found}, expected ${b.expected}`);
     if (bad.length) {
-      console.error('Run "npm run version:sync" to fix.');
+      console.error(
+        'package.json versions: run "npm run version:sync". The Android default versionCode: raise it in apps/android/app/build.gradle.kts.',
+      );
       process.exit(1);
     }
     console.log(`version ok (${readVersion(root)})`);

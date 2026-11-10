@@ -56,7 +56,7 @@ For driving the phone missed, on an ended shift that is not Reviewed.
 
 The trip counts in your totals and shows as "edited" in the timeline.
 
-On the phone, open Shifts, then the shift. Under Corrections, "Add a trip" takes a distance only and counts it as active.
+On the phone, open Shifts, then an ended shift, and tap "Add a trip". It takes a distance only, is added at the end of the shift and counts as business. Its purpose is "Business driving"; change it with Change.
 
 ## Changing or deleting a trip you added
 
@@ -73,7 +73,7 @@ There is no way to join two trips. A recorded trip is cut where a stop changes t
 
 ## Changing a trip
 
-A trip edit changes a trip's kind: active, deadhead or personal. In this version you do it on the phone, not on the web. Open Shifts, then the shift. Each trip has a button such as "change to Deadhead"; each tap moves it on to the next kind. The change is sent to the server.
+A trip edit changes a trip's kind and its purpose. In this version you do it on the phone, not on the web. Open Shifts, then the shift. Each trip has a Change button. It opens "Trip at" the trip's start time, with the kinds: "Business, on an order" (active), "Business, between orders" (deadhead) and Personal; with stop detection off, Business and Personal. The purpose is a short text, for example "Deliveries". Save sends the change to the server.
 
 A trip edit never changes the trip's distance or times. It is kept every time the shift is worked out again. If a later recalculation no longer finds that trip, the checks say "A trip edit no longer matches a trip." Look at the timeline and make the edit again on the trip that replaced it.
 

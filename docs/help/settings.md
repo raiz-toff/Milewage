@@ -1,5 +1,5 @@
 ---
-summary: Every section of the Settings page in plain words, in the order the page shows them, and the account menu.
+summary: Every section of the Settings page in plain words, in the order the page shows them, the account menu, and the phone app's own Settings.
 group: using
 order: 110
 ---
@@ -46,7 +46,7 @@ A deduction at your rate is always called your rate. See [Your mileage rate](mil
 
 Shown when the notifications module runs. Under "Tell me about" are switches for shift reminders, goals and progress, tax dates, streak, backup problems, and the "Shifts not yet sent (on the phone)".
 
-Alerts appear on the Notifications page, behind the bell at the top. The two switches marked "on the phone" do nothing yet: the phone app sends no reminders of its own in this version. Its home screen still says when shifts are on phone only.
+Alerts appear on the Notifications page, behind the bell at the top. The two switches marked "on the phone" do not reach the phone yet. The phone app has its own reminder when shifts have been only on the phone for 3 days or more ("Shifts only on this phone"); to stop it, turn off its Reminders channel in the phone's notification settings for MileWage. Its home screen also says when shifts are on phone only.
 
 ## App on this device
 
@@ -112,3 +112,18 @@ The menu at the foot of the sidebar shows your name and holds:
 - **Settings**: opens Profile and region.
 - **Privacy**: the Privacy page.
 - **Sign out**.
+
+## On the phone
+
+The phone app has its own Settings tab. Units, currency, time zone and time format are not set there: they come from your server, and the phone shows them under "Units and formats". Change them on the web.
+
+- **Server**: the server this phone sends to, both its addresses, and Check, which tries the connection now. "Connect to a different server" disconnects this phone; shifts not yet sent stay on it, and it asks you to send them first.
+- **Permissions**: the same screen as at first run, to fix location, notifications or battery.
+- **Ask to start a shift when I seem to be driving**: off unless you turn it on. When it is on and no shift runs, MileWage watches for a drive and asks "You seem to be driving." with Start and Not now. Start begins a shift that counts from when the drive began. Not now quiets it for that drive and an hour. It needs location "Allow all the time", because it runs with no app on screen, and it shows a silent notification, "Watching for drives", while it is on. It uses a network position about once a minute and short GPS checks, so it costs some battery.
+- **"Still on shift?" reminder**: during a shift, asks once when you have not moved for this long: 15, 30 (the default), 45, 60, 90 or 120 minutes, or Off. Keep going carries on; End shift ends it. It never ends a shift by itself.
+- **Saving battery while stopped**: always on. After 2½ minutes without moving, MileWage checks your position once a minute instead of every 5 seconds, and records fully again as soon as you move.
+- **Sending**: what is not yet on the server, and Send now.
+- **Appearance**: Theme (Follow the phone, Light or Dark) and "Use wallpaper colours" (Android 12 or later) instead of MileWage yellow.
+- **Help**: these pages, opened on your server in the browser.
+- **Diagnostics**: the mileage maths check ("Passed. This phone calculates distances exactly like your server."), versions and states, and "Copy diagnostics summary" for a bug report. The summary never holds a location.
+- **About**: the app's version and build, the mileage engine's version, the open-source licences and the source code.

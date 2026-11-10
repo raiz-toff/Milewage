@@ -4,7 +4,7 @@
 #   scripts/phone-keystore.sh [--out PATH] [--dname "CN=..., O=..."]
 # Writes the keystore to --out (default $HOME/.milewage/upload.keystore, never inside the repository)
 # and $HOME/.milewage/keystore.env (or MILEWAGE_KEYSTORE_ENV), which scripts/phone-release-build.sh
-# reads. Refuses to overwrite either file.
+# (through scripts/phone-signing-env.sh) reads. Refuses to overwrite either file.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"

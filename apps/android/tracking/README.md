@@ -72,12 +72,12 @@ walking and jogging (up to 12 km/h) never do. The price is a prompt on a bus or 
 
 ## Provider strategy
 
-| State                     | Requests                                                                                   |
-| ------------------------- | ------------------------------------------------------------------------------------------ |
-| Shift, FULL               | `gps`, 5 s, no distance filter, batching up to 15 s (Android 12+ chips that support it)   |
-| Shift, LOW                | `gps` 60 s (AOSP duty-cycles GNSS at 10 s and over), `network` 60 s, `passive`, motion sensor |
-| Detection idle            | `network` 60 s, `passive`, motion sensor; `gps` 120 s only if the phone has neither      |
-| Probe / prompt up         | `gps` 3 s / 5 s                                                                           |
+| State             | Requests                                                                                      |
+| ----------------- | --------------------------------------------------------------------------------------------- |
+| Shift, FULL       | `gps`, 5 s, no distance filter, batching up to 15 s (Android 12+ chips that support it)       |
+| Shift, LOW        | `gps` 60 s (AOSP duty-cycles GNSS at 10 s and over), `network` 60 s, `passive`, motion sensor |
+| Detection idle    | `network` 60 s, `passive`, motion sensor; `gps` 120 s only if the phone has neither           |
+| Probe / prompt up | `gps` 3 s / 5 s                                                                               |
 
 - Recording uses the GNSS provider, not `FUSED_PROVIDER` (API 31+): fused "may combine inputs from
   several other location providers", is Google's provider on Google phones and AOSP's elsewhere,

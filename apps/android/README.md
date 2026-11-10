@@ -1,7 +1,8 @@
 # MileWage for Android (native)
 
-The native Android app: Kotlin, Jetpack Compose and Material 3. It replaces the Expo app in
-`apps/phone` and installs over it (same application id `app.milewage.phone`, same upload key).
+The native Android app: Kotlin, Jetpack Compose and Material 3. It replaced the Expo app (removed
+from the repository on 2026-11-10) and installs over it (same application id `app.milewage.phone`,
+same upload key). It starts empty: the driver pairs it again (see `data/README.md`).
 The engine port, storage, tracking, sending and every screen are in: first run with pairing (QR
 scanner, link code on the home Wi-Fi, a pasted code or address, Tailscale), the setup steps, the
 permissions ladder, Home, the running shift, Shifts, a shift's detail, Settings and Diagnostics.
@@ -23,21 +24,32 @@ and tests on its own (`./gradlew :core:test`), so several people can work in par
 
 ## Build
 
-JDK 17 and the Android SDK (`ANDROID_HOME`, platform 37). From `apps/android`:
+JDK 17 and the Android SDK (`ANDROID_HOME`, default `$HOME/android-sdk`, platform 37). No emulator
+in this project's workflow: tests run on the JVM (Robolectric for the screens) and the owner tests
+on a real phone. From `apps/android`:
 
 ```sh
-./gradlew assembleDebug        # app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleDebug        # app/build/outputs/apk/debug/app-debug.apk (debug key)
 ./gradlew test lint            # unit tests of every module, Android lint
-./build-release.sh             # tests, lint, then the signed release APK
+./build-release.sh             # tests, lint, policy, then the signed release APK
 ```
 
-`build-release.sh` signs with the upload key when `$HOME/.milewage/keystore.env` exists (made once by
-`scripts/phone-keystore.sh`, read by `scripts/phone-signing-env.sh`, as for the Expo app), else with
-the debug key. `--publish PATH` copies the APK where the server hands it out.
+From the repository root, `npm run verify:android` runs the unit tests, lint and the policy check of
+both variants (`scripts/verify-android.sh`, which stops with the fix when JDK 17 or the SDK is
+missing); `npm run verify` runs it after the JavaScript checks. CI runs the same, plus
+`assembleDebug` and the screenshots, in the `android` job of `.github/workflows/verify.yml`.
+
+The release APK is built with `scripts/phone-release-build.sh` (it runs `build-release.sh`), on the
+owner's machine only, because CI never holds the upload key. It signs with the upload key when
+`$HOME/.milewage/keystore.env` exists (made once by `scripts/phone-keystore.sh`, read by
+`scripts/phone-signing-env.sh`), else with the debug key. It writes
+`app/build/outputs/apk/release/app-release.apk` and a copy named `milewage-<VERSION>.apk` for the
+GitHub release; `--publish PATH` copies the APK where the server hands it out.
 
 - `versionName` is the root `VERSION` file.
-- `versionCode` is `MILEWAGE_VERSION_CODE` (default 3, above the Expo app's last release, 2). Raise
-  it for every build handed out.
+- `versionCode` is `MILEWAGE_VERSION_CODE`, or the default in `app/build.gradle.kts` (3: the Expo
+  app's last release was 2). `npm run version:check` fails when the default is below the last
+  `versionCode` named in a released section of `CHANGELOG.md`. Raise it for every build handed out.
 - minSdk 26 (Android 8.0), targetSdk 36, compileSdk 37. Library versions are in
   `gradle/libs.versions.toml`: latest stable only, no alpha, beta or rc.
 

@@ -1,4 +1,4 @@
-// The shape of .github/workflows/verify.yml: what runs, when, and on which Node.
+// The shape of .github/workflows/verify.yml and release.yml: what runs, when, and on which Node.
 import { readFileSync } from 'node:fs';
 import { URL } from 'node:url';
 import { parse } from 'yaml';
@@ -19,17 +19,46 @@ describe('.github/workflows/verify.yml', () => {
     expect(wf.permissions).toEqual({ contents: 'read' });
   });
 
-  test('verify installs from the lockfile on the Node of .nvmrc and runs the contract', () => {
+  test('verify installs from the lockfile on the Node of .nvmrc and runs the JavaScript half', () => {
     const job = wf.jobs.verify;
     const setup = job.steps.find((s) => String(s.uses ?? '').startsWith('actions/setup-node@'));
     expect(setup.with).toEqual({ 'node-version-file': '.nvmrc', cache: 'npm' });
     expect(job.steps.map((s) => s.run).filter(Boolean)).toEqual([
       'node -v',
       'npm ci',
-      'npm run verify',
+      'npm run verify:js',
     ]);
     expect(job['continue-on-error']).toBeUndefined();
     expect(job['timeout-minutes']).toBeGreaterThanOrEqual(20);
+  });
+
+  test('the two jobs together run the whole contract: npm run verify is verify:js then verify:android', () => {
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    expect(pkg.scripts.verify).toBe('npm run verify:js && npm run verify:android');
+    expect(pkg.scripts['verify:android']).toBe('bash scripts/verify-android.sh');
+    const runs = wf.jobs.android.steps.map((s) => s.run).filter(Boolean);
+    expect(runs.some((r) => r.startsWith('bash scripts/verify-android.sh'))).toBe(true);
+    expect(runs.find((r) => r.startsWith('bash scripts/verify-android.sh'))).toContain(
+      'assembleDebug',
+    );
+  });
+
+  test('the Android job: JDK 17, Gradle caching, the SDK platform, artifacts, no signing secrets', () => {
+    const job = wf.jobs.android;
+    const uses = job.steps.map((s) => String(s.uses ?? '')).filter(Boolean);
+    const java = job.steps.find((s) => String(s.uses ?? '').startsWith('actions/setup-java@'));
+    expect(java.with).toEqual({ distribution: 'temurin', 'java-version': '17' });
+    expect(uses.some((u) => u.startsWith('gradle/actions/setup-gradle@'))).toBe(true);
+    expect(job.steps.map((s) => s.run ?? '').join('\n')).toContain('platforms;android-37.0');
+    const upload = job.steps.find((s) =>
+      String(s.uses ?? '').startsWith('actions/upload-artifact@'),
+    );
+    expect(upload.with.path).toContain('app-debug.apk');
+    // Every action is pinned to a version tag, as the rest of the file.
+    for (const u of uses) expect(u).toMatch(/@v\d+$/);
+    // The upload key never reaches CI: nothing here reads a secret.
+    expect(JSON.stringify(job)).not.toMatch(/secrets\.|MILEWAGE_KEY/);
+    expect(job['timeout-minutes']).toBeGreaterThanOrEqual(30);
   });
 
   test('the audit checks production dependencies for high and critical only, and does not block yet', () => {
@@ -78,5 +107,10 @@ describe('.github/workflows/release.yml', () => {
     expect(builds[1].with.tags).toContain('/caddy:${{ env.TAG }}');
     expect(builds[1].with.tags).toContain('/caddy:latest');
     expect(rel.jobs.images.env.IMAGE_REPO).toBe('ghcr.io/${{ github.repository_owner }}/milewage');
+  });
+
+  test('builds no APK: the signed app is built on the owner’s machine and attached by hand', () => {
+    expect(Object.keys(rel.jobs)).toEqual(['images']);
+    expect(JSON.stringify(rel)).not.toMatch(/gradlew|assembleRelease|MILEWAGE_KEY/);
   });
 });

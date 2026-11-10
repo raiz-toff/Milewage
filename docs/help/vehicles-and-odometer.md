@@ -33,10 +33,11 @@ Vehicles are never deleted, because shifts in your records point at them. Choose
 
 ## Odometer readings
 
-MileWage counts distance from the GPS track. An odometer reading is evidence beside it, never a replacement for it. All readings are optional. You can note them in four places:
+MileWage counts distance from the GPS track. An odometer reading is evidence beside it, never a replacement for it. All readings are optional. You can note them in five places:
 
-- **After a shift ends**, the phone sometimes shows "Odometer check". It asks in each new month, and when 14 days have passed since that vehicle's last check. The reading is saved as the shift's end reading. Not now puts it off until the next one is due.
-- **On the phone**, open Shifts, then the shift. Under Corrections, type the End odometer.
+- **When you start a shift**, the phone sometimes shows "Odometer check" first. It asks in each new month, and when 14 days have passed since that vehicle's last check. "Save and start" saves the reading as the shift's start reading; "Start without it" starts the shift without one and puts the question off until the next one is due.
+- **After a shift ends**, when you gave a start reading or a check is due, the phone asks for the end reading. "Save reading" saves it; Not now skips it.
+- **On the phone**, open Shifts, then the shift. Under Odometer, tap Edit next to Start reading or End reading.
 - **On a shift page on the web**, under Odometer, type the Start or End reading and choose Save.
 - **On the Odometer page on the web**, under "Add a tax-year reading", choose Year start or Year end, the date and the reading. Shift readings are listed below, each with a link to its shift.
 

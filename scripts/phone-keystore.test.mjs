@@ -91,7 +91,7 @@ describe('scripts/phone-keystore.sh', () => {
   });
 
   test('refuses to write the key inside the repository', () => {
-    const out = join(repo, 'apps', 'phone', 'never.keystore');
+    const out = join(repo, 'apps', 'android', 'never.keystore');
     const r = run(['--out', out]);
     expect(r.status).toBe(1);
     expect(r.stderr).toMatch(/inside the repository/);
@@ -120,7 +120,7 @@ describe('scripts/phone-signing-env.sh', () => {
   test('without a settings file the release build keeps the debug key', () => {
     const r = probe();
     expect(r.status, r.stderr).toBe(0);
-    expect(r.stdout).toMatch(/Expo DEBUG key/);
+    expect(r.stdout).toMatch(/Android DEBUG key/);
     expect(r.stdout).toMatch(/^PATH_IS=$/m);
   });
 
@@ -150,10 +150,12 @@ describe('scripts/phone-signing-env.sh', () => {
     expect(r.stderr).toMatch(/MILEWAGE_KEYSTORE_PASSWORD is not set/);
   });
 
-  test('the release build script sources it before Gradle runs', () => {
-    const build = readFileSync(new URL('./phone-release-build.sh', import.meta.url), 'utf8');
+  test('the release build sources it before Gradle runs, and the release script runs that build', () => {
+    const build = readFileSync(join(repo, 'apps', 'android', 'build-release.sh'), 'utf8');
     const sourced = build.indexOf('milewage_signing_env');
     expect(sourced).toBeGreaterThan(0);
     expect(sourced).toBeLessThan(build.indexOf('./gradlew'));
+    const release = readFileSync(new URL('./phone-release-build.sh', import.meta.url), 'utf8');
+    expect(release).toMatch(/^exec "\$ROOT\/apps\/android\/build-release\.sh" "\$@"$/m);
   });
 });

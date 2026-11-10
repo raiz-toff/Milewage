@@ -23,6 +23,18 @@ test('minor and patch updates come in one group; majors are left out of it', () 
   ).toBe(false);
 });
 
+test('the Android app’s Gradle catalog and wrapper are covered: stable only, in their own group', () => {
+  const { packageRules } = JSON.parse(text);
+  const android = packageRules.find((r) => (r.matchManagers ?? []).includes('gradle'));
+  expect(android).toBeDefined();
+  expect([...android.matchManagers].sort()).toEqual(['gradle', 'gradle-wrapper']);
+  expect(android.ignoreUnstable).toBe(true);
+  expect([...android.matchUpdateTypes].sort()).toEqual(['minor', 'patch']);
+  expect(android.groupName).not.toBe('minor and patch updates');
+  // config:recommended keeps the gradle managers on; nothing narrows enabledManagers.
+  expect(JSON.parse(text).enabledManagers).toBeUndefined();
+});
+
 test('the README says Renovate only runs when a bot is pointed at the project', () => {
   const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
   expect(readme).toMatch(/renovate\.json/);

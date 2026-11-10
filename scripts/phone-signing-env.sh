@@ -1,9 +1,9 @@
-# Sourced by scripts/phone-release-build.sh: picks the key the release APK is signed with.
-# Reads MILEWAGE_KEYSTORE_ENV (default $HOME/.milewage/keystore.env, written by
-# scripts/phone-keystore.sh) when it exists, then exports the four MILEWAGE_KEY* variables that the
-# Gradle signing config (apps/phone/plugins/withReleaseSigning.js) reads. Variables already set in
-# the environment (for example CI variables) are used when there is no file.
-# Without either, the release APK is signed with the Expo debug key, as before.
+# Sourced by apps/android/build-release.sh (which scripts/phone-release-build.sh runs): picks the
+# key the release APK is signed with. Reads MILEWAGE_KEYSTORE_ENV (default
+# $HOME/.milewage/keystore.env, written by scripts/phone-keystore.sh) when it exists, then exports
+# the four MILEWAGE_KEY* variables that the Gradle signing config (apps/android/app/build.gradle.kts)
+# reads. Variables already set in the environment are used when there is no file.
+# Without either, the release APK is signed with the Android debug key.
 
 milewage_signing_env() {
   local file="${MILEWAGE_KEYSTORE_ENV:-$HOME/.milewage/keystore.env}"
@@ -17,7 +17,7 @@ milewage_signing_env() {
     return 1
   fi
   if [[ -z "${MILEWAGE_KEYSTORE_PATH:-}" ]]; then
-    echo "Signing with the Expo DEBUG key: no upload key ($file not found). Not for Google Play."
+    echo "Signing with the Android DEBUG key: no upload key ($file not found). Not for Google Play."
     return 0
   fi
   local v

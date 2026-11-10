@@ -6,3 +6,5 @@ coverage
 .claude
 PROGRESS.md
 TODO.md
+# The native Android app is built with Gradle on the owner's machine, never in the images.
+apps/android

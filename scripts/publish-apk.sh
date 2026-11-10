@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Puts a built phone app where the server hands it out (plan 24 Q2, infra/docs/install.md section 3a),
-# with a small `<destination>.json` beside it: the app's version (the VERSION file, which
-# apps/phone/app.config.js reads) and its build time. The server reads both on every request, so
+# with a small `<destination>.json` beside it: the app's version (the VERSION file, which the
+# Android build reads as versionName) and its build time. The server reads both on every request, so
 # the new file is offered without a restart.
 # Usage: scripts/publish-apk.sh <app-release.apk> <destination, e.g. .dev/config/milewage.apk>
 set -euo pipefail

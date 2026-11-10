@@ -4,6 +4,59 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
 
 ## Open
 
+- [ ] **Field test of the native Android app** (owner, on a real phone; 2026-11-10). Nothing in
+      `apps/android` has run on a phone yet. Build with `scripts/phone-release-build.sh`, then in
+      this order:
+  - [ ] Before installing, open the old Expo app, let it send everything and end any shift.
+        Install the new APK over it: it installs (same id and key) and starts empty. Pair it again;
+        revoke the old entry on the Devices page.
+  - [ ] First run on the home Wi-Fi: the server appears under "On this Wi-Fi", the 6-digit code
+        links it from the Devices page. Then unpair (Settings > "Connect to a different server")
+        and pair with the QR scanner (try the torch), and once with "Paste the code".
+  - [ ] Scan the QR with the phone's camera app, open the page, "Open in the MileWage app":
+        "Connect to this server?", and Settings shows both addresses.
+  - [ ] The permissions screen: each row's button opens the right system page, "Allow all the
+        time" comes back as Allowed, the battery list, Next leads to "You're ready". Skip one:
+        Home's checklist shows it.
+  - [ ] A shift in a car: 5 km with stops. The notification distance grows and is close to the
+        final total; the odometer prompt at the start when due; End shift with the confirm; the end
+        reading. The shift reaches the web within the send round.
+  - [ ] A shift on a bicycle or scooter: 20 minutes with traffic lights.
+  - [ ] A 3-minute stop and a 30-minute stop: the stops show; the drive away is recorded from its
+        start (no long straight line out of the stop; note how fast it woke). "Still on shift?"
+        comes once in the 30-minute stop: try Keep going, and End shift on a second one.
+  - [ ] A tunnel or underground car park: recording carries on after it, a straight line through.
+  - [ ] Kill the app mid-shift (swipe from recents; then force stop from Settings): recording
+        resumes after the swipe; after a force stop, opening the app resumes it.
+  - [ ] Reboot mid-shift: recording resumes after unlock without opening the app.
+  - [ ] Location switch off for a minute mid-shift, then on: recording resumes.
+  - [ ] A shift in airplane mode, then reconnect: "Offline. Saved on your phone.", then sent.
+        Add a trip on the phone's shift detail: it reaches the web. "Deduction so far" with a
+        personal trip is lower than without.
+  - [ ] Revoke the phone on the web: "This phone was removed from your server." and "Pair this
+        phone"; pair again: every queued shift is sent within a minute. After a server restore:
+        the banner and the resend of older shifts.
+  - [ ] Settings > Diagnostics shows "Mileage maths check: Passed".
+  - [ ] The drive prompt: turn it on with no shift; drive off: the question comes within about a
+        minute (car) or 4 minutes (bicycle); Start begins a shift from the drive's start. Next day
+        "Not now": no second prompt on that drive or within the hour. Walking: no prompt; a bus may.
+  - [ ] Battery: the share used over a long shift, and over a day with the drive prompt on.
+  - [ ] A phone without Google services (LineageOS without microG, or GrapheneOS), if one is at
+        hand: pairing, a car shift, a stop, a reboot, the drive prompt.
+  - [ ] Compare the phone's total for each test shift with the server's: they match, or the shift
+        says why not.
+- [ ] **Owner decisions left open by the native app and the openmiles features** (2026-11-10).
+      (1) Joining two trips: a new engine edit kind, engine version 5 (item below). (2) A
+      device-scoped endpoint so the phone can add parking and tolls and read your own rates
+      (`POST /expenses` and `GET /own-mileage-rates` are web-session only). (3) Country mileage
+      rates on the phone: its estimate for unsent shifts still takes the rate from `GET /settings`.
+      (4) Does a server on ARM (Raspberry Pi) give the same bits? Run the two `vite-node` steps of
+      `npm run crosscheck:engine` on the Pi and the Gradle check here
+      (`apps/android/engine/README.md`). (5) Font coverage of the PDF (Roboto: Latin, Greek,
+      Cyrillic, Vietnamese) for names in other scripts, such as Arabic, Hindi or Chinese. (6) Remove the `brotli` decoder from the server bundle
+      (1.36 MB; item (6) below). (7) The warm cream surface tint of the Material scheme: keep it or
+      go neutral. (8) The GB tax year (item below, still open). (9) Kotlin Multiplatform and the
+      iPhone app: when to start.
 - [ ] **Findings from the Help writers, not yet fixed** (2026-11-09; details in PROGRESS.md, DG0 to
       DG2). (a) Done 2026-11-10: the owner decided a driver may override the pack's rate, with
       dates; Settings > Mileage rate (ADR 0007). (b) The unverified notice shows on the Tax page and in the tax summary export
@@ -12,7 +65,7 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
       Repeats on a saved expense hides it from the list and totals; repeating expenses have no list,
       edit or stop on the web. (e) `tax_credit_cents` has no web field. (f) Analytics: "Gross" is after
       app fees, "Per hour (online time)" never shows, pay per mile is computed but never shown.
-      (g) The platform colour the API accepts has no picker (also PL4b above).
+      (g) Done 2026-11-10: the platform badge colour picker (PL4b).
 - [ ] **Flaky under load: `infra/install.test.mjs`** (2026-11-09). In one full `npm run verify` on a
       busy machine, "no, --no-tailscale, not signed in, or certificates off" saw the "not signed in"
       output instead of "HTTPS Certificates"; alone it passes 12 of 12 and the files have not changed
@@ -22,23 +75,12 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
       through the side list, a long page's anchors, Settings > Help pages off and on. No browser was
       available to the builder. Then decide on more Help links (Tax, Expenses, Backups, Settings >
       Tracking); the pages exist.
-- [ ] **Try the sending module on the phone** (AR5, 2026-11-09). (1) Add a trip on the phone's
-      shift detail: it must reach the web (before, every phone-added trip was parked). (2) End a
-      shift with the server reachable: the home screen sends it within the round. (3) Offline: "Offline.
-      Saved on your phone." then sent when back. (4) After a server restore, the banner and the
-      resend of older shifts. (5) "Deduction so far" with a personal trip is lower than without.
 - [ ] **Great Britain tax year** (AR4, 2026-11-09). Only the mileage rate tier follows 6 April; the
       deduction method, double-counted expenses, the tax report, exports, analytics set-aside, goals
       and the odometer year check use the calendar year. Decide whether GB figures should follow the
       6 April year everywhere (then the Tax page, exports and `expense-math.ts` change together).
 - [ ] **Run `milewage-cli recalc` once after upgrading to 0.2.0** if shifts were ever created by CSV import
       (AR4): earlier imports left `calculated_at` empty, so their trips never reached the phone.
-- [ ] **Try the re-pairing fixes on the phone** (AR3, 2026-11-09). (1) Revoke the phone on the web,
-      pair again with a new QR code: every queued shift (create and end, not only points) should be
-      sent within a minute. (2) The same with a link code on the home Wi-Fi. (3) Scan the QR with the
-      camera app, open the page, "Open in the MileWage app": Settings should show both addresses.
-      (4) After the "different MileWage server" banner, re-pair to the new server: sending should
-      resume without a restart.
 - [ ] **Make Node 22.22 the default on `coder`** (owner, 2026-11-08). `node --version` is v24.15.0;
       `.nvmrc` says 22.22.0. Verify runs use Node 22 only because `~/.local/node22/bin` is put first
       on `PATH`; a shell without it runs Node 24. Install 22.22 as the default (nvm is not
@@ -76,14 +118,6 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
       on Google Play" button with Google's official badge file (A2).
 - [ ] A public install-guide URL for the phone's "Set up your server" screen (currently hidden;
       PO1/X2).
-- [ ] **OS notifications on the phone need a backend** (N1, 2026-11-08). `expo-notifications` was
-      installed, inspected and removed: it always brings Firebase Cloud Messaging and Google's
-      datatransport logging, which the Q1 decision (plan 24 section 6) ruled out for the camera. The
-      port, the unsynced-data reminder logic and the tests are in place; nothing fires on a device
-      until the owner picks: (a) accept Firebase, (b) a small local Expo module on
-      `NotificationManagerCompat` plus an inexact `AlarmManager` alarm (recommended, same route as
-      the ZXing scanner), or (c) exclude Firebase in Gradle (unsupported by Expo).
-
 - [ ] **Your rate, the PDF report, parking and tolls: owner checks** (2026-11-10). (1) Your rate
       is one flat amount for cars, vans and motorcycles together, with no tier and no tax year of
       its own (ADR 0007); say if a per-vehicle rate is wanted. (2) Parking and Tolls stay
@@ -116,6 +150,9 @@ Added 2026-11-08 by the integration pass (details in `progress.md` under each PR
   names no developer contact; HSTS is one year without `includeSubDomains`; the page suggests
   `tailscale serve reset`, which clears every serve setting on that machine.
 - C1 releases: tags are `v<VERSION>`; GitHub Actions builds the images on the tag; the APK is built
-  by hand, and `MILEWAGE_VERSION_CODE` must be raised for every build uploaded (v0.1.0 is 1);
-  Renovate groups Expo and React Native minors with everything else.
-- N1 phone: the unsynced-data reminder has no on/off switch yet (plan 15 section 13 names one).
+  by hand, and `MILEWAGE_VERSION_CODE` must be raised for every build uploaded (v0.1.0 is 1,
+  v0.2.0 is 2; the native app's default is 3); Renovate puts the Android Gradle updates in a pull
+  request of their own.
+- N1 phone: the unsynced-data reminder has no switch in the app; the native app posts it on its own
+  Reminders channel, which the driver can turn off in Android's settings, and the web's "on the
+  phone" switches do not reach it yet.

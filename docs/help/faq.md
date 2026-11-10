@@ -8,11 +8,13 @@ order: 20
 
 ## How much battery does it use?
 
-The target is under 3.5 percent per hour of tracking. It has not been measured on a real phone yet, so treat that as a goal, not a result.
+The target is under 3.5 percent per hour of tracking. It has not been measured on a real phone yet, so treat that as a goal, not a result. While you are stopped for more than 2½ minutes, the phone checks your position once a minute instead of every 5 seconds. The drive prompt, if you turn it on, costs some battery even with no shift running.
 
 ## Does it track me when I am off shift?
 
 No. Nothing records until you start a shift, and it stops when you end it.
+
+If you turn on Settings > "Ask to start a shift when I seem to be driving" on the phone, it checks now and then whether you are driving, so it can ask. While it is on, a "Watching for drives" notification shows. Those fixes stay on the phone and are thrown away unless you tap Start. It is off unless you turn it on.
 
 ## Who can see my data?
 
@@ -26,7 +28,7 @@ Your server also serves a Privacy page at `/privacy`. Open it from the account m
 
 ## Which countries work?
 
-Canada, the United States and Great Britain have country packs, and they are the only countries you can choose today. All of their rates are unverified. Only Canada has a tax estimate. The field for your own mileage rate appears only for a country without a rate, so it does not appear yet.
+Canada, the United States and Great Britain have country packs, and they are the only countries you can choose today. All of their rates are unverified. Only Canada has a tax estimate. You can use your own mileage rate instead of the country's from a date you choose, in Settings > Mileage rate. See [Mileage rates and tax](mileage-rates-and-tax.md).
 
 ## Can I use it without Tailscale?
 
@@ -40,7 +42,11 @@ That is the aim. Each release builds the server images for arm64 as well as amd6
 
 ## Does it work on an iPhone?
 
-Not yet. The phone app is Android only.
+Not yet. The phone app is Android only, for Android 8.0 or later. An iPhone app is planned.
+
+## Does it need Google services on the phone?
+
+No. The phone app uses the phone's own location service and reads QR codes itself. Phones without Google services, such as LineageOS or GrapheneOS, work. It has not yet been tried on one.
 
 ## How do I update?
 

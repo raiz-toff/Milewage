@@ -65,7 +65,7 @@ A period in which the phone itself stopped or restarted tracking during a shift.
 _Avoid_: pause, outage
 
 **Track engine**:
-The one shared piece of code the phone and the server both run to turn a track into totals, trips and stops. It uses whole-number maths, so both get the same answer.
+The code that turns a track into totals, trips and stops. The server runs it in TypeScript (`packages/track-engine`); the phone runs a Kotlin port that gives the same bytes. It uses whole-number maths for its results, so both get the same answer.
 _Avoid_: algorithm, calculator, mileage engine
 
 **Engine version**:
@@ -79,6 +79,14 @@ _Avoid_: live total, live mileage
 **Shift notification**:
 The phone's ongoing notification while a shift runs, showing the live distance.
 _Avoid_: pill, overlay, floating bubble
+
+**Drive prompt**:
+The phone's opt-in question "You seem to be driving. Start a shift?", asked when no shift runs and the phone seems to be driving. It never starts a shift by itself. Off unless the driver turns it on in the phone's Settings.
+_Avoid_: auto-start, drive detection (in driver text), trip detection
+
+**"Still on shift?" reminder**:
+The phone's question during a shift after a long time without moving. It never ends a shift by itself.
+_Avoid_: auto-stop, idle timeout
 
 **Flag**:
 A fact about a shift's data that the driver should know, such as a gap, an interruption or a phone clock that was off. A flag never changes a distance.

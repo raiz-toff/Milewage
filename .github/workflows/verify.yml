@@ -1,6 +1,8 @@
-# The contract is `npm run verify`. CI runs exactly that on every pull request and on main.
-# infra/github-actions.test.mjs checks the shape of this file. Release builds (the server and Caddy
-# images, the signed APK) are not set up here yet; see TODO.md.
+# The contract is `npm run verify`: `verify:js` (typecheck, lint, version and OpenAPI checks, every
+# vitest test) and `verify:android` (Gradle unit tests, Android lint and the manifest and dependency
+# policy of apps/android). CI runs the two halves as two jobs, on every pull request and on main.
+# infra/github-actions.test.mjs checks the shape of this file. Release builds are in release.yml;
+# the signed APK is built on the owner's machine, never here (the upload key stays off CI).
 name: verify
 
 on:
@@ -27,7 +29,34 @@ jobs:
           cache: npm
       - run: node -v
       - run: npm ci
-      - run: npm run verify
+      - run: npm run verify:js
+
+  # apps/android: JDK 17 and the Android SDK preinstalled on the runner image, with the platform the
+  # app compiles against added. Gradle's caches through gradle/actions/setup-gradle. The debug APK
+  # (debug key, not for handing out) and the screen screenshots are kept for a week.
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Android SDK platform 37
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'platforms;android-37.0' > /dev/null
+      - run: bash scripts/verify-android.sh assembleDebug :app:recordRoborazziDebug
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: android-debug
+          retention-days: 7
+          if-no-files-found: ignore
+          path: |
+            apps/android/app/build/outputs/apk/debug/app-debug.apk
+            apps/android/app/build/screens/
+            apps/android/**/build/reports/
 
   # Known vulnerabilities in the production dependencies, high and critical only. It reports but
   # does not block yet (baseline on 2026-11-08: 2 low and 9 moderate, none high); delete

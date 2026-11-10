@@ -19,8 +19,12 @@ const bad = [
   "export const a = (s: Set<string>) => s.has('NP');",
 ];
 
-test.each(bad)('rejected in server, web and phone code: %s', async (code) => {
-  for (const file of ['apps/server/src/bad.ts', 'apps/web/src/bad.tsx', 'apps/phone/src/bad.ts'])
+test.each(bad)('rejected in server, web and shared code: %s', async (code) => {
+  for (const file of [
+    'apps/server/src/bad.ts',
+    'apps/web/src/bad.tsx',
+    'packages/shared/src/bad.ts',
+  ])
     expect(await lint(code, file), file).toContain('no-restricted-syntax');
 });
 

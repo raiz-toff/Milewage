@@ -95,7 +95,7 @@ Each place where JavaScript and Kotlin could disagree, how it is settled, and it
 | `JSON.stringify` of strings in the canonical form               | Own writer: `\"`, `\\`, `\b\t\n\f\r`, other controls and lone surrogates as lowercase `\u00xx`, everything else raw (DEL, U+2028/9). Test against Node on 15 awkward strings.                                                        |
 | Canonical numbers                                               | Integers only, `RangeError` for unsafe integers becomes `IllegalArgumentException`. Keys sorted by UTF-16 code unit, absent members omitted.                                                                                         |
 | `inputDigest` hash                                              | 64-bit FNV-1a; the TypeScript's two 32-bit halves on doubles are exactly multiplication mod 2^64, so `ULong` arithmetic. Bytes per UTF-16 unit: one below 0x80, else low then high (not UTF-8). Tests: 15 strings and a digest text. |
-| `toFixed`, `\|0`                                                | Not used by the engine (`toFixed` is only in the Expo harness; `>>> 0` only in the digest, replaced by `ULong`).                                                                                                                     |
+| `toFixed`, `\|0`                                                | Not used by the engine (`toFixed` was only in the retired Expo app's harness; `>>> 0` only in the digest, replaced by `ULong`).                                                                                                      |
 | `Math.sin`, `Math.cos`, `Math.atan2`                            | `FdLibm.kt`, see below.                                                                                                                                                                                                              |
 
 ### Floating point
@@ -143,7 +143,8 @@ Residual risk, plainly:
   may therefore compute fdlibm's polynomials with FMA and differ in the last bit from an x86-64
   server, and from this port. Not verified here (no arm64 machine). A Node upgrade, or a V8 that
   switches `Math.sin/cos` to glibc's (`V8_USE_LIBM_TRIG_FUNCTIONS`, as Chrome already does), changes
-  the truth: re-run the cross-check after every Node bump.
+  the truth: re-run the cross-check after every Node bump (`npm run crosscheck:engine` from the
+  repository root).
 - **Domain.** Inputs are integers in the server's schema ranges. A coordinate outside an `Int`, an
   accuracy above 2^31 m or a non-integer number cannot be decoded; times beyond 2^53 ms are out of
   range on both sides.
@@ -152,14 +153,14 @@ Residual risk, plainly:
 
 From `apps/android`: `./gradlew :engine:test`.
 
-| Test                      | What                                                                                                                                                                                                                        |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ConformanceTest`         | `apps/phone/src/conformance/fixtures.json` (15 inputs, Node's canonical JSON) byte for byte; `golden-shift.json` results and its ledger sha256; `golden.json` stage 1-3 rides and its ledger sha256. Read in place by path. |
-| `CrossCheckTest`          | Random shifts from Node: canonical JSON, live total, `lastFixEnd`, `measureDistance`. 100-shift committed sample always; the generated run when present.                                                                    |
-| `HaversineCrossCheckTest` | Raw haversine doubles against Node: 3,000-pair committed sample always; 250,000 pairs when generated.                                                                                                                       |
-| `FdLibmTest`              | sin, cos, atan2 bits against Node: committed sample always; 900,195 calls when generated. Also `engineSelfCheck()`.                                                                                                         |
-| `ExactnessTrapsTest`      | One test per trap in the table above.                                                                                                                                                                                       |
-| `ModuleRulesTest`         | No platform imports in `src/main`; `ALGORITHM_VERSION` equals `version.ts`.                                                                                                                                                 |
+| Test                      | What                                                                                                                                                                                                                               |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ConformanceTest`         | `packages/track-engine/conformance/fixtures.json` (15 inputs, Node's canonical JSON) byte for byte; `golden-shift.json` results and its ledger sha256; `golden.json` stage 1-3 rides and its ledger sha256. Read in place by path. |
+| `CrossCheckTest`          | Random shifts from Node: canonical JSON, live total, `lastFixEnd`, `measureDistance`. 100-shift committed sample always; the generated run when present.                                                                           |
+| `HaversineCrossCheckTest` | Raw haversine doubles against Node: 3,000-pair committed sample always; 250,000 pairs when generated.                                                                                                                              |
+| `FdLibmTest`              | sin, cos, atan2 bits against Node: committed sample always; 900,195 calls when generated. Also `engineSelfCheck()`.                                                                                                                |
+| `ExactnessTrapsTest`      | One test per trap in the table above.                                                                                                                                                                                              |
+| `ModuleRulesTest`         | No platform imports in `src/main`; `ALGORITHM_VERSION` equals `version.ts`.                                                                                                                                                        |
 
 ### Cross-check
 
@@ -193,7 +194,8 @@ npx vite-node apps/android/engine/tools/export-traps.ts              # trap-vect
 
 1. Change the TypeScript first (`packages/track-engine`), with its tests.
 2. If any output can change, bump `algorithmVersion` and regenerate its fixtures
-   (`UPDATE_FIXTURES=1 npx vitest run golden`) and the phone's (`npm run conformance:fixtures -w apps/phone`).
+   (`UPDATE_FIXTURES=1 npx vitest run golden`) and the conformance fixtures (`npm run conformance:fixtures`;
+   `npm test` fails while they are stale).
 3. Port the change here, file for file, and set `ALGORITHM_VERSION` (`ModuleRulesTest` fails until
    it matches).
 4. Regenerate the samples and the cross-check (commands above), run `./gradlew :engine:test` with
@@ -201,4 +203,13 @@ npx vite-node apps/android/engine/tools/export-traps.ts              # trap-vect
 
 After a Node upgrade (the server image), re-run `export-math.ts` and the cross-check even when the
 engine did not change; if `Math.sin`, `Math.cos` or `Math.atan2` changed, `FdLibm.kt` must follow
-the new V8 code.
+the new V8 code. One command from the repository root does all three steps with the default sizes
+(900k math calls, 250,000 pairs, 2,000 shifts) and reruns `:engine:test` on them:
+
+```sh
+npm run crosscheck:engine   # with the new Node 22.x first on PATH; JDK 17 and the Android SDK
+```
+
+To check a server that is not x86-64 (a Raspberry Pi), run the two `vite-node` steps of the
+cross-check on that machine with its Node, copy `apps/android/engine/build/crosscheck/` to the
+build machine, then run `./gradlew :engine:test --rerun` there (see "The server's Node" above).

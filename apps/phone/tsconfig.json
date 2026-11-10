@@ -1,5 +1,0 @@
-{
-  "extends": "expo/tsconfig.base",
-  "compilerOptions": { "strict": true, "noEmit": true, "types": ["jest", "node"] },
-  "include": ["index.ts", "nativewind-env.d.ts", "src", "test"]
-}

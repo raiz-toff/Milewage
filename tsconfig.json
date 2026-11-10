@@ -9,5 +9,5 @@
     "packages/*/test",
     "*.ts"
   ],
-  "exclude": ["node_modules", "dist", "apps/phone", "apps/web"]
+  "exclude": ["node_modules", "dist", "apps/android", "apps/web"]
 }
