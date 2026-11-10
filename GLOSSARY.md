@@ -383,7 +383,7 @@ A time-limited, dense recording on one phone, for testing the track engine again
 _Avoid_: debug recording, trace
 
 **Assistant**:
-An AI assistant the owner connects to their own server. It is off by default and can read or change data only as far as its assistant token allows.
+An AI assistant the owner connects to their own server. Nothing is connected until the owner allows it, and it can read or change data only as far as its assistant token allows.
 _Avoid_: MCP, bot, agent
 
 **Assistant token**:

@@ -77,9 +77,13 @@ describe('settings: AI assistants (plan 26)', () => {
     expect(within(made).getByText(TOKEN)).toBeTruthy();
     expect(within(made).getByText(/You will not see it again/)).toBeTruthy();
     const url = `${globalThis.location.origin}/api/v1/mcp`;
+    // The token is shown once, on its own; no command or file holds it.
+    expect(made.textContent).toContain('read -rs MILEWAGE_TOKEN && export MILEWAGE_TOKEN');
     expect(made.textContent).toContain(
-      `claude mcp add --transport http milewage ${url} --header "Authorization: Bearer ${TOKEN}"`,
+      `claude mcp add --transport http milewage ${url} --header 'Authorization: Bearer \${MILEWAGE_TOKEN}'`,
     );
+    expect(made.textContent).toContain('Do not paste this token into a chat or a ticket.');
+    expect(made.textContent!.split(TOKEN)).toHaveLength(2);
     expect(s.calls.find((c) => c.method === 'POST')?.body).toEqual({
       name: 'Claude Code',
       scope: 'write',
@@ -102,8 +106,8 @@ describe('settings: AI assistants (plan 26)', () => {
     expect(s.calls.some((c) => c.method === 'DELETE' && c.path === '/mcp/tokens/1')).toBe(true);
   });
 
-  it('builds the Claude Desktop config with mcp-remote and the token in an env value', () => {
-    const c = connectText('https://box.tail1.ts.net', TOKEN);
+  it('builds the Claude Desktop config with mcp-remote and a place for the token', () => {
+    const c = connectText('https://box.tail1.ts.net');
     expect(c.url).toBe('https://box.tail1.ts.net/api/v1/mcp');
     expect(JSON.parse(c.desktop).mcpServers.milewage).toEqual({
       command: 'npx',
@@ -114,8 +118,53 @@ describe('settings: AI assistants (plan 26)', () => {
         '--header',
         'Authorization:${MILEWAGE_AUTH}',
       ],
-      env: { MILEWAGE_AUTH: `Bearer ${TOKEN}` },
+      env: { MILEWAGE_AUTH: 'Bearer <paste the token here>' },
     });
+  });
+
+  it('tests the connection and names the cause', async () => {
+    const s = renderApp(
+      {
+        ...signedIn(settingsFixture({ modules: { mcp: true } })),
+        'GET /mcp/tokens': () => ({ body: [] }),
+        'GET /mcp/audit': () => ({ body: [] }),
+        'GET /mcp/connection': () => ({
+          body: {
+            ok: false,
+            address: 'https://milewage.lan',
+            mcp_url: 'http://milewage.lan/api/v1/mcp',
+            seen: { protocol: 'http', host: 'milewage.lan', via: '192.168.1.10' },
+            public_url: null,
+            home_url: null,
+            findings: [
+              { code: 'wrong_address', message: 'Assistants are told to use http.' },
+              {
+                code: 'proxy_not_trusted',
+                message: 'Put the address in MILEWAGE_TRUSTED_PROXIES.',
+              },
+              { code: 'own_certificate', message: 'Set NODE_EXTRA_CA_CERTS.' },
+            ],
+          },
+        }),
+      } as never,
+      '/settings/assistants',
+    );
+    const panel = await screen.findByRole('region', { name: 'Test the connection' });
+    expect(s.calls.some((c) => c.path === '/mcp/connection')).toBe(false); // only when asked
+    fireEvent.click(within(panel).getByRole('button', { name: 'Test connection' }));
+    const result = await within(panel).findByRole('status');
+    expect(result.textContent).toContain(
+      'Assistants would be sent to http://milewage.lan/api/v1/mcp, not https://milewage.lan/api/v1/mcp.',
+    );
+    expect(result.textContent).toContain('MileWage saw http://milewage.lan, from 192.168.1.10.');
+    expect(
+      within(result)
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual(['Assistants are told to use http.', 'Put the address in MILEWAGE_TRUSTED_PROXIES.']);
+    expect(result.textContent).toContain('Set NODE_EXTRA_CA_CERTS.');
+    const call = s.calls.find((c) => c.path === '/mcp/connection')!;
+    expect(new URLSearchParams(call.query).get('address')).toBe(globalThis.location.origin);
   });
 
   it('replaces a token after a confirmation and shows the new one once', async () => {

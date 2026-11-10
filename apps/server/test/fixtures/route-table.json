@@ -50,6 +50,7 @@
   "GET /api/v1/goals": "goals",
   "GET /api/v1/link-requests": "devices",
   "GET /api/v1/mcp": "mcp",
+  "GET /api/v1/mcp/connection": "mcp",
   "GET /api/v1/mcp/audit": "mcp",
   "GET /api/v1/mcp/tokens": "mcp",
   "GET /api/v1/notifications": "notifications",

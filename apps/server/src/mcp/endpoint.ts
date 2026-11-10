@@ -8,7 +8,7 @@ import type { Db } from '../db';
 import { ProblemError } from '../errors';
 import { SERVER_VERSION } from '../version';
 import { createWriteGuard } from './audit';
-import { resourceMetadataUrl } from './oauth';
+import { mcpAddresses, type ConfiguredAddresses } from './address';
 import { createMcpTokenRepository, TOKEN_PATTERN } from './tokens';
 import { writeTools } from './write-tools';
 import {
@@ -72,12 +72,15 @@ export function mcpEndpoint({
   db,
   now,
   authn,
+  config,
 }: {
   db: Db;
   now: () => number;
   authn: Authenticator;
+  config: ConfiguredAddresses;
 }) {
   return ({ app, registry }: ServerRouteHost) => {
+    const { resourceMetadataUrl } = mcpAddresses(config);
     const tokens = createMcpTokenRepository(db);
     const guard = createWriteGuard(db, now);
 

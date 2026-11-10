@@ -16,7 +16,7 @@ export interface ServerConfig {
   /** `MILEWAGE_BACKUP_DIR`: the `backups` volume; by default `backups` next to the data folder. */
   backupDir: string;
   logLevel: string;
-  /** `MILEWAGE_TRUST_PROXY`: comma-separated proxy addresses or CIDRs, or `true`. Empty means no proxy is trusted. */
+  /** `MILEWAGE_TRUST_PROXY`: proxy addresses or CIDRs, separated by commas or spaces, or `true`. Empty means no proxy is trusted. */
   trustProxy: boolean | string[];
   settings: ModuleSettings;
   /** `backup.on_shift_end` and `backup.download` (10 section 3.1): both on by default. */
@@ -164,7 +164,7 @@ function readSettingsFile(path: string): ModuleSettings {
 
 function parseTrustProxy(value: string | undefined): boolean | string[] {
   const list = (value ?? '')
-    .split(',')
+    .split(/[\s,]+/)
     .map((v) => v.trim())
     .filter(Boolean);
   return list.length === 1 && list[0] === 'true' ? true : list;

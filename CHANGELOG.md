@@ -6,6 +6,44 @@ All notable changes to MileWage are listed here. The format follows
 
 ## [Unreleased]
 
+Fixes for AI assistants behind the owner's own reverse proxy or a private certificate authority
+(GitHub issue #6).
+
+**After upgrading:** a server set up before 0.2.0 that never made an assistant code has the AI
+assistant endpoint off again, as it was in 0.1.0. Set `MILEWAGE_MODULE_MCP=1` in
+`infra/docker/.env` to turn it on.
+
+### Added
+
+- `MILEWAGE_TRUSTED_PROXIES` in `infra/docker/.env`: the address of a reverse proxy of your own in
+  front of MileWage. Caddy keeps its `X-Forwarded-Proto`, `-Host` and `-For` and the API believes
+  its client addresses, with no edit to the Caddyfile or the compose file.
+- Settings > AI assistants > Test connection: the address assistants are given from where you are,
+  what reached the server through the proxies, and the cause in plain words (a wrong address, a
+  proxy that is not trusted, a missing `X-Forwarded-Proto`, a changed host name, and the
+  `NODE_EXTRA_CA_CERTS` and wildcard-certificate rules for a private certificate authority).
+- Install guide section 7a: reverse proxies, the headers they must send, private certificate
+  authorities and host names in the certificate.
+
+### Changed
+
+- The sign-in documents for assistants (`/.well-known/oauth-protected-resource`,
+  `/.well-known/oauth-authorization-server`) and the endpoint's 401 use `MILEWAGE_PUBLIC_URL` or
+  `MILEWAGE_HOME_URL`, https included, when the request came for that host name. Before, a proxy
+  Caddy did not trust turned `https://milewage.lan` into `http://milewage.lan` and clients refused
+  it. Other host names keep their own address.
+- The token commands in Settings > AI assistants no longer hold the token: Claude Code reads it
+  from `MILEWAGE_TOKEN` (`read -rs` keeps it out of the shell history) and the Claude Desktop file
+  has a place to paste it. The page says not to paste the token into a chat or a ticket.
+- `MILEWAGE_TRUST_PROXY` accepts addresses separated by spaces as well as commas.
+
+### Fixed
+
+- The AI assistant endpoint no longer turns itself on when a server from 0.1.0 is upgraded: one
+  set up before 0.2.0 that never made an assistant code keeps it off until
+  `MILEWAGE_MODULE_MCP=1`. `docker-compose.release.yml` said the endpoint was off by default while
+  `docker-compose.yml` said on; both now say what the server does.
+
 ## [0.2.0] - 2026-11-10
 
 Second release. Help pages in the web app, AI assistants that connect by signing in, a password

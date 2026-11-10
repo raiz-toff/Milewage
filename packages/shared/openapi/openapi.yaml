@@ -159,7 +159,7 @@ x-modules:
     toggle: modules.mcp
     default: true
     dependsOn: [core]
-    operations: [listMcpTokens, createMcpToken, revokeMcpToken, replaceMcpToken, listMcpAudit, getOAuthAuthorization, decideOAuthAuthorization]
+    operations: [listMcpTokens, createMcpToken, revokeMcpToken, replaceMcpToken, listMcpAudit, checkMcpConnection, getOAuthAuthorization, decideOAuthAuthorization]
 
 paths:
   /healthz:
@@ -742,6 +742,44 @@ paths:
                     target: { type: [string, 'null'], description: 'The record touched, e.g. `expense:42` or `shift:17`.' }
                     token_id: { type: integer }
                     token_name: { type: string }
+  /mcp/connection:
+    get:
+      tags: [mcp]
+      operationId: checkMcpConnection
+      summary: Test connection (Settings › AI assistants). Compares the address the browser is on with what reached the server through every proxy, and names the causes in plain words.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: address, in: query, required: true, schema: { type: string }, description: 'The address the browser is on, for example https://milewage.lan.' }
+      responses:
+        '200':
+          description: The check.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, address, mcp_url, seen, public_url, home_url, findings]
+                properties:
+                  ok: { type: boolean, description: 'Assistants are told the same address the browser is on.' }
+                  address: { type: string, description: The browser's address (origin only). }
+                  mcp_url: { type: string, description: 'What the sign-in documents and the 401 give assistants. MILEWAGE_PUBLIC_URL or MILEWAGE_HOME_URL when the request came for its host, else the request''s own address.' }
+                  seen:
+                    type: object
+                    required: [protocol, host, via]
+                    properties:
+                      protocol: { type: string, description: 'http or https, as it reached the API.' }
+                      host: { type: string }
+                      via: { type: [string, 'null'], description: 'The first address in X-Forwarded-For. Caddy replaces the list with the sender''s address when it does not trust the sender.' }
+                  public_url: { type: [string, 'null'] }
+                  home_url: { type: [string, 'null'] }
+                  findings:
+                    type: array
+                    items:
+                      type: object
+                      required: [code, message]
+                      properties:
+                        code: { enum: [wrong_address, host_changed, proxy_not_trusted, forwarded_proto_missing, own_certificate] }
+                        message: { type: string }
+        '422': { $ref: '#/components/responses/Unprocessable' }
   /mcp/tokens/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: integer } }

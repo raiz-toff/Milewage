@@ -127,4 +127,12 @@ test('X-Forwarded-For is believed only from a trusted proxy', async () => {
   const trust = (v?: string) => loadConfig({ MILEWAGE_TRUST_PROXY: v }).trustProxy;
   expect(trust('172.18.0.0/16, 127.0.0.1')).toEqual(['172.18.0.0/16', '127.0.0.1']);
   expect([trust('true'), trust()]).toEqual([true, []]);
+  // The compose file joins the stack's subnet and MILEWAGE_TRUSTED_PROXIES (space-separated, as
+  // Caddy reads it); an empty MILEWAGE_TRUSTED_PROXIES leaves a trailing comma.
+  expect(trust('172.29.88.0/24,192.168.1.5 10.0.0.0/8')).toEqual([
+    '172.29.88.0/24',
+    '192.168.1.5',
+    '10.0.0.0/8',
+  ]);
+  expect(trust('172.29.88.0/24,')).toEqual(['172.29.88.0/24']);
 });

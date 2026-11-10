@@ -50,7 +50,8 @@ Three parts, one TypeScript monorepo:
 - Phones pair with a QR code, or with a link code on the home Wi-Fi, and hold a device token you
   can revoke at any time.
 - Diagnostics that stay on your server and never carry coordinates.
-- An optional AI assistant endpoint (MCP), off by default.
+- An optional AI assistant endpoint (MCP): nothing reaches your data until you connect an
+  assistant, and the server owner can switch it off.
 
 **Status.** Version 0.2.0 is a complete build that has not yet been tried in the real
 world: no real shift on a real phone, no run over a real Tailscale network, and every mileage

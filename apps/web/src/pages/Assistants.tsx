@@ -32,24 +32,34 @@ export function signInText(origin: string) {
   return { url, code: `claude mcp add --transport http milewage ${url}` };
 }
 
-/** The MCP address and the two connect recipes of plan 26 section 3.10, for this server. */
-export function connectText(origin: string, token: string) {
+/** The variable the connect recipes read the token from, so it stays out of commands and files. */
+export const TOKEN_VAR = 'MILEWAGE_TOKEN';
+
+/**
+ * The MCP address and the two connect recipes of plan 26 section 3.10, for this server. Neither
+ * holds the token: Claude Code reads it from MILEWAGE_TOKEN when it connects (the single quotes
+ * keep the shell from writing it into the saved command), and the Claude Desktop file gets a
+ * placeholder to paste it into, so a copied command never carries the secret into a shell
+ * history, a chat or a ticket.
+ */
+export function connectText(origin: string) {
   const url = `${origin}/api/v1/mcp`;
-  const code = `claude mcp add --transport http milewage ${url} --header "Authorization: Bearer ${token}"`;
+  const read = `read -rs ${TOKEN_VAR} && export ${TOKEN_VAR}`;
+  const code = `claude mcp add --transport http milewage ${url} --header 'Authorization: Bearer \${${TOKEN_VAR}}'`;
   const desktop = JSON.stringify(
     {
       mcpServers: {
         milewage: {
           command: 'npx',
           args: ['-y', 'mcp-remote@0.15.2', url, '--header', 'Authorization:${MILEWAGE_AUTH}'],
-          env: { MILEWAGE_AUTH: `Bearer ${token}` },
+          env: { MILEWAGE_AUTH: 'Bearer <paste the token here>' },
         },
       },
     },
     null,
     2,
   );
-  return { url, code, desktop };
+  return { url, read, code, desktop };
 }
 
 function Copyable({ label, text }: { label: string; text: string }) {
@@ -76,15 +86,27 @@ function Copyable({ label, text }: { label: string; text: string }) {
 
 /** The token just made: shown once, with the ways to connect (plan 26 section 3.9). */
 function MadeToken({ made, onDone }: { made: Made; onDone: () => void }) {
-  const c = connectText(globalThis.location?.origin ?? '', made.token);
+  const c = connectText(globalThis.location?.origin ?? '');
   return (
     <div role="region" aria-label="New token" className="space-y-3 rounded-lg border p-3">
       <p className="text-sm font-medium">
         Copy this token now. You will not see it again; MileWage keeps only a fingerprint of it.
       </p>
       <Copyable label="Token" text={made.token} />
-      <Copyable label="Claude Code (on a computer in your tailnet)" text={c.code} />
-      <Copyable label="Claude Desktop (claude_desktop_config.json)" text={c.desktop} />
+      <p className="text-sm">
+        Do not paste this token into a chat or a ticket. Anyone who has it can reach your records.
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Claude Code, on a computer in your tailnet: run the first line and paste the token when it
+        waits (nothing shows as you paste). Then run the second. Claude Code reads the token from{' '}
+        {TOKEN_VAR} each time it connects, so set {TOKEN_VAR} wherever you start it.
+      </p>
+      <Copyable label="1. Keep the token in this shell" text={c.read} />
+      <Copyable label="2. Add MileWage to Claude Code" text={c.code} />
+      <Copyable
+        label="Claude Desktop (claude_desktop_config.json): paste the token where it says"
+        text={c.desktop}
+      />
       <p className="text-xs text-muted-foreground">
         Address of this server's MCP endpoint: {c.url}
       </p>
@@ -168,6 +190,66 @@ function TokenRow({ t, onMade }: { t: Token; onMade: (made: Made) => void }) {
   );
 }
 
+/**
+ * Asks the server what an assistant would be told from here, and why (issue 6). Every way of
+ * failing looks the same in the assistant ("Failed to connect"); this names the cause.
+ */
+function TestConnection() {
+  const address = globalThis.location?.origin ?? '';
+  // Asked only when the button is pressed; each press asks again.
+  const query = useApiQuery(
+    '/mcp/connection',
+    { params: { query: { address } } },
+    { enabled: false, gcTime: 0 },
+  );
+  const check = query.data ?? null;
+  const problems = check?.findings.filter((f) => f.code !== 'own_certificate') ?? [];
+  const note = check?.findings.find((f) => f.code === 'own_certificate');
+  return (
+    <Section title="Test the connection" label="Test the connection">
+      <div className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          An assistant that cannot connect only says "Failed to connect". This checks the address
+          MileWage gives assistants from where you are now, and what a proxy in front of MileWage
+          changed on the way.
+        </p>
+        <UiButton
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={query.isFetching}
+          onClick={() => void query.refetch()}
+        >
+          Test connection
+        </UiButton>
+        <FormError message={errorText(query)} />
+        {check ? (
+          <div role="status" className="space-y-2 text-sm">
+            <p className="font-medium">
+              {check.ok
+                ? `Assistants get the right address: ${check.mcp_url}`
+                : `Assistants would be sent to ${check.mcp_url}, not ${check.address}/api/v1/mcp.`}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              MileWage saw {check.seen.protocol}://{check.seen.host}
+              {check.seen.via ? `, from ${check.seen.via}` : ''}.
+              {check.public_url ? ` MILEWAGE_PUBLIC_URL is ${check.public_url}.` : ''}
+            </p>
+            {problems.length > 0 ? (
+              <ul className="list-disc space-y-1 pl-5">
+                {problems.map((f) => (
+                  <li key={f.code}>{f.message}</li>
+                ))}
+              </ul>
+            ) : null}
+            {note ? <p className="text-xs text-muted-foreground">{note.message}</p> : null}
+          </div>
+        ) : null}
+      </div>
+    </Section>
+  );
+}
+
 /** Settings › AI assistants: tokens for the MCP endpoint and what assistants changed (plan 26). */
 const NO_CHANGES: Change[] = [];
 
@@ -217,6 +299,7 @@ export function AssistantsCard() {
           </p>
         </div>
       </Section>
+      <TestConnection />
       <Section title="Connect an AI assistant" label="Connect an AI assistant">
         <p className="text-sm text-muted-foreground">
           A token is the secret code you make for one assistant so it can reach your server. You can

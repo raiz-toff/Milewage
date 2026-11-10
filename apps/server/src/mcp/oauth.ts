@@ -1,15 +1,12 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import {
-  getOAuthProtectedResourceMetadataUrl,
-  type OAuthMetadata,
-  type OAuthProtectedResourceMetadata,
-} from '@modelcontextprotocol/server';
+import type { OAuthMetadata, OAuthProtectedResourceMetadata } from '@modelcontextprotocol/server';
 import { API_PREFIX, type ServerRouteHost } from '../app';
 import { hashToken, type Authenticator } from '../auth/authenticator';
 import { FailureLimiter } from '../auth/limiter';
 import type { Db } from '../db';
 import { ProblemError } from '../errors';
+import { checkConnection, MCP_PATH, mcpAddresses, type ConfiguredAddresses } from './address';
 import {
   createMcpTokenRepository,
   LIVE_SQL,
@@ -35,7 +32,6 @@ const CODE_MS = MINUTE;
 /** Registered clients kept at most; ones never approved are dropped first. */
 const MAX_CLIENTS = 100;
 const SCOPES: readonly McpScope[] = ['read', 'write'];
-const MCP_PATH = `${API_PREFIX}/mcp`;
 /** The web page that asks the driver (apps/web, `ConnectAssistant`). */
 export const AUTHORIZE_PAGE = '/oauth/authorize';
 
@@ -43,13 +39,6 @@ const newRefresh = () => `mwr_${randomBytes(32).toString('base64url')}`;
 const s256 = (verifier: string) => createHash('sha256').update(verifier).digest('base64url');
 const sameText = (a: string, b: string) =>
   a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
-
-/** The address the client used to reach this server, through the trusted proxy when there is one. */
-const originOf = (req: FastifyRequest) => `${req.protocol}://${req.host}`;
-export const mcpUrlOf = (req: FastifyRequest) => `${originOf(req)}${MCP_PATH}`;
-/** Where the 401 from `/mcp` points a client to start (RFC 9728 section 5.1). */
-export const resourceMetadataUrl = (req: FastifyRequest) =>
-  getOAuthProtectedResourceMetadataUrl(new URL(mcpUrlOf(req)));
 
 function authServerMetadata(origin: string): OAuthMetadata {
   return {
@@ -109,12 +98,15 @@ export function mcpOAuthRoutes({
   db,
   now,
   authn,
+  config,
 }: {
   db: Db;
   now: () => number;
   authn: Authenticator;
+  config: ConfiguredAddresses;
 }) {
   return ({ app, root }: ServerRouteHost) => {
+    const { origin: originOf, mcpUrl: mcpUrlOf } = mcpAddresses(config);
     const tokens = createMcpTokenRepository(db);
     const codes = new Map<string, Pending>();
     const failures = new FailureLimiter(20, 15 * MINUTE, now);
@@ -150,6 +142,19 @@ export function mcpOAuthRoutes({
     };
     root.get('/.well-known/oauth-protected-resource', resource);
     root.get(`/.well-known/oauth-protected-resource${MCP_PATH}`, resource);
+
+    // Settings › AI assistants › Test connection: what an assistant would be told, and why.
+    app.get('/mcp/connection', async (req) => {
+      authn.authenticate(req, 'S');
+      const given = (req.query as Query).address ?? '';
+      const address = URL.parse(given);
+      if (!address || !['http:', 'https:'].includes(address.protocol)) {
+        throw new ProblemError('validation_failed', 'Give the address the browser is on.', [
+          { path: '/address', message: 'an http or https address' },
+        ]);
+      }
+      return checkConnection(req, address, config);
+    });
 
     // Dynamic client registration (RFC 7591): public clients only, no secret.
     app.post('/oauth/register', async (req, reply) => {

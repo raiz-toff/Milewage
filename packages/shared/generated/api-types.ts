@@ -390,6 +390,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/mcp/connection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Test connection (Settings › AI assistants). Compares the address the browser is on with what reached the server through every proxy, and names the causes in plain words. */
+        get: operations["checkMcpConnection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mcp/tokens/{id}": {
         parameters: {
             query?: never;
@@ -4057,6 +4074,51 @@ export interface operations {
                     }[];
                 };
             };
+        };
+    };
+    checkMcpConnection: {
+        parameters: {
+            query: {
+                /** @description The address the browser is on, for example https://milewage.lan. */
+                address: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The check. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Assistants are told the same address the browser is on. */
+                        ok: boolean;
+                        /** @description The browser's address (origin only). */
+                        address: string;
+                        /** @description What the sign-in documents and the 401 give assistants. MILEWAGE_PUBLIC_URL or MILEWAGE_HOME_URL when the request came for its host, else the request's own address. */
+                        mcp_url: string;
+                        seen: {
+                            /** @description http or https, as it reached the API. */
+                            protocol: string;
+                            host: string;
+                            /** @description The first address in X-Forwarded-For. Caddy replaces the list with the sender's address when it does not trust the sender. */
+                            via: string | null;
+                        };
+                        public_url: string | null;
+                        home_url: string | null;
+                        findings: {
+                            /** @enum {unknown} */
+                            code: "wrong_address" | "host_changed" | "proxy_not_trusted" | "forwarded_proto_missing" | "own_certificate";
+                            message: string;
+                        }[];
+                    };
+                };
+            };
+            422: components["responses"]["Unprocessable"];
         };
     };
     revokeMcpToken: {

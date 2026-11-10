@@ -117,11 +117,18 @@ const compose = readFileSync(
 );
 
 describe('Caddy keeps the forwarded headers of the host proxy (plan 19 section 3.1)', () => {
-  it('trusts exactly the Docker gateway, not every private address', () => {
+  it('trusts exactly the Docker gateway and the proxies the owner names, not every private address', () => {
     const block = /^\{\n([\s\S]*?)^\}/m.exec(caddyfile)![1]!;
     const trusted = /^\s*trusted_proxies (.+)$/m.exec(block);
     expect(trusted, 'trusted_proxies in the global block').not.toBeNull();
-    expect(trusted![1]!.trim()).toBe('static {$MILEWAGE_PROXY_GATEWAY:172.29.88.1}/32');
+    expect(trusted![1]!.trim()).toBe(
+      'static {$MILEWAGE_PROXY_GATEWAY:172.29.88.1}/32 {$MILEWAGE_TRUSTED_PROXIES}',
+    );
+    // Empty unless the owner names a proxy in .env (install.md section 7a); no edit of this file.
+    expect(compose).toContain('- MILEWAGE_TRUSTED_PROXIES=${MILEWAGE_TRUSTED_PROXIES:-}');
+    expect(compose).toContain(
+      '- MILEWAGE_TRUST_PROXY=${MILEWAGE_PROXY_SUBNET:-172.29.88.0/24},${MILEWAGE_TRUSTED_PROXIES:-}',
+    );
   });
 
   it('the gateway Caddy trusts is the one the network is given, with the same default', () => {
