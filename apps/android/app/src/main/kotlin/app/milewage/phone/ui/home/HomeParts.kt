@@ -13,10 +13,9 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -48,6 +47,7 @@ import app.milewage.core.shift.PeriodSummary
 import app.milewage.core.sync.Reminder
 import app.milewage.core.sync.StatusColor
 import app.milewage.phone.R
+import app.milewage.phone.ui.components.CardSurface
 import app.milewage.phone.logic.Banner
 import app.milewage.phone.logic.BannerKind
 import app.milewage.phone.logic.Fix
@@ -60,8 +60,10 @@ import app.milewage.phone.model.Formats
 import app.milewage.phone.ui.Texts
 import app.milewage.phone.ui.components.BigFigure
 import app.milewage.phone.ui.components.NoticeCard
-import app.milewage.phone.ui.components.StatTile
+import app.milewage.phone.ui.components.FigureRow
+import app.milewage.phone.ui.components.StatCell
 import app.milewage.phone.ui.components.Tone
+import app.milewage.phone.ui.theme.surfaces
 
 /** Today, this week or this month: the distance large, then shifts and the deduction value (an estimate). */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,10 +83,8 @@ fun SummarySection(summary: PeriodSummary?, period: Period, settings: DisplaySet
             }
         }
         val p = summary
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
+        // One card: the distance large, then the shifts and the deduction under a hairline.
+        CardSurface(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 val label = stringResource(R.string.summary_distance)
                 val value = f.distance(p?.totalM)
@@ -98,14 +98,16 @@ fun SummarySection(summary: PeriodSummary?, period: Period, settings: DisplaySet
                     )
                 }
             }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatTile(stringResource(R.string.summary_shifts), p?.shifts?.toString() ?: "0", Modifier.weight(1f), caption = f.distance(p?.businessM) + " " + stringResource(R.string.summary_business).lowercase())
-            StatTile(
-                stringResource(if (settings.yourRate) R.string.summary_deduction_yours else R.string.summary_deduction),
-                f.money(p?.deductionCents),
-                Modifier.weight(1f),
-                caption = stringResource(R.string.estimate),
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            val shifts = stringResource(R.string.summary_shifts)
+            val business = f.distance(p?.businessM) + " " + stringResource(R.string.summary_business).lowercase()
+            val deduction = stringResource(if (settings.yourRate) R.string.summary_deduction_yours else R.string.summary_deduction)
+            val estimate = stringResource(R.string.estimate)
+            FigureRow(
+                cells = listOf(
+                    { m -> StatCell(shifts, p?.shifts?.toString() ?: "0", m, caption = business) },
+                    { m -> StatCell(deduction, f.money(p?.deductionCents), m, caption = estimate) },
+                ),
             )
         }
         Text(
@@ -187,7 +189,7 @@ fun SyncBannerCard(b: Banner, busy: Boolean, onFix: (Fix) -> Unit, onReminderSho
 fun SetupCard(items: List<SetupItem>, onFix: (Fix) -> Unit) {
     val left = items.count { !it.done }
     if (left == 0) return
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), modifier = Modifier.fillMaxWidth()) {
+    CardSurface(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(vertical = 16.dp)) {
             Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(stringResource(R.string.setup_title), style = MaterialTheme.typography.titleMedium)
@@ -230,7 +232,7 @@ fun SetupCard(items: List<SetupItem>, onFix: (Fix) -> Unit) {
 /** The vehicle for the next shift: a choice when there are several, a line when one, and why when none. */
 @Composable
 fun NextShiftCard(v: VehicleChoice, unpaired: Boolean, onSelect: (Long) -> Unit, onFix: (Fix) -> Unit) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), modifier = Modifier.fillMaxWidth()) {
+    CardSurface(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.next_shift), style = MaterialTheme.typography.titleMedium)
             val muted = MaterialTheme.colorScheme.onSurfaceVariant
@@ -277,6 +279,7 @@ fun OdometerDialog(ask: OdometerAsk, unitLabel: String, onSave: (String) -> Unit
     val atStart = ask is OdometerAsk.AtStart
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.surfaces.popover,
         title = { Text(stringResource(R.string.odometer_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {

@@ -1,6 +1,7 @@
 package app.milewage.phone.screens
 
 import android.app.Application
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
@@ -100,6 +101,34 @@ class ScreenshotTest(private val dark: Boolean) {
         val res = androidx.compose.ui.platform.LocalResources.current
         confirm.ask(app.milewage.phone.ui.components.otherServerDeleteRequest(res, 2) {})
         ConfirmHost(confirm)
+    }
+
+    /** Home inside the shell's bottom bar: the navigation pill and the lane dash over Home. */
+    @Test fun shellHome() = shot("shell-home") {
+        androidx.compose.material3.Scaffold(bottomBar = { app.milewage.phone.ui.nav.MainNavigationBar(app.milewage.phone.ui.nav.TopLevel.HOME) {} }) { p ->
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.padding(p)) {
+                HomeContent(ScreenStates.homeAllSent, RecordingHomeActions(), rememberConfirmState())
+            }
+        }
+    }
+
+    @Test fun shellShifts() = shot("shell-shifts") {
+        androidx.compose.material3.Scaffold(bottomBar = { app.milewage.phone.ui.nav.MainNavigationBar(app.milewage.phone.ui.nav.TopLevel.SHIFTS) {} }) { p ->
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.padding(p)) {
+                ShiftsContent(ScreenStates.shifts, {}, {}, {}, {})
+            }
+        }
+    }
+
+    /** A snackbar with an action, for the inverse-primary action colour. */
+    @Test fun snackbar() = shot("snackbar") {
+        val host = androidx.compose.runtime.remember { androidx.compose.material3.SnackbarHostState() }
+        androidx.compose.runtime.LaunchedEffect(Unit) { host.showSnackbar("Could not reach the server.", actionLabel = "Try again", duration = androidx.compose.material3.SnackbarDuration.Indefinite) }
+        androidx.compose.material3.Scaffold(snackbarHost = { androidx.compose.material3.SnackbarHost(host) }) { p ->
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.padding(p)) {
+                ShiftsContent(ScreenStates.shifts, {}, {}, {}, {})
+            }
+        }
     }
 
     @Test fun homeNoVehicles() = home(ScreenStates.homeNoVehicles, "home-no-vehicles", tallDp = 1000)

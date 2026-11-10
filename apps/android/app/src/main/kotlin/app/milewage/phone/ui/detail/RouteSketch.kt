@@ -28,19 +28,24 @@ import app.milewage.core.shift.RoutePoint
 import app.milewage.core.shift.StopRecord
 import app.milewage.phone.R
 import app.milewage.phone.logic.RouteProjection
+import app.milewage.phone.ui.theme.Surfaces
+import app.milewage.phone.ui.theme.surfaces
 
 /**
  * The shift's simplified route drawn on a Canvas, without map tiles or network: an asphalt ribbon
- * with a lane-yellow centre line (the MileWage mark), the start as a ring, the end as a filled
- * square and the stops as small dots, so the markers differ by shape, not only colour.
+ * ([Surfaces.road], dark in both themes) with a Lane yellow centre line, the brand's lane on
+ * asphalt and the web map's yellow route over its dark casing. The ribbon carries the route on the
+ * white card in light (the yellow alone fails 3:1 on white); the yellow carries it in dark. The
+ * start is a ring, the end a filled square and the stops small dots, all in ink with a card-coloured
+ * halo, so the markers differ by shape, not colour.
  */
 @Composable
 fun RouteSketch(route: List<RoutePoint>, stops: List<StopRecord>, modifier: Modifier = Modifier) {
-    val road = MaterialTheme.colorScheme.secondaryContainer
-    val lane = MaterialTheme.colorScheme.primary
+    val road = MaterialTheme.surfaces.road
+    val lane = MaterialTheme.colorScheme.primaryContainer
     val ink = MaterialTheme.colorScheme.onSurface
-    val surface = MaterialTheme.colorScheme.surfaceContainerLow
-    val stopColor = MaterialTheme.colorScheme.tertiary
+    val surface = MaterialTheme.surfaces.card
+    val stopColor = MaterialTheme.colorScheme.onSurfaceVariant
     val label = pluralStringResource(R.plurals.route_label, stops.size, stops.size)
     Column(modifier.clearAndSetSemantics { contentDescription = label }, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Canvas(Modifier.fillMaxWidth().height(200.dp)) {
@@ -52,8 +57,8 @@ fun RouteSketch(route: List<RoutePoint>, stops: List<StopRecord>, modifier: Modi
                 val o = at(r.latE7, r.lonE7)
                 if (i == 0) path.moveTo(o.x, o.y) else path.lineTo(o.x, o.y)
             }
-            drawPath(path, road, style = Stroke(9.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
-            drawPath(path, lane, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+            drawPath(path, road, style = Stroke(10.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+            drawPath(path, lane, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
             stops.forEach { s ->
                 val o = at(s.latE7, s.lonE7)
                 drawCircle(surface, 6.dp.toPx(), o)

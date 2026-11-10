@@ -4,8 +4,12 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -18,6 +22,7 @@ import app.milewage.phone.ui.nav.AppViewModel
 import app.milewage.phone.logic.Gate
 import app.milewage.data.prefs.AppTheme
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.graphics.toArgb
 import app.milewage.phone.ui.theme.MileWageTheme
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -54,9 +59,28 @@ class MainActivity : ComponentActivity() {
                     AppTheme.DARK -> true
                 }
                 MileWageTheme(darkTheme = dark, wallpaperColours = choice) {
+                    SystemBars(dark)
                     AppShell(shell = state, link = link, onLinkHandled = shell::consumeLink, net = app.graph.data.connection?.net, info = app.graph.appInfo)
                 }
             }
+        }
+    }
+
+    /**
+     * The status and navigation bars follow the app's theme (Settings > Theme can differ from the
+     * phone's): dark icons on the light page, light icons on Asphalt. The status bar is clear over
+     * the page-coloured top bar; with three-button navigation the bar gets the page colour at
+     * 90 %, so the buttons stay readable over content.
+     */
+    @Composable
+    private fun SystemBars(dark: Boolean) {
+        val page = MaterialTheme.colorScheme.background.copy(alpha = 0.9f).toArgb()
+        DisposableEffect(dark, page) {
+            enableEdgeToEdge(
+                statusBarStyle = SystemBarStyle.auto(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT) { dark },
+                navigationBarStyle = SystemBarStyle.auto(page, page) { dark },
+            )
+            onDispose {}
         }
     }
 

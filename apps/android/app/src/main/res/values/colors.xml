@@ -2,6 +2,7 @@
 <resources>
     <!-- Asphalt: the adaptive icon's tile (branding/coin-thin/app/adaptive-background.svg). -->
     <color name="ic_launcher_background">#101214</color>
-    <!-- The brand light scheme's background (BrandColors.Light.background), for the splash and window. -->
-    <color name="window_background">#FFF8F2</color>
+    <!-- The page in light (BrandColors.Light.background, the web's background #f0f0f3), for the
+         splash and the window before Compose draws. -->
+    <color name="window_background">#F0F0F3</color>
 </resources>

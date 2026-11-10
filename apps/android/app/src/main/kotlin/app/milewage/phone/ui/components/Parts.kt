@@ -1,5 +1,6 @@
 package app.milewage.phone.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -32,6 +33,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.milewage.phone.model.Now
+import app.milewage.phone.ui.theme.surfaces
 import kotlinx.coroutines.delay
 
 /**
@@ -97,12 +99,12 @@ fun NoticeCard(
     onSecondary: (() -> Unit)? = null,
     extra: (@Composable () -> Unit)? = null,
 ) {
+    // NEUTRAL is a card. WARNING is outlined (the page's colour inside an outline-variant
+    // hairline, the web's Alert): it stands apart from the cards without a tint, since no colour is
+    // spent on "attention" and the yellow is never a status. PROBLEM is Material's error container.
     val colors = when (tone) {
-        Tone.NEUTRAL -> CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
-        Tone.WARNING -> CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        )
+        Tone.NEUTRAL -> CardDefaults.cardColors(containerColor = MaterialTheme.surfaces.card, contentColor = MaterialTheme.colorScheme.onSurface)
+        Tone.WARNING -> CardDefaults.cardColors(containerColor = MaterialTheme.surfaces.page, contentColor = MaterialTheme.colorScheme.onSurface)
         Tone.PROBLEM -> CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.errorContainer,
             contentColor = MaterialTheme.colorScheme.onErrorContainer,
@@ -110,13 +112,21 @@ fun NoticeCard(
     }
     Card(
         modifier = modifier.fillMaxWidth().semantics { if (tone == Tone.PROBLEM) liveRegion = LiveRegionMode.Polite },
+        shape = MaterialTheme.shapes.medium,
         colors = colors,
+        border = if (tone == Tone.WARNING) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null,
     ) {
         Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             if (icon != null) Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium)
-                if (body != null) Text(body, style = MaterialTheme.typography.bodyMedium)
+                if (body != null) {
+                    Text(
+                        body,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (tone == Tone.PROBLEM) Color.Unspecified else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 extra?.invoke()
                 if (actionLabel != null || secondaryLabel != null) {
                     // Wraps at large text sizes instead of squeezing the buttons.

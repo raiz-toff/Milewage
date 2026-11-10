@@ -3,6 +3,7 @@ package app.milewage.phone.ui.components
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -18,6 +19,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import app.milewage.phone.ui.theme.Surfaces
+import app.milewage.phone.ui.theme.surfaces
 
 /**
  * A list row: Material 3's list item (56 dp for one line), tappable when [onClick] is given.
@@ -31,8 +34,8 @@ fun ListRow(
     leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
-    /** The card's colour behind the row; a row on a card that is itself on a card sits one level up. */
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
+    /** The colour behind the row: the card's ([CardSurface]), unless the row sits on something else. */
+    containerColor: Color = MaterialTheme.surfaces.card,
     /** The headline's colour: Material's error for a destructive row. */
     headlineColor: Color = Color.Unspecified,
     /** What TalkBack calls a tappable row (a switch row says "switch"). */
@@ -55,9 +58,7 @@ fun ListRow(
 fun Rows(modifier: Modifier = Modifier, label: String? = null, content: @Composable ColumnScope.() -> Unit) {
     Column(modifier) {
         if (label != null) SectionLabel(label)
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-            content()
-        }
+        CardSurface(Modifier.fillMaxWidth()) { content() }
     }
 }
 
@@ -67,7 +68,23 @@ fun RowDivider() {
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
-/** The name of a group of rows or cards, in the primary colour (Material 3 list subheader). */
+/**
+ * A card: the surface model's card level ([Surfaces.card]: white on the grey page in light,
+ * surface-container on Asphalt in dark), medium corners, no border, no shadow, no tint. Every card
+ * on a screen is this one, so a screen never picks a container or branches on the theme.
+ */
+@Composable
+fun CardSurface(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Card(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.surfaces.card, contentColor = MaterialTheme.colorScheme.onSurface),
+        elevation = CardDefaults.cardElevation(),
+        content = content,
+    )
+}
+
+/** The name of a group of rows or cards, in ink (Material 3 list subheader). */
 @Composable
 fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     Text(

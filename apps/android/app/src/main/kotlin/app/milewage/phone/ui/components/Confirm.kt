@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import app.milewage.phone.R
+import app.milewage.phone.ui.theme.surfaces
 
 /** One question before something hard to undo, with the consequence spelled out in [text]. */
 data class ConfirmRequest(
@@ -55,6 +56,7 @@ fun ConfirmHost(state: ConfirmState) {
     }
     AlertDialog(
         onDismissRequest = state::dismiss,
+        containerColor = MaterialTheme.surfaces.popover,
         title = { Text(request.title) },
         text = { Text(request.text) },
         confirmButton = {

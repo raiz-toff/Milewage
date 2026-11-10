@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +37,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import app.milewage.data.connect.AndroidNet
 import app.milewage.phone.R
+import app.milewage.phone.ui.theme.surfaces
+import app.milewage.phone.ui.components.CardSurface
 import app.milewage.phone.logic.BatteryAdvice
 import app.milewage.phone.logic.PermAction
 import app.milewage.phone.logic.PermState
@@ -187,12 +187,13 @@ private fun iconOf(id: PermStepId): ImageVector = when (id) {
 private fun StepCard(step: PermStep, state: PermissionsState, onAction: (PermStep) -> Unit) {
     val done = step.state == PermState.DONE
     val label = state.allTheTimeLabel ?: stringResource(R.string.perm_all_the_time_option)
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), modifier = Modifier.fillMaxWidth()) {
+    CardSurface(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     Modifier.size(40.dp).background(
-                        if (done) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                        // Done is a checked control: ink, like a ticked box. To do is a fill on the card.
+                        if (done) MaterialTheme.colorScheme.primary else MaterialTheme.surfaces.fill,
                         CircleShape,
                     ),
                     contentAlignment = Alignment.Center,
@@ -200,7 +201,7 @@ private fun StepCard(step: PermStep, state: PermissionsState, onAction: (PermSte
                     Icon(
                         if (done) Icons.Check else iconOf(step.id),
                         contentDescription = null,
-                        tint = if (done) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = if (done) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Column(Modifier.weight(1f)) {

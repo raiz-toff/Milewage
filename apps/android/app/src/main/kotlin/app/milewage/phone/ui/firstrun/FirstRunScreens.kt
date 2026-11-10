@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import app.milewage.core.connect.FoundServer
 import app.milewage.core.shift.VehicleRecord
 import app.milewage.phone.R
+import app.milewage.phone.ui.components.CardSurface
 import app.milewage.phone.logic.ConnectFix
 import app.milewage.phone.logic.Hosts
 import app.milewage.phone.logic.Nearby
@@ -68,6 +69,7 @@ import app.milewage.phone.ui.components.ScreenPadding
 import app.milewage.phone.ui.components.Tone
 import app.milewage.phone.ui.components.tabular
 import app.milewage.phone.ui.icons.Icons
+import app.milewage.phone.ui.theme.surfaces
 
 /*
  * First run (24 section 4.2, plan 28): Welcome, Set up your server, Connect, Link, Tailscale, then
@@ -81,7 +83,7 @@ import app.milewage.phone.ui.icons.Icons
  */
 @Composable
 fun WelcomeScreen(revoked: Boolean, onHaveServer: () -> Unit, onNoServer: () -> Unit) {
-    Surface(Modifier.fillMaxSize()) {
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.surfaces.page) {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
             Column(
                 modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp),
@@ -135,14 +137,14 @@ private fun NumberedSteps(steps: List<Pair<Int, Int>>) {
                 supporting = stringResource(detail),
                 leading = {
                     Box(
-                        Modifier.size(32.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
+                        Modifier.size(32.dp).background(MaterialTheme.surfaces.fill, CircleShape)
                             .semantics { contentDescription = label },
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             "${i + 1}",
                             style = MaterialTheme.typography.labelLarge.tabular(),
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                     }
                 },
@@ -274,7 +276,7 @@ private fun Section(
     @StringRes body: Int,
     content: (@Composable () -> Unit)? = null,
 ) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), modifier = Modifier.fillMaxWidth()) {
+    CardSurface(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -310,8 +312,8 @@ private fun NearbyCard(nearby: Nearby, actions: ConnectActions) {
                 if (nearby.servers.isEmpty()) {
                     Text(stringResource(R.string.nearby_none), style = MaterialTheme.typography.bodyMedium)
                 } else {
-                    // On the card (surface-container-low) the rows sit one level up.
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+                    // A fill on the card (the surface model's fill level), not a card in a card.
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.surfaces.fill), shape = MaterialTheme.shapes.medium) {
                         nearby.servers.forEachIndexed { i, s ->
                             if (i > 0) RowDivider()
                             ListRow(
@@ -320,7 +322,7 @@ private fun NearbyCard(nearby: Nearby, actions: ConnectActions) {
                                 leading = { Icon(Icons.Server, contentDescription = null) },
                                 trailing = { Icon(Icons.ChevronRight, contentDescription = null) },
                                 onClick = { actions.pick(s) },
-                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                containerColor = MaterialTheme.surfaces.fill,
                             )
                         }
                     }
@@ -365,7 +367,7 @@ fun LinkContent(name: String, url: String, state: LinkState, onRetry: () -> Unit
             }
             else -> item {
                 val code = (state as? LinkState.Waiting)?.code
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), modifier = Modifier.fillMaxWidth()) {
+                CardSurface(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(ScreenPadding), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         Text(stringResource(R.string.link_instructions), style = MaterialTheme.typography.bodyLarge)
                         if (code != null) {

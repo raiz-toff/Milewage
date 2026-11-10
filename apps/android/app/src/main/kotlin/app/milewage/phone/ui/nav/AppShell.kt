@@ -4,13 +4,9 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,7 +15,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
@@ -65,7 +60,6 @@ import app.milewage.phone.ui.firstrun.SetupViewModel
 import app.milewage.phone.ui.firstrun.TailscaleContent
 import app.milewage.phone.ui.firstrun.TailscaleViewModel
 import app.milewage.phone.ui.firstrun.WelcomeScreen
-import app.milewage.phone.ui.icons.Icons
 import app.milewage.phone.ui.permissions.PermissionsRoute as PermissionsScreenRoute
 import app.milewage.phone.ui.settings.AppInfo
 import app.milewage.phone.ui.settings.LicencesRoute as LicencesScreenRoute
@@ -76,13 +70,8 @@ import app.milewage.phone.ui.home.HomeRoute as HomeScreenRoute
 import app.milewage.phone.ui.shifts.ShiftsRoute as ShiftsScreenRoute
 import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
-
-/** A destination in the bottom navigation bar: outlined, filled when selected (Material). */
-private enum class TopLevel(val route: Any, val routeClass: KClass<*>, @StringRes val label: Int, val icon: ImageVector, val selectedIcon: ImageVector) {
-    HOME(HomeRoute, HomeRoute::class, R.string.nav_home, Icons.Home, Icons.HomeFilled),
-    SHIFTS(ShiftsRoute, ShiftsRoute::class, R.string.nav_shifts, Icons.Shifts, Icons.ShiftsFilled),
-    SETTINGS(SettingsRoute, SettingsRoute::class, R.string.nav_settings, Icons.Settings, Icons.SettingsFilled),
-}
+import app.milewage.phone.ui.theme.surfaces
+import androidx.compose.material3.MaterialTheme
 
 /**
  * The navigation shell: first run until the phone is paired, the setup steps after a first
@@ -149,17 +138,8 @@ fun AppShell(
             snackbarHost = { MileWageSnackbarHost(snackbars) },
             bottomBar = {
                 if (showBar) {
-                    NavigationBar {
-                        TopLevel.entries.forEach { top ->
-                            val selected = destination?.hierarchy?.any { it.hasRoute(top.routeClass) } == true
-                            NavigationBarItem(
-                                selected = selected,
-                                onClick = { goTo(nav, top.route) },
-                                icon = { Icon(if (selected) top.selectedIcon else top.icon, contentDescription = null) },
-                                label = { Text(stringResource(top.label)) },
-                            )
-                        }
-                    }
+                    val selected = TopLevel.entries.firstOrNull { top -> destination?.hierarchy?.any { it.hasRoute(top.routeClass) } == true }
+                    MainNavigationBar(selected) { goTo(nav, it.route) }
                 }
             },
         ) { padding ->
@@ -358,6 +338,7 @@ private fun setupViewModel(nav: NavHostController, entry: NavBackStackEntry): Se
 private fun ConfirmLinkDialog(baseUrl: String, onYes: () -> Unit, onNo: () -> Unit) {
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onNo,
+        containerColor = MaterialTheme.surfaces.popover,
         title = { Text(stringResource(R.string.link_confirm_title)) },
         text = { Text(stringResource(R.string.link_confirm_text, app.milewage.phone.logic.Hosts.of(baseUrl) ?: baseUrl)) },
         confirmButton = { androidx.compose.material3.TextButton(onClick = onYes) { Text(stringResource(R.string.link_confirm_yes)) } },

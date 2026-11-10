@@ -2,11 +2,15 @@ package app.milewage.phone.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -20,11 +24,25 @@ import app.milewage.phone.ui.theme.extendedColors
 enum class StatTone { NEUTRAL, EARNED, SPENT }
 
 /**
- * One figure with its label and an optional line under it ("gross · 41 h"). Numbers use tabular
- * figures so they line up. A figure not computed yet is a dash (the formatting helpers give it).
+ * One figure with its label and an optional line under it ("gross · 41 h"), on its own card.
+ * Numbers use tabular figures so they line up. A figure not computed yet is a dash (the
+ * formatting helpers give it). Figures that belong together go in one card instead: [StatCell]s
+ * in a [FigureRow].
  */
 @Composable
 fun StatTile(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    caption: String? = null,
+    tone: StatTone = StatTone.NEUTRAL,
+) {
+    CardSurface(modifier) { StatCell(label, value, Modifier.fillMaxWidth(), caption, tone) }
+}
+
+/** A [StatTile]'s content without the card: one figure inside a card, read out as one sentence. */
+@Composable
+fun StatCell(
     label: String,
     value: String,
     modifier: Modifier = Modifier,
@@ -36,18 +54,30 @@ fun StatTile(
         StatTone.EARNED -> MaterialTheme.extendedColors.earned
         StatTone.SPENT -> MaterialTheme.extendedColors.spent
     }
-    Card(
-        modifier = modifier.clearAndSetSemantics {
-            contentDescription = listOfNotNull(label, value, caption).joinToString(", ")
-        },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    Column(
+        modifier
+            .clearAndSetSemantics { contentDescription = listOfNotNull(label, value, caption).joinToString(", ") }
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, style = MaterialTheme.typography.headlineSmall.tabular(), color = valueColor)
-            if (caption != null) {
-                Text(caption, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.headlineSmall.tabular(), color = valueColor)
+        if (caption != null) {
+            Text(caption, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/**
+ * Figures side by side inside a card, split by outline-variant hairlines and of equal height:
+ * `FigureRow { StatCell(...); StatCell(...) }`. Each child gets an equal share of the width.
+ */
+@Composable
+fun FigureRow(modifier: Modifier = Modifier, cells: List<@Composable (Modifier) -> Unit>) {
+    Row(modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+        cells.forEachIndexed { i, cell ->
+            if (i > 0) VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 16.dp))
+            cell(Modifier.weight(1f).fillMaxHeight())
         }
     }
 }

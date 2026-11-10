@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -35,6 +33,7 @@ import app.milewage.core.sync.Reminder
 import app.milewage.data.RunningShiftView
 import app.milewage.phone.BuildConfig
 import app.milewage.phone.R
+import app.milewage.phone.ui.components.CardSurface
 import app.milewage.phone.logic.BannerKind
 import app.milewage.phone.logic.Fix
 import app.milewage.phone.logic.TrackingLine
@@ -221,7 +220,7 @@ private fun RunningShiftContent(state: HomeState, running: RunningShiftView, act
             }
         }
         item(key = "readings") {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), modifier = Modifier.fillMaxWidth()) {
+            CardSurface(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Reading(stringResource(R.string.reading_time), null) { mod ->
                         ElapsedFigure(shift.startedAt, MaterialTheme.typography.displayLarge, mod, Formats::elapsed)

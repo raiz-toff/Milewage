@@ -69,6 +69,7 @@ import app.milewage.phone.ui.components.rememberConfirmState
 import app.milewage.phone.ui.icons.Icons
 import app.milewage.phone.ui.theme.wallpaperColoursAvailable
 import kotlinx.coroutines.launch
+import app.milewage.phone.ui.theme.surfaces
 
 /** The public source of MileWage (AGPL-3.0: the README's repository). */
 const val SOURCE_URL = "https://github.com/raiz-toff/Milewage"
@@ -543,6 +544,7 @@ private fun <T> ChoiceDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.surfaces.popover,
         title = { Text(title) },
         text = {
             Column {

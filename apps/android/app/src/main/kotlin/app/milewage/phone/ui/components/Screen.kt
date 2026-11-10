@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +25,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -32,6 +34,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.milewage.phone.R
+import app.milewage.phone.ui.theme.Surfaces
+import app.milewage.phone.ui.theme.surfaces
 
 /** The padding around a screen's content and between its cards (design system: 16). */
 val ScreenPadding = 16.dp
@@ -39,7 +43,8 @@ val ScreenPadding = 16.dp
 /**
  * Every screen's frame: a Material 3 top app bar with the title (a [subtitle] under it, and a back
  * arrow when [onBack] is given), then the content as a lazy column, 16 dp from the edges and 16 dp
- * between items. The top bar takes the surface-container colour once the content scrolls under it.
+ * between items. Everything sits on the page ([Surfaces.page]); the top bar keeps the page's colour
+ * and draws an outline-variant hairline once the content scrolls under it.
  *
  * - [bottomBar]: the screen's one main action, held at the bottom (Start shift, End shift).
  * - [onRefresh]: pull to refresh ([refreshing] while it runs).
@@ -63,37 +68,48 @@ fun Screen(
     val scroll = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
         modifier = modifier.nestedScroll(scroll.nestedScrollConnection),
+        containerColor = MaterialTheme.surfaces.page,
         topBar = {
-            TopAppBar(
-                title = {
-                    val long = if (onTitleLongClick != null) {
-                        Modifier.combinedClickable(onLongClickLabel = titleLongClickLabel, onLongClick = onTitleLongClick, onClick = {})
-                    } else {
-                        Modifier
-                    }
-                    Column(long.semantics { heading() }) {
-                        Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (subtitle != null) {
-                            Text(
-                                subtitle,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
+            Column {
+                TopAppBar(
+                    title = {
+                        val long = if (onTitleLongClick != null) {
+                            Modifier.combinedClickable(onLongClickLabel = titleLongClickLabel, onLongClick = onTitleLongClick, onClick = {})
+                        } else {
+                            Modifier
                         }
-                    }
-                },
-                navigationIcon = {
-                    if (onBack != null) {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.Back, contentDescription = stringResource(R.string.back))
+                        Column(long.semantics { heading() }) {
+                            Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            if (subtitle != null) {
+                                Text(
+                                    subtitle,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
                         }
-                    }
-                },
-                actions = actions,
-                scrollBehavior = scroll,
-            )
+                    },
+                    navigationIcon = {
+                        if (onBack != null) {
+                            IconButton(onClick = onBack) {
+                                Icon(Icons.Back, contentDescription = stringResource(R.string.back))
+                            }
+                        }
+                    },
+                    actions = actions,
+                    // The page's colour in both states: no tonal tint when content scrolls under it,
+                    // only a hairline (below), as on the web's top bar.
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.surfaces.page,
+                        scrolledContainerColor = MaterialTheme.surfaces.page,
+                    ),
+                    scrollBehavior = scroll,
+                )
+                val scrolled = scroll.state.overlappedFraction > 0.01f
+                HorizontalDivider(color = if (scrolled) MaterialTheme.colorScheme.outlineVariant else Color.Transparent)
+            }
         },
         bottomBar = bottomBar,
     ) { inner ->
@@ -128,7 +144,7 @@ fun Screen(
  */
 @Composable
 fun BottomAction(content: @Composable () -> Unit) {
-    androidx.compose.material3.Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
+    androidx.compose.material3.Surface(color = MaterialTheme.surfaces.page, tonalElevation = 0.dp) {
         Column(Modifier.padding(horizontal = ScreenPadding, vertical = 12.dp)) { content() }
     }
 }

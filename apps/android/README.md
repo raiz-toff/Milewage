@@ -69,12 +69,17 @@ GitHub release; `--publish PATH` copies the APK where the server hands it out.
   are trusted.
 - **Secrets** go through `SecretStore`: AES-256-GCM under a non-exportable Android Keystore key, the
   sealed text in DataStore (`KeystoreSecretStore`). Not `security-crypto`, which Google deprecated.
-- **Colours** come from the theme, never a hex in a screen. `BrandColors` is generated from Lane
-  yellow `#FFC21F` with material-color-utilities (Fidelity, 2021 spec, standard contrast), the same
-  settings as the web's `apps/web/scripts/m3-theme.mjs`; `BrandSchemeTest` pins it to the generator
-  and to the web's `m3-scheme.json`. `MaterialTheme.extendedColors` adds `earned` (money in only)
-  and `spent` (money out only); destructive actions use Material's `error`. Settings > Use wallpaper colours switches to the
-  phone's Material You colours (Android 12+, off by default).
+- **Colours** come from the theme, never a hex in a screen. `BrandColors` is the web's scheme
+  ("Asphalt and lane", `apps/web/scripts/m3-theme.mjs` and `m3-scheme.json`): Lane yellow `#FFC21F`
+  on neutrals at Asphalt's hue, Fidelity, 2021 spec, with the web's overrides (ink `primary`, the
+  grey page `background`). `BrandSchemeTest` pins the recipe, the generated values and every role to
+  the JSON; Android's one own value is `inversePrimary` (the snackbar action). `ContrastTest` holds
+  the pairs the app draws. Screens take their level from `MaterialTheme.surfaces` (page, card, fill,
+  popover) and put cards in `CardSurface`. `MaterialTheme.extendedColors` adds `earned` (money in
+  only) and `spent` (money out only); destructive actions use Material's `error`. The yellow is the
+  brand button, the route sketch's lane, the tab bar's lane dash, the scanner's corners and the
+  notification accent. Settings > Use wallpaper colours switches to the phone's Material You
+  colours (Android 12+, off by default).
 - **Type and shape**: Material 3's type scale on the system font, Material 3's shape scale.
 - **Screens** use the house components in `ui/components`: `Screen`, `ListRow`, `Rows`,
   `SectionLabel`, `StatTile`, `EmptyState`, `ConfirmHost`, `LocalSnackbars`. Strings live in

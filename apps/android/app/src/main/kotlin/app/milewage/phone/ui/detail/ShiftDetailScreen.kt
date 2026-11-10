@@ -11,8 +11,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -47,6 +46,7 @@ import app.milewage.core.shift.TripSource
 import app.milewage.core.sync.ShiftMarker
 import app.milewage.data.ShiftDetail
 import app.milewage.phone.R
+import app.milewage.phone.ui.components.CardSurface
 import app.milewage.phone.logic.FlagAdvice
 import app.milewage.phone.logic.OverwriteText
 import app.milewage.phone.logic.ShiftFlag
@@ -63,10 +63,12 @@ import app.milewage.phone.ui.components.RowDivider
 import app.milewage.phone.ui.components.Rows
 import app.milewage.phone.ui.components.Screen
 import app.milewage.phone.ui.components.SectionLabel
-import app.milewage.phone.ui.components.StatTile
+import app.milewage.phone.ui.components.FigureRow
+import app.milewage.phone.ui.components.StatCell
 import app.milewage.phone.ui.components.Tone
 import app.milewage.phone.ui.components.tabular
 import kotlinx.datetime.LocalDate
+import app.milewage.phone.ui.theme.surfaces
 
 /** What the detail screen's buttons do. */
 interface DetailActions {
@@ -257,43 +259,48 @@ private fun OverwriteNotice(o: OverwriteText, f: Formats, actions: DetailActions
 private fun Totals(state: DetailState, d: ShiftDetail, f: Formats) {
     val s = d.shift
     val dist = s.distances
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(stringResource(R.string.total_distance), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                BigFigure(if (s.running) stringResource(R.string.shift_in_progress) else f.distance(dist?.totalM), MaterialTheme.typography.displaySmall)
+    // One card: the total large, then business distance and time (and the server's deduction) under hairlines.
+    CardSurface(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(stringResource(R.string.total_distance), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            BigFigure(if (s.running) stringResource(R.string.shift_in_progress) else f.distance(dist?.totalM), MaterialTheme.typography.displaySmall)
+            Text(
+                when {
+                    s.running -> stringResource(R.string.shift_in_progress)
+                    dist == null -> stringResource(R.string.calc_waiting)
+                    s.calcSource == CalcSource.SERVER -> stringResource(R.string.calc_server)
+                    else -> stringResource(R.string.calc_phone)
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (state.estimated && dist != null) {
                 Text(
-                    when {
-                        s.running -> stringResource(R.string.shift_in_progress)
-                        dist == null -> stringResource(R.string.calc_waiting)
-                        s.calcSource == CalcSource.SERVER -> stringResource(R.string.calc_server)
-                        else -> stringResource(R.string.calc_phone)
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
+                    stringResource(R.string.split_estimated, f.distance(dist.activeM), f.distance(dist.deadheadM)),
+                    style = MaterialTheme.typography.bodyMedium.tabular(),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                if (state.estimated && dist != null) {
-                    Text(
-                        stringResource(R.string.split_estimated, f.distance(dist.activeM), f.distance(dist.deadheadM)),
-                        style = MaterialTheme.typography.bodyMedium.tabular(),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatTile(stringResource(R.string.business_distance), f.distance(dist?.businessM), Modifier.weight(1f))
-            StatTile(stringResource(R.string.shift_time), f.duration(s.startedAt, s.endedAt), Modifier.weight(1f))
-        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        val business = stringResource(R.string.business_distance)
+        val time = stringResource(R.string.shift_time)
+        FigureRow(
+            cells = listOf(
+                { m -> StatCell(business, f.distance(dist?.businessM), m) },
+                { m -> StatCell(time, f.duration(s.startedAt, s.endedAt), m) },
+            ),
+        )
         if (s.serverDeductionKnown && s.serverDeductionCents != null) {
-            StatTile(stringResource(R.string.deduction), f.money(s.serverDeductionCents), Modifier.fillMaxWidth(), caption = stringResource(R.string.calc_server))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            StatCell(stringResource(R.string.deduction), f.money(s.serverDeductionCents), Modifier.fillMaxWidth(), caption = stringResource(R.string.calc_server))
         }
     }
 }
 
 @Composable
 private fun RouteCard(d: ShiftDetail) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), modifier = Modifier.fillMaxWidth()) {
+    CardSurface(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.route), style = MaterialTheme.typography.titleMedium)
             if (d.route.size >= 2) {
@@ -451,6 +458,7 @@ private fun TripDialog(
     var distance by rememberSaveable { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.surfaces.popover,
         title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -501,6 +509,7 @@ private fun OdometerEditDialog(kind: OdometerKind, unit: String, onSave: (String
     var text by rememberSaveable { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.surfaces.popover,
         title = { Text(stringResource(if (kind == OdometerKind.SHIFT_START) R.string.odometer_start else R.string.odometer_end)) },
         text = {
             OutlinedTextField(

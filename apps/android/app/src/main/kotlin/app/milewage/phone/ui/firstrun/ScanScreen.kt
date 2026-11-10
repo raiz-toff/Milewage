@@ -72,6 +72,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.milewage.data.qr.QrFrameAnalyzer
 import app.milewage.phone.R
+import app.milewage.phone.ui.theme.surfaces
 import app.milewage.phone.logic.ScanResult
 import app.milewage.phone.platform.ActivityPermissions
 import app.milewage.phone.platform.SystemScreens
@@ -262,7 +263,7 @@ fun ScanContent(
                     FilledTonalIconButton(onClick = onClose, modifier = Modifier.size(48.dp)) {
                         Icon(Icons.Close, contentDescription = stringResource(R.string.scan_close))
                     }
-                    Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                    Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.surfaces.popover) {
                         Text(
                             stringResource(R.string.scan_title),
                             style = MaterialTheme.typography.titleMedium,
@@ -324,7 +325,7 @@ private fun ScanFrame(wrong: Boolean) {
 private fun HintCard(wrong: Boolean) {
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = if (wrong) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+            containerColor = if (wrong) MaterialTheme.colorScheme.errorContainer else MaterialTheme.surfaces.popover,
             contentColor = if (wrong) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface,
         ),
         modifier = Modifier.fillMaxWidth().padding(16.dp).semantics { liveRegion = LiveRegionMode.Polite },
@@ -342,7 +343,7 @@ private fun HintCard(wrong: Boolean) {
 @Composable
 private fun NoCameraCard(access: CameraAccess, onAsk: () -> Unit, onSettings: () -> Unit, onPasteInstead: () -> Unit) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.surfaces.popover),
         modifier = Modifier.fillMaxWidth().padding(16.dp).semantics { liveRegion = LiveRegionMode.Polite },
     ) {
         Column(

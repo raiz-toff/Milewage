@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The brand dark scheme's background (BrandColors.Dark.background). -->
-    <color name="window_background">#171309</color>
+    <!-- The page in dark, Asphalt (BrandColors.Dark.background, the web's background #111416). -->
+    <color name="window_background">#111416</color>
 </resources>
