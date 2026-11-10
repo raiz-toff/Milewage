@@ -1,5 +1,7 @@
-// The location foreground service and drive detection. Drive detection logic itself is plain Kotlin
-// in :engine/:core; this module is the Android side: the service, its notification, the boot receiver.
+// The Android side of tracking: the location foreground service, its notifications, the
+// receivers (buttons, alarms, boot) and the controller the app calls. Every decision (what to
+// request, what to store, still or moving, the drive prompt) is plain Kotlin in :core
+// (app.milewage.core.tracking) and tested there; this module only applies it.
 plugins {
     alias(libs.plugins.android.library)
 }
@@ -16,6 +18,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    lint {
+        abortOnError = true
+        // A newer library or SDK is a decision (latest stable only), not a lint failure.
+        disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion", "OldTargetApi")
+    }
 }
 
 kotlin {
@@ -27,7 +35,8 @@ kotlin {
 
 dependencies {
     api(project(":core"))
-    implementation(project(":engine"))
+    // TODO(engine): the live distance switches to :engine's createLiveAccumulator once the port
+    // lands (see LiveDistance in :core); until then :tracking does not depend on :engine.
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
 

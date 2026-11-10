@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status-bar icon of the running-shift notification: the MileWage coin with its road cut through and
+     the lane dashes in the road (a little heavier than branding/coin-thin so they show at 24 dp).
+     One colour; Android tints it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <group>
+    <clip-path android:pathData="M2.34,12.00 a9.66,9.66 0 1,0 19.32,0 a9.66,9.66 0 1,0 -19.32,0 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M0,0 H24 V24 H0 Z M0.32,21.91 L10.62,17.87 L16.50,10.31 L25.52,6.79 L23.68,2.09 L13.38,6.13 L7.50,13.69 L-1.52,17.21 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="0.95"
+        android:strokeLineCap="butt"
+        android:strokeLineJoin="miter"
+        android:pathData="M5.66,17.11 L7.42,16.42  M8.79,15.89 L9.06,15.78 L10.04,14.52  M10.94,13.36 L12.10,11.87  M13.01,10.71 L14.17,9.22  M15.13,8.14 L16.89,7.46" />
+  </group>
+</vector>
