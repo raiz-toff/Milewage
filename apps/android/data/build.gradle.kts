@@ -45,7 +45,12 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
+    // Pairing QR codes: ZXing's decoder (plain Java, no Google services) on CameraX analysis frames.
+    implementation(libs.zxing.core)
+    implementation(libs.androidx.camera.core)
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlin.test.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
 }

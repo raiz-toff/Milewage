@@ -25,6 +25,11 @@ serialization = "1.12.0"
 coroutines = "1.11.0"
 datetime = "0.8.0"
 materialColorUtilities = "6.0.0"
+# Pairing QR codes: plain ZXing (Apache-2.0, a Java library, not Google Play Services) fed by CameraX frames.
+zxing = "3.5.4"
+camerax = "1.6.2"
+# Tests only: validates the API models against packages/shared/openapi/openapi.yaml (JSON Schema 2020-12).
+jsonSchemaValidator = "3.0.9"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -55,6 +60,12 @@ kotlinx-coroutines-core ={ module = "org.jetbrains.kotlinx:kotlinx-coroutines-co
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 # Kotlin port of Google's material-color-utilities (the algorithm behind @material/material-color-utilities).
 material-color-utilities = { module = "com.materialkolor:material-color-utilities", version.ref = "materialColorUtilities" }
+
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
+androidx-camera-core = { module = "androidx.camera:camera-core", version.ref = "camerax" }
+okhttp-mockwebserver = { module = "com.squareup.okhttp3:mockwebserver3", version.ref = "okhttp" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "jsonSchemaValidator" }
 
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }

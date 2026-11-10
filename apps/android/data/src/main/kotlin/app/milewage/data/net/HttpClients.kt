@@ -1,5 +1,6 @@
 package app.milewage.data.net
 
+import app.milewage.core.api.ApiJson
 import app.milewage.core.net.HomeAddress
 import kotlinx.serialization.json.Json
 import okhttp3.Interceptor
@@ -13,7 +14,7 @@ import java.util.concurrent.TimeUnit
  * so the app allows cleartext at the platform level (res/xml/network_security_config.xml) and
  * [HomeOnlyCleartext] is the gate: https everywhere, plain http only to a home address
  * (HomeAddress in :core, the same rule as the server and the web). Every request, redirects
- * included, passes it before a byte leaves the phone.
+ * included, passes it before a byte leaves the phone. The API client on top is [OkHttpTransport].
  */
 object HttpClients {
     /** `anyHttp`: plain http to any address; debug builds only, for a server on a laptop. */
@@ -24,11 +25,8 @@ object HttpClients {
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    /** JSON as the server speaks it: unknown fields from a newer server are ignored. */
-    val json: Json = Json {
-        ignoreUnknownKeys = true
-        explicitNulls = false
-    }
+    /** JSON as the server speaks it ([ApiJson] in :core): unknown fields from a newer server are ignored. */
+    val json: Json = ApiJson
 }
 
 /** Refused before sending: plain http to an address outside the home network. */
