@@ -137,17 +137,17 @@ alternative.
 | `StatTile`                                              | `label`, `value`, `caption`, `tone` (`StatTone.NEUTRAL`, `EARNED`, `SPENT`: money only). The figure is headline-small and tabular. Read out as one sentence.                                                                                             |
 | `EmptyState`                                            | `title`, `body`, an optional `icon` and at most one action.                                                                                                                                                                                              |
 | `ConfirmHost` + `rememberConfirmState()`                | `confirm.ask(ConfirmRequest(title, text, confirmLabel, destructive, onConfirm))`, shown as a Material `AlertDialog` with text buttons.                                                                                                                   |
+| `BrandButton`                                           | The one brand action on a screen: primary-container (Lane yellow) with on-primary-container content, 56 dp, `BrandSize.VEHICLE` 64 dp in the car (Start shift); `busy` shows a spinner. Every other action is tonal, outlined or text. |
 | `Snackbars` / `LocalSnackbars` / `MileWageSnackbarHost` | `LocalSnackbars.current.show(message, actionLabel, onAction)` from a coroutine. One host in `AppShell`. A message with an action stays longer.                                                                                                           |
 
-Navigation (`ui/nav/`): `AppShell` shows first run (`WelcomeRoute`) until the phone is paired, then
-the main graph under a Material `NavigationBar` with Home, Shifts and Settings. Each tab keeps its
+Navigation (`ui/nav/`): `AppShell` shows first run (`WelcomeRoute`) until the phone is paired, the
+setup steps (Connected, permissions, Ready) after a first connection, then the main graph under a
+Material `NavigationBar` with Home, Shifts and Settings (outlined icons, filled when selected). Each tab keeps its
 state. `ShiftDetailRoute` opens over Shifts with a back arrow. Routes are type-safe
 `@Serializable` objects in `Routes.kt`.
 
-The screens are in progress. The committed `ui/screens/Screens.kt` holds placeholders that
-exercise these parts. New screens follow the steps in SKILL.md and should fit Home's existing
-places (the running shift, what the phone still needs, unsent data) rather than add a second
-banner system.
+New screens follow the steps in SKILL.md and should fit Home's existing places (the running
+shift, what the phone still needs, unsent data) rather than add a second banner system.
 
 ## A web page, in order
 

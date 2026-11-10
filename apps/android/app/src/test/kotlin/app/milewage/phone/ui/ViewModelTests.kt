@@ -41,7 +41,8 @@ import app.milewage.phone.ui.home.HomeEvent
 import app.milewage.phone.ui.home.HomeViewModel
 import app.milewage.phone.ui.home.Period
 import app.milewage.phone.ui.nav.AppViewModel
-import app.milewage.phone.ui.nav.Gate
+import app.milewage.phone.logic.Gate
+import app.milewage.phone.support.FakePairing
 import app.milewage.phone.ui.shifts.ShiftsEvent
 import app.milewage.phone.ui.shifts.ShiftsViewModel
 import app.milewage.core.connect.Where
@@ -421,23 +422,25 @@ class DiagnosticsViewModelTest : VmTest() {
 
 class AppViewModelTest : VmTest() {
     @Test
-    fun `the gate follows pairing, a running shift and the debug way in, links wait in the inbox`() = runTest {
+    fun `the gate follows pairing, setup, a running shift, and links wait in the inbox`() = runTest {
         val data = FakeShiftData()
         data.pairing.value = PairingStatus.UNPAIRED
-        val debug = MutableStateFlow(false)
+        val pairing = FakePairing()
         val inbox = PairLinkInbox(status = { PairingStatus.UNPAIRED })
-        val vm = AppViewModel(data, inbox, debug)
-        assertEquals(Gate.FIRST_RUN, vm.gate.value)
-        debug.value = true
-        assertEquals(Gate.MAIN, vm.gate.value)
-        debug.value = false
+        val vm = AppViewModel(data, pairing, inbox)
+        assertEquals(Gate.FIRST_RUN, vm.shell.value.gate)
         data.pairing.value = PairingStatus.REVOKED
         data.running.value = runningView()
-        assertEquals(Gate.MAIN, vm.gate.value)
+        assertEquals(Gate.MAIN, vm.shell.value.gate)
+        assertEquals(PairingStatus.REVOKED, vm.shell.value.status)
         data.running.value = null
-        assertEquals(Gate.FIRST_RUN, vm.gate.value)
+        assertEquals(Gate.FIRST_RUN, vm.shell.value.gate)
+        // A first connection: the setup steps, then the app once the driver finishes them.
+        pairing.setup.value = true
         data.pairing.value = PairingStatus.PAIRED
-        assertEquals(Gate.MAIN, vm.gate.value)
+        assertEquals(Gate.SETUP, vm.shell.value.gate)
+        pairing.finishSetup()
+        assertEquals(Gate.MAIN, vm.shell.value.gate)
         inbox.receive("milewage://pair?v=1&t=x")
         assertIs<LinkDecision.NotAPairingCode>(vm.link.value)
         vm.consumeLink()

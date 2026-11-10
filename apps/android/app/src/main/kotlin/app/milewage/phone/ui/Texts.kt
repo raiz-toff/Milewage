@@ -1,11 +1,25 @@
 package app.milewage.phone.ui
 
 import androidx.annotation.StringRes
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import app.milewage.core.connect.AddressProblem
+import app.milewage.core.connect.ConnectFailure
 import app.milewage.core.sync.ShiftMarker
+import app.milewage.data.prefs.AppTheme
 import app.milewage.phone.R
+import app.milewage.phone.logic.ConnectError
+import app.milewage.phone.logic.ConnectFix
+import app.milewage.phone.logic.DetectionOutcome
+import app.milewage.phone.logic.LinkFailure
+import app.milewage.phone.logic.PermAction
+import app.milewage.phone.logic.PermState
+import app.milewage.phone.logic.PermStepId
 import app.milewage.phone.logic.BannerKind
 import app.milewage.phone.logic.EditOutcome
+import app.milewage.phone.logic.FlagAdvice
 import app.milewage.phone.logic.Fix
+import app.milewage.phone.logic.ReconReason
 import app.milewage.phone.logic.SetupStep
 import app.milewage.phone.logic.ShiftFlag
 import app.milewage.phone.logic.StartProblem
@@ -108,6 +122,25 @@ object Texts {
     }
 
     @StringRes
+    fun advice(a: FlagAdvice): Int = when (a) {
+        FlagAdvice.PERMISSIONS -> R.string.advice_permissions
+        FlagAdvice.SKY -> R.string.advice_sky
+        FlagAdvice.CLOCK -> R.string.advice_clock
+        FlagAdvice.END_ON_PHONE -> R.string.advice_end_on_phone
+    }
+
+    /** Why the totals differ, never the raw code. */
+    @StringRes
+    fun reason(r: ReconReason): Int = when (r) {
+        ReconReason.POINTS_MISSING -> R.string.reason_points_missing
+        ReconReason.CALC_VERSION -> R.string.reason_calc_version
+        ReconReason.EDITED_ON_WEB -> R.string.reason_edited_on_web
+        ReconReason.LATE_POINTS -> R.string.reason_late_points
+        ReconReason.ENGINE_DISAGREEMENT -> R.string.reason_engine_disagreement
+        ReconReason.UNKNOWN, ReconReason.OTHER -> R.string.reason_unknown
+    }
+
+    @StringRes
     fun choice(c: TripChoice): Int = when (c) {
         TripChoice.BUSINESS -> R.string.kind_business
         TripChoice.ACTIVE -> R.string.kind_active
@@ -124,5 +157,127 @@ object Texts {
         EditOutcome.RUNNING -> R.string.edit_running
         EditOutcome.INVALID -> R.string.edit_invalid
         EditOutcome.FAILED -> R.string.edit_failed
+    }
+
+    /** A connect failure's sentence (the Expo app's words, `Reach`'s KDoc). */
+    @StringRes
+    fun connectErrorRes(e: ConnectError): Int = when (e) {
+        ConnectError.NotACode -> R.string.err_not_a_code
+        ConnectError.AppTooOld -> R.string.err_app_too_old
+        is ConnectError.Address -> when (e.problem) {
+            AddressProblem.THIS_COMPUTER -> R.string.err_this_computer
+            AddressProblem.INSECURE_OUTSIDE_HOME -> R.string.err_insecure_outside_home
+        }
+        is ConnectError.Failed -> when (e.failure) {
+            is ConnectFailure.HomeUnreachable -> R.string.err_home_unreachable
+            ConnectFailure.TailscaleOff -> R.string.err_tailscale_off
+            ConnectFailure.TailnetNotAnswering -> R.string.err_tailnet_not_answering
+            ConnectFailure.TailscaleUnknown -> R.string.err_tailscale_unknown
+            ConnectFailure.InvalidCode -> R.string.err_invalid_code
+            ConnectFailure.RateLimited -> R.string.err_rate_limited
+            ConnectFailure.NotMileWage -> R.string.err_not_milewage
+            ConnectFailure.Unreachable -> R.string.err_unreachable
+            ConnectFailure.InsecureAddress -> R.string.err_insecure_address
+            ConnectFailure.Other -> R.string.err_other
+        }
+    }
+
+    /** The sentence with its address filled in (host name only). */
+    @Composable
+    fun connectError(e: ConnectError): String {
+        val f = (e as? ConnectError.Failed)?.failure
+        return if (f is ConnectFailure.HomeUnreachable) {
+            stringResource(R.string.err_home_unreachable, app.milewage.phone.logic.Hosts.of(f.address) ?: f.address)
+        } else {
+            stringResource(connectErrorRes(e))
+        }
+    }
+
+    @StringRes
+    fun connectFix(f: ConnectFix): Int = when (f) {
+        ConnectFix.TRY_AGAIN -> R.string.try_again
+        ConnectFix.OPEN_TAILSCALE -> R.string.tailscale_open
+        ConnectFix.SCAN -> R.string.fix_scan
+    }
+
+    @StringRes
+    fun linkFailure(f: LinkFailure): Int = when (f) {
+        LinkFailure.EXPIRED -> R.string.link_expired
+        LinkFailure.RATE_LIMITED -> R.string.link_rate_limited
+        LinkFailure.UNREACHABLE -> R.string.link_unreachable
+        LinkFailure.NOT_SUPPORTED -> R.string.link_not_supported
+        LinkFailure.APP_TOO_OLD -> R.string.err_app_too_old
+        LinkFailure.OTHER -> R.string.link_other
+    }
+
+    @StringRes
+    fun permTitle(id: PermStepId): Int = when (id) {
+        PermStepId.LOCATION_SWITCH -> R.string.perm_switch
+        PermStepId.LOCATION -> R.string.perm_location
+        PermStepId.ALL_THE_TIME -> R.string.perm_always
+        PermStepId.NOTIFICATIONS -> R.string.perm_notifications
+        PermStepId.BATTERY -> R.string.perm_battery
+        PermStepId.LOCAL_NETWORK -> R.string.perm_local_network
+    }
+
+    /** What the step is for, in one sentence. */
+    @StringRes
+    fun permPurpose(id: PermStepId): Int = when (id) {
+        PermStepId.LOCATION_SWITCH -> R.string.perm_switch_purpose
+        PermStepId.LOCATION -> R.string.perm_location_purpose
+        PermStepId.ALL_THE_TIME -> R.string.perm_always_purpose
+        PermStepId.NOTIFICATIONS -> R.string.perm_notifications_purpose
+        PermStepId.BATTERY -> R.string.perm_battery_purpose
+        PermStepId.LOCAL_NETWORK -> R.string.perm_local_network_purpose
+    }
+
+    /** The step's state in words (a switch is on or off, battery use limited or not). */
+    @StringRes
+    fun permState(id: PermStepId, s: PermState): Int = when {
+        id == PermStepId.LOCATION_SWITCH -> if (s == PermState.DONE) R.string.perm_state_on else R.string.perm_state_off
+        id == PermStepId.BATTERY -> if (s == PermState.DONE) R.string.perm_state_unlimited else R.string.perm_state_limited
+        else -> when (s) {
+            PermState.DONE -> R.string.perm_state_done
+            PermState.TODO -> R.string.perm_state_todo
+            PermState.APPROXIMATE -> R.string.perm_state_approximate
+            PermState.BLOCKED -> R.string.perm_state_blocked
+            PermState.WAITING -> R.string.perm_state_waiting
+        }
+    }
+
+    /** The step's one button. ("Allow all the time" uses the system's own label, see the screen.) */
+    @StringRes
+    fun permAction(id: PermStepId, a: PermAction): Int = when (a) {
+        PermAction.NONE -> R.string.perm_state_done
+        PermAction.APP_SETTINGS -> R.string.open_app_settings
+        PermAction.LOCATION_SETTINGS -> R.string.fix_location_settings
+        PermAction.BATTERY_LIST -> R.string.fix_battery_settings
+        PermAction.NOTIFICATION_SETTINGS -> R.string.perm_open_notification_settings
+        PermAction.REQUEST -> when (id) {
+            PermStepId.LOCATION -> R.string.perm_allow_location
+            PermStepId.ALL_THE_TIME -> R.string.perm_all_the_time_option
+            PermStepId.NOTIFICATIONS -> R.string.fix_notifications
+            PermStepId.LOCAL_NETWORK -> R.string.perm_allow_local
+            PermStepId.LOCATION_SWITCH -> R.string.fix_location_settings
+            PermStepId.BATTERY -> R.string.fix_battery_settings
+        }
+    }
+
+    @StringRes
+    fun detection(o: DetectionOutcome): Int = when (o) {
+        DetectionOutcome.ON -> R.string.detection_on
+        DetectionOutcome.OFF -> R.string.detection_off
+        DetectionOutcome.LOCATION_OFF -> R.string.detection_location_off
+        DetectionOutcome.NO_LOCATION -> R.string.detection_no_location
+        DetectionOutcome.NEEDS_ALL_THE_TIME -> R.string.detection_needs_always
+        DetectionOutcome.NOT_ALLOWED -> R.string.detection_not_allowed
+        DetectionOutcome.NOT_WIRED -> R.string.detection_not_wired
+    }
+
+    @StringRes
+    fun theme(t: AppTheme): Int = when (t) {
+        AppTheme.SYSTEM -> R.string.theme_system
+        AppTheme.LIGHT -> R.string.theme_light
+        AppTheme.DARK -> R.string.theme_dark
     }
 }

@@ -1,5 +1,6 @@
 package app.milewage.phone.ui.detail
 
+import app.milewage.phone.ui.icons.Icons
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,11 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -51,7 +47,9 @@ import app.milewage.core.shift.TripSource
 import app.milewage.core.sync.ShiftMarker
 import app.milewage.data.ShiftDetail
 import app.milewage.phone.R
+import app.milewage.phone.logic.FlagAdvice
 import app.milewage.phone.logic.OverwriteText
+import app.milewage.phone.logic.ShiftFlag
 import app.milewage.phone.logic.TripChoice
 import app.milewage.phone.model.Formats
 import app.milewage.phone.ui.Texts
@@ -83,10 +81,18 @@ interface DetailActions {
     fun dismissOverwrite(id: Long)
 
     fun sendNow()
+
+    /** A check's advice is about permissions: the permissions screen. */
+    fun openPermissions() = Unit
 }
 
 @Composable
-fun ShiftDetailRoute(clientId: String, onBack: () -> Unit, vm: ShiftDetailViewModel = viewModel(key = clientId, factory = ViewModels.detail(clientId))) {
+fun ShiftDetailRoute(
+    clientId: String,
+    onBack: () -> Unit,
+    onOpenPermissions: () -> Unit,
+    vm: ShiftDetailViewModel = viewModel(key = clientId, factory = ViewModels.detail(clientId)),
+) {
     val state by vm.state.collectAsStateWithLifecycle()
     val snackbars = LocalSnackbars.current
     val res = LocalResources.current
@@ -124,6 +130,8 @@ fun ShiftDetailRoute(clientId: String, onBack: () -> Unit, vm: ShiftDetailViewMo
             override fun dismissOverwrite(id: Long) = vm.dismissOverwrite(id)
 
             override fun sendNow() = vm.sendNow()
+
+            override fun openPermissions() = onOpenPermissions()
         }
     }
     DetailContent(state, actions, onBack)
@@ -167,19 +175,23 @@ fun DetailContent(state: DetailState, actions: DetailActions, onBack: () -> Unit
         val info = state.flags.filter { !it.review }
         if (review.isNotEmpty()) {
             item(key = "review") {
+                // The web's checks and advice; permission advice leads to the permissions screen.
+                val advice = ShiftFlag.advice(review)
                 NoticeCard(
                     title = stringResource(R.string.checks_title),
-                    body = review.map { stringResource(Texts.flag(it)) }.joinToString("\n\n"),
-                    icon = Icons.Filled.Warning,
+                    body = (review.map { stringResource(Texts.flag(it)) } + advice.map { stringResource(Texts.advice(it)) }).joinToString("\n\n"),
+                    icon = Icons.Warning,
                     tone = Tone.WARNING,
+                    actionLabel = if (FlagAdvice.PERMISSIONS in advice) stringResource(R.string.advice_open_permissions) else null,
+                    onAction = if (FlagAdvice.PERMISSIONS in advice) actions::openPermissions else null,
                 )
             }
         }
         if (info.isNotEmpty() || d.interruptions.isNotEmpty()) {
             item(key = "info") {
-                val lines = info.map { stringResource(Texts.flag(it)) } +
+                val lines = info.map { stringResource(Texts.flag(it)) } + ShiftFlag.advice(info).filter { it !in ShiftFlag.advice(review) }.map { stringResource(Texts.advice(it)) } +
                     listOfNotNull(d.interruptions.size.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.interruptions_count, it, it) })
-                NoticeCard(title = stringResource(R.string.checks_info), body = lines.joinToString("\n\n"), icon = Icons.Filled.Info)
+                NoticeCard(title = stringResource(R.string.checks_info), body = lines.joinToString("\n\n"), icon = Icons.Info)
             }
         }
         item(key = "trips") { Trips(state, d, f, onEdit = { editing = it }, onAdd = { adding = true }) }
@@ -227,14 +239,14 @@ fun DetailContent(state: DetailState, actions: DetailActions, onBack: () -> Unit
 private fun OverwriteNotice(o: OverwriteText, f: Formats, actions: DetailActions) {
     val text = when (o) {
         is OverwriteText.Difference -> stringResource(R.string.overwrite_difference, f.distance(o.serverM), f.distance(o.phoneM), f.distance(o.diffM)) +
-            (if (o.reasons.isNotEmpty()) " " + stringResource(R.string.overwrite_reasons, o.reasons.joinToString(", ")) else "")
+            o.reasons.map { " " + stringResource(Texts.reason(it)) }.distinct().joinToString("")
         is OverwriteText.Deleted -> stringResource(R.string.overwrite_deleted)
         is OverwriteText.EditNotApplied -> stringResource(R.string.overwrite_not_applied)
         is OverwriteText.Replaced -> stringResource(R.string.overwrite_replaced)
     }
     NoticeCard(
         title = text,
-        icon = Icons.Filled.Info,
+        icon = Icons.Info,
         tone = Tone.WARNING,
         actionLabel = stringResource(R.string.dismiss),
         onAction = { actions.dismissOverwrite(o.id) },
@@ -298,7 +310,7 @@ private fun SendState(marker: ShiftMarker, sending: Boolean, actions: DetailActi
     val words = stringResource(Texts.marker(marker))
     if (marker == ShiftMarker.SENT) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(words, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         return
@@ -312,7 +324,7 @@ private fun SendState(marker: ShiftMarker, sending: Boolean, actions: DetailActi
                 else -> R.string.sync_waiting
             },
         ),
-        icon = if (marker == ShiftMarker.NEEDS_ATTENTION || marker == ShiftMarker.SENT_DIFFERS) Icons.Filled.Warning else Icons.Filled.Info,
+        icon = if (marker == ShiftMarker.NEEDS_ATTENTION || marker == ShiftMarker.SENT_DIFFERS) Icons.Warning else Icons.Info,
         tone = if (marker == ShiftMarker.NEEDS_ATTENTION) Tone.PROBLEM else Tone.NEUTRAL,
         actionLabel = if (marker == ShiftMarker.SENT_DIFFERS) null else stringResource(if (sending) R.string.sync_sending else R.string.fix_send_now),
         onAction = if (marker == ShiftMarker.SENT_DIFFERS) null else ({ actions.sendNow() }),
@@ -357,7 +369,7 @@ private fun Trips(state: DetailState, d: ShiftDetail, f: Formats, onEdit: (TripR
         }
         if (state.editable) {
             OutlinedButton(onClick = onAdd, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Icon(Icons.Filled.Add, contentDescription = null)
+                Icon(Icons.Add, contentDescription = null)
                 Text(stringResource(R.string.add_trip), modifier = Modifier.padding(start = 8.dp))
             }
         }

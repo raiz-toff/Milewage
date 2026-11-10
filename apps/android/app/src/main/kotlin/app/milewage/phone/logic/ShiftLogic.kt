@@ -90,19 +90,37 @@ object ShiftGroups {
     )
 }
 
-/** What a flag on a shift means to the driver; the words are in strings.xml (`flag_*`). */
-enum class ShiftFlag(val wire: String, val review: Boolean) {
+/** What the driver can do about a check (the web's `shift/advice.ts`); several checks share one. */
+enum class FlagAdvice {
+    /** Location "Allow all the time" and battery use without limits: the permissions screen. */
+    PERMISSIONS,
+
+    /** Keep the phone where it can see the sky. */
+    SKY,
+
+    /** Set the phone's date and time to automatic. */
+    CLOCK,
+
+    /** End the shift on the phone when work stops. */
+    END_ON_PHONE,
+}
+
+/**
+ * What a flag on a shift means to the driver; the words are in strings.xml (`flag_*`), the same
+ * sentences as the web's Checks (`apps/web/src/pages/ShiftFacts.tsx`), with the web's advice.
+ */
+enum class ShiftFlag(val wire: String, val review: Boolean, val advice: FlagAdvice? = null) {
     GAP_COUNTED("gap_counted", false),
-    GAP_LARGE("gap_large", true),
-    GAP_DROPPED("gap_dropped", true),
-    TRACKING_INTERRUPTED("tracking_interrupted", true),
-    SHIFT_AUTO_CLOSED("shift_auto_closed", true),
+    GAP_LARGE("gap_large", true, FlagAdvice.PERMISSIONS),
+    GAP_DROPPED("gap_dropped", true, FlagAdvice.PERMISSIONS),
+    TRACKING_INTERRUPTED("tracking_interrupted", true, FlagAdvice.PERMISSIONS),
+    SHIFT_AUTO_CLOSED("shift_auto_closed", true, FlagAdvice.END_ON_PHONE),
     NO_STOPS_DETECTED("no_stops_detected", false),
     LONG_STOP("long_stop", true),
     LABEL_ORPHANED("label_orphaned", false),
-    POOR_ACCURACY_SHARE("poor_accuracy_share", true),
-    LOW_FIX_DENSITY("low_fix_density", true),
-    CLOCK_SKEW("clock_skew", false),
+    POOR_ACCURACY_SHARE("poor_accuracy_share", true, FlagAdvice.SKY),
+    LOW_FIX_DENSITY("low_fix_density", true, FlagAdvice.PERMISSIONS),
+    CLOCK_SKEW("clock_skew", false, FlagAdvice.CLOCK),
     OVERRIDE_ORPHANED("override_orphaned", true),
     MANUAL_TRIP_PRESENT("manual_trip_present", false),
     CALC_MISMATCH("calc_mismatch", true),
@@ -113,6 +131,30 @@ enum class ShiftFlag(val wire: String, val review: Boolean) {
 
     companion object {
         fun of(wire: String): ShiftFlag = entries.firstOrNull { it.wire == wire && it != OTHER } ?: OTHER
+
+        /** The advice for these flags, each piece once, in the flags' order. */
+        fun advice(flags: List<ShiftFlag>): List<FlagAdvice> = flags.mapNotNull { it.advice }.distinct()
+    }
+}
+
+/**
+ * Why the server's total differs from the phone's (the contract's `Recon.reasons`,
+ * packages/shared/openapi/openapi.yaml; the server's `processing/recon.ts`).
+ */
+enum class ReconReason(val wire: String) {
+    POINTS_MISSING("points_missing"),
+    CALC_VERSION("calc_version"),
+    EDITED_ON_WEB("edited_on_web"),
+    LATE_POINTS("late_points"),
+    ENGINE_DISAGREEMENT("engine_disagreement"),
+    UNKNOWN("unknown"),
+
+    /** A reason this version does not know (a newer server). */
+    OTHER(""),
+    ;
+
+    companion object {
+        fun of(wire: String): ReconReason = entries.firstOrNull { it.wire == wire && it != OTHER } ?: OTHER
     }
 }
 
@@ -141,7 +183,7 @@ sealed interface OverwriteText {
     val id: Long
 
     /** The server's recalculation gave another total than the phone's. */
-    data class Difference(override val id: Long, val serverM: Long, val phoneM: Long, val reasons: List<String>) : OverwriteText {
+    data class Difference(override val id: Long, val serverM: Long, val phoneM: Long, val reasons: List<ReconReason>) : OverwriteText {
         val diffM: Long get() = kotlin.math.abs(serverM - phoneM)
     }
 
@@ -163,7 +205,7 @@ object Overwrites {
         val localTotal = (local?.get("total_m") as? JsonPrimitive)?.longOrNull
         val serverTotal = (server?.get("total_m") as? JsonPrimitive)?.longOrNull
         if (e.reason == OverwriteReason.RECON_DIFF && localTotal != null && serverTotal != null) {
-            val reasons = (server["reasons"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content } ?: emptyList()
+            val reasons = (server["reasons"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content }?.map(ReconReason::of)?.distinct() ?: emptyList()
             return OverwriteText.Difference(e.id, serverTotal, localTotal, reasons)
         }
         if (e.reason == OverwriteReason.DELETED_ON_SERVER) return OverwriteText.Deleted(e.id)

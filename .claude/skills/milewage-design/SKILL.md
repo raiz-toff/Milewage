@@ -59,7 +59,8 @@ primary-container with on-primary-container text. Every other action is `tonal`,
 the brand one, and it is rare. On Android, Material's `Button` is `primary`, not yellow. The brand
 action is a `Button` with
 `ButtonDefaults.buttonColors(containerColor = colorScheme.primaryContainer, contentColor = colorScheme.onPrimaryContainer)`,
-or an `ExtendedFloatingActionButton`, whose Material default is primary-container.
+the house `BrandButton` (56 dp, `BrandSize.VEHICLE` 64 dp for Start shift), or an
+`ExtendedFloatingActionButton`, whose Material default is primary-container.
 
 **Money colours.** `earned` (green) is money in and `spent` (harmonised to a red-orange) is money
 out. Use them only on money figures, never as the only signal: the label says it in words. They
@@ -100,8 +101,9 @@ is on-surface at 38 % text over a 12 % fill. Reduced motion turns the ripple and
 `apps/web/src/ui/icons.tsx` (`AddIcon`, `DeleteIcon`, `ShiftsIcon` ...). They are bundled per icon
 from `@iconify-icons/material-symbols` and drawn offline. There is no icon font and no network
 fetch. Sizes: 24 standalone, 20 in a button, 18 in dense spots. The filled form is only for the
-selected navigation item (`filled`). Android (committed): `Icons.Filled.*` /
-`Icons.AutoMirrored.Filled.*` from `material-icons-core`.
+selected navigation item (`filled`). Android: the same symbols and names in `app.milewage.phone.ui.icons.Icons`
+(`Icons.Add`, `Icons.Shifts`, `Icons.ShiftsFilled` for the selected tab), Kotlin vectors generated
+from the same data by `apps/android/scripts/material-symbols.mjs`; no `material-icons-core`.
 
 **Spacing and targets.** 16 between cards and inside them, 8 between related rows, 24 inside
 dialogs. Web controls are 40 px (buttons, segments), fields 48, menu rows 48 (40 with a mouse),
@@ -141,8 +143,8 @@ shadcn defaults and lucide imports, so restyle it to the roles and swap its icon
 
 ## How to build an Android screen
 
-The screens (Home, Shifts, shift detail, Settings, pairing) are **in progress**. The committed
-`ui/screens/Screens.kt` holds placeholders. Build on what exists:
+Every screen exists (first run and pairing, permissions, Home, Shifts, shift detail, Settings,
+Diagnostics). New ones follow the same steps:
 
 1. Keep the composable thin. It renders state from a view model (`androidx.lifecycle` ViewModel,
    state collected with `collectAsStateWithLifecycle`) and sends events back. Logic and formatting

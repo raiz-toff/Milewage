@@ -134,7 +134,7 @@ object ScreenStates {
         val s = d.shift.copy(phoneFlags = listOf(Flag(FlagCode.GAP_DROPPED), Flag(FlagCode.MANUAL_TRIP_PRESENT)), notes = "Rain all afternoon.")
         d.copy(
             shift = s,
-            overwrites = listOf(OverwriteEntry(5, NOW, "shift", "s1", OverwriteReason.RECON_DIFF, """{"total_m":12000}""", """{"total_m":12345,"reasons":["gap_large"]}""")),
+            overwrites = listOf(OverwriteEntry(5, NOW, "shift", "s1", OverwriteReason.RECON_DIFF, """{"total_m":12000}""", """{"total_m":12345,"reasons":["late_points","edited_on_web"]}""")),
         )
     }
 

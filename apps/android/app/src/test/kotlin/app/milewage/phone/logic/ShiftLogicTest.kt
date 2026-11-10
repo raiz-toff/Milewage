@@ -19,8 +19,6 @@ import app.milewage.phone.support.CIVIC
 import app.milewage.phone.support.NOW
 import app.milewage.phone.support.ROUTE
 import app.milewage.phone.support.shift
-import app.milewage.phone.ui.nav.Gate
-import app.milewage.phone.ui.nav.Gates
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -87,8 +85,9 @@ class OverwritesTest {
 
     @Test
     fun `a Difference names both totals, the gap and the reasons`() {
-        val o = Overwrites.of(entry(OverwriteReason.RECON_DIFF, """{"total_m":12000}""", """{"total_m":12500,"reasons":["gap_large"]}"""))
-        assertEquals(OverwriteText.Difference(5, 12_500, 12_000, listOf("gap_large")), o)
+        val o = Overwrites.of(entry(OverwriteReason.RECON_DIFF, """{"total_m":12000}""", """{"total_m":12500,"reasons":["late_points","calc_version","late_points","from_a_newer_server"]}"""))
+        // Codes become types (a newer server's unknown one too), each once; the screen has words for each.
+        assertEquals(OverwriteText.Difference(5, 12_500, 12_000, listOf(ReconReason.LATE_POINTS, ReconReason.CALC_VERSION, ReconReason.OTHER)), o)
         assertEquals(500, (o as OverwriteText.Difference).diffM)
     }
 
@@ -198,11 +197,16 @@ class DiagnosticsReportTest {
 
 class GatesTest {
     @Test
-    fun `the app for a paired phone, first run otherwise, and a running shift always stays`() {
+    fun `the app for a paired phone, first run otherwise, setup after a first connection, and a running shift always stays`() {
         assertEquals(Gate.MAIN, Gates.of(PairingStatus.PAIRED, false, false))
         assertEquals(Gate.FIRST_RUN, Gates.of(PairingStatus.UNPAIRED, false, false))
         assertEquals(Gate.FIRST_RUN, Gates.of(PairingStatus.REVOKED, false, false))
         assertEquals(Gate.MAIN, Gates.of(PairingStatus.REVOKED, true, false))
-        assertEquals(Gate.MAIN, Gates.of(PairingStatus.UNPAIRED, false, true))
+        // Connected from first run: the setup steps until Ready > Go to home.
+        assertEquals(Gate.SETUP, Gates.of(PairingStatus.PAIRED, false, true))
+        // Paired again mid-shift: the shift stays on screen; the steps come after it.
+        assertEquals(Gate.MAIN, Gates.of(PairingStatus.PAIRED, true, true))
+        // A leftover setup flag never shows setup to an unpaired phone.
+        assertEquals(Gate.FIRST_RUN, Gates.of(PairingStatus.UNPAIRED, false, true))
     }
 }

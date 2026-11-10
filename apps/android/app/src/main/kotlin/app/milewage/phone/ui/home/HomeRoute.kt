@@ -29,6 +29,7 @@ fun HomeRoute(
     onOpenShift: (String) -> Unit,
     onOpenShifts: () -> Unit,
     onOpenDiagnostics: () -> Unit,
+    onOpenPermissions: () -> Unit,
     onPair: () -> Unit,
     vm: HomeViewModel = viewModel(factory = ViewModels.home()),
 ) {
@@ -59,7 +60,8 @@ fun HomeRoute(
             override fun refresh() = vm.refresh()
 
             override fun fix(f: Fix) = when (f) {
-                Fix.APP_SETTINGS -> SystemScreens.appSettings(context)
+                // "Fix permissions": the permissions screen, which says what each one is for.
+                Fix.APP_SETTINGS -> onOpenPermissions()
                 Fix.LOCATION_SETTINGS -> SystemScreens.locationSettings(context)
                 Fix.BATTERY_SETTINGS -> SystemScreens.batterySettings(context)
                 Fix.STORAGE_SETTINGS -> SystemScreens.storageSettings(context)
@@ -101,7 +103,7 @@ fun HomeRoute(
                 is HomeEvent.Ended -> snackbars.show(if (e.sent) ended else endedOffline, viewShift) { onOpenShift(e.clientId) }
                 HomeEvent.EndFailed -> snackbars.show(res.getString(R.string.end_failed), res.getString(R.string.try_again)) { vm.end() }
                 HomeEvent.ResumeFailed -> snackbars.show(res.getString(R.string.resume_failed), res.getString(R.string.fix_app_settings)) {
-                    SystemScreens.appSettings(context)
+                    onOpenPermissions()
                 }
                 HomeEvent.OdometerSaved -> snackbars.show(res.getString(R.string.odometer_saved))
                 HomeEvent.OdometerInvalid -> snackbars.show(res.getString(R.string.odometer_invalid, Formats(vm.state.value.settings).unitLabel))

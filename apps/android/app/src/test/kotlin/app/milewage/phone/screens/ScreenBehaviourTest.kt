@@ -21,9 +21,22 @@ import app.milewage.core.shift.TripRecord
 import app.milewage.core.sync.ShiftMarker
 import app.milewage.phone.logic.BannerKind
 import app.milewage.phone.logic.EditOutcome
+import app.milewage.core.connect.AddressProblem
+import app.milewage.core.connect.ConnectFailure
+import app.milewage.data.prefs.AppTheme
+import app.milewage.phone.logic.ConnectError
+import app.milewage.phone.logic.ConnectFix
+import app.milewage.phone.logic.DetectionOutcome
 import app.milewage.phone.logic.Fix
+import app.milewage.phone.logic.FlagAdvice
+import app.milewage.phone.logic.LinkFailure
+import app.milewage.phone.logic.PermAction
+import app.milewage.phone.logic.PermState
+import app.milewage.phone.logic.PermStepId
+import app.milewage.phone.logic.ReconReason
 import app.milewage.phone.logic.SetupStep
 import app.milewage.phone.logic.ShiftFlag
+import app.milewage.phone.logic.ShiftFlags
 import app.milewage.phone.logic.StartProblem
 import app.milewage.phone.logic.TrackingLine
 import app.milewage.phone.logic.TripChoice
@@ -176,7 +189,10 @@ class ScreenBehaviourTest {
             override fun sendNow() = Unit
         }
         compose.setContent { Framed { DetailContent(ScreenStates.detailFull, actions, {}) } }
-        compose.onNodeWithText("Server confirmed 12.3 km. Your phone showed 12.0 km (0.3 km difference). Reason: gap_large.").assertIsDisplayed()
+        // The reasons in words, never a raw code.
+        compose.onNodeWithText(
+            "Server confirmed 12.3 km. Your phone showed 12.0 km (0.3 km difference). Points reached the server after the shift ended. The shift was changed on the web.",
+        ).assertIsDisplayed()
         compose.onNodeWithText("Dismiss").performClick()
         assertEquals("dismiss 5", calls.last())
         compose.onNodeWithText("Active · Deliveries · estimated", substring = true).assertExists()
@@ -199,8 +215,64 @@ class ScreenBehaviourTest {
         ShiftFlag.entries.forEach { ok(Texts.flag(it)) }
         TripChoice.entries.forEach { ok(Texts.choice(it)) }
         EditOutcome.entries.forEach { o -> Texts.edit(o)?.let(::ok) }
+        FlagAdvice.entries.forEach { ok(Texts.advice(it)) }
+        ReconReason.entries.forEach { ok(Texts.reason(it)) }
+        LinkFailure.entries.forEach { ok(Texts.linkFailure(it)) }
+        ConnectFix.entries.forEach { ok(Texts.connectFix(it)) }
+        DetectionOutcome.entries.forEach { ok(Texts.detection(it)) }
+        AppTheme.entries.forEach { ok(Texts.theme(it)) }
+        PermStepId.entries.forEach { id ->
+            ok(Texts.permTitle(id))
+            ok(Texts.permPurpose(id))
+            PermState.entries.forEach { ok(Texts.permState(id, it)) }
+            PermAction.entries.forEach { ok(Texts.permAction(id, it)) }
+        }
+        listOf(
+            ConnectError.NotACode,
+            ConnectError.AppTooOld,
+            ConnectError.Address(AddressProblem.THIS_COMPUTER),
+            ConnectError.Address(AddressProblem.INSECURE_OUTSIDE_HOME),
+            ConnectError.Failed(ConnectFailure.HomeUnreachable("http://192.168.1.20")),
+            ConnectError.Failed(ConnectFailure.TailscaleOff),
+            ConnectError.Failed(ConnectFailure.TailnetNotAnswering),
+            ConnectError.Failed(ConnectFailure.TailscaleUnknown),
+            ConnectError.Failed(ConnectFailure.InvalidCode),
+            ConnectError.Failed(ConnectFailure.RateLimited),
+            ConnectError.Failed(ConnectFailure.NotMileWage),
+            ConnectError.Failed(ConnectFailure.Unreachable),
+            ConnectError.Failed(ConnectFailure.InsecureAddress),
+            ConnectError.Failed(ConnectFailure.Other),
+        ).forEach { ok(Texts.connectErrorRes(it)) }
         // The voice: no exclamation marks anywhere a driver reads.
         val strings = app.milewage.phone.R.string::class.java.fields.map { res.getString(it.getInt(null)) }
         strings.forEach { assertTrue('!' !in it, "\"$it\" has an exclamation mark") }
+    }
+
+    /**
+     * Every code the server can send has the driver's words: the engine's flags (ShiftFlags.engineCodes,
+     * kept in step by ShiftLogicTest) and the contract's reasons for a different total, read from
+     * packages/shared/openapi/openapi.yaml so a new one fails here first.
+     */
+    @Test
+    fun `every flag and reason code the server can send has words, never the raw code`() {
+        val res = ApplicationProvider.getApplicationContext<Application>().resources
+        val spec = generateSequence(java.io.File("").absoluteFile) { it.parentFile }
+            .map { java.io.File(it, "packages/shared/openapi/openapi.yaml") }
+            .first { it.exists() }
+            .readText()
+        val recon = Regex("""Recon:[\s\S]*?reasons: \{ type: array, items: \{ enum: \[([^\]]+)\]""").find(spec)!!.groupValues[1]
+            .split(',').map { it.trim() }
+        assertTrue(recon.size >= 6)
+        recon.forEach { code ->
+            val r = ReconReason.of(code)
+            assertTrue(r != ReconReason.OTHER, "$code has no ReconReason")
+            val words = res.getString(Texts.reason(r))
+            assertTrue(code !in words && words.isNotBlank(), code)
+        }
+        ShiftFlags.engineCodes.forEach { code ->
+            val f = ShiftFlag.of(code)
+            assertTrue(f != ShiftFlag.OTHER, "$code has no ShiftFlag")
+            assertTrue(code !in res.getString(Texts.flag(f)), code)
+        }
     }
 }

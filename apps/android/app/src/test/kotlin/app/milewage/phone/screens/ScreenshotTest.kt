@@ -15,10 +15,32 @@ import app.milewage.phone.ui.diagnostics.DiagnosticsContent
 import app.milewage.phone.ui.diagnostics.DiagnosticsState
 import app.milewage.phone.ui.home.HomeContent
 import app.milewage.phone.ui.home.HomeState
-import app.milewage.phone.ui.screens.WelcomeScreen
+import app.milewage.phone.model.Countries
+import app.milewage.phone.ui.firstrun.CameraAccess
+import app.milewage.phone.ui.firstrun.CameraStandIn
+import app.milewage.phone.ui.firstrun.ConnectContent
+import app.milewage.phone.ui.firstrun.ConnectState
+import app.milewage.phone.ui.firstrun.ConnectedContent
+import app.milewage.phone.ui.firstrun.LinkContent
+import app.milewage.phone.ui.firstrun.ReadyContent
+import app.milewage.phone.ui.firstrun.ScanContent
+import app.milewage.phone.ui.firstrun.ServerSetupScreen
+import app.milewage.phone.ui.firstrun.TailscaleContent
+import app.milewage.phone.ui.firstrun.WelcomeScreen
+import app.milewage.phone.ui.permissions.PermissionsContent
+import app.milewage.phone.ui.permissions.PermissionsState
+import app.milewage.phone.ui.settings.LicencesContent
+import app.milewage.phone.ui.settings.SettingsContent
 import app.milewage.phone.ui.shifts.ShiftsContent
 import app.milewage.phone.ui.shifts.ShiftsState
+import app.milewage.core.connect.FoundServer
 import app.milewage.core.connect.Where
+import app.milewage.data.prefs.AppTheme
+import app.milewage.phone.logic.ConnectFix
+import app.milewage.phone.logic.Fix
+import app.milewage.phone.logic.HelpLinks
+import app.milewage.phone.ui.firstrun.ConnectActions
+import app.milewage.phone.ui.settings.SettingsActions
 import app.milewage.core.pairing.PairingStatus
 import app.milewage.core.shift.OdometerKind
 import app.milewage.core.shift.TripRecord
@@ -107,7 +129,116 @@ class ScreenshotTest(private val dark: Boolean) {
         DiagnosticsContent(DiagnosticsState(emptyList(), DIAG), {}, {})
     }
 
-    @Test fun welcome() = shot("welcome-debug") { WelcomeScreen(linkAddress = null, onOpenUnpaired = {}) }
+    @Test fun welcome() = shot("welcome") { WelcomeScreen(revoked = false, onHaveServer = {}, onNoServer = {}) }
+
+    @Test fun welcomeRevoked() = shot("welcome-revoked") { WelcomeScreen(revoked = true, onHaveServer = {}, onNoServer = {}) }
+
+    // First run (24 section 4.2, plan 28).
+    @Test fun serverSetup() = shot("server-setup", tallDp = 1000) { ServerSetupScreen({}, {}, {}) }
+
+    private fun connect(state: ConnectState, name: String, tallDp: Int? = 1300, fontScale: Float = 1f) =
+        shot(name, tallDp, fontScale) { ConnectContent(state, NoConnectActions) }
+
+    @Test fun connectLooking() = connect(FirstRunStates.connectLooking, "connect-looking")
+
+    @Test fun connectFound() = connect(FirstRunStates.connectFound, "connect-found")
+
+    @Test fun connectNone() = connect(FirstRunStates.connectNone, "connect-none-found")
+
+    @Test fun connectOffWifi() = connect(FirstRunStates.connectTailscaleOff, "connect-off-wifi-tailscale-off", tallDp = 1500)
+
+    @Test fun connectHomeUnreachable() = connect(FirstRunStates.connectHomeUnreachable, "connect-home-unreachable", tallDp = 1500)
+
+    @Test fun connectBusy() = connect(FirstRunStates.connectBusy, "connect-busy")
+
+    @Test fun connectPermission() = connect(FirstRunStates.connectPermission, "connect-local-network")
+
+    @Test fun connectLargeText() = connect(FirstRunStates.connectFound, "connect-text-200", tallDp = 2600, fontScale = 2f)
+
+    @Test fun connectConfirmLink() = shot("connect-confirm-link", windows = true) {
+        ConnectContent(FirstRunStates.connectFound, NoConnectActions)
+        val confirm = rememberConfirmState()
+        confirm.ask(ConfirmRequest("Connect to this server?", "box.tail1234.ts.net\n\nShifts you record on this phone will be sent there. Only connect to your own MileWage server.", "Yes, connect") {})
+        ConfirmHost(confirm)
+    }
+
+    private fun scan(access: CameraAccess, name: String, wrong: Boolean = false) =
+        shot(name) { ScanContent(access, false, wrong, {}, {}, {}, {}, {}) { CameraStandIn() } }
+
+    @Test fun scanCamera() = scan(CameraAccess.GRANTED, "scan-camera")
+
+    @Test fun scanWrongCode() = scan(CameraAccess.GRANTED, "scan-wrong-code", wrong = true)
+
+    @Test fun scanDenied() = scan(CameraAccess.DENIED, "scan-camera-denied")
+
+    @Test fun scanBlocked() = scan(CameraAccess.BLOCKED, "scan-camera-blocked")
+
+    @Test fun scanFailed() = scan(CameraAccess.FAILED, "scan-camera-failed")
+
+    @Test fun linkAsking() = shot("link-asking") { LinkContent("MileWage (box)", "http://192.168.1.20:8080", FirstRunStates.linkAsking, {}, {}) }
+
+    @Test fun linkWaiting() = shot("link-waiting") { LinkContent("MileWage (box)", "http://192.168.1.20:8080", FirstRunStates.linkWaiting, {}, {}) }
+
+    @Test fun linkExpired() = shot("link-expired") { LinkContent("MileWage (box)", "http://192.168.1.20:8080", FirstRunStates.linkExpired, {}, {}) }
+
+    @Test fun tailscaleMissing() = shot("tailscale-not-installed", tallDp = 1100) { TailscaleContent(FirstRunStates.tailscaleMissing, {}, {}, {}) }
+
+    @Test fun tailscaleOff() = shot("tailscale-not-connected", tallDp = 1100) { TailscaleContent(FirstRunStates.tailscaleOff, {}, {}, {}) }
+
+    @Test fun tailscaleReady() = shot("tailscale-ready", tallDp = 1100) { TailscaleContent(FirstRunStates.tailscaleReady, {}, {}, {}) }
+
+    @Test fun connected() = shot("connected", tallDp = 1100) { ConnectedContent(FirstRunStates.connected, Countries::name, {}, {}) }
+
+    @Test fun connectedNoVehicle() = shot("connected-no-vehicle", tallDp = 1200) { ConnectedContent(FirstRunStates.connectedNoVehicle, Countries::name, {}, {}) }
+
+    @Test fun connectedHomeOnly() = shot("connected-home-only", tallDp = 1300) { ConnectedContent(FirstRunStates.connectedHomeOnly, Countries::name, {}, {}) }
+
+    @Test fun ready() = shot("ready") { ReadyContent {} }
+
+    // The permissions ladder.
+    private fun perms(state: PermissionsState, name: String, setup: Boolean, tallDp: Int = 2200, fontScale: Float = 1f) =
+        shot(name, tallDp, fontScale) { PermissionsContent(state, setup, {}, {}, {}, {}) }
+
+    @Test fun permsNothing() = perms(FirstRunStates.permsNothing, "permissions-setup-nothing", setup = true, tallDp = 2400)
+
+    @Test fun permsWhileInUse() = perms(FirstRunStates.permsWhileInUse, "permissions-while-in-use", setup = false)
+
+    @Test fun permsBlocked() = perms(FirstRunStates.permsBlocked, "permissions-blocked-switch-off", setup = false, tallDp = 2400)
+
+    @Test fun permsApproximate() = perms(FirstRunStates.permsApproximate, "permissions-approximate", setup = false, tallDp = 2400)
+
+    @Test fun permsAll() = perms(FirstRunStates.permsAll, "permissions-all-allowed", setup = false, tallDp = 1300)
+
+    @Test fun permsLargeText() = perms(FirstRunStates.permsWhileInUse, "permissions-text-200", setup = false, tallDp = 4200, fontScale = 2f)
+
+    // Settings.
+    @Test fun settings() = shot("settings", tallDp = 3600) { SettingsContent(FirstRunStates.settings, FirstRunStates.info, NoSettingsActions) }
+
+    @Test fun settingsTrouble() = shot("settings-check-failed-unsent", tallDp = 3600) {
+        SettingsContent(FirstRunStates.settingsTrouble, FirstRunStates.info, NoSettingsActions)
+    }
+
+    @Test fun settingsLargeText() = shot("settings-text-200", tallDp = 7000, fontScale = 2f) {
+        SettingsContent(FirstRunStates.settings, FirstRunStates.info, NoSettingsActions)
+    }
+
+    @Test fun settingsUnpair() = shot("settings-unpair-confirm", windows = true) {
+        SettingsContent(FirstRunStates.settings, FirstRunStates.info, NoSettingsActions)
+        val confirm = rememberConfirmState()
+        confirm.ask(
+            ConfirmRequest(
+                "Connect to a different server?",
+                "This phone stops sending shifts to box.tail1234.ts.net. Shifts not yet sent stay on this phone. Then connect to the new server.",
+                "Disconnect",
+                destructive = true,
+            ) {},
+        )
+        ConfirmHost(confirm)
+    }
+
+    @Test fun licences() = shot("licences") { LicencesContent(FirstRunStates.libraries, {}, {}) }
+
+    @Test fun licencesFailed() = shot("licences-failed") { LicencesContent(null, {}, {}) }
 
     companion object {
         @JvmStatic
@@ -134,3 +265,85 @@ object NoDetailActions : DetailActions {
 
     override fun sendNow() = Unit
 }
+
+object NoConnectActions : ConnectActions {
+    override fun back() = Unit
+
+    override fun scan() = Unit
+
+    override fun submit(text: String) = Unit
+
+    override fun pick(server: FoundServer) = Unit
+
+    override fun lookAgain() = Unit
+
+    override fun tailscale() = Unit
+
+    override fun allowLocalNetwork() = Unit
+
+    override fun fix(fix: ConnectFix) = Unit
+
+    override fun dismissError() = Unit
+}
+
+open class RecordingSettingsActions : SettingsActions {
+    val calls = mutableListOf<String>()
+
+    override fun check() {
+        calls += "check"
+    }
+
+    override fun openTailscale() {
+        calls += "tailscale"
+    }
+
+    override fun disconnect() {
+        calls += "disconnect"
+    }
+
+    override fun setDetection(on: Boolean) {
+        calls += "detection $on"
+    }
+
+    override fun fix(f: Fix) {
+        calls += "fix $f"
+    }
+
+    override fun setNudge(minutes: Int) {
+        calls += "nudge $minutes"
+    }
+
+    override fun setTheme(theme: AppTheme) {
+        calls += "theme $theme"
+    }
+
+    override fun setWallpaper(on: Boolean) {
+        calls += "wallpaper $on"
+    }
+
+    override fun sendNow() {
+        calls += "send"
+    }
+
+    override fun openHelp(page: HelpLinks.Page) {
+        calls += "help $page"
+    }
+
+    override fun openPermissions() {
+        calls += "permissions"
+    }
+
+    override fun openLicences() {
+        calls += "licences"
+    }
+
+    override fun openSource() {
+        calls += "source"
+    }
+
+    override fun openDiagnostics() {
+        calls += "diagnostics"
+    }
+}
+
+object NoSettingsActions : RecordingSettingsActions()

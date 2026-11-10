@@ -4,6 +4,9 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     // Screenshots of the screens on the JVM (Robolectric): ./gradlew :app:recordRoborazziDebug
     alias(libs.plugins.roborazzi)
+    // Settings > Open-source licences: the list of libraries and their licences, made from the
+    // dependencies at build time (res/raw/aboutlibraries.json), read by aboutlibraries-core.
+    alias(libs.plugins.aboutlibraries)
 }
 
 // versionName is the repository's VERSION file, like every package.json and the Expo app.
@@ -215,8 +218,14 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
-    implementation(libs.compose.material.icons.core)
     debugImplementation(libs.compose.ui.tooling)
+
+    // The pairing scanner (QR codes are decoded by :data's ZXing analyzer; no ML Kit).
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.compose)
+    implementation(libs.aboutlibraries.core)
 
     // Harmonises the earned and spent colours with the wallpaper colours when those are on.
     implementation(libs.material.color.utilities)

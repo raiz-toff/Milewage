@@ -292,3 +292,160 @@ class FakeTracking(var perm: TrackingPermissionState = ALLOWED) : TrackingView {
 class FixedNow(var t: Long = NOW) : Now {
     override fun ms(): Long = t
 }
+
+/** A paired server with both addresses (plan 28) and its settings. */
+val CREDENTIAL = app.milewage.core.pairing.Credential(
+    baseUrl = "https://box.tail1234.ts.net",
+    homeUrl = "http://192.168.1.20:8080",
+    awayUrl = "https://box.tail1234.ts.net",
+    deviceId = 7,
+    deviceToken = "mwd_secret",
+    instanceId = "inst-1",
+)
+
+val SERVER_SETTINGS = app.milewage.core.api.Settings(
+    country = "CA",
+    distanceUnit = app.milewage.core.api.DistanceUnit.KM,
+    currency = "CAD",
+    timezone = "America/Toronto",
+    stopsEnabled = true,
+    engineVersion = 4,
+    diagnostics = app.milewage.core.api.DiagnosticsSettings(app.milewage.core.api.DiagnosticsLevel.BASIC),
+    modules = app.milewage.core.api.Modules(tracking = true, stops = true),
+    displayName = "Sam",
+    region = "ON",
+)
+
+val PAIRED_STATE = app.milewage.core.pairing.PairedState(CREDENTIAL, SERVER_SETTINGS)
+
+/** [app.milewage.phone.model.PairingPort] in memory: the test sets the answers, the calls are recorded. */
+class FakePairing(status: PairingStatus = PairingStatus.UNPAIRED) : app.milewage.phone.model.PairingPort {
+    val statusFlow = MutableStateFlow(status)
+    val setup = MutableStateFlow(false)
+    var state: app.milewage.core.pairing.PairedState? = if (status == PairingStatus.PAIRED) PAIRED_STATE else null
+    var whereNow: app.milewage.core.connect.Where? = null
+    var checkFailure: app.milewage.core.api.ApiException? = null
+    var redeemFailure: Exception? = null
+    var startFailure: Exception? = null
+    var awaitFailure: Exception? = null
+    var linkStart = app.milewage.core.pairing.LinkStart("device-code", "123456", NOW + 600_000, 2_000)
+    /** awaitLink returns once this completes (the driver typed the code). */
+    val typed = kotlinx.coroutines.CompletableDeferred<Unit>()
+    var unsent = false
+    val calls = mutableListOf<String>()
+
+    override fun status(): Flow<PairingStatus> = statusFlow
+
+    override fun setupPending(): Flow<Boolean> = setup
+
+    override suspend fun finishSetup() {
+        calls += "finishSetup"
+        setup.value = false
+    }
+
+    override suspend fun paired() = state
+
+    override fun where() = whereNow
+
+    override suspend fun checkConnection(): app.milewage.core.api.ApiException? {
+        calls += "check"
+        return checkFailure
+    }
+
+    private fun becomePaired() {
+        state = PAIRED_STATE
+        setup.value = true
+        statusFlow.value = PairingStatus.PAIRED
+    }
+
+    override suspend fun redeem(link: app.milewage.core.pairing.PairingLink) {
+        calls += "redeem ${link.baseUrl}"
+        redeemFailure?.let { throw it }
+        becomePaired()
+    }
+
+    override suspend fun startLink(baseUrl: String): app.milewage.core.pairing.LinkStart {
+        calls += "startLink $baseUrl"
+        startFailure?.let { throw it }
+        return linkStart
+    }
+
+    override suspend fun awaitLink(baseUrl: String, start: app.milewage.core.pairing.LinkStart) {
+        awaitFailure?.let { throw it }
+        typed.await()
+        becomePaired()
+    }
+
+    override suspend fun hasUnsentData() = unsent
+
+    override suspend fun unpair(loseUnsentData: Boolean): Boolean {
+        calls += "unpair $loseUnsentData"
+        if (unsent && !loseUnsentData) return false
+        state = null
+        statusFlow.value = PairingStatus.UNPAIRED
+        return true
+    }
+}
+
+class FakeNet : app.milewage.phone.model.NetView {
+    var vpn: Boolean? = null
+    var local: Boolean? = true
+    var servers: List<app.milewage.core.connect.FoundServer> = emptyList()
+    var installed = false
+    var permissionNeeded = false
+    var discovered = 0
+    var opened = 0
+
+    override suspend fun vpnActive() = vpn
+
+    override suspend fun localNetwork() = local
+
+    override suspend fun discover(): List<app.milewage.core.connect.FoundServer> {
+        discovered++
+        return servers
+    }
+
+    override suspend fun tailscaleInstalled() = installed
+
+    override suspend fun openTailscale() {
+        opened++
+    }
+
+    override fun localNetworkPermissionNeeded() = permissionNeeded
+}
+
+class FakeTrackingSettings : app.milewage.phone.model.TrackingSettingsPort {
+    var current = app.milewage.core.tracking.TrackingSettings()
+    var result = app.milewage.tracking.TrackingController.DetectionResult.ON
+    var perm = ALLOWED
+
+    override suspend fun settings() = current
+
+    override suspend fun setDetection(on: Boolean): app.milewage.tracking.TrackingController.DetectionResult {
+        if (!on) {
+            current = current.copy(detectionEnabled = false)
+            return app.milewage.tracking.TrackingController.DetectionResult.OFF
+        }
+        if (result == app.milewage.tracking.TrackingController.DetectionResult.ON) current = current.copy(detectionEnabled = true)
+        return result
+    }
+
+    override suspend fun setNudgeAfter(ms: Long) {
+        current = current.copy(nudgeAfterMs = ms)
+    }
+
+    override fun permissions() = perm
+}
+
+class FakeAppearance : app.milewage.phone.model.AppearancePort {
+    override val theme = MutableStateFlow(app.milewage.data.prefs.AppTheme.SYSTEM)
+    override val wallpaperColours = MutableStateFlow(false)
+
+    override suspend fun setTheme(theme: app.milewage.data.prefs.AppTheme) {
+        this.theme.value = theme
+    }
+
+    override suspend fun setWallpaperColours(on: Boolean) {
+        wallpaperColours.value = on
+    }
+}

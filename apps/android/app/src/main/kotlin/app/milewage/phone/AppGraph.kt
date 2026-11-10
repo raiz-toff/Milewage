@@ -22,10 +22,16 @@ import app.milewage.phone.platform.TrackingRecorder
 import app.milewage.tracking.TrackingController
 import app.milewage.tracking.TrackingDependencies
 import app.milewage.tracking.trackingDependencies
+import app.milewage.phone.model.AndroidNetView
+import app.milewage.phone.model.AppearancePort
+import app.milewage.phone.model.ControllerTrackingSettings
+import app.milewage.phone.model.MileWagePairing
+import app.milewage.phone.model.NetView
+import app.milewage.phone.model.PairingPort
+import app.milewage.phone.model.PreferencesAppearance
+import app.milewage.phone.model.TrackingSettingsPort
+import app.milewage.phone.ui.settings.AppInfo
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * The app's service locator: every long-lived object, made once per process by [MileWageApp] (no
@@ -36,8 +42,9 @@ import kotlinx.coroutines.flow.asStateFlow
  * - [tracking] and [trackingDependencies]: the tracking module's controller and what its service,
  *   receivers and controller need from the app.
  * - [shiftData], [trackingView]: the seams the view models read (fakes in tests).
- * - [links]: pairing links that opened the app, for the first-run task's Connect screen.
- * - [uiPreferences]: how the app looks (wallpaper colours).
+ * - [links]: pairing links that opened the app, for first run's Connect screen.
+ * - [pairingPort], [netView], [trackingSettings], [appearance]: first run's and Settings' seams.
+ * - [uiPreferences]: how the app looks (theme, wallpaper colours).
  */
 class AppGraph(context: Context, val scope: CoroutineScope) {
     private val app = context.applicationContext
@@ -75,18 +82,19 @@ class AppGraph(context: Context, val scope: CoroutineScope) {
 
     val links = PairLinkInbox(status = { data.pairing.status() })
 
-    private val _debugUnpaired = MutableStateFlow(false)
+    /** First run's and Settings' seams: pairing, the network (discovery, Tailscale), tracking settings, looks. */
+    val pairingPort: PairingPort = MileWagePairing(data)
 
-    /**
-     * Debug builds only: the driver chose to look at the app without pairing (Welcome's "Open the app
-     * without pairing"). Never set in a release build; forgotten when the process ends. Remove it when
-     * the pairing screens land.
-     */
-    val debugUnpaired: StateFlow<Boolean> = _debugUnpaired.asStateFlow()
+    val netView: NetView by lazy { AndroidNetView(data.connection?.net) }
 
-    fun openUnpaired() {
-        if (BuildConfig.DEBUG) _debugUnpaired.value = true
-    }
+    val trackingSettings: TrackingSettingsPort by lazy { ControllerTrackingSettings(tracking) }
+
+    val appearance: AppearancePort = PreferencesAppearance(uiPreferences)
+
+    /** Plain http only to a home address, as the API client enforces (debug builds allow any). */
+    val release: Boolean = !BuildConfig.ANY_HTTP
+
+    val appInfo = AppInfo(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE, Engine.ALGORITHM_VERSION)
 
     /** The diagnostics screen's reads: versions, states and counts, never a coordinate or the device token. */
     val diagnosticsSource: DiagnosticsSource = object : DiagnosticsSource {

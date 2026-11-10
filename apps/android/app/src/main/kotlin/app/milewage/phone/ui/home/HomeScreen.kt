@@ -1,5 +1,6 @@
 package app.milewage.phone.ui.home
 
+import app.milewage.phone.ui.icons.Icons
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,13 +10,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -48,6 +42,8 @@ import app.milewage.phone.model.Formats
 import app.milewage.phone.ui.Texts
 import app.milewage.phone.ui.components.BigFigure
 import app.milewage.phone.ui.components.BottomAction
+import app.milewage.phone.ui.components.BrandButton
+import app.milewage.phone.ui.components.BrandSize
 import app.milewage.phone.ui.components.ConfirmRequest
 import app.milewage.phone.ui.components.ConfirmState
 import app.milewage.phone.ui.components.ElapsedFigure
@@ -103,7 +99,7 @@ private fun DiagnosticsAction(actions: HomeActions) {
     // Debug builds: one tap. Every build: a long press on the title.
     if (BuildConfig.DEBUG) {
         IconButton(onClick = actions::openDiagnostics) {
-            Icon(Icons.Filled.Build, contentDescription = stringResource(R.string.home_open_diagnostics))
+            Icon(Icons.Maintenance, contentDescription = stringResource(R.string.home_open_diagnostics))
         }
     }
 }
@@ -124,24 +120,15 @@ private fun IdleContent(state: HomeState, actions: HomeActions) {
             if (state.ready) {
                 BottomAction {
                     val starting = state.busy == Busy.START
-                    // The one primary action: lane yellow (primaryContainer), 64 dp, easy to hit in a mount.
-                    Button(
+                    // The one brand action: lane yellow (primaryContainer), 64 dp, easy to hit in a mount.
+                    BrandButton(
+                        text = stringResource(if (starting) R.string.starting_shift else R.string.start_shift),
                         onClick = actions::start,
-                        enabled = !starting,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        ),
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp),
-                    ) {
-                        if (starting) {
-                            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        } else {
-                            Icon(Icons.Filled.PlayArrow, contentDescription = null)
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(if (starting) R.string.starting_shift else R.string.start_shift), style = MaterialTheme.typography.titleMedium)
-                    }
+                        icon = Icons.Play,
+                        busy = starting,
+                        size = BrandSize.VEHICLE,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
         },
@@ -251,12 +238,12 @@ private fun RunningShiftContent(state: HomeState, running: RunningShiftView, act
         item(key = "tracking") { TrackingCard(line, actions, confirm, closeTitle, closeText, closeLabel) }
         item(key = "sent") {
             IconLine(
-                if (shift.serverId != null) Icons.Filled.CheckCircle else Icons.Filled.Info,
+                if (shift.serverId != null) Icons.CheckCircle else Icons.Info,
                 stringResource(if (shift.serverId != null) R.string.running_on_server else R.string.running_on_phone),
             )
         }
         if (running.serverHasOtherShift) {
-            item(key = "other") { NoticeCard(title = stringResource(R.string.running_other_shift), icon = Icons.Filled.Warning, tone = Tone.WARNING) }
+            item(key = "other") { NoticeCard(title = stringResource(R.string.running_other_shift), icon = Icons.Warning, tone = Tone.WARNING) }
         }
         state.banner?.takeIf { it.kind != BannerKind.ALL_SENT && it.kind != BannerKind.WAITING }?.let { b ->
             item(key = "banner") { SyncBannerCard(b, state.sending, actions::fix, actions::reminderShown) }
@@ -286,8 +273,8 @@ private fun TrackingCard(line: TrackingLine, actions: HomeActions, confirm: Conf
         title = stringResource(title),
         body = stringResource(detail),
         icon = when {
-            line.problem -> Icons.Filled.Warning
-            else -> Icons.Filled.LocationOn
+            line.problem -> Icons.Warning
+            else -> Icons.Location
         },
         tone = when {
             line == TrackingLine.NO_BACKGROUND -> Tone.WARNING

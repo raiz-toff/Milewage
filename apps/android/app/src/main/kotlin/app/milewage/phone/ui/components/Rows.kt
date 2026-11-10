@@ -13,6 +13,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -29,14 +31,20 @@ fun ListRow(
     leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
+    /** The card's colour behind the row; a row on a card that is itself on a card sits one level up. */
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
+    /** The headline's colour: Material's error for a destructive row. */
+    headlineColor: Color = Color.Unspecified,
+    /** What TalkBack calls a tappable row (a switch row says "switch"). */
+    role: Role = Role.Button,
 ) {
     ListItem(
-        headlineContent = { Text(headline) },
+        headlineContent = { Text(headline, color = headlineColor) },
         supportingContent = supporting?.let { { Text(it) } },
         leadingContent = leading,
         trailingContent = trailing,
-        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        modifier = if (onClick != null) modifier.clickable(onClick = onClick) else modifier,
+        colors = ListItemDefaults.colors(containerColor = containerColor),
+        modifier = if (onClick != null) modifier.clickable(role = role, onClick = onClick) else modifier,
     )
 }
 

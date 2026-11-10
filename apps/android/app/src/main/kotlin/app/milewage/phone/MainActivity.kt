@@ -15,7 +15,9 @@ import androidx.lifecycle.lifecycleScope
 import app.milewage.phone.ui.ViewModels
 import app.milewage.phone.ui.nav.AppShell
 import app.milewage.phone.ui.nav.AppViewModel
-import app.milewage.phone.ui.nav.Gate
+import app.milewage.phone.logic.Gate
+import app.milewage.data.prefs.AppTheme
+import androidx.compose.foundation.isSystemInDarkTheme
 import app.milewage.phone.ui.theme.MileWageTheme
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -30,7 +32,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val prefs = app.uiPreferences
-        // The splash stays until the colour choice and the pairing state are read, so neither the
+        // The splash stays until the colour choices and the pairing state are read, so neither the
         // brand colours before the wallpaper colours nor the wrong first screen ever flash.
         var ready = false
         splash.setKeepOnScreenCondition { !ready }
@@ -39,13 +41,20 @@ class MainActivity : ComponentActivity() {
         setContent {
             val wallpaper by remember { prefs.useWallpaperColours.map<Boolean, Boolean?> { it } }
                 .collectAsStateWithLifecycle(initialValue = null)
-            val gate by shell.gate.collectAsStateWithLifecycle()
+            val theme by remember { prefs.theme.map<AppTheme, AppTheme?> { it } }.collectAsStateWithLifecycle(initialValue = null)
+            val state by shell.shell.collectAsStateWithLifecycle()
             val link by shell.link.collectAsStateWithLifecycle()
             val choice = wallpaper
-            if (choice != null && gate != Gate.LOADING) {
+            val look = theme
+            if (choice != null && look != null && state.gate != Gate.LOADING) {
                 SideEffect { ready = true }
-                MileWageTheme(wallpaperColours = choice) {
-                    AppShell(gate = gate, link = link, onLinkHandled = shell::consumeLink, onOpenUnpaired = app.graph::openUnpaired)
+                val dark = when (look) {
+                    AppTheme.SYSTEM -> isSystemInDarkTheme()
+                    AppTheme.LIGHT -> false
+                    AppTheme.DARK -> true
+                }
+                MileWageTheme(darkTheme = dark, wallpaperColours = choice) {
+                    AppShell(shell = state, link = link, onLinkHandled = shell::consumeLink, net = app.graph.data.connection?.net, info = app.graph.appInfo)
                 }
             }
         }

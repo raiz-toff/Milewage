@@ -35,15 +35,198 @@
     <string name="fix_stop_sending">Stop sending</string>
     <string name="fix_start_again">Try again</string>
 
-    <!-- First run (placeholder until the pairing task) -->
+    <!-- First run (24 section 4.2, plan 28; the Expo app's words, apps/phone/src/firstrun) -->
+    <string name="next">Next</string>
+    <string name="check_again">Check again</string>
+    <string name="checking">Checking…</string>
+    <string name="not_set">Not set</string>
+    <string name="open_app_settings">Open app settings</string>
+    <string name="step_number">Step %1$d</string>
     <string name="welcome_title">Welcome to MileWage</string>
-    <string name="welcome_body">MileWage records the miles you drive on a shift and sends them to your own MileWage server.</string>
-    <string name="welcome_next_build">Pairing this phone with your server comes in the next build.</string>
-    <string name="welcome_link_arrived">A pairing code for %1$s opened MileWage. Connecting with it comes in the next build.</string>
-    <string name="welcome_debug_open">Open the app without pairing</string>
-    <string name="welcome_debug_note">Debug build only. Shifts cannot start until the phone is paired.</string>
+    <string name="welcome_body">MileWage records your shifts and counts your miles, even with the screen off.</string>
+    <string name="welcome_body_server">Your data stays on your server: a MileWage server you run at home or on your own computer.</string>
+    <string name="welcome_have_server">I have a server</string>
+    <string name="welcome_no_server">I don\'t have one yet</string>
+    <string name="welcome_revoked">This phone was disconnected from your server. Connect again.</string>
+    <string name="welcome_revoked_detail">Shifts not yet sent stay on this phone.</string>
     <string name="link_not_a_code">That is not a MileWage pairing code.</string>
     <string name="link_already_connected">This phone is already connected. To pair with another server, disconnect it in Settings first.</string>
+
+    <!-- Set up your server ("I don't have one yet") -->
+    <string name="server_setup_title">Set up your server</string>
+    <string name="server_setup_body">Do these steps on a computer. Then come back to this phone.</string>
+    <string name="server_step1_title">Install MileWage</string>
+    <string name="server_step1_detail">On a computer that stays on, such as a home PC or a small server.</string>
+    <string name="server_step2_title">Turn on Tailscale</string>
+    <string name="server_step2_detail">It lets this phone reach your server from anywhere, safely.</string>
+    <string name="server_step3_title">Create your account</string>
+    <string name="server_step3_detail">Open MileWage in the browser on that computer and create your account.</string>
+    <string name="server_step4_title">Pair a phone</string>
+    <string name="server_step4_detail">Finish the setup steps, then press Pair a phone. A code appears for this phone.</string>
+    <string name="server_setup_share">Send these steps to my computer</string>
+    <string name="server_setup_share_title">Set up your MileWage server</string>
+    <string name="server_setup_share_intro">Set up your MileWage server:</string>
+    <string name="server_setup_ready">My server is ready</string>
+    <string name="share_failed">This phone could not open it. Do the steps above on your computer.</string>
+
+    <!-- Connect -->
+    <string name="connect_title">Connect to your server</string>
+    <string name="connect_body">On your home Wi-Fi the phone finds your server by itself. Or scan the code from MileWage on your computer (Devices, Pair a phone).</string>
+    <string name="nearby_title">On this Wi-Fi</string>
+    <string name="nearby_body">Tap your server, then type the code it shows on your computer.</string>
+    <string name="nearby_off_wifi">Connect this phone to your home Wi-Fi to find your server, or scan the code.</string>
+    <string name="nearby_permission">Android asks before MileWage looks for your server on this Wi-Fi.</string>
+    <string name="nearby_looking">Looking for your server…</string>
+    <string name="nearby_none">No MileWage server found on this Wi-Fi. Is home network access on for your server (install guide, section 2a)? Otherwise scan the code.</string>
+    <string name="nearby_look_again">Look again</string>
+    <string name="nearby_tailscale">Away from home? Set up Tailscale</string>
+    <string name="scan_card_title">Scan the code</string>
+    <string name="scan_card_body">Point this phone at the code on your computer screen. MileWage asks to use the camera.</string>
+    <string name="scan_button">Scan the code</string>
+    <string name="open_link_title">Open the link</string>
+    <string name="open_link_body">Using MileWage in this phone\'s browser? Make the code there and tap Open in the MileWage app.</string>
+    <string name="paste_title">Paste the code</string>
+    <string name="paste_body">Copy the code text under the QR code and paste it here. Or type your server\'s address to link with a code.</string>
+    <string name="paste_label">Pairing code or server address</string>
+    <string name="paste_placeholder" translatable="false">milewage://pair?…</string>
+    <string name="connect_button">Connect</string>
+    <string name="connecting">Connecting…</string>
+    <string name="link_confirm_title">Connect to this server?</string>
+    <string name="link_confirm_text">%1$s\n\nShifts you record on this phone will be sent there. Only connect to your own MileWage server.</string>
+    <string name="link_confirm_yes">Yes, connect</string>
+    <string name="fix_scan">Scan a new code</string>
+
+    <!-- Why connecting failed (Reach.addressProblem and Reach.explainFailure, the Expo app's words) -->
+    <string name="err_not_a_code">That is not a MileWage pairing code. Make a new code on the Devices page of the web app and scan it again.</string>
+    <string name="err_this_computer">This code points at the computer that made it, not your server. Make the code from your server\'s https address.</string>
+    <string name="err_insecure_outside_home">This code uses an unsecured address (http) outside your home network. Open MileWage in your browser at its https address, or at its address on your home Wi-Fi, and make a new code.</string>
+    <string name="err_home_unreachable">Can\'t reach your server at %1$s. Check that this phone is on the same Wi-Fi as the server and that the server is on.</string>
+    <string name="err_tailscale_off">Tailscale is off on this phone. Open Tailscale, connect, then try again.</string>
+    <string name="err_tailnet_not_answering">Your server is not answering through Tailscale. Check that the server is on and that the phone and server are signed in to the same Tailscale account.</string>
+    <string name="err_tailscale_unknown">Can\'t reach your server. Is Tailscale connected on this phone?</string>
+    <string name="err_invalid_code">This code is not valid, has expired or was already used. Make a new one.</string>
+    <string name="err_rate_limited">Too many attempts. Wait a few minutes and try again.</string>
+    <string name="err_not_milewage">That address answered, but it is not a MileWage server. Check the address and try again.</string>
+    <string name="err_unreachable">Cannot reach the server. Check the address and your connection.</string>
+    <string name="err_insecure_address">This address uses plain http outside your home network. Use its https address instead.</string>
+    <string name="err_other">Connecting failed. Check the address and try again.</string>
+    <string name="err_app_too_old">This app is older than your server. Install the phone app from your server\'s download page, then try again.</string>
+
+    <!-- Scanner -->
+    <string name="scan_title">Scan pairing code</string>
+    <string name="scan_hint">On your MileWage web app open Devices, make a pairing code, and hold this phone over it.</string>
+    <string name="scan_wrong">That is not a MileWage pairing code. Point at the code on Devices in your web app.</string>
+    <string name="scan_close">Close scanner</string>
+    <string name="scan_torch_on">Turn torch on</string>
+    <string name="scan_torch_off">Turn torch off</string>
+    <string name="camera_needed_title">Camera permission is needed to scan.</string>
+    <string name="camera_needed_body">MileWage uses the camera only here, to read the pairing code. You can also paste the code instead.</string>
+    <string name="camera_blocked_title">Camera access is off for MileWage.</string>
+    <string name="camera_blocked_body">Turn it on in the app\'s settings, under Permissions, or paste the code instead.</string>
+    <string name="camera_failed_title">The camera could not start.</string>
+    <string name="camera_failed_body">Another app may be using it, or this phone has no back camera. Paste the code instead.</string>
+    <string name="camera_allow">Allow camera</string>
+    <string name="paste_instead">Paste the code instead</string>
+
+    <!-- Linking with a code (plan 28 section 4.4) -->
+    <string name="link_title">Link this phone</string>
+    <string name="link_instructions">On your computer, open MileWage, then Devices (or the setup step Pair your phone), and type this code:</string>
+    <string name="link_code_desc">Code %1$s</string>
+    <string name="link_waiting">Waiting for your computer…</string>
+    <string name="link_asking">Asking your server…</string>
+    <string name="link_expired">The code expired or was refused. Get a new code and try again.</string>
+    <string name="link_rate_limited">Too many phones are waiting to link. Wait a minute and try again.</string>
+    <string name="link_unreachable">Can\'t reach your server. Check that this phone is on the same Wi-Fi as the server.</string>
+    <string name="link_not_supported">This server cannot link phones with a code yet. Update it, or scan the code.</string>
+    <string name="link_other">Linking failed. Try again.</string>
+    <string name="link_new_code">Get a new code</string>
+
+    <!-- Tailscale -->
+    <string name="tailscale_title">Get Tailscale on this phone</string>
+    <string name="tailscale_body">Tailscale lets this phone reach your server from anywhere, on Wi-Fi or mobile data.</string>
+    <string name="tailscale_step1_title">Install Tailscale</string>
+    <string name="tailscale_step1_detail">The free app, from F-Droid or the Play Store.</string>
+    <string name="tailscale_step2_title">Sign in</string>
+    <string name="tailscale_step2_detail">With the same account as your server.</string>
+    <string name="tailscale_step3_title">Turn it on</string>
+    <string name="tailscale_step3_detail">Connect in Tailscale, then come back here.</string>
+    <string name="tailscale_ready">Tailscale is on. You can connect.</string>
+    <string name="tailscale_not_installed">Tailscale is not installed on this phone.</string>
+    <string name="tailscale_not_connected">Tailscale is installed but not connected.</string>
+    <string name="tailscale_open">Open Tailscale</string>
+    <string name="tailscale_install">Install Tailscale</string>
+    <string name="tailscale_https">Away from home the phone uses your server\'s https address only. With Tailscale it ends in .ts.net.</string>
+    <string name="tailscale_other">Reaching your server another way, such as your own https address? Continue without Tailscale.</string>
+    <string name="tailscale_continue">Continue</string>
+    <string name="tailscale_continue_without">Continue without Tailscale</string>
+
+    <!-- After connecting: Connected and Ready -->
+    <string name="connected_title">Connected</string>
+    <string name="connected_reading">Reading what your server sent.</string>
+    <string name="connected_to">Connected to %1$s.</string>
+    <string name="connected_as">Connected to %1$s as %2$s.</string>
+    <string name="connected_sent">From your server</string>
+    <string name="row_home">At home</string>
+    <string name="row_away">Away</string>
+    <string name="row_country">Country</string>
+    <string name="row_region">Region</string>
+    <string name="row_vehicles">Vehicles</string>
+    <string name="connected_vehicles_none">None yet</string>
+    <string name="vehicles_failed">Could not be loaded</string>
+    <string name="away_not_set">Not set up. Shifts are sent when the phone is on your home Wi-Fi.</string>
+    <string name="connected_no_vehicle">Finish setup on the web: add your vehicle.</string>
+    <string name="connected_no_vehicle_detail">A shift needs a vehicle. Add it in MileWage on your computer, then check again.</string>
+    <string name="connected_vehicles_failed">Your vehicles could not be loaded. Check again once the server can be reached.</string>
+    <string name="home_only_title">Works on your home Wi-Fi.</string>
+    <string name="home_only_detail">Away from home, shifts wait on this phone until you are back. To send them from anywhere, set up Tailscale on your server later (install guide, section 3). Optional.</string>
+    <string name="connected_ready">Your server is ready for this phone.</string>
+    <string name="ready_title">You\'re ready</string>
+    <string name="ready_body">Start your first shift when you start work.</string>
+    <string name="ready_detail">Tap Start shift on the home screen. MileWage records your route until you end the shift, then sends it to your server.</string>
+    <string name="ready_left">Anything you did not allow stays on Home\'s checklist.</string>
+    <string name="ready_go">Go to home</string>
+
+    <!-- Permissions (09 section 5.3) -->
+    <string name="perm_title">Permissions</string>
+    <string name="perm_intro">What MileWage needs to record a shift with the screen off.</string>
+    <string name="perm_disclosure">MileWage records your location, including when the app is closed or the screen is off, from when you start a shift until you end it. If you turn on the drive prompt in Settings, it also checks now and then whether you are driving. It uses your location only to count your miles and sends it to your own server.</string>
+    <string name="perm_mode_ok">You can record shifts.</string>
+    <string name="perm_mode_ok_all">Everything MileWage needs is allowed.</string>
+    <string name="perm_mode_ok_left">The steps left are recommended; they keep recording reliable with the screen off.</string>
+    <string name="perm_mode_none">MileWage cannot record miles yet.</string>
+    <string name="perm_mode_none_detail">It needs precise location and the phone\'s Location switch on. Both are below.</string>
+    <string name="perm_switch">Location switch</string>
+    <string name="perm_switch_purpose">The phone\'s Location must be on, or no miles are recorded.</string>
+    <string name="perm_location">Precise location</string>
+    <string name="perm_location_purpose">Counts your miles while a shift runs. Choose Precise and While using the app.</string>
+    <string name="perm_always">Location all the time</string>
+    <string name="perm_always_title">Location: %1$s</string>
+    <string name="perm_always_purpose">Lets the drive prompt work, and lets recording start again by itself if the phone stops it, for example after a restart. A shift you start in the app records with the screen off without it.</string>
+    <string name="perm_always_how">Android opens MileWage\'s location settings. Choose %1$s there, then come back.</string>
+    <string name="perm_all_the_time_option">Allow all the time</string>
+    <string name="perm_choose">Choose %1$s</string>
+    <string name="perm_notifications">Notifications</string>
+    <string name="perm_notifications_purpose">Shows your shift\'s time and distance, the drive prompt and the reminders.</string>
+    <string name="perm_battery">Battery use</string>
+    <string name="perm_battery_purpose">Phone makers stop apps in the background to save battery, and a stopped app records nothing. Let MileWage run without battery limits: in the list that opens, find MileWage and choose not to optimise it.</string>
+    <string name="perm_battery_samsung">On this phone also: Settings, Battery, Background usage limits, then add MileWage to Never sleeping apps.</string>
+    <string name="perm_battery_other">Some phones also stop apps to save power. dontkillmyapp.com lists the steps for each make.</string>
+    <string name="perm_local_network">Local network</string>
+    <string name="perm_local_network_purpose">Lets MileWage find your server on your home Wi-Fi and send to it there.</string>
+    <string name="perm_state_done">Allowed</string>
+    <string name="perm_state_todo">Not allowed</string>
+    <string name="perm_state_approximate">Approximate only. MileWage needs precise.</string>
+    <string name="perm_state_blocked">Not allowed. Change it in the app\'s settings.</string>
+    <string name="perm_state_waiting">Allow precise location first</string>
+    <string name="perm_state_on">On</string>
+    <string name="perm_state_off">Off</string>
+    <string name="perm_state_unlimited">Not limited</string>
+    <string name="perm_state_limited">Limited by the phone</string>
+    <string name="perm_allow_location">Allow location</string>
+    <string name="perm_open_notification_settings">Open notification settings</string>
+    <string name="perm_allow_local">Allow local network</string>
+    <string name="perm_left_note">Anything you skip stays on Home\'s checklist.</string>
+    <string name="perm_not_opened">Android did not open it.</string>
 
     <!-- Home -->
     <string name="home_title">MileWage</string>
@@ -302,26 +485,40 @@
 
     <!-- What the server changed (overwrite log) -->
     <string name="overwrite_difference">Server confirmed %1$s. Your phone showed %2$s (%3$s difference).</string>
-    <string name="overwrite_reasons">Reason: %1$s.</string>
     <string name="overwrite_deleted">This was deleted on the server. Your unsent change was not sent.</string>
     <string name="overwrite_not_applied">One of your edits could not be applied.</string>
     <string name="overwrite_replaced">A change on the server replaced your unsent edit.</string>
 
-    <!-- Flags in the driver's words (ShiftFlag) -->
-    <string name="flag_gap_counted">GPS dropped out for a short while. The straight line across the gap was counted.</string>
-    <string name="flag_gap_large">GPS dropped out for a long while. Check the distance looks right.</string>
-    <string name="flag_gap_dropped">A GPS gap was too long to count. Some distance may be missing; add it as a trip.</string>
-    <string name="flag_tracking_interrupted">Recording stopped for a while (the phone or the app was off). Some distance may be missing; add it as a trip.</string>
-    <string name="flag_shift_auto_closed">MileWage ended this shift at its last recorded point because it recorded nothing for 12 hours.</string>
-    <string name="flag_no_stops_detected">No stops were found, so active and deadhead could not be estimated.</string>
-    <string name="flag_long_stop">One stop was very long. Check you were still working.</string>
-    <string name="flag_label_orphaned">A stop label no longer matches a stop. Label it again on the web.</string>
-    <string name="flag_poor_accuracy_share">Much of the GPS was imprecise. The distance may be a little off.</string>
-    <string name="flag_low_fix_density">Few GPS points were recorded. The distance may be short; add a missed drive as a trip.</string>
-    <string name="flag_clock_skew">The phone\'s clock was off. Times were corrected from GPS.</string>
-    <string name="flag_override_orphaned">One of your trip edits no longer matches a trip. Check the trips below.</string>
-    <string name="flag_manual_trip_present">This shift has a trip you added by hand.</string>
-    <string name="flag_calc_mismatch">The server\'s total differs from the phone\'s. The server\'s total counts.</string>
+    <!-- Why the server's total differs (Recon.reasons) -->
+    <string name="reason_points_missing">Some points had not reached the server.</string>
+    <string name="reason_calc_version">The server counts with a different engine version.</string>
+    <string name="reason_edited_on_web">The shift was changed on the web.</string>
+    <string name="reason_late_points">Points reached the server after the shift ended.</string>
+    <string name="reason_engine_disagreement">The phone and the server worked out different totals.</string>
+    <string name="reason_unknown">No reason was found.</string>
+
+    <!-- What to do about a check (the web's shift/advice.ts) -->
+    <string name="advice_permissions">Open Permissions: location all the time and battery use without limits, so the phone keeps recording with the screen off.</string>
+    <string name="advice_sky">Keep the phone where it can see the sky, for example on the dashboard.</string>
+    <string name="advice_clock">Set the phone\'s date and time to automatic.</string>
+    <string name="advice_end_on_phone">End the shift on the phone when you stop working.</string>
+    <string name="advice_open_permissions">Open permissions</string>
+
+    <!-- Flags in the driver's words (ShiftFlag): the web's sentences (apps/web/src/pages/ShiftFacts.tsx) -->
+    <string name="flag_gap_counted">A signal gap was bridged and its distance counted.</string>
+    <string name="flag_gap_large">A long signal gap: some distance may be missing.</string>
+    <string name="flag_gap_dropped">A signal gap was too long to count.</string>
+    <string name="flag_tracking_interrupted">Tracking stopped or restarted on the phone.</string>
+    <string name="flag_shift_auto_closed">The shift was ended at the last position; it was never ended on the phone.</string>
+    <string name="flag_no_stops_detected">No stops changed the estimate, so the whole shift counts as one.</string>
+    <string name="flag_long_stop">A stop of 30 minutes or more.</string>
+    <string name="flag_label_orphaned">A stop label no longer matches a detected stop.</string>
+    <string name="flag_poor_accuracy_share" formatted="false">Over 30% of positions were imprecise.</string>
+    <string name="flag_low_fix_density">Few positions were recorded for the length of the shift.</string>
+    <string name="flag_clock_skew">The phone\'s clock was more than 2 minutes off.</string>
+    <string name="flag_override_orphaned">A trip edit no longer matches a trip.</string>
+    <string name="flag_manual_trip_present">A trip you added by hand is in the totals.</string>
+    <string name="flag_calc_mismatch">The server\'s figures differ from the phone\'s.</string>
     <string name="flag_other">The server marked this shift for a check. Open it on the web.</string>
 
     <!-- Diagnostics -->
@@ -358,14 +555,96 @@
     <string name="diag_copied">Diagnostics summary copied. It holds no locations.</string>
     <string name="diag_copy_note">The summary holds versions, states and counts. Never a location.</string>
 
-    <!-- Settings (placeholder until the Settings task) -->
+    <!-- Settings -->
+    <string name="settings_server">Server</string>
+    <string name="settings_not_paired">This phone is not paired.</string>
+    <string name="settings_using_now">%1$s (using now)</string>
+    <string name="settings_connection">Connection</string>
+    <string name="settings_check">Check</string>
+    <string name="connection_home">Connected at home</string>
+    <string name="connection_away">Connected away from home</string>
+    <string name="connection_ok">Connected</string>
+    <string name="connection_failed">Not reached</string>
+    <string name="settings_phone">This phone</string>
+    <string name="settings_permissions">Permissions</string>
+    <string name="settings_permissions_body">Location, notifications, battery</string>
+    <string name="settings_disconnect">Connect to a different server</string>
+    <string name="settings_disconnect_body">Disconnects this phone from %1$s.</string>
+    <string name="unpair_title">Connect to a different server?</string>
+    <string name="unpair_text">This phone stops sending shifts to %1$s. Shifts not yet sent stay on this phone. Then connect to the new server.</string>
+    <string name="unpair_confirm">Disconnect</string>
+    <string name="unpair_unsent_title">Shifts not yet sent</string>
+    <string name="unpair_unsent_text">%1$s only on this phone have not reached %2$s. Send them first with Send now, or they may never get there.</string>
+    <string name="unpair_anyway">Disconnect anyway</string>
+    <string name="unpair_running">End your shift before you disconnect this phone.</string>
+    <string name="unpair_done">Phone disconnected.</string>
+    <string name="unpair_failed">Could not disconnect.</string>
+    <string name="settings_tracking">Tracking</string>
+    <string name="settings_detection">Ask to start a shift when I seem to be driving</string>
+    <string name="settings_detection_body">A notification asks when you drive without a shift. Needs location all the time.</string>
+    <string name="detection_on">The drive prompt is on.</string>
+    <string name="detection_off">The drive prompt is off.</string>
+    <string name="detection_location_off">Location is switched off on this phone. Turn it on, then try again.</string>
+    <string name="detection_no_location">The drive prompt needs your location. Allow precise location first.</string>
+    <string name="detection_needs_always">The drive prompt needs location all the time, because it runs with no app on screen.</string>
+    <string name="detection_not_allowed">Android did not let MileWage start watching for drives.</string>
+    <string name="detection_not_wired">The drive prompt is not available in this build.</string>
+    <string name="settings_nudge">“Still on shift?” reminder</string>
+    <string name="nudge_dialog_title">“Still on shift?” reminder</string>
+    <string name="nudge_dialog_text">Asks once if you have not moved for this long during a shift. It never ends a shift by itself.</string>
+    <string name="nudge_off">Off</string>
+    <plurals name="nudge_minutes">
+        <item quantity="one">After %d minute without moving</item>
+        <item quantity="other">After %d minutes without moving</item>
+    </plurals>
+    <string name="settings_battery_saving">Saving battery while stopped</string>
+    <string name="settings_battery_saving_body">After 2½ minutes without moving, MileWage checks your position once a minute instead of every 5 seconds. It records fully again as soon as you move.</string>
+    <string name="settings_sending">Sending</string>
+    <string name="settings_waiting">Not yet on server</string>
     <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="theme_system">Follow the phone</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
     <string name="settings_wallpaper_colours">Use wallpaper colours</string>
     <string name="settings_wallpaper_colours_body">Colours from your wallpaper instead of MileWage yellow.</string>
     <string name="settings_wallpaper_colours_unavailable">Needs Android 12 or later.</string>
+    <string name="settings_units">Units and formats</string>
+    <string name="units_distance">Distance</string>
+    <string name="units_km">Kilometres</string>
+    <string name="units_miles">Miles</string>
+    <string name="units_currency">Currency</string>
+    <string name="units_timezone">Time zone</string>
+    <string name="units_time_format">Time format</string>
+    <string name="units_24h">24-hour</string>
+    <string name="units_12h">12-hour</string>
+    <string name="units_week_start">Week starts on</string>
+    <string name="units_monday">Monday</string>
+    <string name="units_sunday">Sunday</string>
+    <string name="units_on_web">Set on the web, in Settings. This phone shows them as your server sends them.</string>
+    <string name="settings_help">Help</string>
+    <string name="help_getting_started">Getting started</string>
+    <string name="help_phones">Phones and devices</string>
+    <string name="help_troubleshooting">Troubleshooting</string>
+    <string name="help_index">All help pages</string>
+    <string name="help_note">Opens on your server in the browser. Sign in to MileWage there if it asks.</string>
+    <string name="browser_missing">This phone has no browser to open it.</string>
     <string name="settings_about">About</string>
     <string name="settings_version">Version</string>
     <string name="settings_version_value">%1$s (build %2$d)</string>
+    <string name="settings_engine">Mileage engine</string>
+    <string name="settings_engine_value">Version %1$d</string>
+    <string name="settings_licences">Open-source licences</string>
+    <string name="settings_licences_body">The libraries in this app and their licences</string>
+    <string name="settings_source">Source code</string>
+    <string name="settings_source_body">MileWage is free software under the GNU AGPL 3.0. Its source is on GitHub.</string>
     <string name="settings_diagnostics">Diagnostics</string>
     <string name="settings_diagnostics_body">The mileage maths check, versions and states for a bug report.</string>
+    <string name="licences_app">This app</string>
+    <string name="licences_agpl">GNU Affero General Public License 3.0. Tap for the source.</string>
+    <string name="licences_libraries">Libraries</string>
+    <string name="licences_not_stated">Licence not stated</string>
+    <string name="licences_failed">The list of libraries could not be read.</string>
+    <string name="licences_failed_body">The source on GitHub lists every library and its licence.</string>
+    <string name="licences_note">Tap a library to open its page. The list is made from this build\'s libraries.</string>
 </resources>

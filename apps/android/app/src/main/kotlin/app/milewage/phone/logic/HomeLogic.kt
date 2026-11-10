@@ -23,7 +23,7 @@ import app.milewage.tracking.TrackingPermissionState
 
 /** The one way forward a message offers. The screen turns each into a button. */
 enum class Fix {
-    /** This app's page in the phone's settings (permissions; the permissions screen comes next). */
+    /** "Fix permissions": the permissions screen (each step there opens the right system page). */
     APP_SETTINGS,
 
     /** The phone's Location switch. */
@@ -254,7 +254,8 @@ enum class SetupStep(val fix: Fix) {
     LOCATION(Fix.APP_SETTINGS),
     ALWAYS(Fix.APP_SETTINGS),
     NOTIFICATIONS(Fix.NOTIFICATIONS),
-    BATTERY(Fix.BATTERY_SETTINGS),
+    // The permissions screen says why first (phone makers stop apps), then opens the list.
+    BATTERY(Fix.APP_SETTINGS),
 }
 
 data class SetupItem(val step: SetupStep, val done: Boolean)

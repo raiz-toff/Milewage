@@ -3,9 +3,10 @@ package app.milewage.phone.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -18,7 +19,7 @@ import androidx.compose.ui.unit.dp
 
 /**
  * An empty list says what it is and what to do next ("No shifts yet. Start one on Home."), with at
- * most one button. Never an empty table.
+ * most one button (the brand button when it is the screen's main action). Never an empty table.
  */
 @Composable
 fun EmptyState(
@@ -28,6 +29,8 @@ fun EmptyState(
     icon: ImageVector? = null,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
+    /** The action is the screen's main one: the brand button. Otherwise an outlined button. */
+    mainAction: Boolean = true,
 ) {
     Column(
         modifier = modifier.fillMaxWidth().padding(vertical = 32.dp, horizontal = 16.dp),
@@ -45,7 +48,11 @@ fun EmptyState(
             textAlign = TextAlign.Center,
         )
         if (actionLabel != null && onAction != null) {
-            Button(onClick = onAction, modifier = Modifier.padding(top = 8.dp)) { Text(actionLabel) }
+            if (mainAction) {
+                BrandButton(actionLabel, onAction, Modifier.padding(top = 8.dp))
+            } else {
+                OutlinedButton(onClick = onAction, modifier = Modifier.padding(top = 8.dp).heightIn(min = 48.dp)) { Text(actionLabel) }
+            }
         }
     }
 }

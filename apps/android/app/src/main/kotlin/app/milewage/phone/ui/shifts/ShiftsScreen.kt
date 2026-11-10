@@ -1,5 +1,6 @@
 package app.milewage.phone.ui.shifts
 
+import app.milewage.phone.ui.icons.Icons
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -7,12 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -74,7 +69,7 @@ fun ShiftsContent(state: ShiftsState, onOpenShift: (String) -> Unit, onGoHome: (
         if (state.loaded && state.groups.isEmpty()) {
             item(key = "empty") {
                 EmptyState(
-                    icon = Icons.AutoMirrored.Filled.List,
+                    icon = Icons.Shifts,
                     title = stringResource(R.string.shifts_empty_title),
                     body = stringResource(R.string.shifts_empty_body),
                     actionLabel = stringResource(R.string.shifts_go_home),
@@ -117,9 +112,9 @@ private fun WeekGroup(g: ShiftGroup, f: Formats, onOpenShift: (String) -> Unit) 
 }
 
 private fun markerIcon(m: ShiftMarker): ImageVector = when (m) {
-    ShiftMarker.SENT -> Icons.Filled.CheckCircle
-    ShiftMarker.NEEDS_ATTENTION, ShiftMarker.SENT_DIFFERS -> Icons.Filled.Warning
-    ShiftMarker.ON_PHONE_ONLY, ShiftMarker.SENDING -> Icons.Filled.Info
+    ShiftMarker.SENT -> Icons.CheckCircle
+    ShiftMarker.NEEDS_ATTENTION, ShiftMarker.SENT_DIFFERS -> Icons.Warning
+    ShiftMarker.ON_PHONE_ONLY, ShiftMarker.SENDING -> Icons.Info
 }
 
 /** One shift: day and times, distance, who calculated it, its send state in words, and what to check. */
@@ -143,7 +138,7 @@ fun ShiftListRow(row: ShiftRow, f: Formats, onClick: () -> Unit) {
         supporting = if (review != null) "$supporting\n$review" else supporting,
         leading = {
             Icon(
-                if (row.running) Icons.Filled.LocationOn else markerIcon(row.marker),
+                if (row.running) Icons.Location else markerIcon(row.marker),
                 contentDescription = null,
                 tint = when {
                     row.running -> MaterialTheme.colorScheme.primary

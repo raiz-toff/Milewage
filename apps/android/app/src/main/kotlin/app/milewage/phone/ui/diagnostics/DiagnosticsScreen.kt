@@ -1,14 +1,11 @@
 package app.milewage.phone.ui.diagnostics
 
+import app.milewage.phone.ui.icons.Icons
 import android.content.ClipData
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -101,9 +98,9 @@ fun DiagnosticsContent(state: DiagnosticsState, onBack: () -> Unit, onCopy: (Str
                         check.take(DiagnosticsReport.MAX_FAILURES).joinToString("\n")
                 },
                 icon = when {
-                    check == null -> Icons.Filled.Info
-                    check.isEmpty() -> Icons.Filled.CheckCircle
-                    else -> Icons.Filled.Warning
+                    check == null -> Icons.Info
+                    check.isEmpty() -> Icons.CheckCircle
+                    else -> Icons.Warning
                 },
                 tone = if (check != null && check.isNotEmpty()) Tone.PROBLEM else Tone.NEUTRAL,
             )

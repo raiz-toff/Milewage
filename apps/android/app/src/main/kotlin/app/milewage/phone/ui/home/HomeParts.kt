@@ -1,5 +1,6 @@
 package app.milewage.phone.ui.home
 
+import app.milewage.phone.ui.icons.Icons
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -11,12 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -135,7 +130,7 @@ fun SyncBannerCard(b: Banner, busy: Boolean, onFix: (Fix) -> Unit, onReminderSho
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+            Icon(Icons.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
             Text(stringResource(R.string.sync_all_sent), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         return
@@ -163,9 +158,9 @@ fun SyncBannerCard(b: Banner, busy: Boolean, onFix: (Fix) -> Unit, onReminderSho
         modifier = Modifier.semantics { stateDescription = statusLabel },
         body = listOfNotNull(sentence, reminder).joinToString("\n").ifEmpty { null },
         icon = when (b.color) {
-            StatusColor.RED -> Icons.Filled.Warning
-            StatusColor.YELLOW -> Icons.AutoMirrored.Filled.Send
-            StatusColor.GREEN -> Icons.Filled.Info
+            StatusColor.RED -> Icons.Warning
+            StatusColor.YELLOW -> Icons.Send
+            StatusColor.GREEN -> Icons.Info
         },
         tone = when (b.color) {
             StatusColor.RED -> Tone.PROBLEM
@@ -217,7 +212,7 @@ fun SetupCard(items: List<SetupItem>, onFix: (Fix) -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        if (item.done) Icons.Filled.CheckCircle else Icons.Filled.Info,
+                        if (item.done) Icons.CheckCircle else Icons.Circle,
                         contentDescription = null,
                         tint = if (item.done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -225,7 +220,7 @@ fun SetupCard(items: List<SetupItem>, onFix: (Fix) -> Unit) {
                         Text(stringResource(title), style = MaterialTheme.typography.bodyLarge, color = if (item.done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
                         if (!item.done) Text(stringResource(detail), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    if (!item.done) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                    if (!item.done) Icon(Icons.ChevronRight, contentDescription = null)
                 }
             }
         }

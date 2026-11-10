@@ -192,6 +192,6 @@ class SetupTest {
         // "All the time" without precise location is not done.
         assertFalse(Setup.of(ALLOWED.copy(preciseLocation = false)).first { it.step == SetupStep.ALWAYS }.done)
         assertEquals(Fix.NOTIFICATIONS, SetupStep.NOTIFICATIONS.fix)
-        assertEquals(Fix.BATTERY_SETTINGS, SetupStep.BATTERY.fix)
+        assertEquals(Fix.APP_SETTINGS, SetupStep.BATTERY.fix)
     }
 }

@@ -2,8 +2,9 @@
 
 The native Android app: Kotlin, Jetpack Compose and Material 3. It replaces the Expo app in
 `apps/phone` and installs over it (same application id `app.milewage.phone`, same upload key).
-The engine port, storage, tracking, sending and the main screens (Home, the running shift, Shifts, a
-shift's detail, Diagnostics) are in; first run with pairing, the permissions screen and Settings come next.
+The engine port, storage, tracking, sending and every screen are in: first run with pairing (QR
+scanner, link code on the home Wi-Fi, a pasted code or address, Tailscale), the setup steps, the
+permissions ladder, Home, the running shift, Shifts, a shift's detail, Settings and Diagnostics.
 
 ## Modules
 
@@ -76,7 +77,9 @@ the debug key. `--publish PATH` copies the APK where the server hands it out.
 (`MileWageData.create` with `TrackingRecorder`, `ReminderNotifications`, `AndroidBattery`),
 `tracking` (`TrackingController`, lazy: its runtime reads `trackingDependencies` back from the
 Application), `trackingDependencies`, the view models' seams `shiftData` (`ShiftData`) and
-`trackingView` (`TrackingView`), `links` (`PairLinkInbox`), `diagnosticsSource`, `uiPreferences`.
+`trackingView` (`TrackingView`), first run's and Settings' seams `pairingPort` (`PairingPort`),
+`netView` (`NetView`), `trackingSettings`, `appearance`, `links` (`PairLinkInbox`),
+`diagnosticsSource`, `uiPreferences` (theme, wallpaper colours).
 The Application is the `TrackingDependenciesProvider` and the `MileWageDataProvider` (the send
 worker), creates the reminder channel, calls `data.start(...)`, keeps the shift notification's
 details in step (`ShiftNoticeSync`), and on every foreground calls `ensureRunning()` and `kick()`.
@@ -89,12 +92,31 @@ projection, the diagnostics summary) and return types, not words; `ui/Texts.kt` 
 actions; screens (`…Content`) only render a state. Numbers go through `model/Formats` (`:core`'s
 formatters in the driver's unit, currency, zone and 12/24 h).
 
-**Screens.** Home (summary, sync banner, setup checklist, vehicle, Start shift; while a shift runs:
-time, distance, deduction so far, the tracker's state with its fix, End shift with a confirm, the
-odometer check), Shifts (weeks, send state, things to check, paging), a shift's detail (route sketch
-on a Canvas, totals, trips with their purpose edit, added trips, stops, odometer, notes, the
-server's changes, Send now), Diagnostics (long press on Home's title; a button in debug builds; also
-Settings > Diagnostics). Welcome and Settings are placeholders until the first-run task.
+**Navigation.** `AppShell` shows one of three graphs by the gate (`logic/FirstRun.kt` `Gates`): first
+run while not paired, the setup steps after a first connection (`pairing.setupPending()`), then the
+app. It moves between them by itself when the pairing changes; no screen navigates there.
+
+**Screens.** First run (`ui/firstrun`): Welcome, Set up your server, Connect (servers announced on
+this Wi-Fi, the scanner, a link that opened the app with "Connect to this server?", a pasted code or a
+typed server address), the scanner (CameraX `camera-compose` `CameraXViewfinder`, `:data`'s ZXing
+`QrFrameAnalyzer`), Link this phone (6-digit code), Tailscale; then Connected, the permissions and
+Ready. Permissions (`ui/permissions`, the ladder in `logic/Permissions.kt`): the Location switch,
+precise location, "Allow all the time" asked on its own after it, notifications, battery (the system's
+exemption list; `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` stays out of the manifest), local network on
+Android 17 at targetSdk 37; every "Fix permissions" leads there. Home (summary, sync banner, setup
+checklist, vehicle, Start shift; while a shift runs: time, distance, deduction so far, the tracker's
+state with its fix, End shift with a confirm, the odometer check), Shifts (weeks, send state, things
+to check, paging), a shift's detail (route sketch on a Canvas, totals, trips with their purpose edit,
+added trips, stops, odometer, notes, the server's changes and checks in words with the web's advice,
+Send now), Settings (`ui/settings`: server and connection check, connect to a different server, the
+drive prompt and the "Still on shift?" reminder, sending, theme and wallpaper colours, the server's
+units, Help on the server, About with the licences and the source), Diagnostics (long press on Home's
+title; a button in debug builds; also Settings > Diagnostics).
+
+**Icons** are Material Symbols Rounded, the web's set and names, as Kotlin vectors in
+`ui/icons/Icons.kt`, generated offline from `@iconify-icons/material-symbols` by
+`scripts/material-symbols.mjs` (add a name there and run it with Node 22). The licences screen reads
+`res/raw/aboutlibraries.json`, made at build time by the AboutLibraries plugin.
 
 **Tests.** `./gradlew :app:testDebugUnitTest`: the decisions, the view models with fakes
 (`kotlinx-coroutines-test`), and the screens on the JVM with Robolectric (SDK 35: Robolectric's
