@@ -126,6 +126,7 @@ Requires Node 22.22.x (`.nvmrc`). Earlier 22.x releases crash `better-sqlite3`.
 npm install
 npm run verify   # typecheck, lint, version and OpenAPI checks, server and phone tests
 npm run dev      # API on 127.0.0.1:3000 with its data in .dev/, web dev server in front of it
+                 # (MILEWAGE_DEV_PORT=3200 npm run dev when 3000 is taken)
 ```
 
 `npm run dev -- --host` puts the web app on the LAN and announces the server on the Wi-Fi, so a

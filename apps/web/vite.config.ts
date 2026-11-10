@@ -67,6 +67,9 @@ export const pwaOptions: Partial<VitePWAOptions> = {
 
 // In development the API is the server on :3000. No changeOrigin: the server compares the
 // Origin header with Host, so Host must stay the dev server's own.
+/** The API the dev server proxies to; `npm run dev` sets it from MILEWAGE_DEV_PORT. */
+const api = process.env.MILEWAGE_DEV_API ?? 'http://127.0.0.1:3000';
+
 export default defineConfig({
   plugins: [react(), tailwindcss(), mapWorker(), VitePWA(pwaOptions)],
   resolve: { alias: { '@': join(import.meta.dirname, 'src') } },
@@ -76,8 +79,8 @@ export default defineConfig({
     proxy: {
       // The server leaves `Secure` off the session cookie on an http page itself (plan 28 H2), so
       // the dev server opened by IP over the LAN signs in without a workaround here.
-      '/api': 'http://127.0.0.1:3000',
-      '/healthz': 'http://127.0.0.1:3000',
+      '/api': api,
+      '/healthz': api,
     },
   },
   build: { outDir: 'dist', sourcemap: false },
