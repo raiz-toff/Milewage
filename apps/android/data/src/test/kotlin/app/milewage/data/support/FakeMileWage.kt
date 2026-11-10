@@ -28,8 +28,9 @@ import okio.buffer
  * duplicates counted, `end` answered from the stored result once ended, the change log, and
  * [backup] / [restore] that raise the restore generation. Every answer carries the identity headers.
  */
-class FakeMileWage {
-    data class Call(val method: String, val path: String, val body: JsonElement?) {
+class FakeMileWage(var instance: String = "inst-A") {
+    /** One request: its method, path, body (unzipped) and the size of the body as it arrived. */
+    data class Call(val method: String, val path: String, val body: JsonElement?, val wireBytes: Long = 0) {
         override fun toString() = "$method $path"
     }
 
@@ -51,7 +52,6 @@ class FakeMileWage {
     val calls = java.util.Collections.synchronizedList(ArrayList<Call>())
     var state = State()
     var gen = 1L
-    var instance = "inst-A"
     var duplicates = 0
     var conflicts = 0
 
@@ -158,7 +158,7 @@ class FakeMileWage {
     private fun handle(r: RecordedRequest): MockResponse {
         val url = r.url
         val path = url.encodedPath.removePrefix("/api/v1")
-        val call = Call(r.method, path, bodyOf(r))
+        val call = Call(r.method, path, bodyOf(r), r.body?.size?.toLong() ?: 0)
         calls.add(call)
         overrides["${call.method} ${call.path}"]?.invoke(call)?.let { return it }
         val parts = path.split('/').drop(1)

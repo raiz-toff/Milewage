@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
@@ -80,6 +81,19 @@ class ScreenBehaviourTest {
         assertEquals("start", a.calls.single())
         compose.onNodeWithText("Van").performClick()
         assertEquals("vehicle 4", a.calls.last())
+    }
+
+    @Test
+    fun `another servers shifts say so in words, with connect first and delete second`() {
+        val a = home(ScreenStates.homeOtherServer)
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Delete from this phone"))
+        compose.onNodeWithText("2 shifts recorded for another server").assertIsDisplayed()
+        compose.onNodeWithText(
+            "They were never sent. They go only to old-box.tail9876.ts.net, the server they were recorded for. Connect this phone to that server again to send them.",
+        ).assertIsDisplayed()
+        compose.onNodeWithText("Connect to that server").performClick()
+        compose.onNodeWithText("Delete from this phone").performClick()
+        assertEquals(listOf("connectOther", "deleteOther"), a.calls)
     }
 
     @Test

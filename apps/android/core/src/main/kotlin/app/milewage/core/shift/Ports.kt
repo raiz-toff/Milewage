@@ -53,9 +53,11 @@ data class ShiftContext(
     val segmenter: Segmenter,
     /** The instance's IANA zone: local dates are never the phone's. */
     val timezone: String,
+    /** The paired server's instance id: a new shift is bound to it (`ShiftRecord.instanceId`). */
+    val instanceId: String? = null,
 ) {
     companion object {
-        fun of(flags: Flags) = ShiftContext(flags.tracking, flags.segmenter, flags.timezone)
+        fun of(flags: Flags, instanceId: String? = null) = ShiftContext(flags.tracking, flags.segmenter, flags.timezone, instanceId)
     }
 }
 

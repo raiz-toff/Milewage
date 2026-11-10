@@ -321,13 +321,15 @@ private fun SendState(marker: ShiftMarker, sending: Boolean, actions: DetailActi
             when (marker) {
                 ShiftMarker.NEEDS_ATTENTION -> R.string.sync_needs_attention
                 ShiftMarker.SENT_DIFFERS -> R.string.flag_calc_mismatch
+                // Sending now would not send it: the sentence says where to go instead.
+                ShiftMarker.OTHER_SERVER -> R.string.detail_other_server
                 else -> R.string.sync_waiting
             },
         ),
         icon = if (marker == ShiftMarker.NEEDS_ATTENTION || marker == ShiftMarker.SENT_DIFFERS) Icons.Warning else Icons.Info,
         tone = if (marker == ShiftMarker.NEEDS_ATTENTION) Tone.PROBLEM else Tone.NEUTRAL,
-        actionLabel = if (marker == ShiftMarker.SENT_DIFFERS) null else stringResource(if (sending) R.string.sync_sending else R.string.fix_send_now),
-        onAction = if (marker == ShiftMarker.SENT_DIFFERS) null else ({ actions.sendNow() }),
+        actionLabel = if (marker == ShiftMarker.SENT_DIFFERS || marker == ShiftMarker.OTHER_SERVER) null else stringResource(if (sending) R.string.sync_sending else R.string.fix_send_now),
+        onAction = if (marker == ShiftMarker.SENT_DIFFERS || marker == ShiftMarker.OTHER_SERVER) null else ({ actions.sendNow() }),
     )
 }
 

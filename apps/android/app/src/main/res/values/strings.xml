@@ -411,6 +411,38 @@
     <string name="marker_sent">On server</string>
     <string name="marker_sent_differs">On server (total differs)</string>
     <string name="marker_attention">Needs attention</string>
+    <string name="marker_other_server">Recorded for another server</string>
+    <string name="detail_other_server">It goes only to the server it was recorded for, never to this one. To send it, connect this phone to that server again: Settings &gt; Connect to a different server.</string>
+
+    <!-- Shifts recorded for another server (ServerBinding): never sent, only ever to that server -->
+    <plurals name="other_server_title">
+        <item quantity="one">%d shift recorded for another server</item>
+        <item quantity="other">%d shifts recorded for another server</item>
+    </plurals>
+    <plurals name="other_server_body_host">
+        <item quantity="one">It was never sent. It goes only to %1$s, the server it was recorded for. Connect this phone to that server again to send it.</item>
+        <item quantity="other">They were never sent. They go only to %1$s, the server they were recorded for. Connect this phone to that server again to send them.</item>
+    </plurals>
+    <plurals name="other_server_body">
+        <item quantity="one">It was never sent. It goes only to the server it was recorded for. Connect this phone to that server again to send it.</item>
+        <item quantity="other">They were never sent. They go only to the server they were recorded for. Connect this phone to that server again to send them.</item>
+    </plurals>
+    <string name="other_server_connect">Connect to that server</string>
+    <string name="other_server_delete">Delete from this phone</string>
+    <plurals name="other_server_delete_title">
+        <item quantity="one">Delete %d shift from this phone?</item>
+        <item quantity="other">Delete %d shifts from this phone?</item>
+    </plurals>
+    <plurals name="other_server_delete_text">
+        <item quantity="one">It was never sent to a server. Its miles, trips and route are removed from this phone for good.</item>
+        <item quantity="other">They were never sent to a server. Their miles, trips and routes are removed from this phone for good.</item>
+    </plurals>
+    <string name="other_server_delete_confirm">Delete</string>
+    <string name="delete_failed">The shifts could not be deleted. Try again.</string>
+    <plurals name="other_server_deleted">
+        <item quantity="one">%d shift deleted from this phone.</item>
+        <item quantity="other">%d shifts deleted from this phone.</item>
+    </plurals>
     <string name="calc_phone">Calculated on phone</string>
     <string name="calc_server">Confirmed by server</string>
     <string name="calc_waiting">Totals will appear once it is sent to the server</string>
@@ -571,10 +603,10 @@
     <string name="settings_disconnect">Connect to a different server</string>
     <string name="settings_disconnect_body">Disconnects this phone from %1$s.</string>
     <string name="unpair_title">Connect to a different server?</string>
-    <string name="unpair_text">This phone stops sending shifts to %1$s. Shifts not yet sent stay on this phone. Then connect to the new server.</string>
+    <string name="unpair_text">This phone stops sending shifts to %1$s. Shifts not yet sent stay on this phone and are only ever sent to %1$s. Then connect to the new server.</string>
     <string name="unpair_confirm">Disconnect</string>
     <string name="unpair_unsent_title">Shifts not yet sent</string>
-    <string name="unpair_unsent_text">%1$s only on this phone have not reached %2$s. Send them first with Send now, or they may never get there.</string>
+    <string name="unpair_unsent_text">%1$s only on this phone have not reached %2$s. They stay on this phone and go only to %2$s, once this phone is connected to it again. Send them first with Send now if you can.</string>
     <string name="unpair_anyway">Disconnect anyway</string>
     <string name="unpair_running">End your shift before you disconnect this phone.</string>
     <string name="unpair_done">Phone disconnected.</string>

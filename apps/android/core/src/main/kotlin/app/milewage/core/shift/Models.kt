@@ -121,6 +121,13 @@ data class ShiftRecord(
     val batteryEnd: BatteryReading? = null,
     /** How long the phone's engine run took, ms (for `shift.summary`). */
     val engineMs: Long? = null,
+    /**
+     * The server this shift belongs to: the `X-MileWage-Instance` of the server the phone was paired
+     * with when the shift was recorded (or, for a shift from the change log, the server that sent
+     * it). Only that server is ever sent anything of it (`ServerBinding`). Null: recorded before the
+     * binding existed; the first server paired afterwards claims it.
+     */
+    val instanceId: String? = null,
 ) {
     val running: Boolean get() = status == ShiftStatus.RUNNING
 }

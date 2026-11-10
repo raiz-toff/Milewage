@@ -1,0 +1,1127 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "3c2a8034c1171b730c86e2d7c2674ca3",
+    "entities": [
+      {
+        "tableName": "shifts",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`client_id` TEXT NOT NULL, `server_id` INTEGER, `vehicle_id` INTEGER NOT NULL, `status` TEXT NOT NULL, `segmenter` TEXT NOT NULL, `started_at` INTEGER NOT NULL, `ended_at` INTEGER, `local_date` TEXT NOT NULL, `total_m` INTEGER, `active_m` INTEGER, `deadhead_m` INTEGER, `personal_m` INTEGER, `calc_version` INTEGER, `input_digest` TEXT, `flags_json` TEXT, `server_flags_json` TEXT, `calc_source` TEXT NOT NULL, `server_total_m` INTEGER, `recon_status` TEXT NOT NULL, `recon_reasons_json` TEXT NOT NULL, `first_seq` INTEGER, `last_seq` INTEGER, `point_count` INTEGER, `auto_closed` INTEGER NOT NULL, `clock_skew_ms` INTEGER, `notes` TEXT, `updated_at` INTEGER NOT NULL, `sync_state` TEXT NOT NULL, `server_deduction_cents` INTEGER, `server_deduction_known` INTEGER NOT NULL, `server_has_other_shift` INTEGER NOT NULL, `battery_start_pct` INTEGER, `battery_start_charging` INTEGER, `battery_end_pct` INTEGER, `battery_end_charging` INTEGER, `engine_ms` INTEGER, `instance_id` TEXT, PRIMARY KEY(`client_id`))",
+        "fields": [
+          {
+            "fieldPath": "clientId",
+            "columnName": "client_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverId",
+            "columnName": "server_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "vehicleId",
+            "columnName": "vehicle_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "segmenter",
+            "columnName": "segmenter",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "started_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endedAt",
+            "columnName": "ended_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "localDate",
+            "columnName": "local_date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalM",
+            "columnName": "total_m",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "activeM",
+            "columnName": "active_m",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "deadheadM",
+            "columnName": "deadhead_m",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "personalM",
+            "columnName": "personal_m",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "calcVersion",
+            "columnName": "calc_version",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "inputDigest",
+            "columnName": "input_digest",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "flagsJson",
+            "columnName": "flags_json",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "serverFlagsJson",
+            "columnName": "server_flags_json",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "calcSource",
+            "columnName": "calc_source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverTotalM",
+            "columnName": "server_total_m",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "reconStatus",
+            "columnName": "recon_status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reconReasonsJson",
+            "columnName": "recon_reasons_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firstSeq",
+            "columnName": "first_seq",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastSeq",
+            "columnName": "last_seq",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "pointCount",
+            "columnName": "point_count",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "autoClosed",
+            "columnName": "auto_closed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "clockSkewMs",
+            "columnName": "clock_skew_ms",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syncState",
+            "columnName": "sync_state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverDeductionCents",
+            "columnName": "server_deduction_cents",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "serverDeductionKnown",
+            "columnName": "server_deduction_known",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverHasOtherShift",
+            "columnName": "server_has_other_shift",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "batteryStartPct",
+            "columnName": "battery_start_pct",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "batteryStartCharging",
+            "columnName": "battery_start_charging",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "batteryEndPct",
+            "columnName": "battery_end_pct",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "batteryEndCharging",
+            "columnName": "battery_end_charging",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "engineMs",
+            "columnName": "engine_ms",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "instanceId",
+            "columnName": "instance_id",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "client_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_shifts_instance_id_server_id",
+            "unique": true,
+            "columnNames": [
+              "instance_id",
+              "server_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_shifts_instance_id_server_id` ON `${TABLE_NAME}` (`instance_id`, `server_id`)"
+          },
+          {
+            "name": "index_shifts_started_at",
+            "unique": false,
+            "columnNames": [
+              "started_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_shifts_started_at` ON `${TABLE_NAME}` (`started_at`)"
+          },
+          {
+            "name": "index_shifts_status",
+            "unique": false,
+            "columnNames": [
+              "status"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_shifts_status` ON `${TABLE_NAME}` (`status`)"
+          },
+          {
+            "name": "index_shifts_sync_state",
+            "unique": false,
+            "columnNames": [
+              "sync_state"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_shifts_sync_state` ON `${TABLE_NAME}` (`sync_state`)"
+          },
+          {
+            "name": "index_shifts_local_date",
+            "unique": false,
+            "columnNames": [
+              "local_date"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_shifts_local_date` ON `${TABLE_NAME}` (`local_date`)"
+          },
+          {
+            "name": "index_shifts_vehicle_id",
+            "unique": false,
+            "columnNames": [
+              "vehicle_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_shifts_vehicle_id` ON `${TABLE_NAME}` (`vehicle_id`)"
+          }
+        ]
+      },
+      {
+        "tableName": "fixes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`seq` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `shift_client_id` TEXT NOT NULL, `recorded_at` INTEGER NOT NULL, `lat_e7` INTEGER NOT NULL, `lon_e7` INTEGER NOT NULL, `accuracy_m` INTEGER NOT NULL, `speed_dmps` INTEGER, `bearing_deg` INTEGER, `altitude_m` INTEGER, `provider` TEXT, `elapsed_realtime_ms` INTEGER, `phone_time_ms` INTEGER, `send_state` INTEGER NOT NULL DEFAULT 0, `sent_at` INTEGER, `set_aside_reason` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "seq",
+            "columnName": "seq",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "shiftClientId",
+            "columnName": "shift_client_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordedAt",
+            "columnName": "recorded_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "latE7",
+            "columnName": "lat_e7",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lonE7",
+            "columnName": "lon_e7",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accuracyM",
+            "columnName": "accuracy_m",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "speedDmps",
+            "columnName": "speed_dmps",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "bearingDeg",
+            "columnName": "bearing_deg",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "altitudeM",
+            "columnName": "altitude_m",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "provider",
+            "columnName": "provider",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "elapsedRealtimeMs",
+            "columnName": "elapsed_realtime_ms",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "phoneTimeMs",
+            "columnName": "phone_time_ms",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sendState",
+            "columnName": "send_state",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "sentAt",
+            "columnName": "sent_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "setAsideReason",
+            "columnName": "set_aside_reason",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "seq"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_fixes_shift_client_id_seq",
+            "unique": false,
+            "columnNames": [
+              "shift_client_id",
+              "seq"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_fixes_shift_client_id_seq` ON `${TABLE_NAME}` (`shift_client_id`, `seq`)"
+          },
+          {
+            "name": "index_fixes_send_state_shift_client_id_seq",
+            "unique": false,
+            "columnNames": [
+              "send_state",
+              "shift_client_id",
+              "seq"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_fixes_send_state_shift_client_id_seq` ON `${TABLE_NAME}` (`send_state`, `shift_client_id`, `seq`)"
+          },
+          {
+            "name": "index_fixes_send_state_sent_at",
+            "unique": false,
+            "columnNames": [
+              "send_state",
+              "sent_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_fixes_send_state_sent_at` ON `${TABLE_NAME}` (`send_state`, `sent_at`)"
+          }
+        ]
+      },
+      {
+        "tableName": "interruptions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `shift_client_id` TEXT NOT NULL, `from_ms` INTEGER NOT NULL, `to_ms` INTEGER NOT NULL, `reason` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "shiftClientId",
+            "columnName": "shift_client_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fromMs",
+            "columnName": "from_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "toMs",
+            "columnName": "to_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reason",
+            "columnName": "reason",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_interruptions_shift_client_id",
+            "unique": false,
+            "columnNames": [
+              "shift_client_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_interruptions_shift_client_id` ON `${TABLE_NAME}` (`shift_client_id`)"
+          }
+        ]
+      },
+      {
+        "tableName": "trips",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`trip_key` TEXT NOT NULL, `shift_client_id` TEXT NOT NULL, `server_id` INTEGER, `kind` TEXT NOT NULL, `original_kind` TEXT NOT NULL, `source` TEXT NOT NULL, `started_at` INTEGER NOT NULL, `ended_at` INTEGER NOT NULL, `start_lat_e7` INTEGER, `start_lon_e7` INTEGER, `end_lat_e7` INTEGER, `end_lon_e7` INTEGER, `distance_m` INTEGER NOT NULL, `purpose` TEXT NOT NULL, `edited_at` INTEGER, `sync_state` TEXT NOT NULL, PRIMARY KEY(`trip_key`), FOREIGN KEY(`shift_client_id`) REFERENCES `shifts`(`client_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "tripKey",
+            "columnName": "trip_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "shiftClientId",
+            "columnName": "shift_client_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverId",
+            "columnName": "server_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "originalKind",
+            "columnName": "original_kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "started_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endedAt",
+            "columnName": "ended_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startLatE7",
+            "columnName": "start_lat_e7",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "startLonE7",
+            "columnName": "start_lon_e7",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "endLatE7",
+            "columnName": "end_lat_e7",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "endLonE7",
+            "columnName": "end_lon_e7",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "distanceM",
+            "columnName": "distance_m",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "purpose",
+            "columnName": "purpose",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "editedAt",
+            "columnName": "edited_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "syncState",
+            "columnName": "sync_state",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "trip_key"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_trips_shift_client_id_started_at",
+            "unique": false,
+            "columnNames": [
+              "shift_client_id",
+              "started_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_trips_shift_client_id_started_at` ON `${TABLE_NAME}` (`shift_client_id`, `started_at`)"
+          },
+          {
+            "name": "index_trips_server_id",
+            "unique": false,
+            "columnNames": [
+              "server_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_trips_server_id` ON `${TABLE_NAME}` (`server_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "shifts",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "shift_client_id"
+            ],
+            "referencedColumns": [
+              "client_id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "stops",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`stop_key` TEXT NOT NULL, `shift_client_id` TEXT NOT NULL, `started_at` INTEGER NOT NULL, `ended_at` INTEGER NOT NULL, `dwell_s` INTEGER NOT NULL, `lat_e7` INTEGER NOT NULL, `lon_e7` INTEGER NOT NULL, `confidence` TEXT NOT NULL, `est_role` TEXT NOT NULL, `role` TEXT NOT NULL, PRIMARY KEY(`stop_key`), FOREIGN KEY(`shift_client_id`) REFERENCES `shifts`(`client_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "stopKey",
+            "columnName": "stop_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "shiftClientId",
+            "columnName": "shift_client_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "started_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endedAt",
+            "columnName": "ended_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dwellS",
+            "columnName": "dwell_s",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "latE7",
+            "columnName": "lat_e7",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lonE7",
+            "columnName": "lon_e7",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "confidence",
+            "columnName": "confidence",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estRole",
+            "columnName": "est_role",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "role",
+            "columnName": "role",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "stop_key"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_stops_shift_client_id_started_at",
+            "unique": false,
+            "columnNames": [
+              "shift_client_id",
+              "started_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_stops_shift_client_id_started_at` ON `${TABLE_NAME}` (`shift_client_id`, `started_at`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "shifts",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "shift_client_id"
+            ],
+            "referencedColumns": [
+              "client_id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "routes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`shift_client_id` TEXT NOT NULL, `points_json` TEXT NOT NULL, PRIMARY KEY(`shift_client_id`), FOREIGN KEY(`shift_client_id`) REFERENCES `shifts`(`client_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "shiftClientId",
+            "columnName": "shift_client_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pointsJson",
+            "columnName": "points_json",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "shift_client_id"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "shifts",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "shift_client_id"
+            ],
+            "referencedColumns": [
+              "client_id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "odometer_readings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`shift_client_id` TEXT NOT NULL, `kind` TEXT NOT NULL, `reading_m` INTEGER NOT NULL, `recorded_at` INTEGER NOT NULL, `server_id` INTEGER, `sync_state` TEXT NOT NULL, PRIMARY KEY(`shift_client_id`, `kind`), FOREIGN KEY(`shift_client_id`) REFERENCES `shifts`(`client_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "shiftClientId",
+            "columnName": "shift_client_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "readingM",
+            "columnName": "reading_m",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordedAt",
+            "columnName": "recorded_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverId",
+            "columnName": "server_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "syncState",
+            "columnName": "sync_state",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "shift_client_id",
+            "kind"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_odometer_readings_server_id",
+            "unique": false,
+            "columnNames": [
+              "server_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_odometer_readings_server_id` ON `${TABLE_NAME}` (`server_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "shifts",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "shift_client_id"
+            ],
+            "referencedColumns": [
+              "client_id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "vehicles",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, `kind` TEXT NOT NULL, `plate` TEXT, `archived_at` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "plate",
+            "columnName": "plate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "archivedAt",
+            "columnName": "archived_at",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "outbox",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `kind` TEXT NOT NULL, `entity_key` TEXT NOT NULL, `shift_client_id` TEXT NOT NULL, `body` TEXT NOT NULL, `created_at` INTEGER NOT NULL, `attempts` INTEGER NOT NULL, `last_error` TEXT, `status` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entityKey",
+            "columnName": "entity_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "shiftClientId",
+            "columnName": "shift_client_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "body",
+            "columnName": "body",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attempts",
+            "columnName": "attempts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastError",
+            "columnName": "last_error",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_outbox_status_id",
+            "unique": false,
+            "columnNames": [
+              "status",
+              "id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_outbox_status_id` ON `${TABLE_NAME}` (`status`, `id`)"
+          },
+          {
+            "name": "index_outbox_shift_client_id_kind",
+            "unique": false,
+            "columnNames": [
+              "shift_client_id",
+              "kind"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_outbox_shift_client_id_kind` ON `${TABLE_NAME}` (`shift_client_id`, `kind`)"
+          },
+          {
+            "name": "index_outbox_kind_entity_key",
+            "unique": false,
+            "columnNames": [
+              "kind",
+              "entity_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_outbox_kind_entity_key` ON `${TABLE_NAME}` (`kind`, `entity_key`)"
+          }
+        ]
+      },
+      {
+        "tableName": "overwrite_log",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `at` INTEGER NOT NULL, `entity` TEXT NOT NULL, `entity_key` TEXT NOT NULL, `reason` TEXT NOT NULL, `local_json` TEXT NOT NULL, `server_json` TEXT, `seen` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "at",
+            "columnName": "at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entity",
+            "columnName": "entity",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entityKey",
+            "columnName": "entity_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reason",
+            "columnName": "reason",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "localJson",
+            "columnName": "local_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverJson",
+            "columnName": "server_json",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "seen",
+            "columnName": "seen",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_overwrite_log_entity_key",
+            "unique": false,
+            "columnNames": [
+              "entity_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_overwrite_log_entity_key` ON `${TABLE_NAME}` (`entity_key`)"
+          },
+          {
+            "name": "index_overwrite_log_seen",
+            "unique": false,
+            "columnNames": [
+              "seen"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_overwrite_log_seen` ON `${TABLE_NAME}` (`seen`)"
+          }
+        ]
+      },
+      {
+        "tableName": "resend_marks",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`shift_client_id` TEXT NOT NULL, `gen` INTEGER NOT NULL, `phase` TEXT NOT NULL, `after_seq` INTEGER NOT NULL, PRIMARY KEY(`shift_client_id`))",
+        "fields": [
+          {
+            "fieldPath": "shiftClientId",
+            "columnName": "shift_client_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gen",
+            "columnName": "gen",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "phase",
+            "columnName": "phase",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "afterSeq",
+            "columnName": "after_seq",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "shift_client_id"
+          ]
+        }
+      },
+      {
+        "tableName": "bookkeeping",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`key`))",
+        "fields": [
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "key"
+          ]
+        }
+      },
+      {
+        "tableName": "diag_events",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `kind` TEXT NOT NULL, `level` TEXT NOT NULL, `json` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "level",
+            "columnName": "level",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "json",
+            "columnName": "json",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_diag_events_kind",
+            "unique": false,
+            "columnNames": [
+              "kind"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_diag_events_kind` ON `${TABLE_NAME}` (`kind`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3c2a8034c1171b730c86e2d7c2674ca3')"
+    ]
+  }
+}

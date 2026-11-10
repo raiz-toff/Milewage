@@ -51,6 +51,13 @@ class ShiftGroupsTest {
     }
 
     @Test
+    fun `a row keeps the marker the facade gave it (recorded for another server)`() {
+        val item = item("a", "2026-11-10", NOW, 10_000).copy(marker = ShiftMarker.OTHER_SERVER)
+        val row = ShiftGroups.of(listOf(item), LocalDate.parse("2026-11-10"), weekStart = 1).single().rows.single()
+        assertEquals(ShiftMarker.OTHER_SERVER, row.marker)
+    }
+
+    @Test
     fun `a row says who calculated it, its send state, and what to check`() {
         val s = shift(sendState = SendState.SENT, calc = CalcSource.SERVER).copy(serverFlags = listOf(ServerFlag("gap_large", "warn"), ServerFlag("no_stops_detected", "info")))
         val row = ShiftGroups.rowOf(s, "Civic")

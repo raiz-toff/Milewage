@@ -9,6 +9,7 @@ import app.milewage.core.shift.EndResult
 import app.milewage.core.shift.HomeSummary
 import app.milewage.core.shift.OdometerKind
 import app.milewage.core.shift.StartResult
+import app.milewage.core.sync.OtherServerShifts
 import app.milewage.core.sync.Reminder
 import app.milewage.data.RunningShiftView
 import app.milewage.phone.logic.Banner
@@ -63,6 +64,8 @@ data class HomeState(
     val odometer: OdometerAsk? = null,
     val refreshing: Boolean = false,
     val sending: Boolean = false,
+    /** Shifts recorded for another server, never sent there: a card with its two ways forward. */
+    val otherServer: OtherServerShifts = OtherServerShifts.NONE,
 )
 
 /** One-off messages for a snackbar. */
@@ -84,6 +87,11 @@ sealed interface HomeEvent {
 
     /** After a pull to refresh or Send now: something is still only on the phone. */
     data object StillWaiting : HomeEvent
+
+    /** The driver deleted another server's shifts from the phone. */
+    data class OtherServerDeleted(val shifts: Int) : HomeEvent
+
+    data object DeleteFailed : HomeEvent
 }
 
 private data class Local(
@@ -114,11 +122,17 @@ class HomeViewModel(
 
     val event: Flow<HomeEvent> = events.receiveAsFlow()
 
-    private val inputs = combine(data.settings(), data.pairingStatus(), data.homeSummary(), data.syncStatus()) { s, p, sum, sync ->
-        Inputs(s, p, sum, Banners.of(sync, now.ms()))
+    private val inputs = combine(data.settings(), data.pairingStatus(), data.homeSummary(), data.syncStatus(), data.otherServer()) { s, p, sum, sync, other ->
+        Inputs(s, p, sum, Banners.of(sync, now.ms()), other)
     }
 
-    private data class Inputs(val settings: DisplaySettings, val pairing: PairingStatus, val summary: HomeSummary, val banner: Banner)
+    private data class Inputs(
+        val settings: DisplaySettings,
+        val pairing: PairingStatus,
+        val summary: HomeSummary,
+        val banner: Banner,
+        val otherServer: OtherServerShifts,
+    )
 
     val state: StateFlow<HomeState> = combine(inputs, data.runningShift(), tracking.status, local) { i, running, status, l ->
         val perm = l.permissions ?: tracking.permissions()
@@ -137,6 +151,7 @@ class HomeViewModel(
             odometer = l.odometer,
             refreshing = l.refreshing,
             sending = l.sending,
+            otherServer = i.otherServer,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeState())
 
@@ -327,6 +342,14 @@ class HomeViewModel(
     }
 
     fun stopSending() = data.cancelSending()
+
+    /** "Delete from this phone" for another server's shifts, after its confirmation. */
+    fun deleteOtherServer() {
+        viewModelScope.launch {
+            val n = safely { data.deleteOtherServerShifts() }
+            events.trySend(if (n == null) HomeEvent.DeleteFailed else HomeEvent.OtherServerDeleted(n))
+        }
+    }
 
     /** The banner showed the unsynced reminder: it counts as given for the day (the notification waits). */
     fun reminderShown(level: Reminder.Level) {

@@ -136,11 +136,16 @@ class SenderTest {
     fun notPairedNothingIsSentAndNothingIsLost() = runBlocking {
         val srv = server()
         val p = endedOffline(srv)
-        assertTrue(p.data.unpair(loseUnsentData = true))
+        assertTrue(p.data.unpair(confirmed = true))
         val from = srv.calls.size
         assertFalse(p.data.sendNow())
         assertEquals(from, srv.calls.size)
-        assertEquals(1, p.data.sender.status().sync.unsentShifts)
+        // The shift and its queue stay on the phone, bound to the server it was recorded for.
+        assertEquals("inst-A", p.data.store.shift(ID)!!.instanceId)
+        assertEquals(2, p.data.store.changeCounts().pending)
+        p.pair()
+        assertTrue(p.data.sendNow())
+        assertEquals(listOf("POST /shifts", "POST /shifts/$ID/end"), srv.writes(from))
     }
 
     @Test

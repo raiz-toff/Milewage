@@ -49,8 +49,11 @@ interface PairingPort {
 
     suspend fun hasUnsentData(): Boolean
 
-    /** Refused (false) while data waits unless [loseUnsentData]. The gate then shows first run. */
-    suspend fun unpair(loseUnsentData: Boolean): Boolean
+    /**
+     * Refused (false) while the paired server's data waits, unless [confirmed] (the driver read that
+     * it stays on this phone for that server). Nothing is deleted. The gate then shows first run.
+     */
+    suspend fun unpair(confirmed: Boolean): Boolean
 }
 
 /** The phone's network as the connect screens need it (over `AndroidNet`). */
@@ -124,7 +127,7 @@ class MileWagePairing(private val data: MileWageData) : PairingPort {
 
     override suspend fun hasUnsentData(): Boolean = data.hasUnsentData()
 
-    override suspend fun unpair(loseUnsentData: Boolean): Boolean = data.unpair(loseUnsentData)
+    override suspend fun unpair(confirmed: Boolean): Boolean = data.unpair(confirmed)
 }
 
 /** [NetView] on `AndroidNet`; without a connection (never on the phone) nothing is found. */

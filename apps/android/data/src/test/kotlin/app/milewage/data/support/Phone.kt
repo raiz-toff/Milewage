@@ -105,9 +105,15 @@ class Phone(
         if (paired) runBlocking { pair(settings) }
     }
 
-    suspend fun pair(settings: Settings = ApiJson.decodeFromJsonElement(Settings.serializer(), FakeMileWage.SETTINGS)) {
-        secure.put(Pairing.KEY_CREDENTIAL, ApiJson.encodeToString(Credential.serializer(), Credential(server.url, deviceId = 1, deviceToken = "mwd_test", instanceId = "inst-A")))
+    /**
+     * Pairs with [to] as a redeem would leave the phone (the credential with that server's instance id
+     * and its settings), and tells the listeners, as a pairing does.
+     */
+    suspend fun pair(settings: Settings = ApiJson.decodeFromJsonElement(Settings.serializer(), FakeMileWage.SETTINGS), to: FakeMileWage = server) {
+        secure.put(Pairing.KEY_CREDENTIAL, ApiJson.encodeToString(Credential.serializer(), Credential(to.url, deviceId = 1, deviceToken = "mwd_test", instanceId = to.instance)))
         plain.put(Pairing.KEY_SETTINGS, ApiJson.encodeToString(Settings.serializer(), settings))
+        data.pairing.device.resume()
+        data.binding.settle()
     }
 
     /** Stores fixes for the running shift as the tracker would. */

@@ -9,6 +9,7 @@ import app.milewage.core.api.MileageRate
 import app.milewage.core.api.Settings
 import app.milewage.core.api.TripKind
 import app.milewage.core.connect.ServerIdentity
+import app.milewage.core.diagnostics.PermSnapshot
 import app.milewage.core.diagnostics.PhoneDiagnostics
 import app.milewage.core.pairing.Flags
 import app.milewage.core.pairing.Pairing
@@ -37,11 +38,13 @@ import app.milewage.core.shift.TripRecord
 import app.milewage.core.shift.VehicleRecord
 import app.milewage.core.shift.newClientId
 import app.milewage.core.sync.ChangePuller
+import app.milewage.core.sync.OtherServerShifts
 import app.milewage.core.sync.Outbox
 import app.milewage.core.sync.ReminderPort
 import app.milewage.core.sync.RestoreCheck
 import app.milewage.core.sync.SendStatus
 import app.milewage.core.sync.Sender
+import app.milewage.core.sync.ServerBinding
 import app.milewage.core.sync.ShiftMarker
 import app.milewage.core.sync.UnsyncedReminders
 import app.milewage.core.tracking.FixStore
@@ -52,6 +55,7 @@ import app.milewage.core.tracking.ShiftCommands
 import app.milewage.core.tracking.TrackingDiagnostics
 import app.milewage.data.db.MileWageDatabase
 import app.milewage.data.db.RoomLocalStore
+import app.milewage.data.net.OkHttpTransport
 import app.milewage.data.pairing.ServerConnection
 import app.milewage.data.sync.SendScheduler
 import app.milewage.data.sync.WorkSendScheduler
@@ -136,6 +140,11 @@ class MileWageData private constructor(
     val store: RoomLocalStore,
     /** Pairing, status, unpair (with [hasUnsentData]), the device session's halts. */
     val pairing: Pairing,
+    /**
+     * Which server each shift belongs to (see `ServerBinding` in :core): sending, the unsent counts,
+     * the restore check and the unpair check see only the paired server's shifts.
+     */
+    val binding: ServerBinding,
     private val restore: RestoreCheck,
     private val recorder: Recorder,
     private val scheduler: SendScheduler,
@@ -145,20 +154,29 @@ class MileWageData private constructor(
     reminderPort: ReminderPort?,
     battery: BatteryPort?,
     private val freeBytes: suspend () -> Long?,
+    private val databaseBytes: () -> Long,
+    private val permissions: (suspend () -> PermSnapshot?)?,
+    gzipSize: (ByteArray) -> Long?,
     engine: CoroutineDispatcher,
     newId: () -> String,
     rand: () -> Double,
 ) {
-    private val outbox = Outbox(store, clock)
+    /** The queue as sending reads it: the paired server's rows (writes go to any shift's queue). */
+    private val outbox = Outbox(binding.view, clock)
 
-    val diagnostics = PhoneDiagnostics(store, store, appVersion, clock, fixesPending = { store.pendingCount() > 0 })
+    val diagnostics = PhoneDiagnostics(
+        store, store, appVersion, clock,
+        fixesPending = { binding.view.pendingCount() > 0 },
+        server = { binding.instance() },
+    )
 
     /** Start, end, recovery, edits. */
     val shifts: ShiftModel = ShiftModel(
         store = store,
         outbox = outbox,
         recorder = recorder,
-        context = { pairing.load()?.let { ShiftContext.of(Flags.of(it.settings)) } },
+        // A new shift is bound to the server paired now.
+        context = { pairing.load()?.let { ShiftContext.of(Flags.of(it.settings), it.credential.instanceId) } },
         clock = clock,
         newId = newId,
         battery = battery,
@@ -172,9 +190,9 @@ class MileWageData private constructor(
 
     /** Sending: status, "Send now", the loop. */
     val sender: Sender = Sender(
-        store = store,
+        store = binding.view,
         outbox = outbox,
-        session = { pairing.session() },
+        session = binding.guard { pairing.session() },
         device = pairing.device,
         restore = restore,
         handshake = { pairing.load()?.let { pairing.refreshSettings(it) } },
@@ -183,6 +201,8 @@ class MileWageData private constructor(
         freeBytes = freeBytes,
         clock = clock,
         rand = rand,
+        binding = binding,
+        gzipSize = gzipSize,
     )
 
     private val reminders = reminderPort?.let { UnsyncedReminders(it, store, clock) }
@@ -206,6 +226,15 @@ class MileWageData private constructor(
         scheduler.kick()
     }
 
+    init {
+        // Every pairing change (a code, a link, unpaired, a halt lifted): the paired server is read
+        // again, unbound shifts are claimed for it and its host name is kept for the screens.
+        pairing.subscribe {
+            binding.invalidate()
+            scope.launch { runCatching { binding.settle() } }
+        }
+    }
+
     // ------------------------------------------------------------------------------------------
     // Lifecycle
 
@@ -221,6 +250,7 @@ class MileWageData private constructor(
         started = true
         scheduler.ensurePeriodic()
         scope.launch {
+            runCatching { binding.settle() }
             runCatching { shifts.recover() }
             runCatching { diagnostics.recordAppStart(Engine.ALGORITHM_VERSION.toString(), device.make, device.model, device.android, device.sdk) }
             sender.start(scope)
@@ -250,13 +280,23 @@ class MileWageData private constructor(
         }
     }
 
-    /** Closes a 10-minute window: `upload.window` and `diag.self`, then sends the ring. */
+    /**
+     * Closes a 10-minute window: `upload.window` and `diag.self`, the permissions, storage and
+     * connection states when they changed, then sends the ring to the server it was recorded for.
+     */
     suspend fun diagnosticsWindow() {
-        val pending = store.pendingCount()
-        val oldest = store.oldestPendingAt()?.let { maxOf(0, (clock.nowMs() - it) / 1000) } ?: 0
+        val view = binding.view
+        val pending = view.pendingCount()
+        val oldest = view.oldestPendingAt()?.let { maxOf(0, (clock.nowMs() - it) / 1000) } ?: 0
         diagnostics.recordUploadWindow(sender.takeUploadStats(), pending, oldest)
+        permissions?.let { read -> runCatching { read() }.getOrNull()?.let { diagnostics.recordPermissions(it) } }
+        val status = sender.status().sync
+        diagnostics.recordStorage(freeBytes(), databaseBytes(), status.unsentShifts, pending, store.setAsideCount())
+        if (sender.hasRun && pairing.load() != null) {
+            diagnostics.recordSyncState(PhoneDiagnostics.syncStateOf(status.halt, sender.restoring(), sender.lastRoundState))
+        }
         diagnostics.recordSelf()
-        pairing.session()?.let { diagnostics.flush(it.client) }
+        pairing.session()?.let { diagnostics.flush(it.client, it.credential.instanceId) }
     }
 
     /** Keeps the unsynced reminder (3 days, then daily) in step with what waits. */
@@ -302,10 +342,11 @@ class MileWageData private constructor(
         return RunningShiftView(s, distance, value, store.vehicles().firstOrNull { it.id == s.vehicleId }, s.serverHasOtherShift)
     }
 
-    /** Newest first. */
+    /** Newest first. A shift still waiting for another server is marked so ([ShiftMarker.OTHER_SERVER]). */
     fun shiftList(limit: Int = 200): Flow<List<ShiftListItem>> = watch("shifts", "vehicles") {
         val v = store.vehicles().associateBy { it.id }
-        store.shifts(limit).map { ShiftListItem(it, ShiftMarker.of(it), v[it.vehicleId]) }
+        val paired = binding.instance()
+        store.shifts(limit).map { ShiftListItem(it, ShiftMarker.of(it, paired), v[it.vehicleId]) }
     }
 
     fun shiftDetail(clientId: String): Flow<ShiftDetail?> =
@@ -315,7 +356,7 @@ class MileWageData private constructor(
         val s = store.shift(clientId) ?: return null
         return ShiftDetail(
             shift = s,
-            marker = ShiftMarker.of(s),
+            marker = binding.markerOf(s),
             vehicle = store.vehicles().firstOrNull { it.id == s.vehicleId },
             trips = store.trips(clientId),
             stops = store.stops(clientId),
@@ -330,6 +371,14 @@ class MileWageData private constructor(
     fun syncStatus(): Flow<SendStatus> = watch("shifts", "fixes", "outbox", "resend_marks") { sender.status() }
 
     fun vehicles(): Flow<List<VehicleRecord>> = watch("vehicles") { store.vehicles() }
+
+    /**
+     * Shifts recorded for another server and never sent there: how many, their fixes, that server's
+     * host name. They go only to that server; the driver connects to it again or deletes them.
+     */
+    fun otherServer(): Flow<OtherServerShifts> = watch("shifts", "fixes", "outbox", "bookkeeping") { otherServerNow() }
+
+    suspend fun otherServerNow(): OtherServerShifts = binding.elsewhere()
 
     // ------------------------------------------------------------------------------------------
     // What the screens do
@@ -391,11 +440,21 @@ class MileWageData private constructor(
 
     fun cancelSending() = sender.cancel()
 
-    /** True while anything is on the phone only (blocks unpairing, decision 1.5d). */
+    /** True while anything for the paired server is on the phone only (asks before unpairing, decision 1.5d). */
     suspend fun hasUnsentData(): Boolean = sender.hasUnsentData()
 
-    /** Unpairs; refused (false) while data waits unless [loseUnsentData] after the driver confirmed. */
-    suspend fun unpair(loseUnsentData: Boolean = false): Boolean = pairing.unpair { !loseUnsentData && hasUnsentData() }
+    /**
+     * Unpairs; refused (false) while the paired server's data waits, unless [confirmed] after the
+     * driver read that it stays on this phone. Nothing is deleted either way: what was not sent stays
+     * bound to this server and goes there when the phone is paired with it again.
+     */
+    suspend fun unpair(confirmed: Boolean = false): Boolean = pairing.unpair { !confirmed && hasUnsentData() }
+
+    /**
+     * Deletes the shifts [otherServer] lists (recorded for another server, never sent there) with
+     * everything of them, after the driver confirmed. A running shift is kept. Returns how many.
+     */
+    suspend fun deleteOtherServerShifts(): Int = binding.deleteElsewhere()
 
     private suspend fun kinds(): Map<Long, String> = store.vehicles().associate { it.id to it.kind }
 
@@ -410,6 +469,12 @@ class MileWageData private constructor(
             val sm = context.getSystemService(android.os.storage.StorageManager::class.java)
             sm.getAllocatableBytes(sm.getUuidForPath(context.filesDir))
         }.getOrNull()
+
+        /** The database file with its write-ahead log, in bytes (`storage.state`). */
+        fun databaseBytes(context: Context): Long = runCatching {
+            val f = context.getDatabasePath(MileWageDatabase.FILE_NAME)
+            listOf(f, java.io.File(f.path + "-wal")).sumOf { if (it.exists()) it.length() else 0L }
+        }.getOrDefault(0L)
 
         /** The driver's own rate where the settings choose it; the country packs are not on the phone yet. */
         fun ratesOf(s: Settings?): MileageRates {
@@ -436,16 +501,24 @@ class MileWageData private constructor(
             engine: CoroutineDispatcher = Dispatchers.Default,
             newId: () -> String = ::newClientId,
             rand: () -> Double = { kotlin.random.Random.nextDouble() },
+            databaseBytes: () -> Long = { 0 },
+            permissions: (suspend () -> PermSnapshot?)? = null,
+            gzipSize: (ByteArray) -> Long? = OkHttpTransport::gzipSize,
         ): MileWageData {
             val store = RoomLocalStore(db)
-            val restore = RestoreCheck(store)
+            var paired: Pairing? = null
+            val binding = ServerBinding(store) { paired?.load()?.credential }
+            // The restore check sees the paired server's shifts and keeps its generation per server.
+            val restore = RestoreCheck(binding.view)
             var self: MileWageData? = null
             val pairing = connect(
                 { identity, expected -> restore.observe(identity, expected) },
                 { settings -> self?.diagnostics?.applySettings(settings) },
             )
+            paired = pairing
             return MileWageData(
-                db, store, pairing, restore, recorder, scheduler, scope, clock, appVersion, reminders, battery, freeBytes, engine, newId, rand,
+                db, store, pairing, binding, restore, recorder, scheduler, scope, clock, appVersion, reminders, battery, freeBytes,
+                databaseBytes, permissions, gzipSize, engine, newId, rand,
             ).also { self = it }
         }
 
@@ -462,6 +535,8 @@ class MileWageData private constructor(
             recorder: Recorder,
             reminders: ReminderPort? = null,
             battery: BatteryPort? = null,
+            /** The phone's permissions for `perm.state` (the app reads them from the tracker); null: not recorded. */
+            permissions: (suspend () -> PermSnapshot?)? = null,
         ): MileWageData {
             val app = context.applicationContext
             var connection: ServerConnection? = null
@@ -478,6 +553,8 @@ class MileWageData private constructor(
                 reminders = reminders,
                 battery = battery,
                 freeBytes = { freeBytes(app) },
+                databaseBytes = { databaseBytes(app) },
+                permissions = permissions,
             )
             data.connection = connection
             runCatching {

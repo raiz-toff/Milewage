@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.milewage.core.connect.Where
 import app.milewage.core.pairing.PairedState
+import app.milewage.core.sync.OtherServerShifts
 import app.milewage.core.sync.Progress
 import app.milewage.data.prefs.AppTheme
 import app.milewage.phone.logic.ConnectError
@@ -53,14 +54,16 @@ data class SettingsState(
     val wallpaper: Boolean = false,
     /** The server's Help pages, through the address the phone uses now; null when the server turned Help off. */
     val helpBase: String? = null,
+    /** Shifts recorded for another server, never sent there. */
+    val otherServer: OtherServerShifts = OtherServerShifts.NONE,
 )
 
 sealed interface SettingsEvent {
     /** "Connect to a different server?" with the Expo app's words. */
     data class AskUnpair(val host: String) : SettingsEvent
 
-    /** The phone refused: shifts and points are only on this phone. Disconnect anyway? */
-    data class AskLoseUnsent(val host: String, val shifts: Int, val fixes: Long) : SettingsEvent
+    /** Shifts for this server are only on this phone: they stay, and go only to this server. Disconnect anyway? */
+    data class AskLeaveUnsent(val host: String, val shifts: Int, val fixes: Long) : SettingsEvent
 
     /** A shift is running: it must end first. */
     data object EndShiftFirst : SettingsEvent
@@ -73,6 +76,11 @@ sealed interface SettingsEvent {
     data class Sent(val done: Boolean) : SettingsEvent
 
     data class Detection(val outcome: DetectionOutcome) : SettingsEvent
+
+    /** The driver deleted another server's shifts from the phone. */
+    data class OtherServerDeleted(val shifts: Int) : SettingsEvent
+
+    data object DeleteFailed : SettingsEvent
 }
 
 /**
@@ -108,6 +116,7 @@ class SettingsViewModel(
                 }
             }
         }
+        viewModelScope.launch { data.otherServer().collect { o -> _state.update { it.copy(otherServer = o) } } }
         viewModelScope.launch { appearance.theme.collect { t -> _state.update { it.copy(theme = t) } } }
         viewModelScope.launch { appearance.wallpaperColours.collect { w -> _state.update { it.copy(wallpaper = w) } } }
         viewModelScope.launch {
@@ -163,11 +172,14 @@ class SettingsViewModel(
         _events.trySend(SettingsEvent.AskUnpair(_state.value.facts?.host ?: ""))
     }
 
-    /** The driver confirmed. Refused while data waits: the second question names it. */
-    fun confirmDisconnect(loseUnsent: Boolean = false) {
+    /**
+     * The driver confirmed. Refused while this server's data waits: the second question names it and
+     * says it stays on the phone for this server ([confirmed] after that one).
+     */
+    fun confirmDisconnect(confirmed: Boolean = false) {
         viewModelScope.launch {
             val ok = try {
-                pairing.unpair(loseUnsent)
+                pairing.unpair(confirmed)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -178,7 +190,7 @@ class SettingsViewModel(
                 _events.trySend(SettingsEvent.Disconnected)
             } else {
                 val s = _state.value
-                _events.trySend(SettingsEvent.AskLoseUnsent(s.facts?.host ?: "", s.unsentShifts, s.unsentFixes))
+                _events.trySend(SettingsEvent.AskLeaveUnsent(s.facts?.host ?: "", s.unsentShifts, s.unsentFixes))
             }
         }
     }
@@ -217,6 +229,20 @@ class SettingsViewModel(
 
     fun setWallpaper(on: Boolean) {
         viewModelScope.launch { appearance.setWallpaperColours(on) }
+    }
+
+    /** "Delete from this phone" for another server's shifts, after its confirmation. */
+    fun deleteOtherServer() {
+        viewModelScope.launch {
+            val n = try {
+                data.deleteOtherServerShifts()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
+            _events.trySend(if (n == null) SettingsEvent.DeleteFailed else SettingsEvent.OtherServerDeleted(n))
+        }
     }
 
     fun sendNow() {

@@ -92,6 +92,16 @@ class ScreenshotTest(private val dark: Boolean) {
 
     @Test fun homeRevoked() = home(ScreenStates.homeRevoked, "home-revoked", tallDp = 1100)
 
+    @Test fun homeOtherServer() = home(ScreenStates.homeOtherServer, "home-other-server", tallDp = 1300)
+
+    @Test fun homeOtherServerDelete() = shot("home-other-server-delete-confirm", windows = true) {
+        val confirm = rememberConfirmState()
+        HomeContent(ScreenStates.homeOtherServer, RecordingHomeActions(), confirm)
+        val res = androidx.compose.ui.platform.LocalResources.current
+        confirm.ask(app.milewage.phone.ui.components.otherServerDeleteRequest(res, 2) {})
+        ConfirmHost(confirm)
+    }
+
     @Test fun homeNoVehicles() = home(ScreenStates.homeNoVehicles, "home-no-vehicles", tallDp = 1000)
 
     @Test fun homeSending() = home(ScreenStates.homeSending, "home-sending", tallDp = 1100)
@@ -122,6 +132,8 @@ class ScreenshotTest(private val dark: Boolean) {
     @Test fun detailFull() = shot("detail-stops", tallDp = 3200) { DetailContent(ScreenStates.detailFull, NoDetailActions, {}) }
 
     @Test fun detailSent() = shot("detail-sent-whole-shift", tallDp = 2400) { DetailContent(ScreenStates.detailSent, NoDetailActions, {}) }
+
+    @Test fun detailOtherServer() = shot("detail-other-server", tallDp = 2600) { DetailContent(ScreenStates.detailOtherServer, NoDetailActions, {}) }
 
     @Test fun detailGone() = shot("detail-gone") { DetailContent(ScreenStates.detailGone, NoDetailActions, {}) }
 
@@ -214,6 +226,10 @@ class ScreenshotTest(private val dark: Boolean) {
     // Settings.
     @Test fun settings() = shot("settings", tallDp = 3600) { SettingsContent(FirstRunStates.settings, FirstRunStates.info, NoSettingsActions) }
 
+    @Test fun settingsOtherServer() = shot("settings-other-server", tallDp = 3900) {
+        SettingsContent(FirstRunStates.settingsOtherServer, FirstRunStates.info, NoSettingsActions)
+    }
+
     @Test fun settingsTrouble() = shot("settings-check-failed-unsent", tallDp = 3600) {
         SettingsContent(FirstRunStates.settingsTrouble, FirstRunStates.info, NoSettingsActions)
     }
@@ -228,7 +244,7 @@ class ScreenshotTest(private val dark: Boolean) {
         confirm.ask(
             ConfirmRequest(
                 "Connect to a different server?",
-                "This phone stops sending shifts to box.tail1234.ts.net. Shifts not yet sent stay on this phone. Then connect to the new server.",
+                "This phone stops sending shifts to box.tail1234.ts.net. Shifts not yet sent stay on this phone and are only ever sent to box.tail1234.ts.net. Then connect to the new server.",
                 "Disconnect",
                 destructive = true,
             ) {},
@@ -343,6 +359,10 @@ open class RecordingSettingsActions : SettingsActions {
 
     override fun openDiagnostics() {
         calls += "diagnostics"
+    }
+
+    override fun deleteOtherServer() {
+        calls += "deleteOther"
     }
 }
 

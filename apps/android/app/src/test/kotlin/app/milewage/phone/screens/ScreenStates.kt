@@ -7,6 +7,7 @@ import app.milewage.core.shift.OverwriteReason
 import app.milewage.core.shift.SendState
 import app.milewage.core.shift.ServerFlag
 import app.milewage.core.sync.Progress
+import app.milewage.core.sync.OtherServerShifts
 import app.milewage.core.sync.ShiftMarker
 import app.milewage.core.sync.StatusColor
 import app.milewage.core.sync.StatusMessage
@@ -70,6 +71,9 @@ object ScreenStates {
         vehicles = VehicleChoice(listOf(CIVIC), CIVIC.id, VehicleSource.KEPT),
     )
 
+    /** All sent for this server; two shifts recorded for the server this phone was paired with before. */
+    val homeOtherServer = homeAllSent.copy(otherServer = OtherServerShifts(2, 1_204, listOf("old-box.tail9876.ts.net"), NOW - 6 * 86_400_000L))
+
     /** No vehicle could be loaded. */
     val homeNoVehicles = homeAllSent.copy(vehicles = VehicleChoice(emptyList(), null, VehicleSource.KEPT), summary = null)
 
@@ -122,6 +126,7 @@ object ScreenStates {
                 item("c", 4, 9, 98_000, SendState.ON_PHONE_ONLY),
                 item("d", 5, 10, 45_000, SendState.NEEDS_ATTENTION),
                 item("e", 9, 11, null, SendState.ON_PHONE_ONLY),
+                item("f", 10, 8, 63_000, SendState.ON_PHONE_ONLY).let { it.copy(marker = ShiftMarker.OTHER_SERVER) },
             ),
             LocalDate.parse("2026-11-10"),
             1,
@@ -153,4 +158,9 @@ object ScreenStates {
     val detailSent = DetailState(loaded = true, settings = settings.copy(stops = false), detail = sent, flags = ShiftFlags.of(sent.shift))
 
     val detailGone = DetailState(loaded = true, settings = settings)
+
+    private val other = detail(shift(), stops = emptyList()).copy(marker = ShiftMarker.OTHER_SERVER)
+
+    /** A shift recorded for another server: the sentence says where to go, no Send now. */
+    val detailOtherServer = DetailState(loaded = true, settings = settings, detail = other, flags = ShiftFlags.of(other.shift))
 }

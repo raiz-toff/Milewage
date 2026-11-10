@@ -10,6 +10,7 @@ import app.milewage.core.pairing.LinkDecision
 import app.milewage.core.pairing.PairingLink
 import app.milewage.core.pairing.PairingLinks
 import app.milewage.core.pairing.PairingStatus
+import app.milewage.core.sync.OtherServerShifts
 import app.milewage.data.prefs.AppTheme
 import app.milewage.phone.logic.ConnectError
 import app.milewage.phone.logic.ConnectionCheck
@@ -274,7 +275,7 @@ class SettingsViewModelTest : VmTest() {
     }
 
     @Test
-    fun `unpair - asks first, refuses while data waits until the driver confirms losing it`() = runTest {
+    fun `unpair - asks first, refuses while data waits until the driver confirms, and nothing is lost`() = runTest {
         pairing.unsent = true
         data.sync.value = sendStatus(unsentShifts = 2, unsentFixes = 340)
         val vm = vm()
@@ -282,12 +283,26 @@ class SettingsViewModelTest : VmTest() {
         vm.disconnect()
         assertEquals(SettingsEvent.AskUnpair("box.tail1234.ts.net"), events.last())
         vm.confirmDisconnect()
-        assertEquals(SettingsEvent.AskLoseUnsent("box.tail1234.ts.net", 2, 340), events.last())
+        assertEquals(SettingsEvent.AskLeaveUnsent("box.tail1234.ts.net", 2, 340), events.last())
         assertEquals(PairingStatus.PAIRED, pairing.statusFlow.value)
-        vm.confirmDisconnect(loseUnsent = true)
+        vm.confirmDisconnect(confirmed = true)
         assertEquals(SettingsEvent.Disconnected, events.last())
         assertEquals(PairingStatus.UNPAIRED, pairing.statusFlow.value)
         assertEquals(listOf("unpair false", "unpair true"), pairing.calls.filter { it.startsWith("unpair") })
+    }
+
+    @Test
+    fun `another servers shifts - shown under Sending, connecting is the disconnect question, deleting is counted`() = runTest {
+        data.other.value = OtherServerShifts(1, 12, emptyList(), 1_000)
+        val vm = vm()
+        val events = collect(vm.events)
+        assertEquals(1, vm.state.value.otherServer.shifts)
+        vm.disconnect()
+        assertEquals(SettingsEvent.AskUnpair("box.tail1234.ts.net"), events.last())
+        vm.deleteOtherServer()
+        assertEquals(SettingsEvent.OtherServerDeleted(1), events.last())
+        assertTrue(vm.state.value.otherServer.none)
+        assertEquals(listOf("deleteOther"), data.calls)
     }
 
     @Test

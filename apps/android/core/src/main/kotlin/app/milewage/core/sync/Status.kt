@@ -46,6 +46,12 @@ enum class ShiftMarker {
 
     /** "Needs attention". */
     NEEDS_ATTENTION,
+
+    /**
+     * "Recorded for another server": not yet sent, and bound to another server than the one the
+     * phone is paired with now. It goes only to that server (`ServerBinding`).
+     */
+    OTHER_SERVER,
     ;
 
     companion object {
@@ -55,6 +61,10 @@ enum class ShiftMarker {
             SendState.NEEDS_ATTENTION -> NEEDS_ATTENTION
             SendState.SENT -> if (s.recon == ReconStatus.DIFFERS) SENT_DIFFERS else SENT
         }
+
+        /** As [of], with the phone paired with [pairedInstance]: a shift still waiting for another server says so. */
+        fun of(s: ShiftRecord, pairedInstance: String?): ShiftMarker =
+            if (s.sendState != SendState.SENT && !ServerBinding.boundTo(s.instanceId, pairedInstance)) OTHER_SERVER else of(s)
     }
 }
 

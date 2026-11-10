@@ -20,6 +20,7 @@ import app.milewage.phone.ui.Texts
 import app.milewage.phone.ui.ViewModels
 import app.milewage.phone.ui.components.ConfirmHost
 import app.milewage.phone.ui.components.LocalSnackbars
+import app.milewage.phone.ui.components.otherServerDeleteRequest
 import app.milewage.phone.ui.components.rememberConfirmState
 import app.milewage.phone.ui.components.rememberNotificationAsk
 
@@ -31,6 +32,7 @@ fun HomeRoute(
     onOpenDiagnostics: () -> Unit,
     onOpenPermissions: () -> Unit,
     onPair: () -> Unit,
+    onOpenSettings: () -> Unit,
     vm: HomeViewModel = viewModel(factory = ViewModels.home()),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -38,6 +40,7 @@ fun HomeRoute(
     val snackbars = LocalSnackbars.current
     val confirm = rememberConfirmState()
     val notifications = rememberNotificationAsk { vm.onResume() }
+    val res = LocalResources.current
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.onResume() }
 
@@ -84,13 +87,19 @@ fun HomeRoute(
             override fun openDiagnostics() = onOpenDiagnostics()
 
             override fun reminderShown(level: Reminder.Level) = vm.reminderShown(level)
+
+            override fun connectOtherServer() = onOpenSettings()
+
+            override fun deleteOtherServer() {
+                val n = vm.state.value.otherServer.shifts
+                if (n > 0) confirm.ask(otherServerDeleteRequest(res, n) { vm.deleteOtherServer() })
+            }
         }
     }
 
     val ended = stringResource(R.string.shift_ended)
     val endedOffline = stringResource(R.string.shift_ended_offline)
     val viewShift = stringResource(R.string.view_shift)
-    val res = LocalResources.current
     LaunchedEffect(vm) {
         vm.event.collect { e ->
             when (e) {
@@ -109,6 +118,8 @@ fun HomeRoute(
                 HomeEvent.OdometerInvalid -> snackbars.show(res.getString(R.string.odometer_invalid, Formats(vm.state.value.settings).unitLabel))
                 is HomeEvent.OdometerRefused -> snackbars.show(res.getString(Texts.edit(e.outcome) ?: R.string.edit_failed))
                 HomeEvent.StillWaiting -> snackbars.show(res.getString(R.string.sync_still_waiting))
+                is HomeEvent.OtherServerDeleted -> snackbars.show(res.getQuantityString(R.plurals.other_server_deleted, e.shifts, e.shifts))
+                HomeEvent.DeleteFailed -> snackbars.show(res.getString(R.string.delete_failed))
             }
         }
     }

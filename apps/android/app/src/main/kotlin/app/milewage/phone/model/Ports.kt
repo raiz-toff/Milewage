@@ -8,6 +8,7 @@ import app.milewage.core.shift.HomeSummary
 import app.milewage.core.shift.OdometerKind
 import app.milewage.core.shift.StartResult
 import app.milewage.core.shift.VehicleRecord
+import app.milewage.core.sync.OtherServerShifts
 import app.milewage.core.sync.SendStatus
 import app.milewage.core.tracking.TrackingStatus
 import app.milewage.data.RunningShiftView
@@ -34,6 +35,12 @@ interface ShiftData {
     fun shiftDetail(clientId: String): Flow<ShiftDetail?>
 
     fun syncStatus(): Flow<SendStatus>
+
+    /** Shifts recorded for another server and never sent there (they go only to that server). */
+    fun otherServer(): Flow<OtherServerShifts>
+
+    /** Deletes [otherServer]'s shifts from the phone, after the driver confirmed. Returns how many. */
+    suspend fun deleteOtherServerShifts(): Int
 
     fun vehicles(): Flow<List<VehicleRecord>>
 

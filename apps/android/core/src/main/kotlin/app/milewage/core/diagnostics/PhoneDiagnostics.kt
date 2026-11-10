@@ -9,11 +9,15 @@ import app.milewage.core.api.DiagIngestRequest
 import app.milewage.core.api.DiagSource
 import app.milewage.core.api.DiagnosticsLevel
 import app.milewage.core.api.Settings
+import app.milewage.core.pairing.HaltReason
 import app.milewage.core.ports.Clock
 import app.milewage.core.shift.Bookkeeping
 import app.milewage.core.shift.PhoneRun
 import app.milewage.core.shift.ShiftRecord
+import app.milewage.core.sync.Round
+import app.milewage.core.sync.StorageState
 import app.milewage.core.sync.UploadStats
+import app.milewage.core.sync.storageState
 import app.milewage.core.tracking.TrackingDiagnostics
 import app.milewage.engine.FlagCode
 import kotlinx.coroutines.CoroutineScope
@@ -42,6 +46,20 @@ interface DiagStore {
     suspend fun clearDiag()
 }
 
+/** The phone's permissions as `perm.state` reports them (16 section 3.2). */
+data class PermSnapshot(
+    /** Precise location allowed. */
+    val fine: Boolean,
+    val background: Background,
+    val notifications: Boolean,
+    val batteryOptIgnored: Boolean,
+    /** active, working_set, frequent, rare, restricted, never, unknown. */
+    val standbyBucket: String,
+    val powerSave: Boolean,
+) {
+    enum class Background(val wire: String) { ALL_TIME("all_time"), WHILE_IN_USE("while_in_use"), DENIED("denied") }
+}
+
 /** What a flush did. */
 enum class FlushResult { SENT, SKIPPED, RETRY, MODULE_OFF }
 
@@ -64,6 +82,13 @@ class PhoneDiagnostics(
     private val fixesPending: suspend () -> Boolean = { false },
     /** The most events kept (16 section 6.3); smaller in tests. */
     private val ringCap: Int = RING_CAP,
+    /**
+     * The instance id of the server the phone is paired with now; null when not paired. The ring
+     * belongs to one server: events go only to the server paired when they were recorded, so a
+     * pairing with another server starts an empty ring (the old one's events are dropped, never sent
+     * to the new one). Unpaired, the ring keeps its server.
+     */
+    private val server: suspend () -> String? = { null },
 ) {
     @Serializable
     private data class State(
@@ -75,6 +100,17 @@ class PhoneDiagnostics(
         val level: String = "basic",
         val verboseUntil: Long? = null,
         val moduleOn: Boolean = true,
+        /** The server the events in the ring were recorded for. */
+        val server: String? = null,
+        /** The last `perm.state` recorded (its data), to record only changes. */
+        val perm: String? = null,
+        /** The last `storage.state` bucket and state, and when it was recorded. */
+        val storage: String? = null,
+        val storageAt: Long? = null,
+        /** The last `sync.state`, since when it holds, and when it was last recorded. */
+        val sync: String? = null,
+        val syncSince: Long? = null,
+        val syncAt: Long? = null,
     )
 
     private val lock = Mutex()
@@ -110,9 +146,17 @@ class PhoneDiagnostics(
         }
     }
 
+    /** The ring is [instance]'s from now on: another server's events in it are dropped first. Call under [lock]. */
+    private suspend fun own(instance: String?): State {
+        val s = st()
+        if (instance == null || instance == s.server) return s
+        store.clearDiag()
+        return s.copy(server = instance).also { save(it) }
+    }
+
     /** Records one event if the level allows it and the allowlist accepts it. Returns whether it was kept. */
     suspend fun record(kind: String, data: JsonObject, shift: String? = null, src: DiagSource = DiagSource.PHONE_JS): Boolean = lock.withLock {
-        val s = st()
+        val s = own(server())
         val spec = DiagKinds.all[kind]
         val level = levelOf(s)
         if (level == DiagnosticsLevel.OFF || (spec?.level == "verbose" && level != DiagnosticsLevel.VERBOSE)) {
@@ -268,6 +312,70 @@ class PhoneDiagnostics(
         )
     }
 
+    /** `perm.state` when it changed since the last one (16 section 3.2); the server's health check reads the latest. */
+    suspend fun recordPermissions(p: PermSnapshot) {
+        val data = buildJsonObject {
+            put("fine", p.fine)
+            put("background", p.background.wire)
+            put("activity_recognition", false) // the app never asks for it
+            put("notifications", p.notifications)
+            put("battery_opt_ignored", p.batteryOptIgnored)
+            put("standby_bucket", p.standbyBucket)
+            put("power_save", p.powerSave)
+        }
+        if (lock.withLock { st().perm } == data.toString()) return
+        if (record("perm.state", data)) lock.withLock { save(st().copy(perm = data.toString())) }
+    }
+
+    /**
+     * `storage.state` when the free-space bucket or state changed, else at most once a day. Nothing
+     * when the free space cannot be read (the state is unknown, which the event cannot say).
+     */
+    suspend fun recordStorage(freeBytes: Long?, databaseBytes: Long, unsentShifts: Int, pendingFixes: Long, setAsideFixes: Long) {
+        val free = freeBytes ?: return
+        val state = when (storageState(free)) {
+            StorageState.CRITICAL -> "critical"
+            StorageState.LOW -> "low"
+            else -> "normal"
+        }
+        val bucket = freeBucket(free)
+        val key = "$bucket/$state"
+        val now = clock.nowMs()
+        val last = lock.withLock { st() }
+        if (last.storage == key && last.storageAt != null && now - last.storageAt < DAY_MS) return
+        val kept = record(
+            "storage.state",
+            buildJsonObject {
+                put("free_mb_bucket", bucket)
+                put("state", state)
+                // One database holds everything, the tracker's fixes too.
+                put("tracker_db_mb", 0)
+                put("app_db_mb", (databaseBytes / MB).coerceIn(0, 1_000_000_000))
+                put("unsynced_shifts", unsentShifts.coerceAtLeast(0))
+                put("pending_points", pendingFixes.coerceIn(0, 1_000_000_000))
+                put("quarantine_rows", setAsideFixes.coerceIn(0, 1_000_000_000))
+            },
+        )
+        if (kept) lock.withLock { save(st().copy(storage = key, storageAt = now)) }
+    }
+
+    /**
+     * `sync.state` when the connection to the server changed, and once a day while a state other than
+     * reachable holds (`since_s`: how long it has held, as the phone noticed it). Null: nothing to
+     * say (before the first round, not paired).
+     */
+    suspend fun recordSyncState(state: String?) {
+        state ?: return
+        val now = clock.nowMs()
+        val last = lock.withLock { st() }
+        val start = if (last.sync == state) last.syncSince ?: now else now
+        if (last.sync == state && (state == "reachable" || last.syncAt == null || now - last.syncAt < DAY_MS)) return
+        val since = maxOf(0, (now - start) / 1000).coerceAtMost(1_000_000_000)
+        if (record("sync.state", buildJsonObject { put("state", state); put("since_s", since) })) {
+            lock.withLock { save(st().copy(sync = state, syncSince = start, syncAt = now)) }
+        }
+    }
+
     /**
      * `crash` from a Kotlin throwable: the class must look like an identifier, frames keep only
      * method names (never file names or lines), the message only for allowlisted classes, redacted.
@@ -319,8 +427,10 @@ class PhoneDiagnostics(
      * deletes what was sent (accepted, duplicate and rejected alike); 404 means the module is off on
      * the server (behave as off); 422 (or 413 for a single event) drops the batch; anything else keeps it.
      */
-    suspend fun flush(client: ApiClient): FlushResult {
+    suspend fun flush(client: ApiClient, instance: String? = null): FlushResult {
         if (effectiveLevel() == DiagnosticsLevel.OFF) return FlushResult.SKIPPED
+        // Only events recorded for [instance], the server [client] talks to.
+        lock.withLock { own(instance) }
         if (fixesPending()) return FlushResult.SKIPPED
         val batch = store.oldestDiag(DiagIngestRequest.MAX_EVENTS)
         if (batch.isEmpty()) return FlushResult.SKIPPED
@@ -372,6 +482,31 @@ class PhoneDiagnostics(
     companion object {
         /** 16 section 6.3, basic store. */
         const val RING_CAP = 8000
+        private const val DAY_MS = 86_400_000L
+        private const val MB = 1024L * 1024
+
+        /** The catalogue's free-space buckets. */
+        fun freeBucket(freeBytes: Long): String = when {
+            freeBytes < 20 * MB -> "lt20"
+            freeBytes < 50 * MB -> "lt50"
+            freeBytes < 200 * MB -> "lt200"
+            freeBytes < 1000 * MB -> "lt1000"
+            else -> "ge1000"
+        }
+
+        /**
+         * `sync.state` from what sending knows: a halt names its cause, a restore says restored, the last
+         * round says reachable or unreachable. Null before any round, or with no pairing.
+         */
+        fun syncStateOf(halt: HaltReason?, restored: Boolean, round: Round.State?): String? = when {
+            halt == HaltReason.REPAIR -> "revoked"
+            halt == HaltReason.WRONG_SERVER -> "wrong_instance"
+            halt == HaltReason.AUTH_PROBLEM -> "unauthorized"
+            restored -> "restored"
+            round == Round.State.OFFLINE -> "unreachable"
+            round == Round.State.IDLE || round == Round.State.CANCELLED -> "reachable"
+            else -> null
+        }
         const val KEY = "diag.state"
         private val JSON = Json { ignoreUnknownKeys = true }
         private val PROTECTED = setOf("crash", "app.start", "service.event", "engine.run", "shift.summary", "diag.self")

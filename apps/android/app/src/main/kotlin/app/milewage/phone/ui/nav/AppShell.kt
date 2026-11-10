@@ -178,6 +178,7 @@ fun AppShell(
                             onOpenDiagnostics = { nav.navigate(DiagnosticsRoute) },
                             onOpenPermissions = { nav.navigate(PermissionsRoute) { launchSingleTop = true } },
                             onPair = { nav.navigate(FirstRunGraph) { launchSingleTop = true } },
+                            onOpenSettings = { goTo(nav, SettingsRoute) },
                         )
                     }
                     composable<ShiftsRoute> {

@@ -20,8 +20,9 @@ import kotlinx.coroutines.sync.withLock
 class RestoreCheck(private val store: LocalStore) {
     private val lock = Mutex()
 
+    /** The last generation seen, and the server it belongs to (each server counts its own). */
     @Volatile
-    private var known: Long? = null
+    private var known: Pair<String, Long>? = null
 
     /** True from a restore until every shift was sent again (also read from the marks after a restart). */
     @Volatile
@@ -30,9 +31,9 @@ class RestoreCheck(private val store: LocalStore) {
 
     suspend fun observe(identity: ServerIdentity, @Suppress("UNUSED_PARAMETER") expectedInstance: String?) {
         val gen = identity.restoreGeneration ?: return
-        if (identity.instanceId == null) return
-        known?.let { if (gen <= it) return } // the usual answer: nothing new, no database read
-        lock.withLock { check(gen) }
+        val instance = identity.instanceId ?: return
+        known?.let { (i, g) -> if (i == instance && gen <= g) return } // the usual answer: nothing new, no database read
+        lock.withLock { check(instance, gen) }
     }
 
     /** Waits for checks still running (the sender reads the marks after them). */
@@ -44,10 +45,12 @@ class RestoreCheck(private val store: LocalStore) {
         restored = false
     }
 
-    private suspend fun check(gen: Long) {
+    private suspend fun check(instance: String, gen: Long) {
+        // The store is the paired server's view (`ServerBinding.view`): the key is that server's own,
+        // and only its shifts are marked.
         val stored = store.get(KEY)?.toLongOrNull()
         if (stored != null && gen <= stored) {
-            known = stored
+            known = instance to stored
             return
         }
         store.transaction {
@@ -70,7 +73,7 @@ class RestoreCheck(private val store: LocalStore) {
             }
             store.put(KEY, gen.toString())
         }
-        known = gen
+        known = instance to gen
     }
 
     companion object {

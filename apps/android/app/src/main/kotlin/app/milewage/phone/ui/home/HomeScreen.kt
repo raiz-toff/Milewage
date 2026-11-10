@@ -50,6 +50,7 @@ import app.milewage.phone.ui.components.ElapsedFigure
 import app.milewage.phone.ui.components.LocalNow
 import app.milewage.phone.ui.components.LocalTicking
 import app.milewage.phone.ui.components.NoticeCard
+import app.milewage.phone.ui.components.OtherServerCard
 import app.milewage.phone.ui.components.Screen
 import app.milewage.phone.ui.components.Tone
 
@@ -78,6 +79,12 @@ interface HomeActions {
     fun openDiagnostics()
 
     fun reminderShown(level: Reminder.Level)
+
+    /** Another server's shifts: connect to that server again (Settings > Connect to a different server). */
+    fun connectOtherServer()
+
+    /** Another server's shifts: delete them from the phone (asks first). */
+    fun deleteOtherServer()
 }
 
 /** Home, a thin renderer of [HomeState]: the next shift, or the running shift. */
@@ -148,6 +155,9 @@ private fun IdleContent(state: HomeState, actions: HomeActions) {
             )
         }
         state.banner?.let { b -> item(key = "banner") { SyncBannerCard(b, state.sending, actions::fix, actions::reminderShown) } }
+        if (!state.otherServer.none) {
+            item(key = "other-server") { OtherServerCard(state.otherServer, actions::connectOtherServer, actions::deleteOtherServer) }
+        }
         item(key = "next") {
             NextShiftCard(state.vehicles, state.pairing == PairingStatus.UNPAIRED, actions::selectVehicle, actions::fix)
         }

@@ -7,6 +7,7 @@ import app.milewage.core.pairing.PairingStatus
 import app.milewage.core.shift.EditResult
 import app.milewage.core.shift.OdometerKind
 import app.milewage.core.shift.StartResult
+import app.milewage.core.sync.OtherServerShifts
 import app.milewage.core.sync.Reminder
 import app.milewage.core.sync.ShiftMarker
 import app.milewage.core.sync.StatusColor
@@ -94,6 +95,23 @@ class HomeViewModelTest : VmTest() {
         collect(vm.state)
         val events = collect(vm.event)
         return vm to events
+    }
+
+    @Test
+    fun `another servers shifts show apart and are deleted only when asked`() = runTest {
+        val (vm, events) = home()
+        assertTrue(vm.state.value.otherServer.none)
+        data.other.value = OtherServerShifts(2, 340, listOf("old.example.ts.net"), NOW - 5 * 86_400_000L)
+        assertEquals(2, vm.state.value.otherServer.shifts)
+        assertTrue(data.calls.none { it == "deleteOther" })
+        vm.deleteOtherServer()
+        advanceUntilIdle()
+        assertEquals(HomeEvent.OtherServerDeleted(2), events.last())
+        assertTrue(vm.state.value.otherServer.none)
+        data.failDelete = true
+        vm.deleteOtherServer()
+        advanceUntilIdle()
+        assertEquals(HomeEvent.DeleteFailed, events.last())
     }
 
     @Test

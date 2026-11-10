@@ -100,6 +100,7 @@ object Texts {
         ShiftMarker.SENT -> R.string.marker_sent
         ShiftMarker.SENT_DIFFERS -> R.string.marker_sent_differs
         ShiftMarker.NEEDS_ATTENTION -> R.string.marker_attention
+        ShiftMarker.OTHER_SERVER -> R.string.marker_other_server
     }
 
     @StringRes

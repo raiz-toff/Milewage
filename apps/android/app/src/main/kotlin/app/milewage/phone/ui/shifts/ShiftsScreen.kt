@@ -114,7 +114,7 @@ private fun WeekGroup(g: ShiftGroup, f: Formats, onOpenShift: (String) -> Unit) 
 private fun markerIcon(m: ShiftMarker): ImageVector = when (m) {
     ShiftMarker.SENT -> Icons.CheckCircle
     ShiftMarker.NEEDS_ATTENTION, ShiftMarker.SENT_DIFFERS -> Icons.Warning
-    ShiftMarker.ON_PHONE_ONLY, ShiftMarker.SENDING -> Icons.Info
+    ShiftMarker.ON_PHONE_ONLY, ShiftMarker.SENDING, ShiftMarker.OTHER_SERVER -> Icons.Info
 }
 
 /** One shift: day and times, distance, who calculated it, its send state in words, and what to check. */

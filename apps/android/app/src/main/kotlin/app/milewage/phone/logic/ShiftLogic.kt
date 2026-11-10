@@ -74,7 +74,8 @@ object ShiftGroups {
             .sortedByDescending { it.start }
     }
 
-    private fun rowOf(item: ShiftListItem) = rowOf(item.shift, item.vehicle?.name)
+    /** The facade's marker wins: it knows the paired server ("Recorded for another server"). */
+    private fun rowOf(item: ShiftListItem) = rowOf(item.shift, item.vehicle?.name).copy(marker = item.marker)
 
     fun rowOf(s: ShiftRecord, vehicle: String?) = ShiftRow(
         clientId = s.clientId,

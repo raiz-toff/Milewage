@@ -9,6 +9,9 @@ import app.milewage.engine.Engine
 import app.milewage.phone.logic.DiagnosticsInfo
 import app.milewage.phone.logic.DiagnosticsReport
 import app.milewage.phone.logic.DiagnosticsSource
+import app.milewage.phone.logic.PermStates
+import app.milewage.phone.platform.powerSave
+import app.milewage.phone.platform.standbyBucket
 import app.milewage.phone.model.ControllerTrackingView
 import app.milewage.phone.model.MileWageShiftData
 import app.milewage.phone.model.Now
@@ -65,6 +68,8 @@ class AppGraph(context: Context, val scope: CoroutineScope) {
         recorder = TrackingRecorder { tracking },
         reminders = ReminderNotifications(app),
         battery = AndroidBattery(app),
+        // perm.state in diagnostics: what the tracker reads, the standby bucket and Battery Saver.
+        permissions = { PermStates.of(tracking.permissions(), standbyBucket(app), powerSave(app)) },
     )
 
     val trackingDependencies: TrackingDependencies = trackingDependencies(

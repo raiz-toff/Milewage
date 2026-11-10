@@ -4,6 +4,7 @@ import app.milewage.core.api.ApiJson
 import app.milewage.core.api.DiagSource
 import app.milewage.core.api.Settings
 import app.milewage.core.diagnostics.FlushResult
+import app.milewage.core.diagnostics.PermSnapshot
 import app.milewage.core.diagnostics.PhoneDiagnostics
 import app.milewage.core.ports.Clock
 import app.milewage.core.sync.UploadStats
@@ -183,5 +184,96 @@ class DiagnosticsTest {
         assertEquals(DiagSource.PHONE_NATIVE, e.src)
         assertEquals("restarted", e.data["event"]!!.jsonPrimitive.content)
         assertEquals(JsonArray(emptyList()).size, 0)
+    }
+
+    private fun kinds(srv: FakeMileWage): List<String> =
+        srv.calls.filter { it.path == "/diagnostics/events" }.flatMap { (it.body as JsonObject)["events"]!!.jsonArray.map { e -> e.jsonObject["kind"]!!.jsonPrimitive.content } }
+
+    @Test
+    fun theRingGoesOnlyToTheServerItWasRecordedFor() = runBlocking {
+        val a = FakeMileWage("inst-A").start().also(servers::add)
+        val b = FakeMileWage("inst-B").start().also(servers::add)
+        val p = Phone(a)
+        p.net.down = true
+        p.data.diagnostics.recordCrash(IllegalStateException("x"), fatal = false)
+        assertTrue(p.data.unpair())
+        // Recorded while unpaired: the ring keeps its server.
+        p.data.diagnostics.recordCrash(IllegalArgumentException("y"), fatal = false)
+        assertEquals(2, p.data.store.diagCount())
+        p.net.down = false
+        p.pair(to = b)
+        p.data.diagnosticsWindow()
+        assertEquals(listOf("upload.window", "diag.self"), kinds(b))
+        assertTrue(kinds(a).isEmpty())
+        // Back on A: B's events are not sent to A either.
+        p.data.diagnostics.recordCrash(IllegalStateException("z"), fatal = false)
+        assertTrue(p.data.unpair())
+        p.pair(to = a)
+        p.data.diagnosticsWindow()
+        assertEquals(listOf("upload.window", "diag.self"), kinds(a))
+    }
+
+    @Test
+    fun aWindowAfterARoundSaysTheServerIsReachableOnce() = runBlocking {
+        val srv = FakeMileWage().start().also(servers::add)
+        val p = Phone(srv)
+        assertTrue(p.data.sendNow())
+        p.data.diagnosticsWindow()
+        p.data.diagnosticsWindow()
+        assertEquals(1, kinds(srv).count { it == "sync.state" })
+        val e = srv.calls.filter { it.path == "/diagnostics/events" }.flatMap { (it.body as JsonObject)["events"]!!.jsonArray }
+            .single { it.jsonObject["kind"]!!.jsonPrimitive.content == "sync.state" }.jsonObject
+        assertEquals("reachable", e["data"]!!.jsonObject["state"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun permissionsStorageAndConnectionStatesAreRecordedWhenTheyChange() = runBlocking {
+        val (d, store) = diag()
+        fun of(kind: String) = runBlocking { store.oldestDiag(100).map { it.second }.filter { it.kind == kind } }
+        val perm = PermSnapshot(true, PermSnapshot.Background.WHILE_IN_USE, true, false, "active", false)
+        d.recordPermissions(perm)
+        d.recordPermissions(perm)
+        d.recordPermissions(perm.copy(background = PermSnapshot.Background.ALL_TIME, batteryOptIgnored = true))
+        assertEquals(listOf("while_in_use", "all_time"), of("perm.state").map { it.data["background"]!!.jsonPrimitive.content })
+        assertEquals("false", of("perm.state").first().data["activity_recognition"]!!.jsonPrimitive.content)
+
+        val mb = 1024L * 1024
+        d.recordStorage(null, 0, 0, 0, 0) // unreadable: nothing to say
+        d.recordStorage(150 * mb, 12 * mb, 2, 340, 1)
+        d.recordStorage(160 * mb, 12 * mb, 2, 340, 1) // same bucket and state
+        val st = of("storage.state").single().data
+        assertEquals("lt200", st["free_mb_bucket"]!!.jsonPrimitive.content)
+        assertEquals("low", st["state"]!!.jsonPrimitive.content)
+        assertEquals(12, st["app_db_mb"]!!.jsonPrimitive.content.toInt())
+        assertEquals(340, st["pending_points"]!!.jsonPrimitive.content.toInt())
+        assertEquals(1, st["quarantine_rows"]!!.jsonPrimitive.content.toInt())
+        d.recordStorage(30 * mb, 12 * mb, 2, 340, 1)
+        assertEquals(listOf("low", "critical"), of("storage.state").map { it.data["state"]!!.jsonPrimitive.content })
+        now += 86_400_000
+        d.recordStorage(30 * mb, 12 * mb, 2, 340, 1) // once a day while it holds
+        assertEquals(3, of("storage.state").size)
+
+        d.recordSyncState(null)
+        d.recordSyncState("reachable")
+        d.recordSyncState("reachable")
+        d.recordSyncState("unreachable")
+        now += 86_400_000
+        d.recordSyncState("unreachable")
+        val sync = of("sync.state").map { it.data["state"]!!.jsonPrimitive.content to it.data["since_s"]!!.jsonPrimitive.content.toLong() }
+        assertEquals(listOf("reachable" to 0L, "unreachable" to 0L, "unreachable" to 86_400L), sync)
+    }
+
+    @Test
+    fun uploadWindowCountsTheGzippedBytesThatWentOverTheWire() = runBlocking {
+        val srv = FakeMileWage().start().also(servers::add)
+        val p = Phone(srv)
+        p.data.startShift(3)
+        p.record(Phone.drive(2_000, 300))
+        p.data.sendNow()
+        val wire = srv.calls.filter { it.path == "/telemetry/batch" }
+        assertTrue(wire.size >= 3)
+        val stats = p.data.sender.takeUploadStats()
+        assertEquals(wire.sumOf { it.wireBytes }, stats.bytes)
+        assertTrue(stats.bytes < wire.sumOf { it.body.toString().length.toLong() } / 2) // gzipped, not the JSON
     }
 }

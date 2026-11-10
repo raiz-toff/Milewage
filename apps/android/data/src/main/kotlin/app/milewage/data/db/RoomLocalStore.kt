@@ -59,6 +59,8 @@ class RoomLocalStore(private val db: MileWageDatabase) : LocalStore {
 
     override suspend fun shiftByServerId(serverId: Long) = dao.shiftByServerId(serverId)?.toRecord()
 
+    override suspend fun shiftByServerId(serverId: Long, instanceId: String?) = dao.shiftByServerIdOn(serverId, instanceId)?.toRecord()
+
     override suspend fun runningShift() = dao.runningShift()?.toRecord()
 
     override suspend fun shifts(limit: Int) = dao.shifts(limit).map { it.toRecord() }
@@ -68,6 +70,10 @@ class RoomLocalStore(private val db: MileWageDatabase) : LocalStore {
     override suspend fun shiftsFrom(fromDate: String) = dao.shiftsFrom(fromDate).map { it.toRecord() }
 
     override suspend fun upsertShift(shift: ShiftRecord) = dao.upsertShift(shift.toEntity())
+
+    override suspend fun shiftIdsNotBoundTo(instanceId: String?) = dao.shiftIdsNotBoundTo(instanceId).toHashSet()
+
+    override suspend fun bindUnbound(instanceId: String) = dao.bindUnbound(instanceId)
 
     override suspend fun deleteShift(clientId: String) = transaction {
         dao.deleteShift(clientId) // trips, stops, route and readings cascade
@@ -114,6 +120,8 @@ class RoomLocalStore(private val db: MileWageDatabase) : LocalStore {
 
     override suspend fun odometerByServerId(serverId: Long) = dao.odometerByServerId(serverId)?.toRecord()
 
+    override suspend fun odometerByServerId(serverId: Long, instanceId: String?) = dao.odometerByServerIdOn(serverId, instanceId)?.toRecord()
+
     override suspend fun upsertOdometer(reading: OdometerRecord) = dao.upsertOdometer(
         OdometerEntity(reading.shiftClientId, reading.kind.wire, reading.readingM, reading.recordedAt, reading.serverId, reading.sendState.wire),
     )
@@ -149,6 +157,9 @@ class RoomLocalStore(private val db: MileWageDatabase) : LocalStore {
         if (shiftClientId == null) dao.pendingCountAll() else dao.pendingCount(shiftClientId)
 
     override suspend fun oldestPendingAt() = dao.oldestPendingAt()
+
+    /** Fixes the server refused for good, kept on the phone (`storage.state`'s `quarantine_rows`). */
+    suspend fun setAsideCount(): Long = dao.setAsideCount()
 
     override suspend fun markSent(seqs: List<Long>, at: Long) = chunked(seqs) { dao.markSent(it, at) }
 
@@ -336,6 +347,7 @@ class RoomLocalStore(private val db: MileWageDatabase) : LocalStore {
             batteryEndPct = batteryEnd?.level,
             batteryEndCharging = batteryEnd?.charging,
             engineMs = engineMs,
+            instanceId = instanceId,
         )
 
         fun ShiftEntity.toRecord() = ShiftRecord(
@@ -368,6 +380,7 @@ class RoomLocalStore(private val db: MileWageDatabase) : LocalStore {
             batteryStart = batteryStartPct?.let { BatteryReading(it, batteryStartCharging == true) },
             batteryEnd = batteryEndPct?.let { BatteryReading(it, batteryEndCharging == true) },
             engineMs = engineMs,
+            instanceId = instanceId,
         )
 
         fun TripRecord.toEntity() = TripEntity(

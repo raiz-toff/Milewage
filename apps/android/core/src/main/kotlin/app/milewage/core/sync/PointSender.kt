@@ -3,6 +3,7 @@ package app.milewage.core.sync
 import app.milewage.core.api.ApiClient
 import app.milewage.core.api.ApiCodes
 import app.milewage.core.api.ApiException
+import app.milewage.core.api.ApiJson
 import app.milewage.core.api.ShiftChange
 import app.milewage.core.api.ShiftRequests
 import app.milewage.core.api.TelemetryBatch
@@ -14,6 +15,7 @@ import app.milewage.core.ports.Clock
 import app.milewage.core.shift.FixQueue
 import app.milewage.core.tracking.RecordedFix
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.serialization.json.JsonObject
 
 /** Counters for the `upload.window` diagnostics event (16 section 3.2). */
 data class UploadStats(
@@ -65,6 +67,8 @@ class PointSender(
     private val flushQueue: suspend () -> Unit,
     private val clock: Clock,
     rand: () -> Double,
+    /** The body's size once gzipped as the transport sends it; null: unknown (the JSON length is counted). */
+    private val gzipSize: (ByteArray) -> Long? = { null },
 ) {
     private val backoff = Backoff(rand)
     private val notFound = HashMap<String, Int>()
@@ -169,7 +173,9 @@ class PointSender(
     private suspend fun send(client: ApiClient, shiftId: String, batch: List<RecordedFix>): TelemetryBatchResult {
         val req = ShiftRequests.encode(ShiftChange.Points(shiftId, batch.map { it.toPoint() }))
         val t0 = clock.nowMs()
-        stats = stats.copy(attempts = stats.attempts + 1, bytes = stats.bytes + req.body.toString().length)
+        // `bytes_gz`: what goes over the wire, the gzipped body (a point batch always goes gzipped).
+        val json = ApiJson.encodeToString(JsonObject.serializer(), req.body).encodeToByteArray()
+        stats = stats.copy(attempts = stats.attempts + 1, bytes = stats.bytes + (gzipSize(json) ?: json.size.toLong()))
         try {
             val res = client.send(req)
             stats = stats.copy(ok = stats.ok + 1, durationsMs = stats.durationsMs + (clock.nowMs() - t0))

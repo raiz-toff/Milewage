@@ -81,4 +81,12 @@ class RecordingHomeActions : HomeActions {
     override fun reminderShown(level: Reminder.Level) {
         calls += "reminder $level"
     }
+
+    override fun connectOtherServer() {
+        calls += "connectOther"
+    }
+
+    override fun deleteOtherServer() {
+        calls += "deleteOther"
+    }
 }

@@ -100,6 +100,9 @@ object FirstRunStates {
         theme = AppTheme.SYSTEM,
         helpBase = "http://192.168.1.20:8080",
     )
+    /** Settings with two shifts recorded for another server, under Sending. */
+    val settingsOtherServer = settings.copy(otherServer = app.milewage.core.sync.OtherServerShifts(2, 1_204, listOf("old-box.tail9876.ts.net"), 1_000))
+
     val settingsTrouble = settings.copy(
         where = Where.AWAY,
         check = ConnectionCheck.Failed(ConnectError.Failed(ConnectFailure.TailscaleOff)),

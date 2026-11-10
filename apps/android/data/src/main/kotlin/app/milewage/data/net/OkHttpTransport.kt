@@ -66,18 +66,22 @@ class OkHttpTransport(private val client: OkHttpClient) : HttpTransport {
         )
     }
 
-    private companion object {
-        val JSON = "application/json".toMediaType()
+    companion object {
+        private val JSON = "application/json".toMediaType()
 
-        fun failure(e: IOException): TransportFailure =
+        private fun failure(e: IOException): TransportFailure =
             if (e is InsecureAddressException) TransportFailure.Insecure(cause = e) else TransportFailure.NoAnswer(cause = e)
 
-        fun headersOf(r: Response) = HttpHeaders(r.headers.names().associateWith { r.headers[it].orEmpty() })
+        private fun headersOf(r: Response) = HttpHeaders(r.headers.names().associateWith { r.headers[it].orEmpty() })
 
+        /** A body as this transport sends it with `Content-Encoding: gzip`. */
         fun gzip(bytes: ByteArray): ByteArray {
             val out = Buffer()
             GzipSink(out).buffer().use { it.write(bytes) }
             return out.readByteArray()
         }
+
+        /** Its size once gzipped, as sent (`upload.window`'s `bytes_gz`). */
+        fun gzipSize(bytes: ByteArray): Long = gzip(bytes).size.toLong()
     }
 }

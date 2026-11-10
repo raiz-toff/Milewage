@@ -27,6 +27,10 @@ class MileWageShiftData(private val data: MileWageData) : ShiftData {
 
     override fun syncStatus() = data.syncStatus()
 
+    override fun otherServer() = data.otherServer()
+
+    override suspend fun deleteOtherServerShifts() = data.deleteOtherServerShifts()
+
     override fun vehicles(): Flow<List<VehicleRecord>> = data.vehicles().map { all -> all.filter { it.archivedAt == null } }
 
     // A send round refreshes the settings (GET /settings first); a pairing change replaces them.

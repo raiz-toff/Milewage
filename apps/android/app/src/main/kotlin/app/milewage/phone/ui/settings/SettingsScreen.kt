@@ -59,6 +59,8 @@ import app.milewage.phone.ui.components.ConfirmRequest
 import app.milewage.phone.ui.components.ListRow
 import app.milewage.phone.ui.components.LocalSnackbars
 import app.milewage.phone.ui.components.NoticeCard
+import app.milewage.phone.ui.components.OtherServerCard
+import app.milewage.phone.ui.components.otherServerDeleteRequest
 import app.milewage.phone.ui.components.RowDivider
 import app.milewage.phone.ui.components.Rows
 import app.milewage.phone.ui.components.Screen
@@ -100,6 +102,9 @@ interface SettingsActions {
     fun openSource()
 
     fun openDiagnostics()
+
+    /** Another server's shifts: delete them from the phone (asks first). */
+    fun deleteOtherServer()
 }
 
 @Composable
@@ -161,6 +166,11 @@ fun SettingsRoute(
             override fun openSource() = browse(SOURCE_URL)
 
             override fun openDiagnostics() = onOpenDiagnostics()
+
+            override fun deleteOtherServer() {
+                val n = vm.state.value.otherServer.shifts
+                if (n > 0) confirm.ask(otherServerDeleteRequest(res, n) { vm.deleteOtherServer() })
+            }
         }
     }
 
@@ -176,7 +186,7 @@ fun SettingsRoute(
                         onConfirm = { vm.confirmDisconnect() },
                     ),
                 )
-                is SettingsEvent.AskLoseUnsent -> confirm.ask(
+                is SettingsEvent.AskLeaveUnsent -> confirm.ask(
                     ConfirmRequest(
                         title = res.getString(R.string.unpair_unsent_title),
                         text = res.getString(
@@ -186,13 +196,15 @@ fun SettingsRoute(
                         ),
                         confirmLabel = res.getString(R.string.unpair_anyway),
                         destructive = true,
-                        onConfirm = { vm.confirmDisconnect(loseUnsent = true) },
+                        onConfirm = { vm.confirmDisconnect(confirmed = true) },
                     ),
                 )
                 SettingsEvent.EndShiftFirst -> snackbars.show(res.getString(R.string.unpair_running))
                 SettingsEvent.Disconnected -> snackbars.show(res.getString(R.string.unpair_done))
                 SettingsEvent.DisconnectFailed -> snackbars.show(res.getString(R.string.unpair_failed), res.getString(R.string.try_again)) { vm.disconnect() }
                 is SettingsEvent.Sent -> snackbars.show(res.getString(if (e.done) R.string.sync_all_sent else R.string.sync_still_waiting))
+                is SettingsEvent.OtherServerDeleted -> snackbars.show(res.getQuantityString(R.plurals.other_server_deleted, e.shifts, e.shifts))
+                SettingsEvent.DeleteFailed -> snackbars.show(res.getString(R.string.delete_failed))
                 is SettingsEvent.Detection -> {
                     val fix = e.outcome.fix
                     snackbars.show(res.getString(Texts.detection(e.outcome)), fix?.let { res.getString(Texts.fix(it)) }) { fix?.let(actions::fix) }
@@ -428,6 +440,15 @@ private fun TrackingSection(state: SettingsState, actions: SettingsActions, onNu
 
 @Composable
 private fun SendingSection(state: SettingsState, actions: SettingsActions) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        SendingRows(state, actions)
+        // Another server's shifts: connecting to it is "Connect to a different server" (asks first).
+        OtherServerCard(state.otherServer, onConnect = actions::disconnect, onDelete = actions::deleteOtherServer)
+    }
+}
+
+@Composable
+private fun SendingRows(state: SettingsState, actions: SettingsActions) {
     Rows(label = stringResource(R.string.settings_sending)) {
         val waiting = state.unsentShifts > 0 || state.unsentFixes > 0
         ListRow(

@@ -83,11 +83,13 @@ class PullTest {
         assertEquals(listOf("aaaa:1:active"), p.data.store.trips("aaaa").map { it.tripKey })
         assertEquals("Civic", p.data.store.vehicles().single().name)
         assertEquals("ON", p.data.pairing.load()!!.settings!!.region)
-        assertEquals("4", p.data.store.get(ChangePuller.CURSOR))
+        // The cursor is this server's own (another server's change log has its own numbers).
+        assertEquals("4", p.data.binding.view.get(ChangePuller.CURSOR))
+        assertEquals("4", p.data.store.get("${ChangePuller.CURSOR}@inst-A"))
         val from = srv.calls.size
         p.data.sendNow()
         assertTrue(srv.calls.drop(from).any { it.path == "/sync/changes" })
-        assertEquals("4", p.data.store.get(ChangePuller.CURSOR))
+        assertEquals("4", p.data.binding.view.get(ChangePuller.CURSOR))
     }
 
     @Test
@@ -130,7 +132,7 @@ class PullTest {
     }
 
     private suspend fun pull(p: Phone) {
-        ChangePuller(p.data.store, p.data.sender.outbox, { p.data.pairing.session() }, p.data.pairing.device, { p.data.pairing.storeSettings(it) }, p.clock)
+        ChangePuller(p.data.binding.view, p.data.sender.outbox, { p.data.pairing.session() }, p.data.pairing.device, { p.data.pairing.storeSettings(it) }, p.clock)
             .pull(force = true)
     }
 
@@ -215,7 +217,7 @@ class PullTest {
         val afters = srv.calls.filter { it.path == "/sync/changes" }.map { it.toString() }
         assertEquals(4, afters.size) // the round's own pull, ours, the 410, the window again
         assertNotNull(p.data.store.shift(ID))
-        assertEquals("7", p.data.store.get(ChangePuller.CURSOR))
+        assertEquals("7", p.data.binding.view.get(ChangePuller.CURSOR))
     }
 
     @Test

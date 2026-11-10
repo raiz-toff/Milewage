@@ -57,7 +57,7 @@ class ShiftModelTest {
     @After
     fun close() = servers.forEach { it.close() }
 
-    private val fixtures = Json.parseToJsonElement(File("../../phone/src/conformance/fixtures.json").readText()).jsonObject
+    private val fixtures = Json.parseToJsonElement(File("../../../packages/track-engine/conformance/fixtures.json").readText()).jsonObject
 
     /** Plays a conformance fixture through the phone, offline: start, its fixes, end. */
     private suspend fun ride(name: String, p: Phone): JsonObject {

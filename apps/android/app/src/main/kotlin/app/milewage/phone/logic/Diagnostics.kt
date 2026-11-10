@@ -1,6 +1,7 @@
 package app.milewage.phone.logic
 
 import app.milewage.core.connect.Where
+import app.milewage.core.diagnostics.PermSnapshot
 import app.milewage.core.pairing.HaltReason
 import app.milewage.core.pairing.PairingStatus
 import app.milewage.core.tracking.TrackingStatus
@@ -80,4 +81,32 @@ object DiagnosticsReport {
     private fun yes(b: Boolean) = if (b) "yes" else "no"
 
     const val MAX_FAILURES = 20
+}
+
+/** The phone's permissions as diagnostics' `perm.state` reports them (counts and states, no coordinates). */
+object PermStates {
+    /** [bucket]: `UsageStatsManager.appStandbyBucket` (Android 9+), null when it cannot be read. */
+    fun of(perm: TrackingPermissionState, bucket: Int?, powerSave: Boolean) = PermSnapshot(
+        fine = perm.preciseLocation,
+        background = when {
+            perm.preciseLocation && perm.backgroundLocation -> PermSnapshot.Background.ALL_TIME
+            perm.preciseLocation || perm.approximateOnly -> PermSnapshot.Background.WHILE_IN_USE
+            else -> PermSnapshot.Background.DENIED
+        },
+        notifications = perm.notifications,
+        batteryOptIgnored = perm.ignoringBatteryOptimizations,
+        standbyBucket = bucketName(bucket),
+        powerSave = powerSave,
+    )
+
+    /** The platform's bucket numbers (`UsageStatsManager.STANDBY_BUCKET_*`) in the catalogue's words. */
+    fun bucketName(bucket: Int?): String = when (bucket) {
+        null -> "unknown"
+        in Int.MIN_VALUE..10 -> "active"
+        in 11..20 -> "working_set"
+        in 21..30 -> "frequent"
+        in 31..40 -> "rare"
+        in 41..45 -> "restricted"
+        else -> "never"
+    }
 }

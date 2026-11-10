@@ -4,17 +4,19 @@ import android.content.Context
 import androidx.room3.Database
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
+import androidx.room3.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.SQLiteDriver
 import androidx.sqlite.SQLiteStatement
 import androidx.sqlite.driver.AndroidSQLiteDriver
+import androidx.sqlite.execSQL
 
 /**
  * The phone's database: every shift, fix, result, edit, reading and queued change (15 section 2.2).
  * The native app starts with an empty one (no import from the Expo app's SQLite files: the driver
  * pairs again, and data the Expo app had not sent must be sent before updating; see the release
  * notes). Schemas are exported to `data/schemas/` and committed; every later version adds a
- * `Migration` tested against them (`DatabaseSchemaTest`).
+ * `Migration` tested against them (`MigrationTest`).
  *
  * Write-ahead logging, foreign keys on, and `synchronous = FULL` ([DurableDriver]): a commit is on
  * the storage before the call returns, also across a power loss, so what the screens show as saved
@@ -44,10 +46,26 @@ abstract class MileWageDatabase : RoomDatabase() {
 
     companion object {
         const val FILE_NAME = "milewage.db"
-        const val VERSION = 1
+        const val VERSION = 2
 
-        /** Migrations from each exported version. Version 1 is the first: none yet. */
-        val MIGRATIONS = arrayOf<androidx.room3.migration.Migration>()
+        /**
+         * 1 to 2: every shift is bound to the server it was recorded for (`shifts.instance_id`, see
+         * `ServerBinding` in :core), and a server id is unique per server (`(instance_id, server_id)`
+         * replaces the unique `server_id`). Rows from version 1 stay unbound (null): the binding claims them
+         * for the server paired now as soon as the app starts paired (or for the first server paired
+         * after it), so nothing recorded before is lost or sent anywhere else.
+         */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE `shifts` ADD COLUMN `instance_id` TEXT")
+                // Server ids are unique per server (two servers both have a shift 100).
+                connection.execSQL("DROP INDEX IF EXISTS `index_shifts_server_id`")
+                connection.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_shifts_instance_id_server_id` ON `shifts` (`instance_id`, `server_id`)")
+            }
+        }
+
+        /** Migrations from each exported version, each tested against its schema (`MigrationTest`). */
+        val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2)
 
         /** Opens the database on the platform's SQLite (no bundled native library). */
         fun open(context: Context): MileWageDatabase =

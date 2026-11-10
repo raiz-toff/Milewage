@@ -55,7 +55,7 @@ class DatabaseTest {
         // synchronous = FULL (2) on the writer, the connection every commit goes through.
         assertEquals("2", db.useWriterConnection { c -> c.usePrepared("PRAGMA synchronous") { st -> st.step(); st.getText(0) } })
         assertEquals("1", db.useWriterConnection { c -> c.usePrepared("PRAGMA foreign_keys") { st -> st.step(); st.getText(0) } })
-        assertEquals("1", db.pragma("user_version"))
+        assertEquals(MileWageDatabase.VERSION.toString(), db.pragma("user_version"))
         val tables = db.useReaderConnection { c ->
             c.usePrepared("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name") { st ->
                 buildList { while (st.step()) add(st.getText(0)) }

@@ -24,6 +24,9 @@ interface ShiftRepository {
 
     suspend fun shiftByServerId(serverId: Long): ShiftRecord?
 
+    /** The shift with this server id on the server [instanceId] (each server numbers its own shifts). */
+    suspend fun shiftByServerId(serverId: Long, instanceId: String?): ShiftRecord?
+
     /** The running shift (status active), if any; the newest one if a bug ever left two. */
     suspend fun runningShift(): ShiftRecord?
 
@@ -38,10 +41,17 @@ interface ShiftRepository {
 
     suspend fun upsertShift(shift: ShiftRecord)
 
+    /** Client ids of the shifts not bound to [instanceId] (another server's, or unbound when it is not null). */
+    suspend fun shiftIdsNotBoundTo(instanceId: String?): Set<String>
+
+    /** Binds every unbound shift (recorded before the binding existed) to [instanceId]. Returns how many. */
+    suspend fun bindUnbound(instanceId: String): Int
+
     /**
      * Removes a shift and everything of it on the phone: trips, stops, route, odometer readings,
-     * interruptions, its fixes and its resend mark. Only for a shift the server deleted (the
-     * server's delete wins, 15 section 8.4); nothing on the phone deletes a shift by itself.
+     * interruptions, its fixes and its resend mark. For a shift the server deleted (the server's
+     * delete wins, 15 section 8.4), or one recorded for another server that the driver chose to
+     * delete after a confirmation (`ServerBinding.deleteElsewhere`); nothing deletes a shift by itself.
      */
     suspend fun deleteShift(clientId: String)
 
@@ -71,6 +81,9 @@ interface ShiftRepository {
     suspend fun odometer(clientId: String): List<OdometerRecord>
 
     suspend fun odometerByServerId(serverId: Long): OdometerRecord?
+
+    /** The reading with this server id, of a shift on the server [instanceId]. */
+    suspend fun odometerByServerId(serverId: Long, instanceId: String?): OdometerRecord?
 
     suspend fun upsertOdometer(reading: OdometerRecord)
 

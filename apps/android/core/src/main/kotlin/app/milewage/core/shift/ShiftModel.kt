@@ -124,6 +124,8 @@ class ShiftModel(
             localDate = dayOf(startedAt, ctx.timezone).toString(),
             updatedAt = clock.nowMs(),
             batteryStart = readBattery(),
+            // Bound to the server paired now: nothing of it is ever sent to another one.
+            instanceId = ctx.instanceId,
         )
         try {
             store.transaction {

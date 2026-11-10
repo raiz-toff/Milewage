@@ -20,6 +20,7 @@ import app.milewage.core.shift.StopRecord
 import app.milewage.core.shift.TripRecord
 import app.milewage.core.shift.TripSource
 import app.milewage.core.shift.VehicleRecord
+import app.milewage.core.sync.OtherServerShifts
 import app.milewage.core.sync.Progress
 import app.milewage.core.sync.SendStatus
 import app.milewage.core.sync.ShiftMarker
@@ -165,6 +166,8 @@ class FakeShiftData : ShiftData {
     val vehicleList = MutableStateFlow(listOf(CIVIC))
     val display = MutableStateFlow(DisplaySettings(currency = "CAD", timezone = "UTC", country = "CA"))
     val pairing = MutableStateFlow(PairingStatus.PAIRED)
+    val other = MutableStateFlow(OtherServerShifts.NONE)
+    var failDelete = false
 
     var vehiclesOffline = false
     var vehiclesFail = false
@@ -185,6 +188,14 @@ class FakeShiftData : ShiftData {
     override fun shiftDetail(clientId: String): Flow<ShiftDetail?> = details.map { it[clientId] }
 
     override fun syncStatus(): Flow<SendStatus> = sync
+
+    override fun otherServer(): Flow<OtherServerShifts> = other
+
+    override suspend fun deleteOtherServerShifts(): Int {
+        calls += "deleteOther"
+        if (failDelete) error("disk")
+        return other.value.shifts.also { other.value = OtherServerShifts.NONE }
+    }
 
     override fun vehicles(): Flow<List<VehicleRecord>> = vehicleList
 
@@ -378,9 +389,9 @@ class FakePairing(status: PairingStatus = PairingStatus.UNPAIRED) : app.milewage
 
     override suspend fun hasUnsentData() = unsent
 
-    override suspend fun unpair(loseUnsentData: Boolean): Boolean {
-        calls += "unpair $loseUnsentData"
-        if (unsent && !loseUnsentData) return false
+    override suspend fun unpair(confirmed: Boolean): Boolean {
+        calls += "unpair $confirmed"
+        if (unsent && !confirmed) return false
         state = null
         statusFlow.value = PairingStatus.UNPAIRED
         return true

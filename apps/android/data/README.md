@@ -115,8 +115,9 @@ allowed". The server validates its own merged object, so the check merges `allOf
   `REPAIR` (401 `device_revoked`, kept across restarts; `pairing.status()` is `REVOKED`),
   `WRONG_SERVER` (blocks every request), `AUTH_PROBLEM` (other 401/403). Pairing again lifts every
   halt; so does `device.resume()` ("Send now", "Check the address").
-- **Unpair**: `pairing.unpair(waiting = { unsent data exists })` refuses while data waits; pass
-  `{ false }` after the driver confirms losing it.
+- **Unpair**: `pairing.unpair(waiting = { unsent data exists })` refuses while the paired server's
+  data waits; pass `{ false }` after the driver confirms (`MileWageData.unpair(confirmed = true)`).
+  Nothing is deleted: what was not sent stays bound to that server (below).
 
 ## QR codes
 
@@ -126,16 +127,58 @@ default YUV_420_888 output) with `ScanGate`. The scan screen adds `camera-camera
 `camera-lifecycle` and `camera-view` (or `camera-compose`) in `:app`, binds a Preview and an
 `ImageAnalysis` (`STRATEGY_KEEP_ONLY_LATEST`) with this analyzer, and asks for CAMERA only then.
 
+## One server per shift (`ServerBinding` in `app.milewage.core.sync`)
+
+Every shift is bound to the server it was recorded for: `shifts.instance_id`, the
+`X-MileWage-Instance` of the paired server when the shift started (`ShiftContext.instanceId`), or
+of the server whose change log brought it. Everything queued for a shift is bound through it: its
+outbox rows, fixes, readings, trips, stops, route and resend mark all carry `shift_client_id`, so they
+cannot disagree with it. The rule: **a row is only ever sent to the server its shift is bound to.**
+
+- **Sending sees one server.** `ServerBinding.view` is the `LocalStore` as sending reads it: only
+  the paired server's shifts and what belongs to them. The `Sender` (and its runner, point sender,
+  restore resend, change puller), the `RestoreCheck`, the unsent counts, the banner, the reminder
+  and the unpair check all go through it. Another server's rows are invisible there: never sent,
+  never deleted, never holding up the one-active-shift order or the queue, never in the reminder.
+  The view's writes cannot touch another server's rows (a change log that names one is ignored).
+  Writes from the shift model (an edit of another server's shift) go to that shift's queue as usual.
+- **One server per round.** `ServerBinding.pinned` reads the credential fresh at the start of a
+  round and fixes the paired server for all of it; `ServerBinding.guard` hands out the device client
+  only while its credential is for that server. A re-pair in the middle of a round stops the round.
+- **Per-server bookkeeping.** The change-log cursor, the last pull and the restore generation are
+  kept per server (`sync.cursor@<instance>`, ...), so a new server's change log is read from its own
+  start and each server's restores are its own. A server id is unique per server, not per phone
+  (unique index `(instance_id, server_id)`); lookups by server id are per server.
+- **Unbound rows** (from database version 1, `instance_id` null) belong to the first server paired
+  afterwards: `ServerBinding.settle()` (app start and every pairing change) and every round claim
+  them for the paired server. A credential without an instance id (a server that sent none) matches
+  only unbound rows.
+- **The driver's two ways forward** for shifts recorded for another server and never sent there
+  (`otherServer()`, marker `ShiftMarker.OTHER_SERVER`, "Recorded for another server"): connect to
+  that server again (they then go as usual), or delete them from the phone after a confirmation that
+  names how many and that they were never sent (`deleteOtherServerShifts()`). A running shift stays
+  bound to the server it started on, whatever the pairing does, and is never deleted.
+- **Diagnostics**: the ring belongs to one server (`PhoneDiagnostics(server = ...)`). Pairing with
+  another server empties it before the first event for the new one; events recorded while unpaired
+  stay with the ring's server. They are only flushed with that server's client.
+
 ## The database (Room 3, `app.milewage.data.db`)
 
-`MileWageDatabase` (version 1, schema exported to `data/schemas/` and committed). The native app
+`MileWageDatabase` (version 2, schemas exported to `data/schemas/` and committed). Migrations:
+
+- **1 to 2** (`MIGRATION_1_2`): `shifts.instance_id TEXT` (null for existing rows; the binding
+  claims them, above), and the unique index on `server_id` becomes unique on
+  `(instance_id, server_id)`. `MigrationTest` builds a version 1 database from `1.json` with rows,
+  opens it with the current code (Room migrates, then validates every table, column, index and
+  foreign key against the entities) and checks the rows and the claim.
+ The native app
 **starts empty**: nothing is imported from the Expo app's SQLite files (`milewage-app.db`,
 `tracker.db`). The driver pairs again after installing it, and anything the Expo app had not sent
 must be sent before updating (release notes).
 
 | Table               | Holds                                                                                                                                                       |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `shifts`            | One row per shift, the running one too: status, segmenter, times, local date, totals (null until a result), digest, version, flags (phone and server), manifest, recon, send state, server deduction, battery, notes. |
+| `shifts`            | One row per shift, the running one too: status, segmenter, times, local date, totals (null until a result), digest, version, flags (phone and server), manifest, recon, send state, server deduction, battery, notes, and `instance_id`, the server it belongs to. |
 | `fixes`             | The record: every fix with `seq` INTEGER PRIMARY KEY AUTOINCREMENT (strictly increasing, never reused), the wire fields, the local-only `provider`, `elapsed_realtime_ms`, `phone_time_ms`, and `send_state` 0 pending / 1 sent (`sent_at`) / 2 set aside (refused for good; kept, left out of results). No foreign key: a fix is never lost to a missing parent. |
 | `interruptions`     | The tracker's interruptions, copied to the shift at its end.                                                                                                |
 | `trips`             | Automatic trips (with the driver's trip edit applied in place, `edited_at` set) and manual trips. Cascades from `shifts`.                                    |
@@ -252,8 +295,11 @@ stronger from 7) and `UnsyncedReminders` keep exactly one reminder scheduled thr
 `PhoneDiagnostics` (a port of `phoneDiagnostics.ts`) with `Allowlist`/`DiagKinds` (a port of the
 shared allowlist for the kinds the phone records): counts and states only, never coordinates
 (decision 1.5c). Events: `app.start`, `shift.summary` and `engine.run` at a shift's end,
-`upload.window` and `diag.self` every 10 minutes, `crash`, and the tracker's events as
-`service.event` (`trackingSink`). App events go as `phone_js` (the contract's name for the app
+`upload.window` (`bytes_gz` is the gzipped body as sent) and `diag.self` every 10 minutes,
+`perm.state` when the permissions changed (from `create(permissions = ...)`), `storage.state` when
+the free-space bucket or state changed or once a day, `sync.state` when the connection state
+changed (once a day while it is not reachable), `crash`, and the tracker's events as `service.event`
+(`trackingSink`). `track.window` is not produced: it needs counters from the tracker. App events go as `phone_js` (the contract's name for the app
 layer), the tracker's as `phone_native`. Sent through `POST /diagnostics/events`, gzipped, at most
 200 per batch, never while fixes wait.
 
@@ -274,6 +320,7 @@ class MileWageData {
             recorder: Recorder,               // :app's adapter over TrackingController (below)
             reminders: ReminderPort? = null,  // :app's notifications; null: banner only
             battery: BatteryPort? = null,     // for shift.summary
+            permissions: (suspend () -> PermSnapshot?)? = null, // for perm.state
         ): MileWageData
         fun assemble(...): MileWageData     // tests: own database, pairing and clock
         fun ratesOf(s: Settings?): MileageRates
@@ -282,6 +329,7 @@ class MileWageData {
     // Parts
     val store: RoomLocalStore
     val pairing: Pairing                      // status, redeem, link, unpair, device halts
+    val binding: ServerBinding                // which server each shift belongs to; `view` is sending's store
     val connection: ServerConnection?         // net (Tailscale, discovery), route
     val shifts: ShiftModel
     val sender: Sender
@@ -306,7 +354,9 @@ class MileWageData {
     fun runningShift(): Flow<RunningShiftView?>          // shift, distanceM, deductionSoFarCents, vehicle, serverHasOtherShift
     fun shiftList(limit: Int = 200): Flow<List<ShiftListItem>>   // shift, marker, vehicle; newest first
     fun shiftDetail(clientId: String): Flow<ShiftDetail?>        // trips, stops, route, odometer, interruptions, overwrites
-    fun syncStatus(): Flow<SendStatus>                    // sync (colour, counts, message, halt), progress
+    fun syncStatus(): Flow<SendStatus>                    // sync (colour, counts, message, halt), progress: the paired server's
+    fun otherServer(): Flow<OtherServerShifts>           // shifts recorded for another server, never sent: count, fixes, host names
+    suspend fun otherServerNow(): OtherServerShifts
     fun vehicles(): Flow<List<VehicleRecord>>
     suspend fun summaryNow(): HomeSummary
     suspend fun runningNow(): RunningShiftView?
@@ -329,13 +379,14 @@ class MileWageData {
     suspend fun sendNow(): Boolean                        // true: nothing left on the phone only
     suspend fun retrySending(): Boolean                   // "Send now": lifts halts and refusals
     fun cancelSending()
-    suspend fun hasUnsentData(): Boolean
-    suspend fun unpair(loseUnsentData: Boolean = false): Boolean   // refused while data waits
+    suspend fun hasUnsentData(): Boolean                  // for the paired server
+    suspend fun unpair(confirmed: Boolean = false): Boolean   // refused while its data waits; deletes nothing
+    suspend fun deleteOtherServerShifts(): Int            // after the driver confirmed; never a running shift
 }
 ```
 
 `EditResult` is `Ok` or `Refused(NO_SHIFT | FINALIZED | RUNNING | NO_TRIP | INVALID)`. Words for
-`StatusMessage`, `ShiftMarker` and `Reminder` are in their KDoc (the Expo app's English) for
+`StatusMessage`, `ShiftMarker` (with `OTHER_SERVER`, from `ShiftMarker.of(shift, pairedInstance)`) and `Reminder` are in their KDoc (the Expo app's English) for
 strings.xml. Amounts: metres and cents as `Long`; format with `app.milewage.core.format`.
 
 The `Recorder` the app implements (`:data` cannot depend on `:tracking`):
@@ -356,6 +407,7 @@ class TrackingRecorder(private val c: TrackingController) : Recorder {
 JVM with the bundled SQLite (`androidx.sqlite:sqlite-bundled-jvm`, test only; no Robolectric) and
 the same entities, DAOs and driver wrapper; the network through the real OkHttp stack to
 `FakeMileWage`, a MockWebServer that behaves like the server (one active shift, fixes by seq,
-restore with a generation). `DatabaseTest` also opens a database built only from the exported
+restore with a generation, its own instance id). `TwoServersTest` runs two of them as different
+instances and checks what each one received. `DatabaseTest` also opens a database built only from the exported
 schema JSON. `EndToEndTest` plays a shift online and offline-then-online and times the engine on a
 12-hour shift (`build/engine-timing.txt`).

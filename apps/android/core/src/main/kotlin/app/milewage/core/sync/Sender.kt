@@ -86,9 +86,16 @@ class Sender(
     private val freeBytes: suspend () -> Long?,
     private val clock: Clock,
     rand: () -> Double = { kotlin.random.Random.nextDouble() },
+    /**
+     * The server binding: [store] is then its view and [session] its guarded client, and each round
+     * runs with the paired server fixed ([ServerBinding.pinned]). Null: no binding (every row is sent).
+     */
+    private val binding: ServerBinding? = null,
+    /** The size of a body once gzipped, as the transport sends it (`upload.window`'s `bytes_gz`); null: unknown. */
+    gzipSize: (ByteArray) -> Long? = { null },
 ) {
     private val runner = OutboxRunner(outbox, session, device, ::canSend, ::onSent, ::onRefused, rand)
-    private val points = PointSender(store, session, device, ::created, ::createParked, { runner.run() }, clock, rand)
+    private val points = PointSender(store, session, device, ::created, ::createParked, { runner.run() }, clock, rand, gzipSize)
     private val resend = RestoreResend(store, outbox, runner, restore, session, device, phoneRun, clock, rand)
     private val puller = ChangePuller(store, outbox, session, device, onSettings, clock)
     private val answers = ServerAnswers(store, clock)
@@ -173,6 +180,18 @@ class Sender(
     /** Upload counters since the last call, for the `upload.window` diagnostics event. */
     fun takeUploadStats(): UploadStats = points.takeStats()
 
+    /** How the last round ended (`sync.state` in diagnostics): reached the server, offline, halted, not paired. */
+    val lastRoundState: Round.State get() = lastRound.state
+
+    /** True once a round has run since the process started. */
+    val hasRun: Boolean get() = startedRounds > 0
+
+    /** The server was restored from a backup and its shifts are still being sent again. */
+    suspend fun restoring(): Boolean {
+        restore.settled()
+        return restore.restored || resend.waiting()
+    }
+
     suspend fun status(): SendStatus {
         restore.settled()
         val counts = outbox.counts()
@@ -207,7 +226,8 @@ class Sender(
             if (!force && startedRounds > arrived) return@withLock lastRound
             startedRounds++
             val r = try {
-                run(force)
+                // One server for the whole round: its rows only, and only through its own client.
+                if (binding != null) binding.pinned { run(force) } else run(force)
             } catch (_: ApiException) {
                 Round(Round.State.OFFLINE, null, false)
             }

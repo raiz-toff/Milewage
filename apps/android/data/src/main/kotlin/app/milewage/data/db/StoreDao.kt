@@ -28,8 +28,11 @@ interface StoreDao {
     @Query("SELECT * FROM shifts WHERE client_id = :id")
     suspend fun shift(id: String): ShiftEntity?
 
-    @Query("SELECT * FROM shifts WHERE server_id = :serverId")
+    @Query("SELECT * FROM shifts WHERE server_id = :serverId ORDER BY started_at DESC LIMIT 1")
     suspend fun shiftByServerId(serverId: Long): ShiftEntity?
+
+    @Query("SELECT * FROM shifts WHERE instance_id IS :instance AND server_id = :serverId")
+    suspend fun shiftByServerIdOn(serverId: Long, instance: String?): ShiftEntity?
 
     @Query("SELECT * FROM shifts WHERE status = 'active' ORDER BY started_at DESC LIMIT 1")
     suspend fun runningShift(): ShiftEntity?
@@ -57,6 +60,13 @@ interface StoreDao {
 
     @Query("DELETE FROM shifts WHERE client_id = :id")
     suspend fun deleteShift(id: String)
+
+    /** `IS NOT`: null-safe, so with a null instance it is every bound shift, and with one it includes the unbound. */
+    @Query("SELECT client_id FROM shifts WHERE instance_id IS NOT :instance")
+    suspend fun shiftIdsNotBoundTo(instance: String?): List<String>
+
+    @Query("UPDATE shifts SET instance_id = :instance WHERE instance_id IS NULL")
+    suspend fun bindUnbound(instance: String): Int
 
     // Results ---------------------------------------------------------------------------------
 
@@ -133,8 +143,13 @@ interface StoreDao {
     @Query("SELECT * FROM odometer_readings WHERE shift_client_id = :id ORDER BY kind DESC")
     suspend fun odometer(id: String): List<OdometerEntity>
 
-    @Query("SELECT * FROM odometer_readings WHERE server_id = :serverId")
+    @Query("SELECT * FROM odometer_readings WHERE server_id = :serverId LIMIT 1")
     suspend fun odometerByServerId(serverId: Long): OdometerEntity?
+
+    @Query(
+        "SELECT o.* FROM odometer_readings o JOIN shifts s ON s.client_id = o.shift_client_id WHERE o.server_id = :serverId AND s.instance_id IS :instance LIMIT 1",
+    )
+    suspend fun odometerByServerIdOn(serverId: Long, instance: String?): OdometerEntity?
 
     @Insert
     suspend fun insertOdometer(e: OdometerEntity)
@@ -208,6 +223,9 @@ interface StoreDao {
 
     @Query("SELECT MIN(recorded_at) FROM fixes WHERE send_state = 0")
     suspend fun oldestPendingAt(): Long?
+
+    @Query("SELECT COUNT(*) FROM fixes WHERE send_state = 2")
+    suspend fun setAsideCount(): Long
 
     @Query("UPDATE fixes SET send_state = 1, sent_at = :at WHERE send_state = 0 AND seq IN (:seqs)")
     suspend fun markSent(seqs: List<Long>, at: Long): Int

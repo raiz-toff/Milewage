@@ -186,6 +186,18 @@ object DiagKinds {
                 "engine_version" to VERSION,
             ),
         ),
+        "perm.state" to KindSpec(
+            "basic", setOf("phone_js"),
+            mapOf(
+                "fine" to bool(),
+                "background" to oneOf("all_time", "while_in_use", "denied"),
+                "activity_recognition" to bool(),
+                "notifications" to bool(),
+                "battery_opt_ignored" to bool(),
+                "standby_bucket" to oneOf("active", "working_set", "frequent", "rare", "restricted", "never", "unknown"),
+                "power_save" to bool(),
+            ),
+        ),
         "storage.state" to KindSpec(
             "basic", setOf("phone_js"),
             mapOf(

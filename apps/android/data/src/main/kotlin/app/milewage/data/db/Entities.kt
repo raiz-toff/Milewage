@@ -19,7 +19,8 @@ import androidx.room3.PrimaryKey
 @Entity(
     tableName = "shifts",
     indices = [
-        Index(value = ["server_id"], unique = true),
+        // Each server numbers its own shifts: a server id is unique per server, not on the phone.
+        Index(value = ["instance_id", "server_id"], unique = true),
         Index(value = ["started_at"]),
         Index(value = ["status"]),
         Index(value = ["sync_state"]),
@@ -72,6 +73,12 @@ data class ShiftEntity(
     @ColumnInfo(name = "battery_end_pct") val batteryEndPct: Int?,
     @ColumnInfo(name = "battery_end_charging") val batteryEndCharging: Boolean?,
     @ColumnInfo(name = "engine_ms") val engineMs: Long?,
+    /**
+     * The server the shift belongs to (`X-MileWage-Instance`), set when it is recorded; only that
+     * server is sent anything of it. Null: from before version 2, claimed by the first server paired.
+     * Fixes, outbox rows, readings, trips and resend marks are bound through their shift.
+     */
+    @ColumnInfo(name = "instance_id") val instanceId: String? = null,
 )
 
 /**
