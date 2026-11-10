@@ -38,6 +38,7 @@ import { goalsRoutes } from './routes/goals';
 import { importsRoutes } from './routes/imports';
 import { maintenanceRoutes } from './routes/maintenance';
 import { notificationsRoutes } from './routes/notifications';
+import { placesRoutes } from './routes/places';
 import { platformKnown, platformsRoutes } from './routes/platforms';
 import { progressRoutes } from './routes/progress';
 import { receiptsRoutes } from './routes/receipts';
@@ -148,16 +149,22 @@ export const serverModules = [
       };
     },
   }),
-  /** Derived stops and the driver's optional labels; the runtime toggle is `settings.stops_enabled` (08 section 16.1). */
+  /**
+   * Derived stops, the driver's optional labels and named places that label stops (ADR 0008); the
+   * runtime toggle is `settings.stops_enabled` (08 section 16.1).
+   */
   serverModule({
     name: 'stops',
     dependsOn: ['core', 'tracking'],
     wire: (h) => ({
-      routes: stopsRoutes({
-        ...h,
-        platformOk: (userId, slug) =>
-          !h.registry.isEnabled('platforms') || platformKnown(h.db, userId, slug),
-      }),
+      routes: (host) => {
+        stopsRoutes({
+          ...h,
+          platformOk: (userId, slug) =>
+            !h.registry.isEnabled('platforms') || platformKnown(h.db, userId, slug),
+        })(host);
+        placesRoutes(h)(host);
+      },
     }),
   }),
   /** The driver's platforms: built-ins plus their own, with overrides (18 section 4.2). */

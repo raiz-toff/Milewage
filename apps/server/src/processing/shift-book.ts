@@ -35,6 +35,12 @@ export interface ImportedShift {
   /** The typed distance; it becomes one manual trip. */
   totalM: number;
   notes: string | null;
+  /** The trip's kind: business distance (`active`, the default) or personal (ADR 0005). */
+  kind?: 'active' | 'personal';
+  /** The trip's purpose; "Imported" by default. */
+  purpose?: string;
+  /** Where the record came from, for the `imported` flag (the generic CSV file by default). */
+  from?: string;
 }
 
 /** What changed a shift that is already recorded; it decides how the shift is computed and announced. */
@@ -271,7 +277,8 @@ export function createShiftBook({
       const created = db.transaction(() =>
         rows.map((s, i) => {
           const totals = { totalM: 0, activeM: 0, deadheadM: 0, personalM: 0 };
-          addTrip(totals, { kind: 'active', distanceM: s.totalM });
+          const kind = s.kind ?? 'active';
+          addTrip(totals, { kind, distanceM: s.totalM });
           const shift = shifts.insert({
             userId,
             clientId: randomUUID(),
@@ -291,13 +298,13 @@ export function createShiftBook({
             userId,
             shiftId: shift.id,
             tripKey: `import-${shift.id}`,
-            kind: 'active',
+            kind,
             originalKind: 'active',
             source: 'manual',
             startedAt: s.startedAt,
             endedAt: s.endedAt,
             distanceM: s.totalM,
-            purpose: 'Imported',
+            purpose: s.purpose ?? 'Imported',
             editedAt: t,
             startLatE7: null,
             startLonE7: null,
@@ -311,7 +318,7 @@ export function createShiftBook({
             severity: 'info',
             detail: JSON.stringify({
               at: null,
-              detail: 'imported from a CSV file; the distance was typed, not tracked',
+              detail: `imported from ${s.from ?? 'a CSV file'}; the distance was typed, not tracked`,
             }),
             createdAt: t,
           });

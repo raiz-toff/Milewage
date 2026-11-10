@@ -26,6 +26,27 @@ without rates in MileWage it is used as before.
 
 ### Added
 
+- Places: save the places you stop at often, with a name, a centre, a radius (100 m unless you
+  change it, 25 to 1000 m) and the label for stops there (pickup, dropoff or other). A stop inside
+  a place shows its name and takes its label unless you labelled it yourself; the nearest centre
+  wins where places overlap. Save one from a stop ("Save as a place" under Label stops), by
+  clicking the map on the new Places page, or by typing its coordinates; nothing is looked up
+  anywhere. Adding, changing or deleting a place works out again every ended shift with a stop in
+  it; finalized shifts keep their figures. The engine is unchanged: places become stop labels on
+  the server before it runs (ADR 0008). Total miles never change, and the phone's result still
+  matches. Places stay out of diagnostics, logs and the assistant connection; the GeoJSON export
+  names each stop's place. API: `GET`/`POST /places`, `PATCH`/`DELETE /places/{id}`, `place` on
+  each stop. Stops migration 0002.
+- Shift page: a trip added by hand has a "..." menu with Edit and Delete (TODO W2i). Delete asks
+  first. Both changes reach the phone through the change feed, as before.
+- Settings > Your data > Import: "Drives from MileIQ (its CSV report)". Each drive becomes an
+  imported shift with one trip: business drives as business distance, personal, commute and
+  MileIQ's other categories as personal trips, unclassified drives as personal or left out (your
+  choice in the preview); parking and tolls of business drives become expenses on the shift.
+  MileIQ's value column is not imported. The preview shows the counts by category, how dates and
+  vehicles were read, the costs, the first drives and every problem with its line in the file;
+  importing the same file again adds nothing. API: `POST /imports/mileiq/preview`,
+  `POST /imports/mileiq`.
 - Settings > Mileage rate: your own mileage rate may replace the country's, for example an
   employer's or your accountant's rate. Each rate starts on a day you choose and runs until your
   next one; shifts before it keep the country rate, and one shift never mixes the two (ADR 0007).

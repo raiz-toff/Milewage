@@ -117,6 +117,7 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
     expect(await navNames()).toEqual([
       'Dashboard',
       'Shifts',
+      'Places',
       'Schedule',
       'Analytics',
       'Expenses',

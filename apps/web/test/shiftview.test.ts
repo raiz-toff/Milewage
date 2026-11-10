@@ -41,6 +41,7 @@ describe('shiftView: the shift page from its record', () => {
       checks: true,
       stopsCard: true,
       canAddTrip: true,
+      canEditTrips: true,
       noTrips: false,
       exporters: true,
       costs: true,
@@ -95,6 +96,7 @@ describe('shiftView: the shift page from its record', () => {
     const v = shiftView(parts({ shift: { status: 'finalized' } }), on);
     expect(v).toMatchObject({
       canAddTrip: false,
+      canEditTrips: false,
       exporters: true,
       showEarnings: true,
       main: 'map',
@@ -132,6 +134,7 @@ describe('shiftView: the shift page from its record', () => {
       // Parking and tolls are paid during a shift too.
       costs: true,
       canAddTrip: false,
+      canEditTrips: false,
     });
     expect(v.context).toBe('17:13 – now · in progress · Corolla');
   });
@@ -147,6 +150,8 @@ describe('shiftView: the shift page from its record', () => {
       folded: true,
       checks: false,
       canAddTrip: false,
+      // A trip typed in later can still be changed while the shift is not finalized.
+      canEditTrips: true,
       noTrips: false,
       stopsCard: false,
     });

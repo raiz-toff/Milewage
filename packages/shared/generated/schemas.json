@@ -2837,6 +2837,303 @@
         }
       }
     },
+    "MileIqPreview": {
+      "type": "object",
+      "required": [
+        "drive_count",
+        "summary",
+        "classes",
+        "distance_m",
+        "unit",
+        "date_order",
+        "date_order_source",
+        "unclassified",
+        "value_ignored",
+        "vehicles",
+        "costs",
+        "rows",
+        "problems"
+      ],
+      "properties": {
+        "drive_count": {
+          "type": "integer",
+          "description": "Drive lines read after the header (totals and footer lines are not drives)."
+        },
+        "summary": {
+          "type": "object",
+          "required": [
+            "ok",
+            "duplicate",
+            "error",
+            "skipped"
+          ],
+          "properties": {
+            "ok": {
+              "type": "integer"
+            },
+            "duplicate": {
+              "type": "integer",
+              "description": "Already imported (same vehicle",
+              "start and distance).": null
+            },
+            "error": {
+              "type": "integer"
+            },
+            "skipped": {
+              "type": "integer",
+              "description": "Unclassified drives left out (unclassified=skip)."
+            }
+          }
+        },
+        "classes": {
+          "type": "object",
+          "required": [
+            "business",
+            "personal",
+            "other",
+            "unclassified"
+          ],
+          "description": "Drives by MileIQ category. other = medical, charity, moving and any other category: imported as personal.",
+          "properties": {
+            "business": {
+              "type": "integer"
+            },
+            "personal": {
+              "type": "integer"
+            },
+            "other": {
+              "type": "integer"
+            },
+            "unclassified": {
+              "type": "integer"
+            }
+          }
+        },
+        "distance_m": {
+          "type": "object",
+          "required": [
+            "business",
+            "personal"
+          ],
+          "description": "Distance of the drives that would be imported.",
+          "properties": {
+            "business": {
+              "type": "integer"
+            },
+            "personal": {
+              "type": "integer"
+            }
+          }
+        },
+        "unit": {
+          "enum": [
+            "mi",
+            "km"
+          ],
+          "description": "The distance unit of the file (its MILES or KM column)."
+        },
+        "date_order": {
+          "enum": [
+            "mdy",
+            "dmy"
+          ]
+        },
+        "date_order_source": {
+          "enum": [
+            "file",
+            "country",
+            "chosen"
+          ],
+          "description": "file: a date in the file shows the order; country: every date fits both, the server country decided; chosen: the date_order parameter."
+        },
+        "unclassified": {
+          "enum": [
+            "personal",
+            "skip"
+          ]
+        },
+        "value_ignored": {
+          "type": "boolean",
+          "description": "The file has MileIQ's value columns; they are not read, MileWage works out its own deduction."
+        },
+        "vehicles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "drives",
+              "vehicle_id",
+              "matched"
+            ],
+            "properties": {
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The VEHICLE text of the file; null when blank or unspecified."
+              },
+              "drives": {
+                "type": "integer"
+              },
+              "vehicle_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "The vehicle the drives go to; null when none (those drives are errors)."
+              },
+              "matched": {
+                "type": "boolean",
+                "description": "True when a vehicle of yours has this name; false: your default vehicle is used."
+              }
+            }
+          }
+        },
+        "costs": {
+          "type": "object",
+          "required": [
+            "parking_cents",
+            "tolls_cents",
+            "expenses",
+            "left_out"
+          ],
+          "properties": {
+            "parking_cents": {
+              "type": "integer"
+            },
+            "tolls_cents": {
+              "type": "integer"
+            },
+            "expenses": {
+              "type": "integer",
+              "description": "Expenses that would be written (parking and tolls of business drives)."
+            },
+            "left_out": {
+              "type": "integer",
+              "description": "Drives whose parking or tolls are not imported (not business",
+              "or the expenses module is off).": null
+            }
+          }
+        },
+        "rows": {
+          "type": "array",
+          "description": "The first 20 drive lines.",
+          "items": {
+            "type": "object",
+            "required": [
+              "line",
+              "status",
+              "message",
+              "class",
+              "started_at",
+              "distance_m",
+              "purpose"
+            ],
+            "properties": {
+              "line": {
+                "type": "integer",
+                "description": "The line in the file."
+              },
+              "status": {
+                "enum": [
+                  "ok",
+                  "duplicate",
+                  "error",
+                  "skipped"
+                ]
+              },
+              "message": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "class": {
+                "oneOf": [
+                  {
+                    "enum": [
+                      "business",
+                      "personal",
+                      "other",
+                      "unclassified"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "started_at": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "distance_m": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "purpose": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "problems": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "type": "object",
+            "required": [
+              "line",
+              "message"
+            ],
+            "properties": {
+              "line": {
+                "type": "integer"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "MileIqResult": {
+      "type": "object",
+      "required": [
+        "imported",
+        "duplicates",
+        "errors",
+        "skipped",
+        "expenses"
+      ],
+      "properties": {
+        "imported": {
+          "type": "integer"
+        },
+        "duplicates": {
+          "type": "integer"
+        },
+        "errors": {
+          "type": "integer"
+        },
+        "skipped": {
+          "type": "integer"
+        },
+        "expenses": {
+          "type": "integer"
+        }
+      }
+    },
     "Notification": {
       "type": "object",
       "required": [
@@ -4059,7 +4356,8 @@
         "confidence",
         "est_role",
         "role",
-        "label"
+        "label",
+        "place"
       ],
       "description": "A derived stop (14 section 6). Never written by a client.",
       "properties": {
@@ -4115,6 +4413,183 @@
               "type": "null"
             }
           ]
+        },
+        "place": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/StopPlace"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The named place the stop was inside when its shift was last worked out (ADR 0008), with its current name; null when none. Its role is the label the stop took unless label is set (a hand label always wins)."
+        }
+      }
+    },
+    "StopPlace": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "role"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/StopRole"
+        }
+      }
+    },
+    "Place": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "lat_e7",
+        "lon_e7",
+        "radius_m",
+        "role",
+        "created_at",
+        "updated_at"
+      ],
+      "description": "A named place (ADR 0008): a stop whose position is within radius_m of the centre is inside it; when places overlap the nearest centre wins, an exact tie the older place.",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "lat_e7": {
+          "type": "integer",
+          "minimum": -900000000,
+          "maximum": 900000000
+        },
+        "lon_e7": {
+          "type": "integer",
+          "minimum": -1800000000,
+          "maximum": 1800000000
+        },
+        "radius_m": {
+          "type": "integer",
+          "minimum": 25,
+          "maximum": 1000
+        },
+        "role": {
+          "$ref": "#/$defs/StopRole"
+        },
+        "created_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "updated_at": {
+          "$ref": "#/$defs/EpochMs"
+        }
+      }
+    },
+    "PlaceCreate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "lat_e7",
+        "lon_e7",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "lat_e7": {
+          "type": "integer",
+          "minimum": -900000000,
+          "maximum": 900000000
+        },
+        "lon_e7": {
+          "type": "integer",
+          "minimum": -1800000000,
+          "maximum": 1800000000
+        },
+        "radius_m": {
+          "type": "integer",
+          "minimum": 25,
+          "maximum": 1000,
+          "default": 100
+        },
+        "role": {
+          "$ref": "#/$defs/StopRole"
+        }
+      }
+    },
+    "PlacePatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "lat_e7": {
+          "type": "integer",
+          "minimum": -900000000,
+          "maximum": 900000000
+        },
+        "lon_e7": {
+          "type": "integer",
+          "minimum": -1800000000,
+          "maximum": 1800000000
+        },
+        "radius_m": {
+          "type": "integer",
+          "minimum": 25,
+          "maximum": 1000
+        },
+        "role": {
+          "$ref": "#/$defs/StopRole"
+        }
+      }
+    },
+    "PlaceChangeResult": {
+      "type": "object",
+      "required": [
+        "place",
+        "shifts_recalculated",
+        "shifts_kept"
+      ],
+      "properties": {
+        "place": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Place"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Null after a delete."
+        },
+        "shifts_recalculated": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Ended shifts with a stop inside the old or new circle",
+          "worked out again.": null
+        },
+        "shifts_kept": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Such shifts that keep their figures - finalized",
+          "or their raw points archived.": null
         }
       }
     },

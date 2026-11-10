@@ -849,6 +849,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/places": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Your named places, oldest first (ADR 0008). A detected stop inside a place shows its name and, unless you labelled the stop by hand, takes its label. Web session only; 404 while the stops setting is off. */
+        get: operations["listPlaces"];
+        put?: never;
+        /** Save a place. Every ended (not finalized) shift with a stop inside it is worked out again, as a stop label does; finalized shifts and shifts whose raw points were archived keep their figures. */
+        post: operations["createPlace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/places/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a place. Shifts with a stop inside it are worked out again without it; place is null in the answer. */
+        delete: operations["deletePlace"];
+        options?: never;
+        head?: never;
+        /** Rename, move, resize or change the label of a place. Shifts with a stop inside the old or the new circle are worked out again. */
+        patch: operations["updatePlace"];
+        trace?: never;
+    };
     "/telemetry/batch": {
         parameters: {
             query?: never;
@@ -1392,6 +1430,48 @@ export interface paths {
         put?: never;
         /** Write the ok rows in one transaction. Idempotent - a repeat of the same file imports zero rows. Imported shifts are finalized, whole-shift, with one manual trip of the typed distance, flagged imported, and marked as imported in every export. */
         post: operations["commitImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/imports/mileiq/preview": {
+        parameters: {
+            query?: {
+                /** @description Unclassified drives: imported as personal trips (never business distance), or left out. */
+                unclassified?: "personal" | "skip";
+                /** @description The order of month and day in the file. Omitted: what the dates show, else the country of the server (US and CA month first). */
+                date_order?: "mdy" | "dmy";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read a MileIQ drive report saved as CSV (text/csv, 5 MB) and report what an import would write, line by line. Writes nothing. */
+        post: operations["previewMileIqImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/imports/mileiq": {
+        parameters: {
+            query?: {
+                unclassified?: "personal" | "skip";
+                date_order?: "mdy" | "dmy";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Write the ok drives in one transaction: one finalized imported shift per drive with one manual trip (business or personal), and the parking and tolls of business drives as expenses linked to the shift. Idempotent - a repeat of the same file imports nothing. */
+        post: operations["commitMileIqImport"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2627,6 +2707,86 @@ export interface components {
                 message?: string | null;
             }[];
         };
+        MileIqPreview: {
+            /** @description Drive lines read after the header (totals and footer lines are not drives). */
+            drive_count: number;
+            summary: {
+                ok: number;
+                /** @description Already imported (same vehicle */
+                duplicate: number;
+                error: number;
+                /** @description Unclassified drives left out (unclassified=skip). */
+                skipped: number;
+            };
+            /** @description Drives by MileIQ category. other = medical, charity, moving and any other category: imported as personal. */
+            classes: {
+                business: number;
+                personal: number;
+                other: number;
+                unclassified: number;
+            };
+            /** @description Distance of the drives that would be imported. */
+            distance_m: {
+                business: number;
+                personal: number;
+            };
+            /**
+             * @description The distance unit of the file (its MILES or KM column).
+             * @enum {unknown}
+             */
+            unit: "mi" | "km";
+            /** @enum {unknown} */
+            date_order: "mdy" | "dmy";
+            /**
+             * @description file: a date in the file shows the order; country: every date fits both, the server country decided; chosen: the date_order parameter.
+             * @enum {unknown}
+             */
+            date_order_source: "file" | "country" | "chosen";
+            /** @enum {unknown} */
+            unclassified: "personal" | "skip";
+            /** @description The file has MileIQ's value columns; they are not read, MileWage works out its own deduction. */
+            value_ignored: boolean;
+            vehicles: {
+                /** @description The VEHICLE text of the file; null when blank or unspecified. */
+                name: string | null;
+                drives: number;
+                /** @description The vehicle the drives go to; null when none (those drives are errors). */
+                vehicle_id: number | null;
+                /** @description True when a vehicle of yours has this name; false: your default vehicle is used. */
+                matched: boolean;
+            }[];
+            costs: {
+                parking_cents: number;
+                tolls_cents: number;
+                /** @description Expenses that would be written (parking and tolls of business drives). */
+                expenses: number;
+                /** @description Drives whose parking or tolls are not imported (not business */
+                left_out: number;
+            };
+            /** @description The first 20 drive lines. */
+            rows: {
+                /** @description The line in the file. */
+                line: number;
+                /** @enum {unknown} */
+                status: "ok" | "duplicate" | "error" | "skipped";
+                message: string | null;
+                class: ("business" | "personal" | "other" | "unclassified") | null;
+                started_at: number | null;
+                distance_m: number | null;
+                purpose: string | null;
+            }[];
+            problems: {
+                line: number;
+                message: string;
+            }[];
+        };
+        MileIqResult: {
+            imported: number;
+            duplicates: number;
+            errors: number;
+            skipped: number;
+            expenses: number;
+        };
         Notification: {
             id: number;
             /** @enum {unknown} */
@@ -2938,6 +3098,47 @@ export interface components {
              */
             role: "pickup" | "dropoff" | "other" | "none";
             label: components["schemas"]["StopLabel"] | null;
+            /** @description The named place the stop was inside when its shift was last worked out (ADR 0008), with its current name; null when none. Its role is the label the stop took unless label is set (a hand label always wins). */
+            place: components["schemas"]["StopPlace"] | null;
+        };
+        StopPlace: {
+            id: number;
+            name: string;
+            role: components["schemas"]["StopRole"];
+        };
+        /** @description A named place (ADR 0008): a stop whose position is within radius_m of the centre is inside it; when places overlap the nearest centre wins, an exact tie the older place. */
+        Place: {
+            id: number;
+            name: string;
+            lat_e7: number;
+            lon_e7: number;
+            radius_m: number;
+            role: components["schemas"]["StopRole"];
+            created_at: components["schemas"]["EpochMs"];
+            updated_at: components["schemas"]["EpochMs"];
+        };
+        PlaceCreate: {
+            name: string;
+            lat_e7: number;
+            lon_e7: number;
+            /** @default 100 */
+            radius_m: number;
+            role: components["schemas"]["StopRole"];
+        };
+        PlacePatch: {
+            name?: string;
+            lat_e7?: number;
+            lon_e7?: number;
+            radius_m?: number;
+            role?: components["schemas"]["StopRole"];
+        };
+        PlaceChangeResult: {
+            /** @description Null after a delete. */
+            place: components["schemas"]["Place"] | null;
+            /** @description Ended shifts with a stop inside the old or new circle */
+            shifts_recalculated: number;
+            /** @description Such shifts that keep their figures - finalized */
+            shifts_kept: number;
         };
         StopLabelResult: {
             /** @description Null only when DELETE cleared a label whose stop no longer exists (label_orphaned). */
@@ -5214,6 +5415,104 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
+    listPlaces: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The places. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Place"][];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createPlace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaceCreate"];
+            };
+        };
+        responses: {
+            /** @description Saved, with how many shifts were worked out again and how many kept their figures. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceChangeResult"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    deletePlace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceChangeResult"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updatePlace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlacePatch"];
+            };
+        };
+        responses: {
+            /** @description Updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceChangeResult"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
     uploadTelemetryBatch: {
         parameters: {
             query?: never;
@@ -6454,6 +6753,64 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    previewMileIqImport: {
+        parameters: {
+            query?: {
+                /** @description Unclassified drives: imported as personal trips (never business distance), or left out. */
+                unclassified?: "personal" | "skip";
+                /** @description The order of month and day in the file. Omitted: what the dates show, else the country of the server (US and CA month first). */
+                date_order?: "mdy" | "dmy";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "text/csv": string;
+            };
+        };
+        responses: {
+            /** @description The preview. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MileIqPreview"];
+                };
+            };
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    commitMileIqImport: {
+        parameters: {
+            query?: {
+                unclassified?: "personal" | "skip";
+                date_order?: "mdy" | "dmy";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "text/csv": string;
+            };
+        };
+        responses: {
+            /** @description Counts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MileIqResult"];
+                };
+            };
             422: components["responses"]["Unprocessable"];
         };
     };

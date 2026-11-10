@@ -49,6 +49,7 @@ export const stop = (n: number, over: Partial<Schemas['Stop']> = {}): Schemas['S
   est_role: 'pickup',
   role: 'pickup',
   label: null,
+  place: null,
   ...over,
 });
 

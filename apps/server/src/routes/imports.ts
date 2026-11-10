@@ -20,7 +20,15 @@ import {
   type ImportKind,
 } from '../imports/csv';
 import type { DriverContexts } from '../driver-context';
-import type { ShiftBook } from '../processing/shift-book';
+import {
+  countryDayOrder,
+  dayOf,
+  MileIqError,
+  readMileIq,
+  unspecified,
+  type DriveClass,
+} from '../imports/mileiq';
+import type { ImportedShift, ShiftBook } from '../processing/shift-book';
 import { platformKnown } from './platforms';
 import { strictObject } from './util';
 
@@ -32,6 +40,34 @@ const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_PROBLEMS = 1000;
 const params = strictObject({ kind: { enum: ['expenses', 'shifts'] } }, ['kind']);
 const query = strictObject({ mapping: { type: 'string', maxLength: 4000 } }, []);
+const mileIqQuery = strictObject(
+  {
+    unclassified: { enum: ['personal', 'skip'] },
+    date_order: { enum: ['mdy', 'dmy'] },
+  },
+  [],
+);
+/** Drives the MileIQ preview shows in full; the counts cover them all. */
+const MILEIQ_FIRST = 20;
+/** The longest a drive may last: a longer one is a misread date, not a drive. */
+const DAY_MS = 24 * 60 * 60 * 1000;
+const M_PER = { mi: 1609.344, km: 1000 } as const;
+
+interface DrivePlan extends ImportedShift {
+  cls: DriveClass;
+  parking: number;
+  tolls: number;
+}
+interface MileIqRow {
+  line: number;
+  status: Status | 'skipped';
+  message?: string;
+  cls?: DriveClass;
+  startedAt?: number;
+  distanceM?: number;
+  purpose?: string;
+  value?: DrivePlan;
+}
 
 type Status = 'ok' | 'duplicate' | 'error';
 interface Planned<T> {
@@ -255,6 +291,278 @@ export function importsRoutes({
         };
       });
     }
+
+    /**
+     * The MileIQ preset (ADR 0008's sibling decision in DECISIONS.md, 2026-11-10): one drive becomes
+     * one imported shift with one manual trip. Business drives are business distance; personal,
+     * commute, medical, charity and moving drives are personal trips (ADR 0005); unclassified drives
+     * are personal or left out, as the driver chooses. Parking and tolls of a business drive become
+     * expenses linked to its shift. MileIQ's value columns are not read. Places stay text in notes.
+     */
+    function planMileIq(
+      userId: number,
+      body: unknown,
+      q: { unclassified?: 'personal' | 'skip'; date_order?: 'mdy' | 'dmy' },
+    ) {
+      if (typeof body !== 'string' || body.trim() === '')
+        throw bad('/', 'send the CSV file as text/csv');
+      let file;
+      try {
+        file = readMileIq(body, drivers.of(userId).currency);
+      } catch (e) {
+        if (e instanceof MileIqError) throw bad('/', e.message);
+        throw e;
+      }
+      if (file.mixedOrder && !q.date_order) {
+        throw bad(
+          '/date_order',
+          'the dates are written both day-first and month-first; choose the order of the file',
+        );
+      }
+      const driver = drivers.of(userId);
+      const order = q.date_order ?? file.dayOrder ?? countryDayOrder(driver.country);
+      const orderSource = q.date_order ? 'chosen' : file.dayOrder ? 'file' : 'country';
+      const unclassified = q.unclassified ?? 'personal';
+      const all = vehicles.list(userId, false);
+      const fallback =
+        all.find((v) => v.id === driver.settings.defaultVehicleId) ??
+        (all.length === 1 ? all[0] : undefined);
+      const vehicleOf = (name: string) =>
+        unspecified(name)
+          ? fallback
+          : (all.find((v) => v.name.trim().toLowerCase() === name.trim().toLowerCase()) ??
+            fallback);
+      const seen = new Set(
+        db
+          .prepare(
+            "SELECT vehicle_id || '|' || started_at || '|' || coalesce(total_m, 0) FROM shifts WHERE user_id = ?",
+          )
+          .pluck()
+          .all(userId) as string[],
+      );
+      const expensesOn = registry.isEnabled('expenses');
+      const vehicleCounts = new Map<
+        string,
+        { drives: number; id: number | null; matched: boolean }
+      >();
+      const rows: MileIqRow[] = file.rows.map((r): MileIqRow => {
+        if ('error' in r) return { line: r.line, status: 'error', message: r.error };
+        const d = r.drive;
+        const vehicleName = unspecified(d.vehicle) ? '' : d.vehicle.trim();
+        const vehicle = vehicleOf(d.vehicle);
+        const seenName = vehicleCounts.get(vehicleName) ?? {
+          drives: 0,
+          id: vehicle?.id ?? null,
+          matched:
+            vehicleName !== '' &&
+            all.some((v) => v.name.trim().toLowerCase() === vehicleName.toLowerCase()),
+        };
+        seenName.drives++;
+        vehicleCounts.set(vehicleName, seenName);
+        const base = { line: d.line, cls: d.cls };
+        const startDay = dayOf(d.start, order);
+        const endDay = d.end ? dayOf(d.end, order) : undefined;
+        if (!startDay || (d.end && !endDay)) {
+          return {
+            ...base,
+            status: 'error',
+            message: `the date is not a day in ${order === 'mdy' ? 'month/day/year' : 'day/month/year'} order`,
+          };
+        }
+        if (!d.end)
+          return { ...base, status: 'error', message: 'the end date and time are missing' };
+        const startedAt = driver.instantOf(startDay, d.start.minutes);
+        const endedAt = driver.instantOf(endDay!, d.end.minutes);
+        if (endedAt < startedAt)
+          return { ...base, status: 'error', message: 'the drive ends before it starts' };
+        if (endedAt - startedAt > DAY_MS)
+          return { ...base, status: 'error', message: 'the drive lasts more than a day' };
+        const totalM = Math.round(d.distance * M_PER[file.unit]);
+        if (totalM <= 0) return { ...base, status: 'error', message: 'the distance is zero' };
+        const purpose = (d.purpose || d.category || 'Unclassified').slice(0, 200);
+        const shown = { ...base, startedAt, distanceM: totalM, purpose };
+        if (d.cls === 'unclassified' && unclassified === 'skip')
+          return { ...shown, status: 'skipped', message: 'unclassified, left out' };
+        if (!vehicle) {
+          return {
+            ...shown,
+            status: 'error',
+            message: vehicleName
+              ? `no vehicle named ${vehicleName}: add it in Vehicles or set a default vehicle`
+              : 'no vehicle: set a default vehicle in Settings',
+          };
+        }
+        const key = `${vehicle.id}|${startedAt}|${totalM}`;
+        if (seen.has(key)) return { ...shown, status: 'duplicate' };
+        seen.add(key);
+        const business = d.cls === 'business';
+        const notes = [
+          'Imported from MileIQ.',
+          d.from ? `From: ${d.from}.` : '',
+          d.to ? `To: ${d.to}.` : '',
+          d.cls === 'other' ? `MileIQ category: ${d.category}.` : '',
+          d.cls === 'unclassified' ? 'Unclassified in MileIQ, imported as personal.' : '',
+          d.notes ? `Notes: ${d.notes}` : '',
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .slice(0, 2000);
+        return {
+          ...shown,
+          status: 'ok',
+          value: {
+            vehicleId: vehicle.id,
+            startedAt,
+            endedAt,
+            localDate: driver.dateOf(startedAt),
+            totalM,
+            notes,
+            kind: business ? 'active' : 'personal',
+            purpose,
+            from: 'a MileIQ report',
+            cls: d.cls,
+            // Costs of a business drive only, and only while the expenses module is on.
+            parking: business && expensesOn ? d.parking : 0,
+            tolls: business && expensesOn ? d.tolls : 0,
+          },
+        };
+      });
+      const ok = rows.filter((r) => r.status === 'ok');
+      const read = rows.filter((r) => r.cls !== undefined);
+      const costsLeftOut = file.rows.filter(
+        (r) =>
+          'drive' in r &&
+          (r.drive.parking > 0 || r.drive.tolls > 0) &&
+          (r.drive.cls !== 'business' || !expensesOn),
+      ).length;
+      return {
+        rows,
+        ok,
+        preview: {
+          drive_count: rows.length,
+          summary: {
+            ok: ok.length,
+            duplicate: rows.filter((r) => r.status === 'duplicate').length,
+            error: rows.filter((r) => r.status === 'error').length,
+            skipped: rows.filter((r) => r.status === 'skipped').length,
+          },
+          classes: {
+            business: read.filter((r) => r.cls === 'business').length,
+            personal: read.filter((r) => r.cls === 'personal').length,
+            other: read.filter((r) => r.cls === 'other').length,
+            unclassified: read.filter((r) => r.cls === 'unclassified').length,
+          },
+          distance_m: {
+            business: ok.reduce(
+              (a, r) => a + (r.value!.kind === 'active' ? r.value!.totalM : 0),
+              0,
+            ),
+            personal: ok.reduce(
+              (a, r) => a + (r.value!.kind === 'personal' ? r.value!.totalM : 0),
+              0,
+            ),
+          },
+          unit: file.unit,
+          date_order: order,
+          date_order_source: orderSource,
+          unclassified,
+          value_ignored: file.hasValue,
+          vehicles: [...vehicleCounts].map(([name, v]) => ({
+            name: name === '' ? null : name,
+            drives: v.drives,
+            vehicle_id: v.id,
+            matched: v.matched,
+          })),
+          costs: {
+            parking_cents: ok.reduce((a, r) => a + r.value!.parking, 0),
+            tolls_cents: ok.reduce((a, r) => a + r.value!.tolls, 0),
+            expenses: ok.reduce(
+              (a, r) => a + (r.value!.parking > 0 ? 1 : 0) + (r.value!.tolls > 0 ? 1 : 0),
+              0,
+            ),
+            left_out: costsLeftOut,
+          },
+          rows: rows.slice(0, MILEIQ_FIRST).map((r) => ({
+            line: r.line,
+            status: r.status,
+            message: r.message ?? null,
+            class: r.cls ?? null,
+            started_at: r.startedAt ?? null,
+            distance_m: r.distanceM ?? null,
+            purpose: r.purpose ?? null,
+          })),
+          problems: rows
+            .filter((r) => r.status === 'error')
+            .slice(0, MAX_PROBLEMS)
+            .map((r) => ({ line: r.line, message: r.message ?? '' })),
+        },
+      };
+    }
+
+    app.post(
+      '/imports/mileiq/preview',
+      { schema: { querystring: mileIqQuery }, bodyLimit: MAX_BYTES },
+      async (req) => {
+        const { userId } = authn.authenticate(req, 'S');
+        return planMileIq(userId, req.body, req.query as never).preview;
+      },
+    );
+
+    app.post(
+      '/imports/mileiq',
+      { schema: { querystring: mileIqQuery }, bodyLimit: MAX_BYTES },
+      async (req) => {
+        const { userId } = authn.authenticate(req, 'S');
+        const { rows, ok } = planMileIq(userId, req.body, req.query as never);
+        const plans = ok.map((r) => r.value!);
+        const t = now();
+        const made: number[] = [];
+        const cost = (
+          category: 'parking' | 'tolls',
+          amount: number,
+          shiftId: number,
+          p: DrivePlan,
+        ) => {
+          const cat = expenseCategory(category)!;
+          made.push(
+            expenses.create(
+              {
+                userId,
+                spentOn: p.localDate,
+                category,
+                amountCents: amount,
+                merchant: '',
+                deductible: cat.default_deductible ? 1 : 0,
+                businessPct: cat.default_business_pct,
+                taxCreditCents: 0,
+                vehicleId: p.vehicleId,
+                shiftId,
+                notes: 'Imported from MileIQ',
+                recurrence: null,
+                nextDue: null,
+                snoozedUntil: null,
+                templateId: null,
+              },
+              t,
+            ).id,
+          );
+        };
+        // One transaction: every shift with its trip and flag, and its parking and tolls.
+        const created = book.importShifts(userId, plans, (shift, i) => {
+          const p = plans[i]!;
+          if (p.parking > 0) cost('parking', p.parking, shift.id, p);
+          if (p.tolls > 0) cost('tolls', p.tolls, shift.id, p);
+        });
+        for (const id of made) bus.emit('expense.changed', { expenseId: String(id) });
+        return {
+          imported: created.length,
+          duplicates: rows.filter((r) => r.status === 'duplicate').length,
+          errors: rows.filter((r) => r.status === 'error').length,
+          skipped: rows.filter((r) => r.status === 'skipped').length,
+          expenses: made.length,
+        };
+      },
+    );
 
     const summarize = (plan: Planned<unknown>[]) => ({
       ok: plan.filter((p) => p.status === 'ok').length,

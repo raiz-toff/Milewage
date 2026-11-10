@@ -8,6 +8,7 @@ import {
   ExportsIcon,
   GoalsIcon,
   OdometerIcon,
+  PlacesIcon,
   ProgressIcon,
   ScheduleIcon,
   SettingsIcon,
@@ -30,6 +31,7 @@ import { SchedulePage } from './pages/Schedule';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotificationsPage } from './pages/Notifications';
 import { OdometerPage } from './pages/Odometer';
+import { PlacesPage } from './pages/Places';
 import { ShiftsRoutes } from './pages/Shifts';
 import { GoalsPage } from './pages/Goals';
 import { TaxPage } from './pages/Tax';
@@ -84,6 +86,14 @@ export const screens: Screen[] = [
     label: 'Shifts',
     element: <ShiftsRoutes />,
     nav: { icon: ShiftsIcon, group: 'overview' },
+  },
+  {
+    // Places name and label stops (ADR 0008), so they live beside the shifts and go with stop detection.
+    path: '/places',
+    label: 'Places',
+    visible: (m) => m.stops,
+    element: <PlacesPage />,
+    nav: { icon: PlacesIcon, group: 'overview' },
   },
   {
     path: '/schedule',

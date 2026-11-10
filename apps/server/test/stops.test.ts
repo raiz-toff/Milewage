@@ -63,6 +63,7 @@ describe('stops and labels (07 section 2.8, 14 section 6.6)', () => {
         est_role: 'pickup',
         role: 'pickup',
         label: null,
+        place: null,
       },
     ]);
     expect((await h.call('GET', '/shifts/1/stops')).json().code).toBe('auth_required');

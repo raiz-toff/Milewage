@@ -121,9 +121,12 @@ describe('import card (module import)', () => {
     expect((await screen.findByRole('alert')).textContent).toMatch(/header row/);
   });
 
-  it('offers only shifts when the expenses module is off, and nothing when import is off', async () => {
+  it('offers only shifts and MileIQ drives when the expenses module is off, and nothing when import is off', async () => {
     open({ expenses: false });
-    expect(optionsOf(await screen.findByLabelText('What is in the file'))).toEqual(['shifts']);
+    expect(optionsOf(await screen.findByLabelText('What is in the file'))).toEqual([
+      'shifts',
+      'mileiq',
+    ]);
     cleanup();
     const s = open({ import: false });
     // The old address opens Your data, which still leads to backups and exports.
@@ -132,5 +135,87 @@ describe('import card (module import)', () => {
     expect(within(sections).queryByRole('link', { name: 'Import' })).toBeNull();
     expect(screen.queryByRole('region', { name: 'Import' })).toBeNull();
     await waitFor(() => expect(s.calls.some((c) => c.path.startsWith('/imports'))).toBe(false));
+  });
+});
+
+describe('MileIQ preset', () => {
+  const mileiq = (over: object = {}) => ({
+    drive_count: 4,
+    summary: { ok: 3, duplicate: 0, error: 1, skipped: 0 },
+    classes: { business: 2, personal: 0, other: 0, unclassified: 1 },
+    distance_m: { business: 31_221, personal: 3862 },
+    unit: 'mi',
+    date_order: 'mdy',
+    date_order_source: 'file',
+    unclassified: 'personal',
+    value_ignored: true,
+    vehicles: [{ name: 'Blue Corolla', drives: 3, vehicle_id: 1, matched: false }],
+    costs: { parking_cents: 550, tolls_cents: 225, expenses: 2, left_out: 0 },
+    rows: [
+      {
+        line: 12,
+        status: 'ok',
+        message: null,
+        class: 'business',
+        started_at: 1_791_482_400_000,
+        distance_m: 31_221,
+        purpose: 'Deliveries',
+      },
+    ],
+    problems: [{ line: 19, message: 'the distance "abc" is not a number' }],
+    ...over,
+  });
+  function openMileIq() {
+    return renderApp(
+      {
+        ...signedIn(settingsFixture({ modules: { import: true } })),
+        'GET /vehicles': () => ({ body: [{ id: 1, name: 'Civic', kind: 'car', archived: false }] }),
+        'POST /imports/mileiq/preview': ({ url }) => ({
+          body: mileiq(
+            url.searchParams.get('unclassified') === 'skip'
+              ? { unclassified: 'skip', summary: { ok: 2, duplicate: 0, error: 1, skipped: 1 } }
+              : {},
+          ),
+        }),
+        'POST /imports/mileiq': () => ({
+          body: { imported: 2, duplicates: 0, errors: 1, skipped: 1, expenses: 2 },
+        }),
+      },
+      '/settings/import',
+    );
+  }
+
+  it('previews what each kind of drive becomes, then imports with the choices shown', async () => {
+    const s = openMileIq();
+    pick(await screen.findByLabelText('What is in the file'), 'mileiq');
+    const input = (await screen.findByLabelText('MileIQ report (CSV)')) as HTMLInputElement;
+    fireEvent.change(input, {
+      target: { files: [new File(['START_DATE*,MILES*\n'], 'drives.csv', { type: 'text/csv' })] },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: /Preview drives\.csv/ }));
+    expect(
+      await screen.findByText(/4 drives: 3 ready, 0 already imported, 1 with problems/),
+    ).toBeTruthy();
+    expect(screen.getByText(/They count as business distance/)).toBeTruthy();
+    expect(screen.getByText(/never in your deduction/)).toBeTruthy();
+    expect(screen.getByText(/value column is not imported/)).toBeTruthy();
+    expect(
+      screen.getByText(/Blue Corolla \(3 drives\): to your Civic, your default vehicle/),
+    ).toBeTruthy();
+    expect(screen.getByText(/become 2 expenses on their shifts/)).toBeTruthy();
+    expect(screen.getByText('Line 19: the distance "abc" is not a number')).toBeTruthy();
+    expect(screen.getByRole('table', { name: 'First drives in the file' })).toBeTruthy();
+    // Leaving unclassified drives out asks the server again with that choice.
+    fireEvent.click(screen.getByRole('button', { name: 'Leave out' }));
+    expect(
+      await screen.findByText(/2 ready, 0 already imported, 1 with problems, 1 left out/),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Import 2 drives' }));
+    expect((await screen.findByRole('status')).textContent).toMatch(
+      /Imported 2 drives as shifts.*Added 2 parking or toll expenses/,
+    );
+    const commit = s.calls.find((c) => c.path === '/imports/mileiq');
+    expect(commit?.query).toContain('unclassified=skip');
+    expect(commit?.contentType).toBe('text/csv');
   });
 });

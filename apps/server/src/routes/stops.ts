@@ -1,8 +1,10 @@
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import {
+  createPlaceRepository,
   createProcessingRepository,
   type Db,
+  type PlaceRow,
   type ShiftRow,
   type StopLabelRow,
   type StopRow,
@@ -30,10 +32,22 @@ const labelBody = strictObject(
 );
 
 const labelView = (l: StopLabelRow) => snakeKeys(l, 'userId');
-export const stopView = (s: StopRow, label: StopLabelRow | undefined) => ({
-  ...snakeKeys(s, 'id', 'userId'),
-  label: label ? labelView(label) : null,
-});
+/**
+ * The `Stop` object. `place` is the named place the stop was inside when the engine last ran on its
+ * shift (ADR 0008), with its current name; null when none (or the place was deleted since).
+ */
+export const stopView = (
+  s: StopRow,
+  label: StopLabelRow | undefined,
+  places: ReadonlyMap<number, PlaceRow> = new Map(),
+) => {
+  const place = s.placeId === null ? undefined : places.get(s.placeId);
+  return {
+    ...snakeKeys(s, 'id', 'userId', 'placeId'),
+    label: label ? labelView(label) : null,
+    place: place ? { id: place.id, name: place.name, role: place.role } : null,
+  };
+};
 
 /**
  * Stops and the driver's optional labels (08 sections 3 and 4.4, 14 section 6.6). Web session only.
@@ -60,6 +74,8 @@ export function stopsRoutes({
 }) {
   return ({ app, bus }: ServerRouteHost) => {
     const repo = createProcessingRepository(db);
+    const placeRepo = createPlaceRepository(db);
+    const placesOf = (userId: number) => new Map(placeRepo.list(userId).map((x) => [x.id, x]));
 
     /** The shift and its owner's settings guard. */
     const open = (req: Parameters<typeof authn.authenticate>[0]) => {
@@ -70,15 +86,16 @@ export function stopsRoutes({
       return { p, shift: book.find(p, (req.params as { ref: string }).ref) };
     };
     const keyOf = (req: { params: unknown }) => (req.params as { stop_key: string }).stop_key;
-    const withLabel = (shiftId: number, key: string) => {
-      const stop = repo.stopsOf(shiftId).find((s) => s.stopKey === key);
-      return stop && stopView(stop, repo.findLabel(shiftId, key));
+    const withLabel = (shift: ShiftRow, key: string) => {
+      const stop = repo.stopsOf(shift.id).find((s) => s.stopKey === key);
+      return stop && stopView(stop, repo.findLabel(shift.id, key), placesOf(shift.userId));
     };
 
     app.get('/shifts/:ref/stops', { schema: { params: shiftParams } }, async (req) => {
       const { shift } = open(req);
       const labels = new Map(repo.labelsOf(shift.id).map((l) => [l.stopKey, l]));
-      return repo.stopsOf(shift.id).map((s) => stopView(s, labels.get(s.stopKey)));
+      const places = placesOf(shift.userId);
+      return repo.stopsOf(shift.id).map((s) => stopView(s, labels.get(s.stopKey), places));
     });
 
     /** Labels change only an ended, not finalized, shift: the engine reads them when it runs. */
@@ -125,7 +142,7 @@ export function stopsRoutes({
         // Last writer wins on the edit time; ties go to the server (08 section 4.4).
         if (old && b.edited_at <= old.editedAt) {
           return reply.header('X-MileWage-Applied', 'false').send({
-            stop: withLabel(shift.id, key),
+            stop: withLabel(shift, key),
             shift: present.one(shift),
           });
         }
@@ -152,7 +169,7 @@ export function stopsRoutes({
         const updated = recompute(p, shift);
         return reply
           .header('X-MileWage-Applied', 'true')
-          .send({ stop: withLabel(shift.id, key), shift: updated });
+          .send({ stop: withLabel(shift, key), shift: updated });
       },
     );
 
@@ -167,7 +184,7 @@ export function stopsRoutes({
       repo.deleteLabel(shift.id, key);
       const updated = recompute(p, shift);
       // `stop` is null only when an orphaned label (its stop is gone) was cleared.
-      return { stop: withLabel(shift.id, key) ?? null, shift: updated };
+      return { stop: withLabel(shift, key) ?? null, shift: updated };
     });
   };
 }

@@ -1,5 +1,11 @@
 import { processShift } from '@milewage/track-engine';
-import { createArchiveRepository, createProcessingRepository, type Db, type ShiftRow } from '../db';
+import {
+  createArchiveRepository,
+  createPlaceRepository,
+  createProcessingRepository,
+  type Db,
+  type ShiftRow,
+} from '../db';
 import { addTrip, buildShiftInput, type Totals } from './shift-processor';
 
 export interface RecalcRow {
@@ -32,6 +38,7 @@ const same = (a: Totals, b: Totals) =>
 export function recalcReport(db: Db, opts: { since?: string } = {}): RecalcRow[] {
   const repo = createProcessingRepository(db);
   const archive = createArchiveRepository(db);
+  const places = createPlaceRepository(db);
   const rows = db
     .prepare(
       `SELECT id FROM shifts WHERE status IN ('ended','finalized') AND (? IS NULL OR local_date >= ?)
@@ -78,7 +85,10 @@ export function recalcReport(db: Db, opts: { since?: string } = {}): RecalcRow[]
       segmenter: shift.segmenter,
       interruptionsJson: shift.interruptions_json,
     } as unknown as ShiftRow;
-    const result = processShift(buildShiftInput(repo, row, row.segmenter === 'stops'));
+    const labelled = row.segmenter === 'stops';
+    const result = processShift(
+      buildShiftInput(repo, row, labelled, labelled ? places.list(row.userId) : []),
+    );
     const next: Totals = { ...result.totals };
     for (const t of repo.tripsOf(id)) if (t.source === 'manual') addTrip(next, t);
     out.push({

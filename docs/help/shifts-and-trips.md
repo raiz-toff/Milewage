@@ -26,7 +26,7 @@ Below the figures:
 - **The map**: a simplified line through your route, for display only.
 - **The timeline**: each trip with its time, distance, kind and purpose, and each stop. Choose one to find it on the map.
 - **Checks**: facts about the recording, with "What to do" under them. Ones marked Review come first.
-- **Odometer**, **Parking and tolls**, **Notes**, **Export this shift**, and **Label stops** where stops were found.
+- **Odometer**, **Parking and tolls**, **Notes**, **Export this shift**, and **Label stops** where stops were found. A stop inside one of your [places](places.md) shows the place's name and its label.
 
 ## Parking and tolls
 
@@ -54,9 +54,22 @@ For driving the phone missed, on an ended shift that is not Reviewed.
 4. Choose the kind: Business or Personal. A business trip counts as active.
 5. Choose Add trip.
 
-The trip counts in your totals and shows as "edited" in the timeline. The web app has no button to remove it afterwards.
+The trip counts in your totals and shows as "edited" in the timeline.
 
 On the phone, open Shifts, then the shift. Under Corrections, "Add a trip" takes a distance only and counts it as active.
+
+## Changing or deleting a trip you added
+
+A trip added by hand, on the web or on the phone, has a "..." menu in the timeline while the shift is not Reviewed.
+
+- **Edit** opens the same form, filled in. Change the times, the distance, the kind or the purpose, then choose Save changes.
+- **Delete** asks first, and says the distance and times of the trip. Choose Delete trip. Its distance leaves the shift's totals.
+
+Either change reaches your phone the next time it reads changes from your server. Trips the phone recorded have no such menu: their distance comes from the GPS track and cannot be changed, only their kind.
+
+### Joining trips
+
+There is no way to join two trips. A recorded trip is cut where a stop changes the split, and only the track engine can cut it differently. Labelling the stop between two trips "Other" removes that cut, but it also changes how every later stop is worked out. To join two trips you added by hand, edit one to the total distance and delete the other.
 
 ## Changing a trip
 
@@ -68,7 +81,7 @@ Labelling stops on the web is the other way to correct the split. See [Active an
 
 ## How the server works out a shift
 
-The server runs the same track engine as the phone on the GPS points it received. It does this when the shift ends, when late points arrive, and when you add a trip, change a trip or label a stop. It keeps your trip edits, stop labels and trips added by hand. See [How miles are counted](how-miles-are-counted.md).
+The server runs the same track engine as the phone on the GPS points it received. It does this when the shift ends, when late points arrive, and when you add, change or delete a trip, label a stop, or add, change or delete a place with a stop inside it. It keeps your trip edits, stop labels and trips added by hand. See [How miles are counted](how-miles-are-counted.md).
 
 The web app has no Recalculate button in this version. After an upgrade, stored shifts keep their figures until one of those things happens.
 

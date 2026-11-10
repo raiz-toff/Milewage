@@ -54,7 +54,24 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
       and the current UTC offset shown next to each name. Server keeps validating the name.
 - [ ] Badge colour picker for platforms; the API already accepts a colour (PL4b).
 - [ ] Shifts list cannot show platform badges: the shifts API has no platforms per shift (PL2).
-- [ ] Edit and delete a hand-made trip on the web (W2i).
+- [x] Edit and delete a hand-made trip on the web (W2i). Done 2026-11-10: the "..." menu of a
+      manual trip in a shift's timeline. Joining trips is not built: it needs a new engine edit kind
+      (see the next item).
+- [ ] **Joining two trips: owner to decide** (2026-11-10). No existing trip edit can join two
+      engine trips: an edit changes only a trip's kind or purpose, and trips are cut where a stop
+      changes the split, so the only lever (labelling the stop between them "Other") re-estimates
+      every later stop. A real join is a new engine edit kind: `TripEdit` gains a join (the two
+      trip keys), stage 7 merges the two drafts before keys are made, the digest's canonical text
+      gets a new line, the Kotlin port in `apps/android` does the same bit for bit, the algorithm
+      version goes to 5 with new golden ledgers and phone conformance fixtures, the server stores
+      the join with the overrides and sends it in the change feed. Joining two manual trips is
+      plain data; today it is "edit one to the total, delete the other".
+- [ ] **Places and the MileIQ import: owner checks** (2026-11-10). (1) The MileIQ layout was read
+      from a third-party reader and template, not from MileIQ itself; import one real report and
+      check the preview (header names, the KM column of a kilometre account, the day order of a
+      Canadian or British report, 12-hour times). (2) Look at Places on a phone browser and drag
+      the marker on a touch screen. (3) Unclassified MileIQ drives default to personal; say if
+      "Leave out" should be the default.
 - [ ] When the app is on Google Play: set `MILEWAGE_APP_STORE_URL` and replace the plain "Get it
       on Google Play" button with Google's official badge file (A2).
 - [ ] A public install-guide URL for the phone's "Set up your server" screen (currently hidden;

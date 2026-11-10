@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { FlagIcon } from '@/ui/icons';
+import { DeleteIcon, EditIcon, FlagIcon } from '@/ui/icons';
+import { RowMenu } from '../ui/RowMenu';
 import { cn } from '@/lib/utils';
 import type { Schemas } from '../api/client';
 import { formatDistance, formatTime } from '../format';
@@ -51,6 +52,7 @@ function Row({
   detail,
   on,
   onClick,
+  menu,
 }: {
   time: string;
   mark: ReactNode;
@@ -58,6 +60,8 @@ function Row({
   detail?: ReactNode;
   on?: boolean;
   onClick?: () => void;
+  /** The row's own actions (a manual trip's edit and delete), beside it, never inside the button. */
+  menu?: ReactNode;
 }) {
   const body = (
     <>
@@ -71,7 +75,7 @@ function Row({
       </span>
     </>
   );
-  const row = 'flex w-full items-start gap-3 rounded-medium px-2 py-2 text-left';
+  const row = 'flex w-full min-w-0 items-start gap-3 rounded-medium px-2 py-2 text-left';
   const ref = useRef<HTMLButtonElement>(null);
   // Picked on the map: bring the entry into view inside the list's own scroll box, not the page.
   useEffect(() => {
@@ -84,7 +88,7 @@ function Row({
     else if (r.bottom > b.bottom) box.scrollTop += r.bottom - b.bottom;
   }, [on]);
   return (
-    <li>
+    <li className={menu ? 'flex items-start gap-1' : undefined}>
       {onClick ? (
         <button
           ref={ref}
@@ -102,6 +106,7 @@ function Row({
       ) : (
         <div className={row}>{body}</div>
       )}
+      {menu}
     </li>
   );
 }
@@ -119,6 +124,8 @@ export function ShiftTimeline({
   est,
   picked,
   onPick,
+  onEditTrip,
+  onDeleteTrip,
 }: {
   shift: Shift;
   trips: Trip[];
@@ -127,6 +134,10 @@ export function ShiftTimeline({
   est: ReactNode;
   picked: Picked;
   onPick: (p: Picked) => void;
+  /** Given while the shift can be changed: a manual trip's row offers Edit (TODO W2i). */
+  onEditTrip?: (t: Trip) => void;
+  /** Given while the shift can be changed: a manual trip's row offers Delete. */
+  onDeleteTrip?: (t: Trip) => void;
 }) {
   const { timezone: tz, distance_unit: unit } = useSettings();
   const flag = <FlagIcon aria-hidden="true" className="mt-0.5 size-4 text-muted-foreground" />;
@@ -167,16 +178,37 @@ export function ShiftTimeline({
                 .join(' · ')}
               on={on}
               onClick={() => onPick(on ? null : { kind: 'trip', id: t.id })}
+              menu={
+                t.source === 'manual' && onEditTrip && onDeleteTrip ? (
+                  <RowMenu
+                    name={`trip at ${formatTime(t.started_at, tz)}`}
+                    actions={[
+                      { label: 'Edit', icon: EditIcon, onSelect: () => onEditTrip(t) },
+                      {
+                        label: 'Delete',
+                        icon: DeleteIcon,
+                        destructive: true,
+                        onSelect: () => onDeleteTrip(t),
+                      },
+                    ]}
+                  />
+                ) : undefined
+              }
             />
           );
         }
         const s = e.stop;
         const on = picked?.kind === 'stop' && picked.key === s.stop_key;
+        // A hand label, else the label a saved place gave (ADR 0008), else the estimate.
+        const fromPlace = !s.label && s.place !== null && s.role !== 'none';
         const what = s.label
           ? ROLE[s.label.role]
-          : s.est_role === 'none'
-            ? 'Stop'
-            : ROLE[s.est_role];
+          : fromPlace
+            ? ROLE[s.role]
+            : s.est_role === 'none'
+              ? 'Stop'
+              : ROLE[s.est_role];
+        const where = s.label?.place || s.place?.name || s.label?.platform;
         return (
           <Row
             key={s.stop_key}
@@ -185,10 +217,8 @@ export function ShiftTimeline({
             title={
               <>
                 Stop {e.n} · {what}
-                {!s.label && s.est_role !== 'none' ? est : null}
-                {s.label?.place || s.label?.platform
-                  ? ` · ${s.label.place || s.label.platform}`
-                  : ''}
+                {!s.label && !fromPlace && s.est_role !== 'none' ? est : null}
+                {where ? ` · ${where}` : ''}
               </>
             }
             detail={[minutes(s.dwell_s * 1000), s.confidence === 'low' ? 'low confidence' : '']

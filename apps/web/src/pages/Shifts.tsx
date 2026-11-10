@@ -21,7 +21,7 @@ import { reviewCount, showsSplit } from '../shift/view';
 import type { Picked } from '../shift/view';
 import { FormError } from '../ui/form';
 import { ExportButtons } from './Exports';
-import { AddTrip } from './AddTrip';
+import { AddTrip, DeleteTripDialog } from './AddTrip';
 import { ShiftCosts, useShiftCosts } from './ShiftCosts';
 import { ShiftEarnings } from './ShiftEarnings';
 import { ShiftChecks, ShiftFigures } from './ShiftFacts';
@@ -385,6 +385,8 @@ export function ShiftDetail() {
   const { shift, view, trips, stops } = record;
   const [picked, setPicked] = useState<Picked>(null);
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Schemas['Trip'] | null>(null);
+  const [deleting, setDeleting] = useState<Schemas['Trip'] | null>(null);
   const costs = useShiftCosts(shift?.id, settings.modules.expenses);
 
   if (record.error && !shift)
@@ -490,6 +492,15 @@ export function ShiftDetail() {
           description={view.timelineNote}
         >
           {adding ? <AddTrip shift={shift} onClose={() => setAdding(false)} /> : null}
+          {editing ? (
+            <AddTrip
+              key={editing.id}
+              shift={shift}
+              trip={editing}
+              onClose={() => setEditing(null)}
+            />
+          ) : null}
+          {deleting ? <DeleteTripDialog trip={deleting} onClose={() => setDeleting(null)} /> : null}
           {trips.error ? (
             <p className="text-muted-foreground">Trips could not be loaded. {trips.error}</p>
           ) : trips.data === null ? (
@@ -507,6 +518,15 @@ export function ShiftDetail() {
                 est={<Est />}
                 picked={picked}
                 onPick={setPicked}
+                onEditTrip={
+                  view.canEditTrips
+                    ? (t) => {
+                        setAdding(false);
+                        setEditing(t);
+                      }
+                    : undefined
+                }
+                onDeleteTrip={view.canEditTrips ? setDeleting : undefined}
               />
             </div>
           )}

@@ -3,10 +3,20 @@
 
 /** Rows of cells; handles quotes, doubled quotes, CRLF or LF, and a leading byte-order mark. */
 export function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
+  return parseCsvLines(text).map((r) => r.cells);
+}
+
+/**
+ * `parseCsv` with the file line each row starts on (1-based), so a problem can name the line a
+ * driver sees in a text editor. Rows with no text are left out.
+ */
+export function parseCsvLines(text: string): { line: number; cells: string[] }[] {
+  const rows: { line: number; cells: string[] }[] = [];
   let row: string[] = [];
   let cell = '';
   let quoted = false;
+  let line = 1;
+  let rowLine = 1;
   const src = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
   for (let i = 0; i < src.length; i++) {
     const c = src[i]!;
@@ -15,7 +25,10 @@ export function parseCsv(text: string): string[][] {
         cell += '"';
         i++;
       } else if (c === '"') quoted = false;
-      else cell += c;
+      else {
+        if (c === '\n') line++;
+        cell += c;
+      }
     } else if (c === '"') quoted = true;
     else if (c === ',') {
       row.push(cell);
@@ -24,15 +37,17 @@ export function parseCsv(text: string): string[][] {
       if (c === '\r' && src[i + 1] === '\n') i++;
       row.push(cell);
       cell = '';
-      rows.push(row);
+      rows.push({ line: rowLine, cells: row });
       row = [];
+      line++;
+      rowLine = line;
     } else cell += c;
   }
   if (cell !== '' || row.length > 0) {
     row.push(cell);
-    rows.push(row);
+    rows.push({ line: rowLine, cells: row });
   }
-  return rows.filter((r) => r.some((v) => v.trim() !== ''));
+  return rows.filter((r) => r.cells.some((v) => v.trim() !== ''));
 }
 
 const norm = (s: string) =>

@@ -90,6 +90,8 @@ export interface ShiftView {
   noTrips: boolean;
   /** "Add a trip" belongs on the timeline (an ended shift with something recorded). */
   canAddTrip: boolean;
+  /** Manual trips can be edited and deleted: an ended shift (finalized shifts never change). */
+  canEditTrips: boolean;
   /** Little to show: odometer, notes and export fold into one "More" card. */
   folded: boolean;
   /** The checks card is shown (with nothing recorded, the checks are in that card instead). */
@@ -153,6 +155,7 @@ export function shiftView(record: ShiftParts, settings: Settings): ShiftView {
         : undefined,
     noTrips: trips.data?.length === 0 && !sparse,
     canAddTrip: shift.status === 'ended' && !empty,
+    canEditTrips: shift.status === 'ended',
     folded,
     checks: !sparse,
     exporters: modules.exporters.some((f) => f !== 'pdf') && !active,

@@ -70,7 +70,23 @@ A link leads to the Privacy page: what the phone and the server record, and who 
 
 ## Your data
 
-"Import a CSV file" brings in expenses, or shifts with a typed distance. It shows a preview first, with the rows that are ready, already there or have problems. Nothing is written until you choose Import. It is shown when the import module runs.
+"Import a CSV file" brings in expenses, shifts with a typed distance, or your drives from MileIQ. It shows a preview first, with the rows that are ready, already there or have problems. Nothing is written until you choose Import. It is shown when the import module runs.
+
+### Drives from MileIQ
+
+If you are moving from MileIQ, download your drive report from MileIQ as CSV (not PDF or Excel), choose "Drives from MileIQ (its CSV report)" and pick the file.
+
+- Each drive becomes one shift with one trip, marked as imported. MileIQ recorded it, so it has no GPS track and no map here.
+- **Business** drives count as business distance.
+- **Personal** and commute drives, and MileIQ's medical, charity and moving drives, become personal trips. They count in your total distance, never in your deduction.
+- **Unclassified** drives are imported as personal unless you choose "Leave out". Leave them out if you will classify them in MileIQ first: a drive imported once is never imported again, even when MileIQ's category changes.
+- Parking and tolls of a business drive become expenses on that drive's shift. Those of other drives are not imported.
+- MileIQ's value column is not imported. MileWage works out your deduction from your mileage rate.
+- The start and end places are kept as text in the shift's notes. Nothing is looked up.
+- Dates are read month first or day first as the file shows. When every date fits both, your country decides; the preview says which, and you can switch. Times are read in your time zone.
+- A drive goes to your vehicle of the same name, or else to your default vehicle. The preview says which.
+
+Importing the same file again adds nothing. The preview lists each problem with its line in the file.
 
 Below are links to the Backups and Exports pages.
 
