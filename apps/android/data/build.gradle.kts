@@ -15,6 +15,12 @@ android {
         consumerProguardFiles("consumer-rules.pro")
     }
 
+    testOptions {
+        // Room runs on the desktop JVM in unit tests (bundled SQLite); the few android.* calls on that
+        // path (none on the database's own path) return defaults instead of throwing "Stub!".
+        unitTests.isReturnDefaultValues = true
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -53,4 +59,6 @@ dependencies {
     testImplementation(libs.kotlin.test.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
+    // Room on the desktop JVM: the database, sending and end-to-end tests without a device.
+    testImplementation(libs.androidx.sqlite.bundled.jvm)
 }

@@ -18,6 +18,8 @@ kotlin {
 }
 
 dependencies {
+    // The track engine: the shift model runs processShift at shift end (app.milewage.core.shift).
+    api(project(":engine"))
     // Multiplatform time zones (the instance's zone, never the device's).
     api(libs.kotlinx.datetime)
     api(libs.kotlinx.coroutines.core)
