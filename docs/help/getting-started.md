@@ -6,7 +6,7 @@ order: 10
 
 # Getting started
 
-From a running server to your first shift. If the server is not installed yet, follow [the install guide](../../infra/docs/install.md) first. Version 0.1.0 has not yet been tried in a real shift on a real phone.
+From a running server to your first shift. If the server is not installed yet, follow [the install guide](../../infra/docs/install.md) first. Version 0.2.0 has not yet been tried in a real shift on a real phone.
 
 ## Create the owner account
 
@@ -42,7 +42,7 @@ To go through the questions again later: Settings > Profile and region > Run set
 
 The phone app is for Android only. It is not on Google Play yet. Get it in one of two ways:
 
-- From the [latest GitHub release](https://github.com/raiz-toff/Milewage/releases/latest): the file `milewage-0.1.0.apk`.
+- From the [latest GitHub release](https://github.com/raiz-toff/Milewage/releases/latest): the file `milewage-0.2.0.apk`.
 - From your own server, if the app file was put there ([install guide, section 3a](../../infra/docs/install.md#3a-the-phone-app-from-your-own-server)). The setup step Get the app shows a QR code for your server's download page. Scan it with the phone's camera.
 
 The first time, Android asks to let your browser install apps. Tap Settings, turn on Allow from this source, go back, then tap Install.

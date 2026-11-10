@@ -52,7 +52,7 @@ Three parts, one TypeScript monorepo:
 - Diagnostics that stay on your server and never carry coordinates.
 - An optional AI assistant endpoint (MCP), off by default.
 
-**Status.** Version 0.1.0 is a complete first build that has not yet been tried in the real
+**Status.** Version 0.2.0 is a complete build that has not yet been tried in the real
 world: no real shift on a real phone, no run over a real Tailscale network, and every mileage
 rate and tax figure is unverified against the tax offices' own pages. The Tax page (for Canada)
 and the tax summary export say so; the dashboard, shift pages and phone show deductions without

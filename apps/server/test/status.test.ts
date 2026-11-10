@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { parse } from 'yaml';
 import { diskStateOf, DISK_LIMITS } from '../src/index';
+import { SERVER_VERSION } from '../src/version';
 import { harness, TRACKING_OFF, type Harness } from './support';
 
 const MB = 1024 * 1024;
@@ -183,7 +184,7 @@ describe('GET /system/status (08, 10 section 11.1)', () => {
       'wal_bytes',
     ]);
     expect(body).toMatchObject({
-      app_version: '0.1.0',
+      app_version: SERVER_VERSION,
       disk_state: 'ok',
       disk_free_bytes: 100 * GB,
       last_backup: null,

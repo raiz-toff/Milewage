@@ -6,6 +6,22 @@ All notable changes to MileWage are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-10
+
+Second release. Help pages in the web app, AI assistants that connect by signing in, a password
+reset from the sign-in page, a pass over the code's architecture (ADRs 0001 to 0005), and fixes to
+pairing, sending and the deduction. The Android app changes too: install `milewage-0.2.0.apk`
+(versionCode 2) on the phone after the server is upgraded.
+
+**After upgrading:** run `milewage-cli recalc` once if shifts were ever created by CSV import
+(their trips never reached the phone before). Shifts with a trip marked personal show a smaller
+deduction than before, because personal distance no longer counts (ADR 0005); that is the
+correction, not a loss of data.
+
+The "Not yet verified" list of 0.1.0 still stands: no real shift on a real phone, no run over a real
+Tailscale network, and every mileage rate and tax figure is unverified against the tax offices'
+own pages.
+
 ### Added
 
 - AI assistants connect by signing in: give Claude Code, Cursor or VS Code the address

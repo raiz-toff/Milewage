@@ -64,3 +64,12 @@ Once you are satisfied, delete the moved-aside folder to get the space back: `dc
 ## What to check afterwards
 
 The restore command (and the restore screen) prints what it found: shifts and their date range, GPS points, stop labels and the new restore generation. Compare them with what you expect, then open a recent shift and check its total.
+
+## Version notes
+
+### 0.2.0
+
+- Run `milewage-cli recalc` once (the command in step 2 above, without `--dry-run`) if shifts were ever created by CSV import: before 0.2.0 their trips never reached the phone.
+- A shift with a trip marked personal shows a smaller deduction than in 0.1.0: personal distance no longer counts. Nothing was lost; the earlier figure was wrong.
+- Install the new Android app, `milewage-0.2.0.apk` (versionCode 2), on every paired phone. The old app keeps working against the new server, but it sends every phone-added trip without a purpose, which the server parks.
+- The Help pages are on by default; Settings > Help pages turns them off.

@@ -2668,3 +2668,10 @@ All of PRs 5-7 merged to main with `npm run verify` green on Node 22.22.0 each t
 - Receipts: the hand-rolled JPEG stripper now also clears PNG `eXIf` (checksum recomputed; XMP and raw-Exif chunks dropped) and WebP EXIF (XMP dropped; header flags and size updated); PDFs pass through; platform logos still JPEG only. Five new tests incl. PNG and WebP uploads. OpenAPI receipts summary updated (comment-only, types regenerated).
 - Country names come from `Intl.DisplayNames` (CLDR) in `packages/shared/src/countries/name.ts`, so the list says "United Kingdom" while the docs say "Great Britain"; owner to decide.
 - Verify in the worktree: vitest 170 files 1411 passed; phone 381 passed. 37 files, +306 −64.
+
+## Release 0.2.0 (2026-11-10)
+
+- `VERSION` 0.2.0, every package.json and the lockfile synced; the changelog's Unreleased entries moved under `## [0.2.0] - 2026-11-10` with an intro and an "After upgrading" note (run `milewage-cli recalc` once for imported shifts; the deduction drops personal distance; install the new app). The same note is the first entry of a "Version notes" section in `infra/docs/upgrade.md`. README status and the getting-started page name 0.2.0 and `milewage-0.2.0.apk`.
+- Dev changes made the same day while the owner first opened the dev server: `MILEWAGE_DEV_PORT` for `npm run dev` (port 3000 was taken on this machine); the Vite proxy keeps the Host header (a string target made Vite rewrite it, so every write failed the server's Origin check: dev sign-in had never worked); before the recovery key is confirmed a sessionless request gets 401 so the web shows the sign-in page (a second browser was stuck on the confirm card); the collapsed sidebar shows the whole logo and no leaked text.
+- Android app: `scripts/phone-release-build.sh --publish .dev/config/milewage.apk` with `MILEWAGE_VERSION_CODE=2`, signed with the upload key in `~/.milewage`; attached to the GitHub release as `milewage-0.2.0.apk` with its `.sha256`. Images come from the release workflow on the `v0.2.0` tag.
+- Owner items stay in TODO.md: the device checks for AR3 and AR5, the GB tax year, the Help look in a browser, the writers' findings.
