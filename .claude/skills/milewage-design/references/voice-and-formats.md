@@ -24,46 +24,74 @@ want to know what happened to their miles and money and what to do next. Nothing
 - Title case only for the product name and screens' proper names; everything else sentence case
   ("Show as a table", "Make a new recovery key").
 - No exclamation marks, no "please", no "oops", no jargon ("sync" becomes "sent to the server",
-  "token" becomes "code" where a driver sees it), no em dashes.
+  "token" becomes "code" where a driver sees it), no em dashes in sentences (the lone dash that
+  stands for a missing figure comes from the formatters).
 - Settings names are quoted as the driver sees them: Settings > Time format.
 
 ## Words we use
 
-| Say                    | Not                         |
-| ---------------------- | --------------------------- |
-| shift                  | session, trip log           |
-| trip, stop             | leg, segment                |
-| sent to the server     | synced, uploaded            |
-| on phone only          | pending, unsynced           |
-| paired                 | registered, enrolled        |
-| recovery key           | encryption key, passphrase  |
-| your mileage rate      | custom rate, override       |
-| deduction              | write-off (except where the tax office says so) |
+| Say                | Not                                             |
+| ------------------ | ----------------------------------------------- |
+| shift              | session, trip log                               |
+| trip, stop         | leg, segment                                    |
+| sent to the server | synced, uploaded                                |
+| on phone only      | pending, unsynced                               |
+| paired             | registered, enrolled                            |
+| recovery key       | encryption key, passphrase                      |
+| your mileage rate  | custom rate, override                           |
+| deduction          | write-off (except where the tax office says so) |
 
 ## Formats (use the helpers, never `toLocaleString()` alone)
 
-All in `apps/web/src/format.ts` and `apps/web/src/days.ts` (the driver's day); the phone has its own mirrors.
+Web: `apps/web/src/format.ts` and `apps/web/src/days.ts` (the driver's day). Android: the `:core`
+module, package `app.milewage.core.format` (`apps/android/core/src/main/kotlin/app/milewage/core/format/`),
+ported from the same rules (tests in `core/src/test/.../format/FormatTest.kt`). Never format in a composable or a
+page by hand.
 
-| What        | Helper                               | Rule                                                                             |
-| ----------- | ------------------------------------ | -------------------------------------------------------------------------------- |
-| Money       | `formatMoney(minor, currency)`       | Stored as integer minor units of `settings.currency` (fields end in `_cents`). `minorDigits` gives 0 for JPY, 2 for USD, 3 for KWD. `moneyInput` and `parseMoney` for fields. Null shows as "not available", never 0. |
-| Rates       | `rateInput`, `parseRate`             | Per-distance rates keep hundredths of a minor unit.                             |
-| Day         | `formatDay(iso, dateLocale(country))`| English in the driver's country's order: "Nov 7, 2026" (CA, US), "7 Nov 2026" (GB). `parseDay` accepts typed days in that order. |
-| Date and time | `formatDateTime(ms, timeZone, …)`  | Always the instance time zone (`settings.timezone`), never the browser's.        |
-| Clock time  | `formatTime`, `formatClock`, `hourLabel` | 12h or 24h from Settings > Time format, not the browser language.            |
-| Distance    | `formatDistance(m, unit)`            | Metres to the driver's unit with one decimal; null is a dash, never 0. `toMetres`/`fromMetres` convert numbers, `distanceInput` and `parseDistance` are the field pair (thousands commas allowed), `formatOdometer` shows a dial value ("12,346 mi"). Nothing else writes 1609.344. |
-| Duration    | `formatDuration(startMs, endMs)`     | Hours and minutes.                                                               |
-| Today       | `todayIn(timeZone)`, `dayOf(ms, timeZone)` | The driver's day, for defaults (a new expense, a reading) and period navigation. Never `new Date().toISOString()`, which is the UTC day. |
-| Weeks, periods | `addDays`, `weekOf`, `period`, `PERIODS`, `monthGrid`, `startOfDay` | Day arithmetic on `YYYY-MM-DD` days, weeks from `settings.week_start`. Pages do not write their own. |
+| What           | Web helper                                                                                              | Android (`app.milewage.core.format`)                           | Rule                                                                                                                                                                                  |
+| -------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Money          | `formatMoney(minor, currency)`, `moneyInput`, `parseMoney`                                              | `formatMoney`, `moneyInput`, `parseMoney`, `minorDigits`       | Stored as integer minor units of `settings.currency` (fields end in `_cents`). `minorDigits`: 0 for JPY, 2 for USD, 3 for KWD. Null shows "not available" (`NOT_AVAILABLE`), never 0. |
+| Rates          | `formatRate`, `rateInput`, `parseRate`, `deductionWord`                                                 | (none yet)                                                     | Per-distance rates keep hundredths of a minor unit.                                                                                                                                   |
+| Day            | `formatDay(iso, dateLocale(country))`, `parseDay`                                                       | `formatDay(day, country)`                                      | English in the driver's country's order: "Nov 7, 2026" (CA, US), "7 Nov 2026" (GB).                                                                                                   |
+| Date and time  | `formatDateTime(ms, timeZone, …)`                                                                       | `dayOf(ms, timeZone)`, `zoneOf`                                | Always the instance time zone (`settings.timezone`), never the browser's or the phone's.                                                                                              |
+| Clock time     | `formatTime(ms, tz, fmt)`, `formatClock(hhmm, fmt)`, `hourLabel` (`ui/HourBars.tsx`)                    | `formatClock(ms, timeZone, TimeFormat.H12/H24)`                | 12h or 24h from Settings > Time format, not the browser or phone language.                                                                                                            |
+| Distance       | `formatDistance(m, unit)`, `toMetres`, `fromMetres`, `distanceInput`, `parseDistance`, `formatOdometer` | `formatDistance(m, DistanceUnit)`, `toMetres`, `parseDistance` | Whole metres to the driver's unit with one decimal; null is a dash (`DASH` on Android), never 0. Nothing else writes 1609.344.                                                        |
+| Duration       | `formatDuration(startMs, endMs)`                                                                        | `formatDuration(startMs, endMs)`                               | Hours and minutes.                                                                                                                                                                    |
+| Today          | `todayIn(timeZone)`, `dayOf(ms, timeZone)`                                                              | `dayOf(ms, timeZone)`                                          | The driver's day, for defaults and period navigation. Never `new Date().toISOString()` (the UTC day).                                                                                 |
+| Weeks, periods | `addDays`, `weekOf`, `period`, `PERIODS`, `monthGrid`, `startOfDay`                                     | (none yet)                                                     | Day arithmetic on `YYYY-MM-DD` days; weeks start at `settings.week_start`.                                                                                                            |
+| Totals caption | (server shows its own)                                                                                  | `totalsCaption(totalM, CalcSource)`                            | "Calculated on phone", "Confirmed by server", "Totals will appear once it is sent to the server".                                                                                     |
 
-Dashboards count the week from `settings.week_start` (the calendar's first weekday too). Period tabs are
-named plainly and briefly: Today, Week, Month, Year, 30 days; the dashboard opens on Week.
+Dashboards count the week from `settings.week_start` (also the calendar's first weekday). Period
+tabs are named plainly and briefly (Today, Week, Month, Year, 30 days), and the dashboard opens on
+Week.
+
+## Notifications (Android)
+
+The tracker's wording is in `apps/android/tracking/src/main/res/values/strings.xml`. The running
+shift's text is built in `:core` (`ShiftNotice` in `app.milewage.core.tracking`, shared with its
+tests). The patterns:
+
+- Channel names say what the driver will see in the phone's settings: "Shift in progress",
+  "Watching for drives", "Shift reminders", "Recording problems". Each has a one-sentence
+  description.
+- The ongoing notification leads with the figure: title "12.3 km this shift", the text "Today
+  20.1 km · 2 shifts" or the start time and vehicle ("Started 09:02 · Toyota Prius"). Metric
+  labels are one short word ("Shift", "Time", "Today"; Android allows 10 characters).
+- A prompt is a question with two plain buttons: "You seem to be driving." / "Start a shift? It
+  counts from when the drive began." with **Start** and **Not now**. The nudge is "Still on shift?"
+  / "You have not moved for 12 minutes." with **Keep going** and **End shift**. A nudge never ends a
+  shift by itself.
+- A problem states the fact, then the way forward: "Your shift is not recording." / "Open MileWage
+  to keep recording it."
+- Counts use `<plurals>`, never "minute(s)".
 
 ## Accessibility that is part of the style
 
 - Every control has a real name; tests find things by role and name, so a missing name fails a test.
 - Charts carry a table a screen reader always gets, and a visible toggle for it.
 - Codes meant to be read aloud (a 6-digit link code) are read digit by digit.
-- Focus rings use `ring` (lane yellow); do not remove them.
+- Focus rings are Material's: 3 px in `ring` (the scheme's secondary) on the web, the platform's own on Android. Never remove them.
 - Dialogs trap focus and return it; a dialog showing a secret does not close on an outside click.
-- Contrast: text 4.5:1, meaningful marks 3:1, checked in both web themes.
+- Contrast: text 4.5:1 and meaningful marks 3:1, in light and dark (the scheme is held to it by
+  `apps/web/test/m3-contrast.test.ts`). Android targets are at least 48 dp, and every icon-only
+  button has a `contentDescription` (`stringResource`).

@@ -1,143 +1,163 @@
 # Components
 
-Two layers. shadcn/ui gives the controls; the repo's own primitives give pages and screens their
-shape. Compose from the primitives; reach for raw shadcn only inside a primitive or when none fits,
-and then consider adding a primitive instead of repeating markup.
+There are two layers on each platform. Material components give the controls. MileWage's own
+primitives give pages and screens their shape. Compose from the primitives. Use a raw component
+only inside a primitive or when none fits, and then consider adding a primitive instead of
+repeating markup.
 
-## Web: shadcn/ui installed
+## Web: the component layer (`apps/web/src/components/ui/`)
 
-`alert badge breadcrumb button calendar card checkbox dialog dropdown-menu input label popover
-radio-group select separator sheet sidebar skeleton switch table tabs tooltip` in
-`apps/web/src/components/ui/`. Add another with the shadcn CLI, never by hand, and leave these
-files unedited (coverage excludes them for the same reason). Imports use the `@/` alias.
+These are Radix primitives in shadcn's file layout, restyled to Material 3 and owned by MileWage.
+Edit them to change the system. Import them with the `@/` alias. The variants that exist:
+
+| Component                                                                                          | Variants and notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Button`                                                                                           | `default`: Lane yellow (primary-container), the one main action. `filled`: primary, rare. `tonal` (`secondary` is an alias; prefer `tonal`): the second most important action. `elevated`. `outline`. `ghost`: Material's text button. `destructive`: error-container. `link`: inline text with a primary underline. Sizes `default` 40 px, `xs`, `sm`, `lg` 48, `icon`, `icon-xs`, `icon-sm`, `icon-lg`. An icon-only `ghost`/`outline` button turns on-surface-variant. A pill with a state layer and a ripple. |
+| `Card` (+ `CardHeader`, `CardTitle`, `CardDescription`, `CardAction`, `CardContent`, `CardFooter`) | `variant`: `filled` (default, `bg-card` = surface-container-low, no shadow), `outlined`, `elevated` (level 1), `highest` (stands out). `size="sm"` tightens the padding to 12. Medium corners.                                                                                                                                                                                                                                                                                                                    |
+| `Badge`                                                                                            | `default` (primary-container: "Default", "Next"), `secondary`, `destructive`, `outline`, `ghost`, `link`, `count` (the error-coloured number on an icon). 24 px, small corners, label-medium.                                                                                                                                                                                                                                                                                                                     |
+| `Alert`                                                                                            | `default` (surface-container-high, the icon in primary) or `destructive` (error-container). Use it for a notice inside a page, not for a form error.                                                                                                                                                                                                                                                                                                                                                              |
+| `Dialog`                                                                                           | Surface-container-high, extra-large corners, level 3, a 32 % scrim. Confirmations and short dangerous steps only.                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `DropdownMenu`                                                                                     | Surface-container, extra-small corners, level 2, 48 px rows (40 with a mouse). Item `variant="destructive"` is error; a checked item is secondary-container.                                                                                                                                                                                                                                                                                                                                                      |
+| `Popover`, `Tooltip`                                                                               | A popover is surface-container at level 2. A tooltip is inverse-surface, body-small.                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `Select`                                                                                           | Use it only through `Picker` / `SelectField`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `Tabs`                                                                                             | `default` = primary tabs (a 3 px indicator under the label), `line` = secondary tabs. Period tabs on the dashboard.                                                                                                                                                                                                                                                                                                                                                                                               |
+| `Switch`, `Checkbox`, `RadioGroup`                                                                 | Material controls. Prefer `CheckField` for a labelled checkbox in a form.                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `Table` and its parts                                                                              | A 48 px header in title-small, 52 px rows, outline-variant rules. Pages mostly use `tableClass` instead.                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `Sidebar` and its parts, `Sheet`                                                                   | The navigation drawer and rail (below). `Sheet` is the modal drawer on narrow screens.                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `Skeleton`, `Separator`, `Breadcrumb`, `Input`, `Label`, `Calendar`                                | The loading shape, an outline-variant rule, the top bar's trail, the bare input under `Field`, a label, and the grid inside `DateField`.                                                                                                                                                                                                                                                                                                                                                                          |
+| `ripple.ts`                                                                                        | `ripple`, `withRipple`: the press ripple for any custom control.                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
 ## Web: layout (`apps/web/src/ui/layout.tsx`)
 
-| Primitive   | Use it for                                                                                             |
-| ----------- | ------------------------------------------------------------------------------------------------------ |
-| `PageHeader`| The top of every page: title, one line of context, the page's actions on the right.                    |
-| `Section`   | A titled card. `label` makes it a named region for tests and screen readers; `bare` for a section inside another card. |
-| `StatCard`  | One figure with its label and an optional line under it. Dashboards and the tops of pages.             |
-| `EmptyState`| What a list says when it has nothing in it: what it is and what to do next.                            |
-| `TableBox` + `tableClass` | The bordered, scrollable box around a plain `<table>`; shadcn's table look (muted header, row rules, hover). |
-| `MoreCard` (`ui/MoreCard.tsx`) | Quieter tools folded under their names in one card (a shift's odometer, notes and export; the tax details), so a page is not a column of empty cards. |
-| `Est` (`ui/Est.tsx`) | The asterisk an estimated figure always carries ("Estimated from detected stops"). Totals never do. |
+| Primitive                                    | Use it for                                                                                                                                    |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PageHeader`                                 | The top of every page: `title`, `description`, the actions as children (at most one default button).                                          |
+| `Section`                                    | A titled filled card (`title`, `description`, `action`). `label` makes it a named region. `bare` gives no card, for a section inside one.     |
+| `StatCard`                                   | One figure (title-large, tabular) with a label-medium label and an optional `sub` line. A row of them sits in a grid.                         |
+| `EmptyState`                                 | A dashed outline-variant box: what the list is and what to do next.                                                                           |
+| `TableBox` + `tableClass`                    | The outlined, scrollable box around a plain `<table>`, with the Material data-table look: a surface-container header, 52 px rows, hover wash. |
+| `MoreCard` (`ui/MoreCard.tsx`)               | Quieter tools folded under their names in one card (`rows: MoreRow[]`), so a page is not a column of empty cards.                             |
+| `Est` (`ui/Est.tsx`)                         | The asterisk an estimated figure always carries. Totals never do.                                                                             |
+| `PageErrorBoundary` (`ui/ErrorBoundary.tsx`) | Keeps the drawer usable when a page fails and offers "Try again".                                                                             |
 
-A page file is a screen (or one panel of a screen), never a library: a helper, hook or type that
-another file needs lives in a module (`format.ts`, `days.ts`, `goals.ts`, `vehicles.ts`,
-`notifications.ts`, `pairing/`, `shift/`), and a primitive another screen needs lives in `ui/`.
+A page file is a screen (or one panel of a screen), never a library. A helper, hook or type that
+another file needs lives in a module (`format.ts`, `days.ts`, `shift/`, `pairing/`, ...). A
+primitive another screen needs lives in `ui/`. The shift page reads one record through
+`useShiftRecord(ref)` (`shift/record.ts`) and lays out from the pure `shiftView(record, settings)`
+(`shift/view.ts`). A new layout rule goes there and into `test/shiftview.test.ts`.
 
-The shift page reads one record: `useShiftRecord(ref)` (`apps/web/src/shift/record.ts`) gives the
-shift, its trips, stops, route, earnings, odometer readings and vehicle from the cached reads, and
-`view`, the pure `shiftView(record, settings)` (`shift/view.ts`) with every layout flag and header
-figure. Its panels take their part of the record as props and report nothing back up; a new
-layout rule goes into `shiftView` and its table test (`test/shiftview.test.ts`), not the page.
+## Web: forms (`apps/web/src/ui/form.tsx`, `apps/web/src/ui/chips.tsx`)
 
-Page error handling: `PageErrorBoundary` keeps the sidebar usable and offers "Try again", which
-drops the cached answers and draws the page again.
+| Primitive             | Notes                                                                                                                                                                       |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Field`               | A Material outlined text field, 48 px. The label rests inside and floats into the outline's notch. `hint` is the supporting text and the accessible description.            |
+| `SelectField`         | A labelled dropdown in the same outlined field. `name` gives a fuller accessible name that starts with the label.                                                           |
+| `Picker`              | The bare dropdown (`PickOption[]`, with an optional `icon`). `""` (none, any, all) is a normal choice. Use it inside table rows or other fields.                            |
+| `DateField`           | A button in an outlined field opening a `Calendar` (month and year dropdowns) on surface-container-high. Value `YYYY-MM-DD` or `''`. The week starts from Settings.         |
+| `TimeField`           | One outlined field holding hour, minute (and AM/PM) dropdowns. Stored as `HH:MM`, shown in Settings > Time format.                                                          |
+| `CheckField`          | A labelled checkbox as a 48 px list row. The label toggles it too.                                                                                                          |
+| `denseField`          | A class string for an unlabelled 40 px outlined input in a table row (name it with `aria-label`).                                                                           |
+| `FilterChip`          | A toggle (`aria-pressed`). 32 px. Selected, it fills secondary-container and leads with a check. A filter over a list, or a quick pick (the category chips in Add expense). |
+| `SegmentedButtons`    | One choice of two to five (`label`, `value`, `options`, `onChange`). 40 px, outlined, the chosen segment in secondary-container with a check.                               |
+| `Button`              | The form's button: `busy` disables it. The default variant is the brand action, so pass `variant` for the others.                                                           |
+| `FormError`           | The one error line under a form (`role="alert"`, error colour).                                                                                                             |
+| `Card`, `PrivacyLink` | The centred large-corner card for screens before sign-in, with the logo and the privacy link under it.                                                                      |
 
-## Web: section navigation (`apps/web/src/ui/nav.tsx`)
+Forms open inline on the page (Add expense, New vehicle, Add goal). Editing reuses the same form,
+pre-filled, with the heading changed ("Edit goal"), "Save changes", and a Cancel that resets it.
+Money fields read and show minor units through `moneyInput` and `parseMoney`. A file input is
+drawn by `index.css` as a small outlined button.
 
-| Primitive    | Use it for                                                                                              |
-| ------------ | ------------------------------------------------------------------------------------------------------- |
-| `SectionNav` | A page made of sections or pages with one URL each (Settings, Help). `label` names the navigation, `noun` starts the narrow button ("Section: Units and format", "Page: FAQ"), `groups` are `{ label, items: { to, label }[] }`. A grouped side list that stays in view where the container is wide, one menu button where it is narrow; never scrolls sideways. Put it in an `@container` grid with `@2xl:grid-cols-[200px_minmax(0,1fr)]`. |
-| `LinkRow`    | A row that leads to another page: title, one line about it, a chevron. Rows sit in `<Card className="py-0"><ul className="divide-y">` (Settings' "Elsewhere in MileWage", the Help index). |
+## Web: lists, tables, charts
 
-## Web: Help (`apps/web/src/help/`)
-
-- `HelpLink`: `<HelpLink page="how-miles-are-counted">How miles are counted</HelpLink>`. A muted
-  `CircleHelp` link (16 px icon, `text-sm font-medium text-muted-foreground`, underline on hover)
-  to `/help/<page>`. It renders nothing while the owner has Help off (Settings > Help pages), so
-  place it freely: a `Section`'s `action`, the end of a `PageHeader` description, a line above a
-  panel. The caller writes the words; say what the driver will learn ("What a new key changes"),
-  not "Learn more". `page` must be a file name in `docs/help/` without `.md` (a test checks it),
-  and the page's `module` must match the screen's.
-- Help pages: the Markdown of `docs/help/*.md` is drawn by `HelpMarkdown` with the design system's
-  classes per element, never with `prose` (`@tailwindcss/typography` brings its own greys and
-  scale): `h2` `scroll-mt-20 pt-4 text-lg font-semibold tracking-tight`, `h3` `text-base
-  font-medium`, `p` `leading-7`, lists `list-disc`/`list-decimal space-y-2 pl-5`, links `font-medium
-  text-foreground underline underline-offset-4`, inline code `rounded bg-muted px-1.5 py-0.5
-  font-mono text-[0.85em]`, code blocks `rounded-lg border bg-muted p-3 font-mono text-sm`, quotes
-  `border-l-2 pl-4 text-muted-foreground`, tables in `TableBox` with `tableClass`, rules as
-  `Separator`. No raw HTML and no images in pages. The article is `max-w-3xl space-y-4`; a page
-  with three or more `##` headings gets an "On this page" box.
-
-## Web: forms (`apps/web/src/ui/form.tsx`)
-
-| Primitive     | Notes                                                                                                 |
-| ------------- | ----------------------------------------------------------------------------------------------------- |
-| `Field`       | A labelled input; the label wraps the control (so it is the accessible name), the hint is its description. |
-| `DateField`   | The shadcn Date Picker: a button showing the day, opening a Calendar with month and year dropdowns. Value `YYYY-MM-DD` or ''. The owner chose this over typing. |
-| `TimeField`   | "HH:MM" stored 24-hour; shown in the Settings time format (12h or 24h), not the browser's.            |
-| `Picker`      | shadcn Select for one value; "" (none, any, all) is a normal choice.                                  |
-| `SelectField` | A labelled dropdown; `name` can give a fuller accessible name that starts with the label.             |
-| `FormError`   | The one error line under a form.                                                                      |
-| `Button`      | The form's button wrapper; one primary per form.                                                       |
-| `Card`        | The centred card for screens before sign-in, with `PrivacyLink` under it.                             |
-
-Forms open inline on the page (Add expense, New vehicle, Add goal). Editing reuses the same form
-pre-filled, with the heading changed ("Edit goal"), "Save changes" and a Cancel that resets to the
-defaults. Money fields show and read minor units through `moneyInput` and `parseMoney`.
-
-## Web: lists and tables
-
-- `RowMenu` (`apps/web/src/ui/RowMenu.tsx`): the "..." menu of a row, for two or more actions;
-  `name` says what the row is ("Actions for Corolla"). One action stays a plain button.
-- `SortTable` and `sortRows`: dense tables with keyboard navigation, column sort (ties keep their
-  order, nulls last) and CSV copy (`toCsv`, `csvCell`: RFC 4180, formula-looking text gets a
-  leading quote).
-- `ShowMore` (`apps/web/src/ui/ShowMore.tsx`) with `usePagedList` (`apps/web/src/api/paged.ts`):
-  one list that grows by a page; the button hides when the server has no more rows.
-- `HourBars` (`apps/web/src/ui/HourBars.tsx`): the chart pattern. CSS columns in `bg-chart-1`, the
-  busiest value labelled, a hover readout above, hour ticks every six hours in the Settings time
-  format, a table with a caption that screen readers always get and a "Show as a table" toggle for
-  everyone, and an `EmptyState` when there is nothing. Follow it for any new chart; add no chart
-  library.
-- `Qr`: a QR image. `PairingCode` (`apps/web/src/pairing/PairingCode.tsx`) is the pairing QR with its
-  links, addresses and Change address, over `usePairingSession()` (`pairing/session.ts`: `{ code,
-  state, error, busy, renew }`), which mints the code, polls for the phone with `refetchInterval`
-  and replaces a code that runs out. Devices and the setup wizard both use it; a new place that
-  pairs a phone does too.
+- `RowMenu` (`ui/RowMenu.tsx`): the ⋮ menu of a row, for two or more actions (`RowAction`: `label`,
+  `onSelect`, `icon`, `destructive`, `disabled`). Destructive items go last after a separator, in
+  error. `name` says what the row is ("Actions for Corolla"). A single action stays a plain button.
+- `SortTable` with `sortRows`, `toCsv` and `csvCell`: a dense table with keyboard navigation and
+  column sort (ties keep their order, nulls last). CSV copy follows RFC 4180, and formula-looking
+  text gets a leading quote.
+- Tables: text left, numbers right with `tabular-nums`, 52 px rows, dates through `formatDay`.
+- `ShowMore` (`ui/ShowMore.tsx`) with `usePagedList`: one list that grows by a page.
+- `HourBars` (`ui/HourBars.tsx`, also `hourLabel`) is the chart pattern. It draws CSS columns in
+  `bg-chart-1`, labels the busiest value, shows a hover readout, and puts ticks in Settings' time
+  format. A captioned table is always there for screen readers, "Show as a table" shows it to
+  everyone, and an `EmptyState` covers no data. Follow it for any new chart.
+- `Qr` (`ui/Qr.tsx`) is black on a white plate in both themes. `PairingCode`
+  (`pairing/PairingCode.tsx`) over `usePairingSession()` is the one way to show a pairing code.
 
 ## Web: states and feedback
 
-- Loading: shadcn `Skeleton` in the shape of what is coming, never a spinner alone.
-- Errors from the API are problem details (`describe`, `unwrap` in `apps/web/src/api/client.ts`);
-  show the server's sentence, never a bare code. A write made with `useChange()` already has it as
-  `error`; a page's own check goes on the same line with `setError('Enter …')`, and
-  `errorText(change, ...reads)` adds the reads' failures, for the one `FormError` under the form.
-  Use `busy` to disable the button that sent the change.
-- Dialogs (shadcn `Dialog`) are for confirmations and short dangerous steps. When a secret is on
-  screen (a recovery key) the dialog does not close on an outside click.
-- Toasts are not used on the web; messages sit in the page near what they are about.
+- Loading: a `Skeleton` in the shape of what is coming, never a spinner alone.
+- API errors are problem details (`describe`, `unwrap` in `api/client.ts`). Show the server's
+  sentence, never a bare code. A `useChange()` write already has it as `error`. A page's own check
+  goes on the same line with `setError('Enter …')`. Use `busy` to disable the button that sent it.
+- Dialog vs inline: a form is inline. A `Dialog` asks before something hard to undo ("Delete this
+  trip?", with the consequence spelled out; `ghost` Cancel, `destructive` confirm) or holds a short
+  dangerous step. A dialog showing a secret (a recovery key) does not close on an outside click.
+- There are no toasts or snackbars on the web. Messages sit in the page next to what they are
+  about (`FormError`, an `Alert`, a line of body-medium on-surface-variant text).
 
-## Phone (`apps/phone/src/ui/`)
+## Web: navigation
 
-| Primitive         | Notes                                                                                                 |
-| ----------------- | ----------------------------------------------------------------------------------------------------- |
-| `Screen`          | The frame of every screen, laid out like a web page: back button, title (`text-2xl` semibold tight) with optional description, content in a 16-padded column with 16 between cards. |
-| `SectionLabel`    | A small label above a group of cards, like the web's section headings.                                 |
-| `Rows` + `ListRow`| A card list; rows are 56 dp, accent on press, separated by a border like the web tables.               |
-| `Field`           | A labelled input with an optional hint, as the web forms lay them out.                                  |
-| `ToastProvider` / `useToast` | One toast at a time over the bottom bar; a new one replaces the old; read out by screen readers; errors and toasts with an action stay longer; one follow-up action so a message is never a dead end. |
-| `ConfirmProvider` / `useConfirm` | shadcn AlertDialog in the palette: scrim, card, title, description, two buttons. Before anything hard to undo. |
-| `Dot`             | A small dot; `pulse` breathes it to say "recording now".                                              |
-| `Logo`            | The Coin Road mark; `small` under 24 dp.                                                               |
-| `ErrorBoundary`   | A crash while drawing shows a way back; the tracker keeps recording natively.                          |
+- The app shell (`App.tsx`) uses `Sidebar collapsible="icon"`. It is a navigation drawer on
+  surface-container-low with grouped destinations (title-small group labels). The current
+  destination is a secondary-container pill with its icon `filled`. The drawer collapses to a rail
+  on desktop and is a modal `Sheet` on phones. The top bar holds the `SidebarTrigger`, the page
+  name, the theme toggle and the notifications bell with a `count` badge.
+- `SectionNav` (`ui/nav.tsx`): a page made of sections with one URL each (Settings, Help). It is a
+  sticky grouped list where the container is wide and one outlined menu button where it is narrow.
+  Put it in an `@container` grid with `@2xl:grid-cols-[200px_minmax(0,1fr)]`.
+- `LinkRow`: a two-line list item leading to another page (body-large title, body-medium line, a
+  chevron). Rows sit in `<Card className="py-0"><ul className="divide-y">`.
+- `HelpLink` (`help/HelpLink.tsx`): `<HelpLink page="how-miles-are-counted">How miles are
+counted</HelpLink>`, a label-large link with the help icon. It renders nothing while the owner
+  has Help off. `page` is a file in `docs/help/` without `.md`. Help articles are drawn by
+  `HelpMarkdown` with the system's classes per element, never `prose`.
 
-Home shows a checklist of what the phone still needs, a banner for unsynced data, a wrong server or
-a restored server, and the running shift's distance; the shift notification carries the live
-distance. New phone UI should fit into those, not add a second banner system.
+## Web: the map (`apps/web/src/map/`)
 
-## A page, in order
+The colours come from `m3-scheme.json` (`map/style.ts`): the canvas is surface-container-low, the
+route is Lane yellow (primary-container) over an on-primary-fixed casing, in both themes. MapLibre's
+controls are restyled in `index.css` onto surface-container with large or medium corners and
+shadows at levels 1 and 2. The replay slider is `ElasticSlider` (`components/elastic-slider.tsx`).
+A map always sits inside a `Section`. The coordinates and timeline beside it are the text
+alternative.
+
+## Android: house composables (`apps/android/app/src/main/kotlin/app/milewage/phone/ui/components/`)
+
+| Composable                                              | Notes                                                                                                                                                                                                                                                    |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Screen`                                                | `title`, `onBack` (adds the back arrow), `actions`, and lazy-list `content`. A Material `TopAppBar` that takes surface-container once content scrolls under it. Padding and gaps are `ScreenPadding` (16 dp).                                            |
+| `Rows` + `ListRow` + `RowDivider`                       | A card (surface-container-low) of Material `ListItem`s, at least 56 dp. `ListRow(headline, supporting, leading, trailing, onClick)`: trailing holds a switch, a value or a chevron. Tappable rows ripple. `Rows(label = …)` puts a `SectionLabel` above. |
+| `SectionLabel`                                          | A group's name in title-small, primary colour, marked as a heading for TalkBack.                                                                                                                                                                         |
+| `StatTile`                                              | `label`, `value`, `caption`, `tone` (`StatTone.NEUTRAL`, `EARNED`, `SPENT`: money only). The figure is headline-small and tabular. Read out as one sentence.                                                                                             |
+| `EmptyState`                                            | `title`, `body`, an optional `icon` and at most one action.                                                                                                                                                                                              |
+| `ConfirmHost` + `rememberConfirmState()`                | `confirm.ask(ConfirmRequest(title, text, confirmLabel, destructive, onConfirm))`, shown as a Material `AlertDialog` with text buttons.                                                                                                                   |
+| `Snackbars` / `LocalSnackbars` / `MileWageSnackbarHost` | `LocalSnackbars.current.show(message, actionLabel, onAction)` from a coroutine. One host in `AppShell`. A message with an action stays longer.                                                                                                           |
+
+Navigation (`ui/nav/`): `AppShell` shows first run (`WelcomeRoute`) until the phone is paired, then
+the main graph under a Material `NavigationBar` with Home, Shifts and Settings. Each tab keeps its
+state. `ShiftDetailRoute` opens over Shifts with a back arrow. Routes are type-safe
+`@Serializable` objects in `Routes.kt`.
+
+The screens are in progress. The committed `ui/screens/Screens.kt` holds placeholders that
+exercise these parts. New screens follow the steps in SKILL.md and should fit Home's existing
+places (the running shift, what the phone still needs, unsent data) rather than add a second
+banner system.
+
+## A web page, in order
 
 ```tsx
-<PageHeader title="Vehicles" description="The cars and bikes you drive for work.">
-  <Button onClick={…}>Add vehicle</Button>
+<PageHeader title="Vehicles" description="What you work with.">
+  <Button onClick={…}><AddIcon />Add vehicle</Button>
 </PageHeader>
-<Section title="New vehicle">…inline form…</Section>
+<Section title="New vehicle">…inline form: Field, SelectField, Button, Button variant="ghost"…</Section>
 <Section label="Your vehicles" title="Your vehicles">
-  {rows.length === 0 ? <EmptyState>…</EmptyState> : <TableBox><table className={tableClass}>…</table></TableBox>}
+  {rows.length === 0 ? (
+    <EmptyState>…</EmptyState>
+  ) : (
+    <TableBox><table className={tableClass}>…</table></TableBox>
+  )}
   <ShowMore more={more} busy={loadingMore} onClick={showMore} />
 </Section>
 ```
