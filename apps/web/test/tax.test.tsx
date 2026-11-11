@@ -118,7 +118,7 @@ describe('tax screen (module tax)', () => {
     );
     expect(items.map((i) => i.textContent)).toEqual([
       `${formatDay(`${YEAR - 1}-12-15`, 'en-CA')}Instalment 4 (past)`,
-      `${day}Instalment 1Next`,
+      expect.stringMatching(new RegExp(`^${day}Instalment 1Nextin \\d+ days$`)),
       `${formatDay(`${YEAR + 1}-04-30`, 'en-CA')}Balance due`,
     ]);
     expect(items[0]!.className).toMatch(/text-muted-foreground/);
@@ -235,7 +235,8 @@ describe('tax screen (module tax)', () => {
     const s = open();
     fireEvent.change(await screen.findByLabelText('Amount'), { target: { value: '50' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add to jar' }));
-    await screen.findByText('$50.00 of $1,750.00');
+    const jar = screen.getByRole('region', { name: 'Tax jar' });
+    await waitFor(() => expect(jar.textContent).toContain('$50.00of $1,750.00$1,700.00 to go'));
     expect(screen.getByRole('progressbar', { name: 'Tax jar' }).getAttribute('aria-valuenow')).toBe(
       '3',
     );

@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { keepPreviousData } from '@tanstack/react-query';
-import { ChevronLeftIcon, ChevronRightIcon, InfoIcon } from '@/ui/icons';
+import { CalendarIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, InfoIcon } from '@/ui/icons';
 import { PageHeader, Section } from '../ui/layout';
-import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { errorText, useApiQuery, useChange } from '../api/query';
@@ -11,6 +10,7 @@ import { formatMoney, parseMoney } from '../format';
 import { useSettings } from '../session';
 import { Button, CheckField, Field, FormError } from '../ui/form';
 import { MoreCard } from '../ui/MoreCard';
+import { TaxJar } from '../ui/TaxJar';
 import { usePlatformOf } from '../platforms/usePlatforms';
 
 /** A line of the working: label, figure, and whether it is muted ($0.00 or not estimated). */
@@ -21,8 +21,9 @@ const TOTAL = 'Set aside in total';
 /**
  * Tax Center (module `tax`, 18 section 7). An estimate to bring to an accountant: it shows its
  * working, says when the rates are unverified, files nothing, and shows the mileage deduction as
- * a deduction, never as cash. Summary first (what to set aside, the next date, the jar); the
- * working, the settings and the jar's entries are folded below it (progressive disclosure).
+ * a deduction, never as cash. Three cards first: what to set aside with the next date, the tax
+ * jar as a jar that fills, and the deadlines as a list; the working, the settings and the jar's
+ * entries are folded below them (progressive disclosure).
  */
 export function TaxPage() {
   const { currency, timezone, country } = useSettings();
@@ -70,9 +71,19 @@ export function TaxPage() {
     (a.date ?? '').localeCompare(b.date ?? ''),
   );
   const next = deadlines.find((d) => (d.date ?? '') >= today);
-  const filled = jar?.target_cents
-    ? Math.min(100, (jar.balance_cents / jar.target_cents) * 100)
-    : 0;
+  const daysTo = (iso: string | undefined) =>
+    Math.round((Date.parse(iso ?? today) - Date.parse(today)) / 86_400_000);
+  // One quiet note instead of three banners: the server's notices (unverified rates for this
+  // country, an estimate and not advice, nothing filed) together, by the figure.
+  const note = (
+    <p
+      role="note"
+      className="flex gap-3 rounded-medium bg-surface-container-high p-3 text-body-medium text-on-surface-variant"
+    >
+      <InfoIcon className="size-5 shrink-0" />
+      <span>{report.notices.join(' ')}</span>
+    </p>
+  );
 
   // Every figure the API returns stays here; a $0.00 or not-estimated line is muted, not hidden.
   const working: Line[] =
@@ -234,7 +245,7 @@ export function TaxPage() {
         <div role="group" aria-label="Tax year" className="flex items-center gap-1">
           <UiButton
             type="button"
-            variant="outline"
+            variant="ghost"
             size="icon"
             aria-label="Previous tax year"
             disabled={year <= 2000}
@@ -242,12 +253,12 @@ export function TaxPage() {
           >
             <ChevronLeftIcon />
           </UiButton>
-          <span aria-live="polite" className="w-14 text-center font-medium tabular-nums">
+          <span aria-live="polite" className="w-16 text-center text-title-large tabular-nums">
             {year}
           </span>
           <UiButton
             type="button"
-            variant="outline"
+            variant="ghost"
             size="icon"
             aria-label="Next tax year"
             disabled={year >= thisYear + 1}
@@ -259,106 +270,154 @@ export function TaxPage() {
       </PageHeader>
       <FormError message={error} />
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <Section
-          label={report.supported ? 'Estimate' : 'Tax jar'}
-          title={report.supported ? `Set aside for ${year}` : `Tax jar for ${year}`}
-        >
-          {est ? (
-            <div className="space-y-1">
-              <p className="text-display-small font-medium tabular-nums">
-                {money(est.total_set_aside_cents)}
-              </p>
-              {next ? (
-                <p className="text-body-medium text-muted-foreground">
-                  Next: <span className="font-medium text-foreground">{next.label}</span>,{' '}
-                  {day(next.date)}
-                  {next.kind === 'instalment' ? `, ${money(est.instalment_cents)}` : ''}
+      <div className="grid items-stretch gap-6 md:grid-cols-2 xl:grid-cols-3">
+        {report.supported ? (
+          <Section
+            label="Estimate"
+            title={`Set aside for ${year}`}
+            className="md:col-span-2 xl:col-span-1"
+          >
+            {est ? (
+              <>
+                <p className="text-display-medium font-medium tabular-nums">
+                  {money(est.total_set_aside_cents)}
                 </p>
-              ) : null}
-            </div>
-          ) : null}
-          {/* One quiet note instead of three banners: the server's notices (unverified rates for
-              this country, an estimate and not advice, nothing filed) together, by the figure. */}
-          <p role="note" className="flex gap-2 text-body-medium text-muted-foreground">
-            <InfoIcon className="size-5 shrink-0" />
-            <span>{report.notices.join(' ')}</span>
-          </p>
-          {jar ? (
-            <div className="space-y-3 border-t pt-4">
-              <p className="text-body-medium">
-                <span className="font-medium">Tax jar:</span>{' '}
-                <span className="tabular-nums">
+                {next ? (
+                  <p className="flex w-fit items-center gap-2 rounded-small bg-secondary-container px-3 py-1.5 text-body-medium text-on-secondary-container">
+                    <CalendarIcon className="size-[18px] shrink-0" />
+                    <span>
+                      Next: <span className="font-medium">{next.label}</span>, {day(next.date)}
+                      {next.kind === 'instalment' ? `, ${money(est.instalment_cents)}` : ''}
+                    </span>
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <div className="space-y-1">
+                <p className="text-display-medium font-medium text-on-surface-variant">—</p>
+                <p className="text-title-small text-on-surface">No estimate yet</p>
+              </div>
+            )}
+            {note}
+          </Section>
+        ) : (
+          <Section title={`Tax for ${year}`} className="md:col-span-2 xl:col-span-1">
+            {note}
+          </Section>
+        )}
+
+        {jar ? (
+          <Section
+            label="Tax jar"
+            title="Tax jar"
+            description="Your own record of what you set aside; no money moves."
+          >
+            <div className="flex items-center gap-5">
+              <TaxJar
+                label="Tax jar"
+                balanceCents={jar.balance_cents}
+                targetCents={jar.target_cents}
+              />
+              <div className="min-w-0 space-y-1">
+                <p className="text-headline-medium font-medium tabular-nums">
                   {money(jar.balance_cents)}
-                  {jar.target_cents === null ? '' : ` of ${money(jar.target_cents)}`}
-                </span>
-              </p>
-              {jar.target_cents ? (
-                <div
-                  role="progressbar"
-                  aria-label="Tax jar"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={Math.round(filled)}
-                  className="h-2 overflow-hidden rounded-full bg-secondary-container"
-                >
-                  <div className="h-2 rounded-full bg-primary" style={{ width: `${filled}%` }} />
-                </div>
-              ) : null}
-              <form
-                className="flex items-end gap-2"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void addJar(parseMoney(amount, currency));
-                  setAmount('');
-                }}
-              >
-                <div className="w-36 min-w-0">
-                  <Field
-                    label="Amount"
-                    inputMode="decimal"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  busy={
-                    !Number.isFinite(parseMoney(amount, currency)) ||
-                    parseMoney(amount, currency) === 0
-                  }
-                >
-                  Add to jar
-                </Button>
-              </form>
-              <p className="text-body-small text-muted-foreground">
-                Your own record of what you set aside; no money moves.
-              </p>
+                </p>
+                <p className="text-body-medium text-on-surface-variant tabular-nums">
+                  {jar.target_cents === null ? 'set aside so far' : `of ${money(jar.target_cents)}`}
+                </p>
+                {jar.target_cents ? (
+                  <p className="text-body-small text-on-surface-variant tabular-nums">
+                    {jar.balance_cents >= jar.target_cents
+                      ? 'The jar is full'
+                      : `${money(jar.target_cents - jar.balance_cents)} to go`}
+                  </p>
+                ) : null}
+              </div>
             </div>
-          ) : null}
-        </Section>
+            <form
+              className="flex items-center gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void addJar(parseMoney(amount, currency));
+                setAmount('');
+              }}
+            >
+              <div className="min-w-0 flex-1">
+                <Field
+                  label="Amount"
+                  inputMode="decimal"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
+              </div>
+              <Button
+                type="submit"
+                busy={
+                  !Number.isFinite(parseMoney(amount, currency)) ||
+                  parseMoney(amount, currency) === 0
+                }
+              >
+                Add to jar
+              </Button>
+            </form>
+          </Section>
+        ) : null}
 
         {deadlines.length > 0 || report.slip_alerts.length > 0 ? (
           <Section label="Deadlines" title="Deadlines">
-            <ul className="divide-y divide-outline-variant text-body-medium">
+            {/* A Material list: a leading mark, the deadline over its date, "Next" trailing. */}
+            <ul className="-mx-2">
               {deadlines.map((d) => {
                 const past = (d.date ?? '') < today;
+                const isNext = d === next;
+                const left = daysTo(d.date);
                 return (
                   <li
                     key={d.date}
                     className={cn(
-                      'flex items-center gap-3 py-2 first:pt-0 last:pb-0',
+                      'flex min-h-14 items-center gap-3 rounded-medium px-2 py-2',
                       past && 'text-muted-foreground',
+                      isNext && 'bg-secondary-container text-on-secondary-container',
                     )}
                   >
-                    <time dateTime={d.date} className="w-28 shrink-0 tabular-nums">
-                      {day(d.date)}
-                    </time>
-                    <span className="min-w-0 flex-1">
-                      {d.label}
-                      {past ? <span className="sr-only"> (past)</span> : null}
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        'flex size-10 shrink-0 items-center justify-center rounded-full',
+                        isNext
+                          ? 'bg-primary text-on-primary'
+                          : 'bg-surface-container-high text-on-surface-variant',
+                      )}
+                    >
+                      {past ? (
+                        <CheckIcon className="size-5" />
+                      ) : (
+                        <CalendarIcon className="size-5" />
+                      )}
                     </span>
-                    {d === next ? <Badge variant="secondary">Next</Badge> : null}
+                    <span className="flex min-w-0 flex-1 flex-col-reverse">
+                      <time
+                        dateTime={d.date}
+                        className={cn(
+                          'text-body-medium tabular-nums',
+                          !isNext && 'text-on-surface-variant',
+                        )}
+                      >
+                        {day(d.date)}
+                      </time>
+                      <span className="text-body-large">
+                        {d.label}
+                        {past ? <span className="sr-only"> (past)</span> : null}
+                      </span>
+                    </span>
+                    {isNext ? (
+                      <span className="shrink-0 text-right">
+                        <span className="block text-label-large">Next</span>
+                        <span aria-hidden="true" className="block text-body-small tabular-nums">
+                          {left === 0 ? 'today' : `in ${left} ${left === 1 ? 'day' : 'days'}`}
+                        </span>
+                      </span>
+                    ) : null}
                   </li>
                 );
               })}
