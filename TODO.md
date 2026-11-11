@@ -71,10 +71,14 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
       output instead of "HTTPS Certificates"; alone it passes 12 of 12 and the files have not changed
       since H4b. Probably two cases sharing the fake host's state when vitest runs files in parallel;
       give each case its own fake-host directory.
-- [ ] **Look at Help in a browser** (DG3, 2026-11-09): light and dark, 360 px wide, keyboard focus
-      through the side list, a long page's anchors, Settings > Help pages off and on. No browser was
-      available to the builder. Then decide on more Help links (Tax, Expenses, Backups, Settings >
-      Tracking); the pages exist.
+- [x] **Look at Help in a browser** (DG3, 2026-11-09). Done 2026-11-11 in headless Chromium: every
+      page at 1280 and 360 px (a title, no sideways scroll, every anchor and cross-page link lands),
+      light and dark, the page menu at 360 px, Tab through the side list with a focus ring on each
+      link, an unknown page, and Settings > Help pages off (Help leaves the menu and its address
+      opens the Dashboard) and on. One fix came out of it: the app shell had a `<main>` inside a
+      `<main>`. Not checked: a real phone browser and a screen reader.
+- [ ] **More Help links: owner to decide** (DG3). Tax, Expenses, Backups and Settings > Tracking
+      have guides but no link to them from their pages.
 - [ ] **Great Britain tax year** (AR4, 2026-11-09). Only the mileage rate tier follows 6 April; the
       deduction method, double-counted expenses, the tax report, exports, analytics set-aside, goals
       and the odometer year check use the calendar year. Decide whether GB figures should follow the
