@@ -67,7 +67,7 @@ function open(
     devices?: object[];
     platforms?: object[];
     shifts?: object[];
-    notifications?: object[];
+    status?: object;
     kept?: Schemas['SetupStep'][];
   },
   modules: object = {},
@@ -88,13 +88,36 @@ function open(
       'GET /devices': () => ({ body: world.devices ?? [] }),
       'GET /platforms': () => ({ body: world.platforms ?? [] }),
       'GET /shifts': () => ({ body: { items: world.shifts ?? [], next_cursor: null } }),
-      'GET /notifications': () => ({
-        body: { items: world.notifications ?? [], next_cursor: null, unread_count: 0 },
-      }),
+      'GET /system/status': () => ({ body: world.status ?? systemStatus() }),
     },
     '/dashboard',
   );
 }
+
+const HOUR = 3_600_000;
+const NOW = Date.parse('2027-01-15T15:00:00Z');
+const systemStatus = (over: object = {}) => ({
+  app_version: '0.2.0',
+  schema_version: 40,
+  sqlite_version: '3.52.0',
+  db_bytes: 4_000_000,
+  wal_bytes: 0,
+  disk_free_bytes: 50_000_000_000,
+  disk_state: 'ok',
+  last_backup: {
+    id: 1,
+    created_at: NOW - 12 * HOUR,
+    size_bytes: 1,
+    sha256: 'ab',
+    integrity_ok: true,
+    trigger: 'nightly',
+  },
+  last_backup_failure: null,
+  offsite: { last_download_at: null, synced_elsewhere_at: null, reminder_due: false },
+  paired_device_count: 1,
+  mode: 'normal',
+  ...over,
+});
 
 const shift = (id: number, review: boolean) => ({
   id,
@@ -112,19 +135,13 @@ const shift = (id: number, review: boolean) => ({
 });
 
 describe('dashboard checklist and goal ring (18 section 13)', () => {
-  it('notices: shifts to review in the last 30 days and a backup problem, each with a link', async () => {
+  it('notices: shifts to review in the last 30 days and an overdue backup, each with a link', async () => {
     const s = open({
       shifts: [shift(1, true), shift(2, false), shift(3, true)],
-      notifications: [
-        {
-          id: 1,
-          kind: 'backup_overdue',
-          body_key: 'backup.overdue',
-          ref: '',
-          created_at: 1,
-          read_at: null,
-        },
-      ],
+      // The newest verified backup is 40 hours old: more than a day and a half.
+      status: systemStatus({
+        last_backup: { ...systemStatus().last_backup, created_at: NOW - 40 * HOUR },
+      }),
     });
     const review = (await screen.findByText(/2 shifts from the last 30 days have checks/)).closest(
       '[role="note"]',
@@ -144,9 +161,30 @@ describe('dashboard checklist and goal ring (18 section 13)', () => {
       s.calls.find((c) => c.path === '/shifts' && c.query.includes('from=2026-12-17'))!.query,
     ).toContain('to=2027-01-15');
     cleanup();
-    open({ shifts: [shift(2, false)] }, { notifications: false });
+    // A backup from 12 hours ago and nothing to review: no notice.
+    open({ shifts: [shift(2, false)] });
     await screen.findByRole('group', { name: 'Finish setting up' });
-    expect(screen.queryByText(/checks to review|No successful backup/)).toBeNull();
+    expect(screen.queryByText(/checks to review|No successful backup|backup failed/)).toBeNull();
+  });
+
+  it('a failed last backup shows as a notice with its time and a link to Backups', async () => {
+    open({
+      status: systemStatus({
+        // A good backup 12 hours ago, then a run that failed (22:00 in Toronto).
+        last_backup_failure: {
+          at: Date.parse('2027-01-15T03:00:00Z'),
+          message: 'Not enough free disk space for a backup.',
+        },
+      }),
+    });
+    const note = (
+      await screen.findByText(/The last backup failed on Jan 14, 2027, 22:00\. Older backups are kept\./)
+    ).closest('[role="note"]') as HTMLElement;
+    expect(within(note).getByRole('link', { name: 'Open Backups' }).getAttribute('href')).toBe(
+      '/backups',
+    );
+    // One notice for the backup, not the overdue one as well.
+    expect(screen.queryByText(/No successful backup/)).toBeNull();
   });
 
   it('wide: setup and goal sit in a side column after the hero and the shifts; narrow: setup first', async () => {
@@ -275,7 +313,7 @@ describe('dashboard checklist and goal ring (18 section 13)', () => {
   it('shows the first active goal as the ring, and nothing without a goal or with the module off', async () => {
     open({ vehicles: [vehicle], goals: [goal({ id: 2, label: 'Paused', active: false }), goal()] });
     const ring = await screen.findByRole('group', { name: 'Goal' });
-    expect(ring.textContent).toMatch(/Weekly goal.*Weekly pay.*50%.*\$250\.00 of \$500\.00/);
+    expect(ring.textContent).toMatch(/50%.*Weekly goal.*Weekly pay.*\$250\.00 of \$500\.00/);
     expect(within(ring).getByRole('progressbar').getAttribute('aria-valuenow')).toBe('50');
     expect(within(ring).getByRole('link', { name: 'Open Goals' }).getAttribute('href')).toBe(
       '/goals',

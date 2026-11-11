@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ProgressRing } from '../ui/visuals';
 import type { ReactNode } from 'react';
 import {
   BackupsIcon,
@@ -21,7 +22,7 @@ import { levelWord, useCountries } from '../countries';
 import { addDays } from '../days';
 import { settingsPatch, useSettings } from '../session';
 import { valueText } from '../goals';
-import { messageOf } from '../notifications';
+import { formatDateTime } from '../format';
 import { reviewCount } from '../shift/view';
 
 const PERIOD_WORD: Record<string, string> = {
@@ -46,35 +47,32 @@ export function GoalRing() {
   return (
     <Card role="group" aria-label="Goal">
       <CardContent className="space-y-3">
-        <div className="flex items-start justify-between gap-3">
+        {/* The goal as a ring that fills, green with a tick once it is reached. */}
+        <div className="flex items-center gap-4">
+          <div
+            role="progressbar"
+            aria-label={`${goal.label} progress`}
+            aria-valuenow={pct ?? undefined}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            className="shrink-0"
+          >
+            <ProgressRing value={pct ?? 0} size={84} done={pct !== null && pct >= 100}>
+              {pct === null ? '—' : `${pct}%`}
+            </ProgressRing>
+          </div>
           <div className="min-w-0 space-y-0.5">
             <p className="text-label-medium text-on-surface-variant">
               {PERIOD_WORD[goal.period] ?? 'Goal'}
             </p>
             <h2 className="truncate text-title-medium">{goal.label}</h2>
+            <p className="text-body-medium text-muted-foreground tabular-nums">
+              {p.value === null
+                ? (p.note ?? 'Progress unknown')
+                : `${text(p.value)} of ${text(p.target)}${p.estimated ? ' (estimated)' : ''}`}
+            </p>
           </div>
-          <p className="text-headline-small font-medium tabular-nums">
-            {pct === null ? '—' : `${pct}%`}
-          </p>
         </div>
-        <div
-          role="progressbar"
-          aria-label={`${goal.label} progress`}
-          aria-valuenow={pct ?? undefined}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          className="h-2 overflow-hidden rounded-full bg-secondary-container"
-        >
-          <div
-            className="h-2 rounded-full bg-primary"
-            style={{ width: `${Math.min(100, pct ?? 0)}%` }}
-          />
-        </div>
-        <p className="text-body-medium text-muted-foreground tabular-nums">
-          {p.value === null
-            ? (p.note ?? 'Progress unknown')
-            : `${text(p.value)} of ${text(p.target)}${p.estimated ? ' (estimated)' : ''}`}
-        </p>
         <div className="flex justify-end">
           <Link to="/goals" className={cn(linkClass, 'text-label-large')}>
             Open Goals
@@ -324,35 +322,44 @@ export function SetupChecklist() {
   );
 }
 
-function Notice({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+function Notice({
+  icon,
+  children,
+  variant,
+}: {
+  icon: ReactNode;
+  children: ReactNode;
+  variant?: 'destructive';
+}) {
   return (
-    <Alert role="note">
+    <Alert role="note" variant={variant}>
       {icon}
-      <AlertDescription className="text-foreground">{children}</AlertDescription>
+      <AlertDescription className={variant ? undefined : 'text-foreground'}>
+        {children}
+      </AlertDescription>
     </Alert>
   );
 }
 
+/** No verified backup for this long is overdue: the nightly run has been missed at least once. */
+const BACKUP_OVERDUE_MS = 36 * 3_600_000;
+
 /**
  * One-line notices under the greeting (Comma's banners), each with where to act: the region
  * prompt (owner decision Q4, plan 21), shifts of the last 30 days with checks to review, and a
- * failed or overdue backup from the notifications module. Unreadable answers show nothing.
+ * failed or overdue backup from the system status. Unreadable answers show nothing.
  */
-export function Notices({ today }: { today: string }) {
-  const { country, region, modules } = useSettings();
+export function Notices({ today, now }: { today: string; now: number }) {
+  const { country, region, timezone, time_format: tf } = useSettings();
   const c = useCountries().find((x) => x.code === country);
   const from = addDays(today, -29);
   const shifts = useApiQuery('/shifts', { params: { query: { from, to: today, limit: 200 } } });
   const review = shifts.data?.items.filter((s) => reviewCount(s) > 0).length ?? 0;
-  const unread = useApiQuery(
-    '/notifications',
-    { params: { query: { unread: true, limit: 50 } } },
-    { enabled: modules.notifications },
-  ).data;
-  const failed = modules.notifications
-    ? unread?.items.find((i) => i.kind === 'backup_failed' || i.kind === 'backup_overdue')
-    : undefined;
-  const backup = failed ? messageOf(failed) : null;
+  const status = useApiQuery('/system/status').data;
+  // The last run failed and none has succeeded since; else the newest verified backup is old.
+  const failed = status?.last_backup_failure ?? null;
+  const last = status?.last_backup ?? null;
+  const overdue = !failed && last !== null && now - last.created_at > BACKUP_OVERDUE_MS;
   const word = c?.regional_rules && !region ? levelWord(c).toLowerCase() : null;
   return (
     <>
@@ -373,9 +380,17 @@ export function Notices({ today }: { today: string }) {
           </Link>
         </Notice>
       ) : null}
-      {backup ? (
+      {failed ? (
+        <Notice icon={<BackupsIcon />} variant="destructive">
+          The last backup failed on {formatDateTime(failed.at, timezone, tf)}. Older backups are
+          kept.{' '}
+          <Link to="/backups" className={linkClass}>
+            Open Backups
+          </Link>
+        </Notice>
+      ) : overdue ? (
         <Notice icon={<BackupsIcon />}>
-          {backup}{' '}
+          No successful backup in the last day and a half.{' '}
           <Link to="/backups" className={linkClass}>
             Open Backups
           </Link>

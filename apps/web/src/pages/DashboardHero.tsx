@@ -1,4 +1,8 @@
 import type { ReactNode } from 'react';
+import { IconTile } from '../ui/visuals';
+import type { TileTone } from '../ui/visuals';
+import { PaymentsIcon, RouteIcon, TaxIcon, TimeIcon } from '@/ui/icons';
+import type { IconComponent } from '@/ui/icons';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -50,16 +54,32 @@ function missingEarnings(s: Settings): { value: string; why: string } {
   return { value: 'Unavailable', why: 'Earnings are switched off on this server.' };
 }
 
-function Tile({ label, value, note }: { label: string; value: ReactNode; note?: ReactNode }) {
+function Tile({
+  label,
+  value,
+  note,
+  icon,
+  tone,
+}: {
+  label: string;
+  value: ReactNode;
+  note?: ReactNode;
+  icon: IconComponent;
+  tone: TileTone;
+}) {
   return (
     <Card size="sm" role="group" aria-label={label}>
-      <CardContent className="space-y-0.5">
-        {/* Three tiles share a phone's width: the figure steps down a size there, unbroken. */}
-        <p className="text-title-medium font-medium whitespace-nowrap tabular-nums sm:text-title-large">
-          {value}
-        </p>
-        <p className="text-body-small text-on-surface-variant">{label}</p>
-        {note ? <p className="text-body-small text-on-surface-variant">{note}</p> : null}
+      <CardContent className="flex items-center gap-3">
+        {/* Three tiles share a phone's width, so the picture waits for a wider screen. */}
+        <IconTile icon={icon} tone={tone} className="hidden sm:flex" />
+        <div className="min-w-0 space-y-0.5">
+          {/* The figure steps down a size on a phone, unbroken. */}
+          <p className="text-title-medium font-medium whitespace-nowrap tabular-nums sm:text-title-large">
+            {value}
+          </p>
+          <p className="text-body-small text-on-surface-variant">{label}</p>
+          {note ? <p className="text-body-small text-on-surface-variant">{note}</p> : null}
+        </div>
       </CardContent>
     </Card>
   );
@@ -149,9 +169,11 @@ function PeriodFigures({
         </CardContent>
       </Card>
       <div className="grid grid-cols-3 gap-3">
-        <Tile label="Shift time" value={`${summary.hours.toFixed(1)} h`} />
-        <Tile label="Business distance" value={business} />
+        <Tile icon={TimeIcon} tone={0} label="Shift time" value={`${summary.hours.toFixed(1)} h`} />
+        <Tile icon={RouteIcon} tone={1} label="Business distance" value={business} />
         <Tile
+          icon={PaymentsIcon}
+          tone={2}
           label="Per hour"
           value={
             summary.hourly_earnings_cents === null ? '—' : money(summary.hourly_earnings_cents)
@@ -167,22 +189,25 @@ function PeriodFigures({
         </p>
       ) : null}
       {summary.deduction_cents !== null && summary.deduction_cents > 0 ? (
-        <Card size="sm" variant="outlined" role="note" aria-label={deduction}>
-          <CardContent className="text-body-medium text-muted-foreground">
-            Estimated {deduction.toLowerCase()}:{' '}
-            <span className="font-medium text-foreground tabular-nums">
-              {money(summary.deduction_cents)}
-            </span>{' '}
-            on {business} of business driving. It lowers your taxable income; it is not money paid
-            to you.{' '}
-            {settings.modules.tax ? (
-              <Link
-                to="/tax"
-                className="text-foreground underline decoration-primary decoration-2 underline-offset-4 hover:decoration-[3px]"
-              >
-                Open Tax
-              </Link>
-            ) : null}
+        <Card size="sm" role="note" aria-label={deduction}>
+          <CardContent className="flex items-center gap-3 text-body-medium text-muted-foreground">
+            <IconTile icon={TaxIcon} tone="selected" />
+            <p>
+              Estimated {deduction.toLowerCase()}:{' '}
+              <span className="font-medium text-foreground tabular-nums">
+                {money(summary.deduction_cents)}
+              </span>{' '}
+              on {business} of business driving. It lowers your taxable income; it is not money paid
+              to you.{' '}
+              {settings.modules.tax ? (
+                <Link
+                  to="/tax"
+                  className="text-foreground underline decoration-primary decoration-2 underline-offset-4 hover:decoration-[3px]"
+                >
+                  Open Tax
+                </Link>
+              ) : null}
+            </p>
           </CardContent>
         </Card>
       ) : null}

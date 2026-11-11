@@ -38,11 +38,24 @@ export function Comparison({
     <p
       data-testid="comparison"
       className={cn(
-        'flex items-start gap-1 text-body-medium text-on-surface-variant tabular-nums',
+        'flex items-start gap-1.5 text-body-medium text-on-surface-variant tabular-nums',
         className,
       )}
     >
-      {Icon ? <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-on-surface" /> : null}
+      {/* The arrow in a small disc, green for more and orange for less; the words say it too. */}
+      {Icon ? (
+        <span
+          aria-hidden
+          className={cn(
+            'flex size-5 shrink-0 items-center justify-center rounded-full',
+            d > 0
+              ? 'bg-earned-container text-on-earned-container'
+              : 'bg-spent-container text-on-spent-container',
+          )}
+        >
+          <Icon className="size-3.5" />
+        </span>
+      ) : null}
       <span>
         {d === 0 ? (
           <>The same as {words}</>

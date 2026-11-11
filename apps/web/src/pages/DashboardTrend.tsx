@@ -14,7 +14,7 @@ import {
 } from '../format';
 import { PlatformName } from '../platforms/PlatformBadge';
 import { usePlatformOf } from '../platforms/usePlatforms';
-import { businessOf, comparedWith, slotNames, useSeries } from '../series';
+import { businessOf, comparedWith, slotNames, usePlatformColors, useSeries } from '../series';
 import type { Bucket, BucketKind, CompareKind } from '../series';
 import { useSettings } from '../session';
 import { SegmentedButtons } from '../ui/chips';
@@ -272,6 +272,7 @@ export function PeriodBreakdown({
 }) {
   const { currency, distance_unit: unit } = useSettings();
   const platformOf = usePlatformOf();
+  const colorOf = usePlatformColors();
   const data = useBreakdown(id, range, today);
   if (!data) return null;
   const when = {
@@ -297,7 +298,8 @@ export function PeriodBreakdown({
             name: <PlatformName platform={platformOf(slug)}>{platformOf(slug).label}</PlatformName>,
             value: cents,
             figure: formatMoney(cents, currency),
-            color: chartColor.earned,
+            // Each platform in its own chart colour, the same as on Analytics.
+            color: colorOf(slug),
           }))}
         />
       </Section>
