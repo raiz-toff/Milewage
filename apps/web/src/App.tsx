@@ -45,7 +45,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  SidebarRail,
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
@@ -259,7 +258,6 @@ function AppSidebar({ list, name }: { list: Screen[]; name: string | null }) {
           </SidebarMenu>
         </SidebarFooter>
       </nav>
-      <SidebarRail />
     </Sidebar>
   );
 }
