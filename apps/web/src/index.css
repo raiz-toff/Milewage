@@ -400,7 +400,8 @@
   --chart-4: var(--md-extended-color-chart-series-1);
   --chart-5: var(--md-extended-color-chart-other);
   /* Navigation drawer and rail: on the page itself; the active destination is a grey pill. */
-  --sidebar: var(--md-sys-color-background);
+  /* The sidebar is one step lighter than the page, so it reads as its own panel. */
+  --sidebar: var(--md-sys-color-surface);
   --sidebar-foreground: var(--md-sys-color-on-surface-variant);
   --sidebar-primary: var(--md-sys-color-primary-container);
   --sidebar-primary-foreground: var(--md-sys-color-on-primary-container);
@@ -418,6 +419,7 @@
 
 .dark {
   color-scheme: dark;
+  --sidebar: var(--md-sys-color-surface-container-low);
   --card: var(--md-sys-color-surface-container);
   --popover: var(--md-sys-color-surface-container-high);
   --muted: var(--md-sys-color-surface-container-highest);
