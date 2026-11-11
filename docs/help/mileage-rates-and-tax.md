@@ -47,7 +47,9 @@ Each rate is in force from its day until your next one. When your employer chang
 How the two kinds of rate meet:
 
 - A shift before your first rate's day keeps the country rate. A shift on or after it uses your rate. One shift never mixes the two.
-- Your rate is one flat amount. It has no threshold, so the country's 5,000 km or 10,000 miles tier does not apply to it. Distance at your rate still counts towards the threshold for the country rate.
+- Your rate is one flat amount unless you tick **A different rate after a set distance**. Then you give the distance the first rate covers in a year and the rate after it, for example 0.70 for the first 5,000 km and 0.64 after.
+- The count for that distance is the business distance driven since the start of the year (1 January; 6 April in the United Kingdom), for each kind of vehicle, whichever rate valued it. A shift that crosses the distance is split between the two rates. The count starts again each year.
+- Distance at your rate also counts towards the threshold of the country rate.
 - Your rate is a date, not a tax year. If your rate should start with the UK tax year, choose 6 April.
 - It applies to cars, vans and motorcycles, as the country rates do. Bicycles, e-bikes, scooters and walking get none.
 - **Country rate** at the top switches every shift back to the country's rate. Your rates stay saved.

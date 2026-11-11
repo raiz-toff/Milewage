@@ -2068,7 +2068,7 @@ components:
     DatedOwnMileageRate:
       type: object
       additionalProperties: false
-      required: [id, effective_from, cents_per_unit, unit, note]
+      required: [id, effective_from, cents_per_unit, unit, note, threshold_units, cents_per_unit_after]
       description: 'One of your mileage rates (ADR 0007): in force from effective_from until the next rate. Shown as "your rate", never as an official rate.'
       properties:
         id: { type: integer }
@@ -2076,6 +2076,8 @@ components:
         cents_per_unit: { type: number, exclusiveMinimum: 0, maximum: 100000, description: 'Minor units of the currency per km or mile; hundredths are kept (72.5).' }
         unit: { enum: [km, mi] }
         note: { type: [string, 'null'], maxLength: 200, description: 'Where the figure comes from, for example "Employer reimbursement 2026".' }
+        threshold_units: { type: [integer, 'null'], minimum: 1, maximum: 1000000, description: 'ADR 0012: a rate with a second step. cents_per_unit values the first threshold_units km or miles of business distance in the rate period (the country''s: calendar year, 6 April in Great Britain; the calendar year where the country has no rates), counted per vehicle kind and whichever rate valued them; cents_per_unit_after values the rest. null: one flat rate.' }
+        cents_per_unit_after: { type: [number, 'null'], exclusiveMinimum: 0, maximum: 100000, description: 'The rate after threshold_units; set exactly when threshold_units is.' }
     DatedOwnMileageRateCreate:
       type: object
       additionalProperties: false
@@ -2085,6 +2087,8 @@ components:
         cents_per_unit: { type: number, exclusiveMinimum: 0, maximum: 100000 }
         unit: { enum: [km, mi] }
         note: { type: [string, 'null'], maxLength: 200 }
+        threshold_units: { type: [integer, 'null'], minimum: 1, maximum: 1000000 }
+        cents_per_unit_after: { type: [number, 'null'], exclusiveMinimum: 0, maximum: 100000, description: 'Needed with threshold_units, and only with it (422 otherwise).' }
     DatedOwnMileageRatePatch:
       type: object
       additionalProperties: false
@@ -2094,6 +2098,8 @@ components:
         cents_per_unit: { type: number, exclusiveMinimum: 0, maximum: 100000 }
         unit: { enum: [km, mi] }
         note: { type: [string, 'null'], maxLength: 200 }
+        threshold_units: { type: [integer, 'null'], minimum: 1, maximum: 1000000 }
+        cents_per_unit_after: { type: [number, 'null'], exclusiveMinimum: 0, maximum: 100000, description: 'Needed with threshold_units, and only with it (422 otherwise).' }
     Device:
       type: object
       required: [id, name, platform, created_at, last_seen_at, revoked_at]

@@ -8,11 +8,16 @@ export interface OwnRateRow {
   hundredths: number;
   unit: 'km' | 'mi';
   note: string | null;
+  /** A second step (ADR 0012): `hundredths` up to this many km or miles of the rate period; null: flat. */
+  thresholdUnits: number | null;
+  /** The rate after the threshold; set exactly when the threshold is. */
+  afterHundredths: number | null;
 }
 
 export type NewOwnRate = Omit<OwnRateRow, 'id'>;
 
-const COLUMNS = 'id, effective_from AS effectiveFrom, hundredths, unit, note';
+const COLUMNS =
+  'id, effective_from AS effectiveFrom, hundredths, unit, note, threshold_units AS thresholdUnits, after_hundredths AS afterHundredths';
 
 /** Your mileage rates, oldest first (the undated one before every dated one). */
 export function createOwnRateRepository(db: Db) {
@@ -40,17 +45,38 @@ export function createOwnRateRepository(db: Db) {
     create(userId: number, r: NewOwnRate, now: number): OwnRateRow {
       const id = db
         .prepare(
-          `INSERT INTO own_mileage_rates (user_id, effective_from, hundredths, unit, note, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO own_mileage_rates (user_id, effective_from, hundredths, unit, note, threshold_units, after_hundredths, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .run(userId, r.effectiveFrom, r.hundredths, r.unit, r.note, now, now).lastInsertRowid;
+        .run(
+          userId,
+          r.effectiveFrom,
+          r.hundredths,
+          r.unit,
+          r.note,
+          r.thresholdUnits,
+          r.afterHundredths,
+          now,
+          now,
+        ).lastInsertRowid;
       return find(userId, Number(id))!;
     },
     update(userId: number, id: number, r: NewOwnRate, now: number): OwnRateRow | undefined {
       db.prepare(
-        `UPDATE own_mileage_rates SET effective_from = ?, hundredths = ?, unit = ?, note = ?, updated_at = ?
+        `UPDATE own_mileage_rates SET effective_from = ?, hundredths = ?, unit = ?, note = ?,
+                threshold_units = ?, after_hundredths = ?, updated_at = ?
           WHERE user_id = ? AND id = ?`,
-      ).run(r.effectiveFrom, r.hundredths, r.unit, r.note, now, userId, id);
+      ).run(
+        r.effectiveFrom,
+        r.hundredths,
+        r.unit,
+        r.note,
+        r.thresholdUnits,
+        r.afterHundredths,
+        now,
+        userId,
+        id,
+      );
       return find(userId, id);
     },
     delete: (userId: number, id: number): boolean =>

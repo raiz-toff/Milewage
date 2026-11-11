@@ -9,6 +9,8 @@ const fields = {
   cents_per_unit: { type: 'number', exclusiveMinimum: 0, maximum: 100_000 },
   unit: { enum: ['km', 'mi'] },
   note: { type: ['string', 'null'], maxLength: 200 },
+  threshold_units: { type: ['integer', 'null'], minimum: 1, maximum: 1_000_000 },
+  cents_per_unit_after: { type: ['number', 'null'], exclusiveMinimum: 0, maximum: 100_000 },
 };
 const createBody = strictObject(fields, ['effective_from', 'cents_per_unit', 'unit']);
 const patchBody = strictObject(fields, [], { minProperties: 1 });
@@ -18,6 +20,8 @@ type Body = Partial<{
   cents_per_unit: number;
   unit: 'km' | 'mi';
   note: string | null;
+  threshold_units: number | null;
+  cents_per_unit_after: number | null;
 }>;
 
 /** The `OwnMileageRate` object: amounts in minor units with hundredths (72.5 is 72.5 cents). */
@@ -27,6 +31,8 @@ export const ownRateView = (r: OwnRateRow) => ({
   cents_per_unit: r.hundredths / 100,
   unit: r.unit,
   note: r.note,
+  threshold_units: r.thresholdUnits,
+  cents_per_unit_after: r.afterHundredths === null ? null : r.afterHundredths / 100,
 });
 
 const calendar = (d: string) => {
@@ -62,6 +68,19 @@ export function ownRateRoutes(
       );
     }
     const note = b.note === undefined ? (current?.note ?? null) : b.note?.trim() || null;
+    // The step (ADR 0012): a threshold and the rate after it, both or neither.
+    const thresholdUnits =
+      b.threshold_units === undefined ? (current?.thresholdUnits ?? null) : b.threshold_units;
+    const afterHundredths =
+      b.cents_per_unit_after === undefined
+        ? (current?.afterHundredths ?? null)
+        : b.cents_per_unit_after === null
+          ? null
+          : Math.max(1, Math.round(b.cents_per_unit_after * 100));
+    if (thresholdUnits !== null && afterHundredths === null)
+      throw invalid('/cents_per_unit_after', 'is needed with a threshold');
+    if (thresholdUnits === null && afterHundredths !== null)
+      throw invalid('/threshold_units', 'is needed with a rate after it');
     return {
       effectiveFrom: day,
       // Hundredths of a minor unit: 72.5 cents per mile is kept exactly.
@@ -71,6 +90,8 @@ export function ownRateRoutes(
           : Math.max(1, Math.round(b.cents_per_unit * 100)),
       unit: b.unit ?? current!.unit,
       note,
+      thresholdUnits,
+      afterHundredths,
     };
   };
   const mine = (userId: number, id: number) => {

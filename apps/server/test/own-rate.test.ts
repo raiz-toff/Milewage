@@ -139,6 +139,52 @@ describe('dated own rates', () => {
     expect((await rates()).json()).toHaveLength(1);
   });
 
+  test('a rate in two steps: the first rate up to its distance in the year, then the second', async () => {
+    const half = await add({
+      effective_from: null,
+      cents_per_unit: 100,
+      unit: 'km',
+      threshold_units: 20,
+    });
+    expect([half.statusCode, half.json().errors[0].path]).toEqual([422, '/cents_per_unit_after']);
+    const lone = await add({
+      effective_from: null,
+      cents_per_unit: 100,
+      unit: 'km',
+      cents_per_unit_after: 50,
+    });
+    expect([lone.statusCode, lone.json().errors[0].path]).toEqual([422, '/threshold_units']);
+    const a = await add({
+      effective_from: null,
+      cents_per_unit: 100,
+      unit: 'km',
+      threshold_units: 20,
+      cents_per_unit_after: 50,
+    });
+    expect(a.json()).toMatchObject({ threshold_units: 20, cents_per_unit_after: 50 });
+    await web('PATCH', '/settings', { use_own_mileage_rate: true });
+    seedShift(3, 1, 10_000); // the same day as shift 1, after it
+    seedShift(4, 1, 5_000);
+    h.db.prepare("UPDATE shifts SET local_date = '2026-03-02' WHERE id = 4").run();
+    seedShift(5, 1, 5_000);
+    h.db.prepare("UPDATE shifts SET local_date = '2027-01-02' WHERE id = 5").run();
+    const byId = new Map(
+      (await shifts()).map((x) => [x.id, [x.deduction_cents, x.deduction_rate]]),
+    );
+    expect(byId.get(1)).toEqual([1250, 'yours']); // 12.5 km, all inside the first 20
+    expect(byId.get(3)).toEqual([875, 'yours']); // 7.5 km at 100, then 2.5 km at 50
+    expect(byId.get(4)).toEqual([250, 'yours']); // past the 20 km: all at 50
+    expect(byId.get(5)).toEqual([500, 'yours']); // a new year: the count starts again
+    expect(byId.get(2)).toEqual([null, null]); // the bicycle, as ever
+    // Back to one flat rate: both fields cleared together.
+    const flat = await web('PATCH', `/own-mileage-rates/${a.json().id}`, {
+      threshold_units: null,
+      cents_per_unit_after: null,
+    });
+    expect(flat.json()).toMatchObject({ threshold_units: null, cents_per_unit_after: null });
+    expect((await shifts()).find((x) => x.id === 3)?.deduction_cents).toBe(1000);
+  });
+
   test('switched on, your rate replaces the country rate from its date, never before', async () => {
     seedShift(3, 1, 16_093); // 2026-03-01 like the others
     h.db.prepare("UPDATE shifts SET local_date = '2026-08-01' WHERE id = 3").run();

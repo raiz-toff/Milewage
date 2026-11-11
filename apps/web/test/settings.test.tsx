@@ -166,7 +166,11 @@ describe('settings page', () => {
         },
         'GET /own-mileage-rates': () => ({ body: rates }),
         'POST /own-mileage-rates': ({ body }) => {
-          const r = { id: 2, note: null, ...(body as object) } as (typeof rates)[number];
+          const r = {
+            id: rates.length + 1,
+            note: null,
+            ...(body as object),
+          } as (typeof rates)[number];
           rates = [...rates, r];
           return { status: 201, body: r };
         },
@@ -210,6 +214,31 @@ describe('settings page', () => {
       }),
     );
     expect(await screen.findByText('$0.725 per km')).toBeTruthy();
+    expect(calls.find((c) => c.method === 'POST')?.body).toMatchObject({
+      threshold_units: null,
+      cents_per_unit_after: null,
+    });
+
+    // A rate in two steps (ADR 0012): the first rate up to a distance, then another.
+    fireEvent.change(screen.getByLabelText('Rate (CAD per km)'), { target: { value: '0.70' } });
+    fireEvent.click(screen.getByLabelText('A different rate after a set distance'));
+    fireEvent.click(screen.getByRole('button', { name: 'Add rate' }));
+    expect((await screen.findByRole('alert')).textContent).toMatch(/in whole km/);
+    fireEvent.change(screen.getByLabelText('First rate covers (km a year)'), {
+      target: { value: '5000' },
+    });
+    fireEvent.change(screen.getByLabelText('Rate after that (CAD per km)'), {
+      target: { value: '0.64' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add rate' }));
+    await waitFor(() =>
+      expect(calls.filter((c) => c.method === 'POST').at(-1)?.body).toMatchObject({
+        cents_per_unit: 70,
+        threshold_units: 5000,
+        cents_per_unit_after: 64,
+      }),
+    );
+    expect(await screen.findByText('$0.70 per km for the first 5,000 km, then $0.64')).toBeTruthy();
 
     // Edit keeps the undated rate's "from the start" unless a day is chosen.
     fireEvent.pointerDown(screen.getByRole('button', { name: /Actions for \$0\.50 per km/ }), {
@@ -225,6 +254,8 @@ describe('settings page', () => {
         cents_per_unit: 55,
         unit: 'km',
         note: null,
+        threshold_units: null,
+        cents_per_unit_after: null,
       }),
     );
     fireEvent.pointerDown(

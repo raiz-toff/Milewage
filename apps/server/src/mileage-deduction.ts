@@ -2,9 +2,9 @@ import {
   expenseCategory,
   mileageDeduction,
   notAutomobile,
+  ownPeriodStart,
   ownRateAt,
   ownRateDeduction,
-  periodStart,
   rateSourceAt,
   valueAt,
   type CountryModule,
@@ -62,6 +62,10 @@ export type RateUsed =
       unit: 'km' | 'mi';
       /** Null: from the start. */
       from: string | null;
+      /** A rate with a step: `centsPerUnit` up to this many km or miles of the rate period. */
+      thresholdUnits?: number;
+      /** The rate after the threshold. */
+      afterCentsPerUnit?: number;
     };
 
 export interface MileageDeduction {
@@ -179,7 +183,8 @@ export function createMileageDeduction({
     const { driver, out: sources } = sourcesOf(userId, rows);
     if (!driver) return;
     const kinds = new Map(vehicles.list(userId, true).map((v) => [v.id, v.kind as VehicleKind]));
-    // Shifts valued at official rates, by rate period and vehicle kind: one query per group.
+    // Shifts whose value depends on what was driven before them (a tiered country rate, your rate
+    // with a step), by rate period and vehicle kind: one query per group.
     const groups = new Map<string, { kind: VehicleKind; from: string; items: number[] }>();
     const value = (n: number, cents: number | null, rate: RateSource) =>
       (out[at[n]!] = { cents, rate: cents === null ? null : rate });
@@ -187,13 +192,14 @@ export function createMileageDeduction({
       const source = sources[n];
       if (!source) return;
       const kind = kinds.get(r.vehicleId) ?? 'car';
-      if (source === 'yours') {
-        // One rate per shift: the one in force on its date, flat, with no tier (ADR 0007).
+      if (source === 'yours' && !ownRateAt(driver.ownRates.rates, r.localDate)!.tier) {
+        // One rate per shift: the one in force on its date (ADR 0007). Flat needs no count.
         const own = ownRateAt(driver.ownRates.rates, r.localDate)!;
         value(n, ownRateDeduction(own, { totalM: businessM(r), vehicleKind: kind }), 'yours');
         return;
       }
-      const from = periodStart(driver.pack!.mileage, r.localDate);
+      // Your rate's step counts over the country's rate period (ADR 0012).
+      const from = ownPeriodStart(driver.pack, r.localDate);
       const key = `${from}|${kind}`;
       const g = groups.get(key) ?? { kind, from, items: [] };
       g.items.push(n);
@@ -217,6 +223,12 @@ export function createMileageDeduction({
       }
       for (const n of g.items) {
         const r = rows[n]!;
+        if (sources[n] === 'yours') {
+          const own = ownRateAt(driver.ownRates.rates, r.localDate)!;
+          const input = { totalM: businessM(r), vehicleKind: g.kind, priorM: prior.get(r)! };
+          value(n, ownRateDeduction(own, input), 'yours');
+          continue;
+        }
         const cents = mileageDeduction(driver.pack!, {
           totalM: businessM(r),
           priorM: prior.get(r)!,
@@ -274,7 +286,13 @@ export function createMileageDeduction({
         if (v.rate === 'yours') {
           const own = ownRateAt(driver.ownRates.rates, r.localDate)!;
           const { centsPerUnit, unit, effectiveFrom: from } = own;
-          used.set(`yours|${from}`, { source: 'yours', centsPerUnit, unit, from });
+          used.set(`yours|${from}`, {
+            source: 'yours',
+            centsPerUnit,
+            unit,
+            from,
+            ...(own.tier ?? {}),
+          });
           return;
         }
         const kind = (vehicles.find(r.userId, r.vehicleId)?.kind ?? 'car') as VehicleKind;

@@ -11,7 +11,7 @@ import { formatRate, parseRate, rateInput } from '../format';
 import { HelpLink } from '../help';
 import { settingsPatch, useSettings } from '../session';
 import { SegmentedButtons } from '../ui/chips';
-import { Button, DateField, Field, FormError, SelectField } from '../ui/form';
+import { Button, CheckField, DateField, Field, FormError, SelectField } from '../ui/form';
 import { EmptyState } from '../ui/layout';
 import { RowMenu } from '../ui/RowMenu';
 
@@ -28,7 +28,16 @@ export function rateOn(rates: readonly Rate[], day: string): Rate | null {
   return found;
 }
 
-const blank = (unit: Unit, today: string) => ({ from: today, rate: '', unit, note: '' });
+const blank = (unit: Unit, today: string) => ({
+  from: today,
+  rate: '',
+  unit,
+  note: '',
+  /** A second step (ADR 0012): this rate up to `first` km or miles of the year, then `after`. */
+  step: false,
+  first: '',
+  after: '',
+});
 
 /**
  * Settings > Mileage rate (ADR 0007): which rate values your mileage, the country's or yours, and
@@ -53,7 +62,10 @@ export function MileageRateSection() {
 
   const fromWords = (r: Rate) =>
     r.effective_from ? `From ${formatDay(r.effective_from, locale)}` : 'From the start';
-  const rateWords = (r: Rate) => `${formatRate(r.cents_per_unit, currency)} per ${r.unit}`;
+  const rateWords = (r: Rate) =>
+    r.threshold_units && r.cents_per_unit_after
+      ? `${formatRate(r.cents_per_unit, currency)} per ${r.unit} for the first ${r.threshold_units.toLocaleString(locale)} ${r.unit}, then ${formatRate(r.cents_per_unit_after, currency)}`
+      : `${formatRate(r.cents_per_unit, currency)} per ${r.unit}`;
 
   const inForce = rates ? rateOn(rates, today) : null;
   const next = rates?.find((r) => (r.effective_from ?? '') > today) ?? null;
@@ -78,6 +90,9 @@ export function MileageRateSection() {
       rate: rateInput(r.cents_per_unit, currency),
       unit: r.unit,
       note: r.note ?? '',
+      step: r.threshold_units != null,
+      first: r.threshold_units == null ? '' : String(r.threshold_units),
+      after: r.cents_per_unit_after == null ? '' : rateInput(r.cents_per_unit_after, currency),
     });
   }
   function reset() {
@@ -96,11 +111,21 @@ export function MileageRateSection() {
     if (!form.from && !(editing && editing.effective_from === null)) {
       return change.setError('Choose the day your rate starts.');
     }
+    const first = Number(form.first);
+    const after = parseRate(form.after, currency);
+    if (form.step && !(Number.isInteger(first) && first > 0)) {
+      return change.setError(`Enter the distance the first rate covers, in whole ${form.unit}.`);
+    }
+    if (form.step && !(Number.isFinite(after) && after > 0)) {
+      return change.setError(`Enter the rate after ${first.toLocaleString(locale)} ${form.unit}.`);
+    }
     const body = {
       effective_from: form.from || null,
       cents_per_unit: cents,
       unit: form.unit,
       note: form.note.trim() || null,
+      threshold_units: form.step ? first : null,
+      cents_per_unit_after: form.step ? after : null,
     };
     const done = editing
       ? await change.run((api) =>
@@ -221,6 +246,37 @@ export function MileageRateSection() {
               ]}
             />
           </div>
+          <CheckField
+            label="A different rate after a set distance"
+            checked={form.step}
+            onChange={(step) => setForm({ ...form, step })}
+          />
+          <p className="text-body-small text-on-surface-variant">
+            For a rate in two steps, like a higher rate for the first 5,000 {form.unit} of the year.
+            The count starts again each tax year.
+          </p>
+          {form.step ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field
+                label={`First rate covers (${form.unit} a year)`}
+                type="number"
+                min={1}
+                step={1}
+                inputMode="numeric"
+                value={form.first}
+                onChange={(e) => setForm({ ...form, first: e.target.value })}
+              />
+              <Field
+                label={`Rate after that (${currency} per ${form.unit})`}
+                type="number"
+                min={0}
+                step="any"
+                inputMode="decimal"
+                value={form.after}
+                onChange={(e) => setForm({ ...form, after: e.target.value })}
+              />
+            </div>
+          ) : null}
           <Field
             label="Note (optional)"
             hint="Where the figure comes from, for example your employer or your accountant."

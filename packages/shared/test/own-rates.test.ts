@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'vitest';
 import {
   gbCountry,
+  ownPeriodStart,
   ownRateAt,
+  ownRateDeduction,
   paperSize,
   rateSourceAt,
   usCountry,
@@ -54,4 +56,23 @@ describe('which rate values a day', () => {
 test('paper follows CLDR: Letter in the Americas that use it, A4 elsewhere', () => {
   expect(['US', 'ca', 'MX', 'PH'].map(paperSize)).toEqual(['letter', 'letter', 'letter', 'letter']);
   expect(['GB', 'DE', 'AU', 'IN', 'BR'].map(paperSize)).toEqual(['a4', 'a4', 'a4', 'a4', 'a4']);
+});
+
+test('your rate in two steps splits at the threshold, counting what was driven before', () => {
+  const rate = {
+    centsPerUnit: 70,
+    unit: 'km' as const,
+    tier: { thresholdUnits: 5000, afterCentsPerUnit: 64 },
+  };
+  const of = (totalM: number, priorM: number) =>
+    ownRateDeduction(rate, { totalM, priorM, vehicleKind: 'car' });
+  expect(of(10_000, 0)).toBe(700);
+  expect(of(10_000, 4_995_000)).toBe(670); // 5 km at 70, 5 km at 64
+  expect(of(10_000, 5_000_000)).toBe(640);
+  expect(ownRateDeduction(rate, { totalM: 10_000, priorM: 0, vehicleKind: 'bicycle' })).toBeNull();
+  // Without a step nothing changes: flat, whatever came before.
+  expect(
+    ownRateDeduction({ centsPerUnit: 70, unit: 'km' }, { totalM: 10_000, vehicleKind: 'car' }),
+  ).toBe(700);
+  expect(ownPeriodStart(undefined, '2026-05-01')).toBe('2026-01-01');
 });

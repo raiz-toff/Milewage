@@ -141,6 +141,10 @@ export function createDriverContexts({
         effectiveFrom: r.effectiveFrom,
         centsPerUnit: r.hundredths / 100,
         unit: r.unit,
+        tier:
+          r.thresholdUnits !== null && r.afterHundredths !== null
+            ? { thresholdUnits: r.thresholdUnits, afterCentsPerUnit: r.afterHundredths / 100 }
+            : null,
       }));
     return row && contextOf(row, rates(), now, stopsModule());
   };

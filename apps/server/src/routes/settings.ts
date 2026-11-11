@@ -282,6 +282,8 @@ export function settingsRoutes(
           hundredths: Math.max(1, Math.round(r.cents_per_unit * 100)),
           unit: r.unit,
           note: undated?.note ?? null,
+          thresholdUnits: undated?.thresholdUnits ?? null,
+          afterHundredths: undated?.afterHundredths ?? null,
         };
         if (undated) own.update(userId, undated.id, row, now);
         else own.create(userId, row, now);

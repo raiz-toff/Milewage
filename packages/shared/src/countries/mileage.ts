@@ -56,6 +56,19 @@ export function mileageDeduction(c: CountryModule, i: DeductionInput): number | 
 export interface OwnRate {
   centsPerUnit: number;
   unit: 'km' | 'mi';
+  /**
+   * A second step (ADR 0012): `centsPerUnit` values the first `thresholdUnits` km or miles of the
+   * rate period, `afterCentsPerUnit` the rest. Absent or null: one flat rate.
+   */
+  tier?: { thresholdUnits: number; afterCentsPerUnit: number } | null;
+}
+
+/**
+ * The first day of the rate period your rate's step counts from: the country's (calendar year,
+ * 6 April in Great Britain), or the calendar year where the country has no rates.
+ */
+export function ownPeriodStart(c: CountryModule | undefined, date: string): string {
+  return c ? periodStart(c.mileage, date) : `${date.slice(0, 4)}-01-01`;
 }
 
 /**
@@ -115,11 +128,24 @@ export function mileageRateSource(c: CountryModule | undefined, own: OwnRate | n
   return own ? ('yours' as const) : ('none' as const);
 }
 
-/** Cents at the driver's own rate; like an official rate, none for a non-automobile. */
-export function ownRateDeduction(r: OwnRate, i: Pick<DeductionInput, 'totalM' | 'vehicleKind'>) {
-  return notAutomobile(i.vehicleKind)
-    ? null
-    : Math.round((i.totalM / UNIT_METRES[r.unit]) * r.centsPerUnit);
+/**
+ * Cents at the driver's own rate; like an official rate, none for a non-automobile. A rate with a
+ * step splits the distance at its threshold, counting `priorM` (the business metres already driven
+ * in the rate period) first, and rounds as a tiered country rate does.
+ */
+export function ownRateDeduction(
+  r: OwnRate,
+  i: Pick<DeductionInput, 'totalM' | 'vehicleKind'> & { priorM?: number },
+) {
+  if (notAutomobile(i.vehicleKind)) return null;
+  const unitM = UNIT_METRES[r.unit];
+  if (!r.tier) return Math.round((i.totalM / unitM) * r.centsPerUnit);
+  const room = r.tier.thresholdUnits * unitM - (i.priorM ?? 0);
+  const firstM = Math.max(0, Math.min(i.totalM, room));
+  const hundredths = Math.round(
+    ((firstM * r.centsPerUnit + (i.totalM - firstM) * r.tier.afterCentsPerUnit) / unitM) * 100,
+  );
+  return Math.round(hundredths / 100);
 }
 
 /** Regions from `{ ON: 'Ontario' }`, with any data, sources or notes by region code. */

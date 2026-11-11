@@ -4,7 +4,7 @@ Until 2026-11-10 a driver's own mileage rate had no date and applied only where 
 
 ## Considered options
 
-- **Own rates with tiers like the pack's** (a threshold per tax year): rejected. Employer and accountant figures we know of are flat, and copying the pack's tier would claim a rule nobody gave us.
+- **Own rates with tiers like the pack's** (a threshold per tax year): rejected then, added on 2026-11-11 by ADR 0012. Employer and accountant figures we know of are flat, and copying the pack's tier would claim a rule nobody gave us.
 - **Own rate per vehicle kind**: rejected for now; the existing own rate applied to every automobile kind, and one list keeps the screen small. A per-kind rate can be added later as a column without changing the precedence rule.
 - **Own rate only for the deduction method, not dated**: rejected; a mid-year change (the United States pack already has one, on 1 July 2026) would value half the year wrongly.
 

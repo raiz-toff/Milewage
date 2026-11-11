@@ -1459,6 +1459,10 @@ export interface components {
             unit: "km" | "mi";
             /** @description Where the figure comes from, for example "Employer reimbursement 2026". */
             note: string | null;
+            /** @description ADR 0012: a rate with a second step. cents_per_unit values the first threshold_units km or miles of business distance in the rate period (the country's: calendar year, 6 April in Great Britain; the calendar year where the country has no rates), counted per vehicle kind and whichever rate valued them; cents_per_unit_after values the rest. null: one flat rate. */
+            threshold_units: number | null;
+            /** @description The rate after threshold_units; set exactly when threshold_units is. */
+            cents_per_unit_after: number | null;
         };
         DatedOwnMileageRateCreate: {
             /**
@@ -1470,6 +1474,9 @@ export interface components {
             /** @enum {unknown} */
             unit: "km" | "mi";
             note?: string | null;
+            threshold_units?: number | null;
+            /** @description Needed with threshold_units, and only with it (422 otherwise). */
+            cents_per_unit_after?: number | null;
         };
         DatedOwnMileageRatePatch: {
             /** Format: date */
@@ -1478,6 +1485,9 @@ export interface components {
             /** @enum {unknown} */
             unit?: "km" | "mi";
             note?: string | null;
+            threshold_units?: number | null;
+            /** @description Needed with threshold_units, and only with it (422 otherwise). */
+            cents_per_unit_after?: number | null;
         };
         Device: {
             id: number;

@@ -758,7 +758,12 @@ export function renderReport(m: ReportModel, f: ReturnType<typeof reportFormats>
               { text: 'Your mileage rate', sub: 'Entered by you, not an official rate' },
               'cars, vans, motorcycles',
               r.from ? f.day(r.from) : 'From the start',
-              f.rate(r.centsPerUnit, r.unit),
+              r.thresholdUnits && r.afterCentsPerUnit
+                ? {
+                    text: f.rate(r.centsPerUnit, r.unit),
+                    sub: `then ${f.rate(r.afterCentsPerUnit, r.unit)} after ${r.thresholdUnits.toLocaleString('en')} ${r.unit}`,
+                  }
+                : f.rate(r.centsPerUnit, r.unit),
             ],
       ),
     );
