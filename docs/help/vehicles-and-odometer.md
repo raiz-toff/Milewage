@@ -25,7 +25,7 @@ Ownership is Owned, Financed (loan or hire purchase), Leased or Rented. It is fo
 
 Open a vehicle's menu and choose Make default. Its card then shows "Default".
 
-The default vehicle is filled in when you add an expense, and it is used for imported rows that name no vehicle. The phone does not use it. The phone offers the vehicle you used last on that phone, or else the first one in the list. To change it, tap another vehicle on the phone's Home screen before Start shift.
+The default vehicle is filled in when you add an expense. The phone does not use it. The phone offers the vehicle you used last on that phone, or else the first one in the list. To change it, tap another vehicle on the phone's Home screen before Start shift.
 
 ## A vehicle you no longer use
 

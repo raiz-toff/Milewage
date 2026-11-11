@@ -20,7 +20,7 @@ object ContractFixtures {
          "onboarded_at":1700000000000,"setup_done":["vehicle","phone"],"engine_version":4,
          "diagnostics":{"level":"verbose","verbose_until":1700086400000,
            "capture":{"id":2,"profile":"dense","expires_at":1700600000000,"max_shifts":3,"shifts_done":1}},
-         "modules":{"import":true,"maintenance":true,
+         "modules":{"maintenance":true,
            "tax":true,"receipts":true,"expenses":true,"earnings":true,
            "platforms":true,"devices":true,"tracking":true,"replay":true,"stops":true,"sync":true,
            "diagnostics":true,"capture":true,"backup_download":true,"local_export":false,

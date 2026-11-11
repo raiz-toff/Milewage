@@ -17,9 +17,8 @@ const elsewhere = () => within(screen.getByRole('list', { name: 'Elsewhere in Mi
 describe('settings: your data, devices and saving', () => {
   it('leads to backups, exports and devices from the sections they belong to', async () => {
     open('/settings/import');
-    // The old Import address opens Your data, with the import card on it.
+    // The old Import address opens Your data.
     expect(await heading('Your data')).toBeTruthy();
-    expect(screen.getByRole('region', { name: 'Import' })).toBeTruthy();
     expect(
       elsewhere()
         .getByRole('link', { name: /^Backups/ })
@@ -39,10 +38,9 @@ describe('settings: your data, devices and saving', () => {
     ).toBe('/devices');
   });
 
-  it('leaves out what is switched off: import, exports and devices', async () => {
-    open('/settings/data', { import: false, devices: false, exporters: [] });
+  it('leaves out what is switched off: exports and devices', async () => {
+    open('/settings/data', { devices: false, exporters: [] });
     await heading('Your data');
-    expect(screen.queryByRole('region', { name: 'Import' })).toBeNull();
     expect(elsewhere().getByRole('link', { name: /^Backups/ })).toBeTruthy();
     expect(elsewhere().queryByRole('link', { name: /^Exports/ })).toBeNull();
     await go('Account and security');

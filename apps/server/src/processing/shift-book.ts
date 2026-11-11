@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import {
   createArchiveRepository,
   createOdometerRepository,
@@ -12,7 +11,7 @@ import type { DriverContexts } from '../driver-context';
 import { ProblemError } from '../errors';
 import type { EventEmit } from '../events';
 import type { Principal } from '../routes/util';
-import { addTrip, createShiftProcessor, type PhoneReport } from './shift-processor';
+import { createShiftProcessor, type PhoneReport } from './shift-processor';
 
 const DAY = 24 * 60 * 60 * 1000;
 /** A device token reads 14 days (08 section 2.2; the DECISIONS.md row of 2026-11-03). */
@@ -24,23 +23,6 @@ export interface PhoneEnd {
   manifest?: PhoneReport['manifest'];
   result?: PhoneReport['result'];
   interruptions?: { from_ms: number; to_ms: number }[];
-}
-
-/** A shift read from a CSV file (18 section 12): typed, not tracked. */
-export interface ImportedShift {
-  vehicleId: number;
-  startedAt: number;
-  endedAt: number;
-  localDate: string;
-  /** The typed distance; it becomes one manual trip. */
-  totalM: number;
-  notes: string | null;
-  /** The trip's kind: business distance (`active`, the default) or personal (ADR 0005). */
-  kind?: 'active' | 'personal';
-  /** The trip's purpose; "Imported" by default. */
-  purpose?: string;
-  /** Where the record came from, for the `imported` flag (the generic CSV file by default). */
-  from?: string;
 }
 
 /** What changed a shift that is already recorded; it decides how the shift is computed and announced. */
@@ -56,7 +38,7 @@ export type ShiftChange =
 
 /**
  * The shift book: the one place that records a shift, recomputes it and announces it, and the one
- * read window. Routes, the late-point job and the import call it and only parse and present.
+ * read window. Routes and the late-point job call it and only parse and present.
  *
  * Rules kept here:
  * - A device reads shifts started, or written to by a device, in the last 14 days; a web session
@@ -107,12 +89,6 @@ export interface ShiftBook {
   recompute(p: Principal, row: ShiftRow, change: ShiftChange): ShiftRow;
   /** Points arrived after the end (08 section 5 step 6): an ended shift is computed again. */
   latePoints(shiftId: number): ShiftRow | undefined;
-  /** Writes imported shifts, each with one manual trip and an `imported` flag; `each` runs in the same transaction. */
-  importShifts(
-    userId: number,
-    rows: readonly ImportedShift[],
-    each?: (shift: ShiftRow, i: number) => void,
-  ): ShiftRow[];
 }
 
 export function createShiftBook({
@@ -270,64 +246,6 @@ export function createShiftBook({
       emit('shift.updated', id(row));
       ran(row);
       return saved;
-    },
-
-    importShifts(userId, rows, each) {
-      const t = now();
-      const created = db.transaction(() =>
-        rows.map((s, i) => {
-          const totals = { totalM: 0, activeM: 0, deadheadM: 0, personalM: 0 };
-          const kind = s.kind ?? 'active';
-          addTrip(totals, { kind, distanceM: s.totalM });
-          const shift = shifts.insert({
-            userId,
-            clientId: randomUUID(),
-            vehicleId: s.vehicleId,
-            status: 'finalized',
-            startedAt: s.startedAt,
-            endedAt: s.endedAt,
-            localDate: s.localDate,
-            ...totals,
-            // The totals are the typed distance, worked out now; the phone's pull reads this.
-            calculatedAt: t,
-            segmenter: 'whole_shift',
-            notes: s.notes,
-            updatedAt: t,
-          });
-          processing.insertTrip({
-            userId,
-            shiftId: shift.id,
-            tripKey: `import-${shift.id}`,
-            kind,
-            originalKind: 'active',
-            source: 'manual',
-            startedAt: s.startedAt,
-            endedAt: s.endedAt,
-            distanceM: s.totalM,
-            purpose: s.purpose ?? 'Imported',
-            editedAt: t,
-            startLatE7: null,
-            startLonE7: null,
-            endLatE7: null,
-            endLonE7: null,
-          });
-          processing.addFlag({
-            userId,
-            shiftId: shift.id,
-            code: 'imported',
-            severity: 'info',
-            detail: JSON.stringify({
-              at: null,
-              detail: `imported from ${s.from ?? 'a CSV file'}; the distance was typed, not tracked`,
-            }),
-            createdAt: t,
-          });
-          each?.(shift, i);
-          return shift;
-        }),
-      )();
-      for (const row of created) emit('shift.updated', id(row));
-      return created;
     },
   };
 }

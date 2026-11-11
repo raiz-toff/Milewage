@@ -14,7 +14,6 @@ import { Button, Field, FormError, PrivacyLink, SelectField } from '../ui/form';
 import { PageHeader } from '../ui/layout';
 import { LinkRow, SectionNav } from '../ui/nav';
 import { Account } from './Account';
-import { ImportCard } from './Import';
 import { PlatformsCard } from './Platforms';
 import { InstallSection } from '../pwa/Install';
 import { MileageRateSection } from './MileageRates';
@@ -206,7 +205,7 @@ const GROUPS: { label: string; sections: Section[] }[] = [
       {
         id: 'data',
         label: 'Your data',
-        description: 'Bring records in, and where to find backups and exports.',
+        description: 'Where to find your backups and exports.',
       },
       {
         id: 'account',
@@ -607,25 +606,18 @@ export function SettingsPage() {
       </SettingsCard>
     ),
     data: (
-      <>
-        {modules.import ? (
-          <SettingsCard>
-            <ImportCard />
-          </SettingsCard>
-        ) : null}
-        <Card className="py-0">
-          <ul aria-label="Elsewhere in MileWage" className="divide-y">
-            <LinkRow to="/backups" title="Backups">
-              Encrypted copies of all your data: make one, download it, check the last run.
+      <Card className="py-0">
+        <ul aria-label="Elsewhere in MileWage" className="divide-y">
+          <LinkRow to="/backups" title="Backups">
+            Encrypted copies of all your data: make one, download it, check the last run.
+          </LinkRow>
+          {modules.exporters.length > 0 ? (
+            <LinkRow to="/exports" title="Exports">
+              Files of your shifts, trips and totals for your records or an accountant.
             </LinkRow>
-            {modules.exporters.length > 0 ? (
-              <LinkRow to="/exports" title="Exports">
-                Files of your shifts, trips and totals for your records or an accountant.
-              </LinkRow>
-            ) : null}
-          </ul>
-        </Card>
-      </>
+          ) : null}
+        </ul>
+      </Card>
     ),
     account: (
       <>

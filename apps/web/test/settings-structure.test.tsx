@@ -54,7 +54,7 @@ describe('settings structure', () => {
   });
 
   it('hides what is switched off on this server, in the list and by address', async () => {
-    open('/settings/platforms', { platforms: false, import: false });
+    open('/settings/platforms', { platforms: false });
     expect(await heading('Profile and region')).toBeTruthy();
     expect(await links()).toEqual([
       'Profile and region',

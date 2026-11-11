@@ -10,8 +10,8 @@ A new phone app and a new look. The phone app is now a native Android app (Kotli
 Compose, Material 3) that needs nothing from Google; the Expo app is gone. The web app and the
 phone follow Google's Material Design 3 from one colour scheme (ADRs 0009 to 0011). Also: your own
 dated mileage rate, a PDF report for the accountant, parking and tolls on a shift, named places,
-editing a trip you added on the web, MileIQ import, and a reverse proxy of your own in front of
-MileWage (GitHub issue #6).
+editing a trip you added on the web, and a reverse proxy of your own in front of MileWage (GitHub
+issue #6).
 
 **After upgrading: the phone app.** The new Android app installs over the old one but starts
 empty: nothing is carried over. Before installing it, open the old app on a connection to your
@@ -46,8 +46,6 @@ you choose Your rate there; in a country without rates in MileWage it is used as
 - The drive prompt's thresholds for a car, a bicycle or scooter, walking and a bus.
 - The QR scanner (CameraX and ZXing) on real cameras, and finding the server on the Wi-Fi (NSD) on
   real routers; a phone without Google services.
-- The MileIQ file layout: read from a third-party reader and template, not from a real MileIQ
-  export.
 - The tax treatment of parking and tolls (deducted in full, beside the mileage rate), and every
   mileage rate and tax figure, against the tax offices' own pages.
 - The PDF report in a real viewer and printer.
@@ -107,14 +105,6 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   each stop. Stops migration 0002.
 - Shift page: a trip added by hand has a "..." menu with Edit and Delete (TODO W2i). Delete asks
   first. Both changes reach the phone through the change feed, as before.
-- Settings > Your data > Import: "Drives from MileIQ (its CSV report)". Each drive becomes an
-  imported shift with one trip: business drives as business distance, personal, commute and
-  MileIQ's other categories as personal trips, unclassified drives as personal or left out (your
-  choice in the preview); parking and tolls of business drives become expenses on the shift.
-  MileIQ's value column is not imported. The preview shows the counts by category, how dates and
-  vehicles were read, the costs, the first drives and every problem with its line in the file;
-  importing the same file again adds nothing. API: `POST /imports/mileiq/preview`,
-  `POST /imports/mileiq`.
 - Settings > Mileage rate: your own mileage rate may replace the country's, for example an
   employer's or your accountant's rate. Each rate starts on a day you choose and runs until your
   next one; shifts before it keep the country rate, and one shift never mixes the two (ADR 0007).
@@ -234,6 +224,11 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   the `modules.goals` flag. The inbox no longer says a goal was reached. Upgrading deletes its
   table (`goals`) and drops the goal step from the setup steps a driver finished or skipped; a
   `modules.goals` left in `settings.json` or `MILEWAGE_MODULE_GOALS` in the environment is ignored.
+- The import module, on by default: Settings > Your data > Import with the CSV import of expenses
+  and shifts and the import of a MileIQ drive report, the `/imports` operations and the
+  `modules.import` flag. It had no tables: shifts, trips, expenses and earnings an import wrote
+  stay, and the exports still mark those shifts as imported. A `modules.import` left in
+  `settings.json` or `MILEWAGE_MODULE_IMPORT` in the environment is ignored.
 
 ### Fixed
 

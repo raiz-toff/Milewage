@@ -28,7 +28,6 @@ import { diagnosticsRoutes } from './routes/diagnostics';
 import { earningsRoutes } from './routes/earnings';
 import { expensesRoutes } from './routes/expenses';
 import { exportsRoutes } from './routes/exports';
-import { importsRoutes } from './routes/imports';
 import { maintenanceRoutes } from './routes/maintenance';
 import { platformKnown, platformsRoutes } from './routes/platforms';
 import { receiptsRoutes } from './routes/receipts';
@@ -168,12 +167,6 @@ export const serverModules = [
     name: 'maintenance',
     dependsOn: ['core'],
     wire: (h) => ({ routes: maintenanceRoutes(h) }),
-  }),
-  /** Generic CSV import of the driver's own expenses and shifts, in two steps (18 section 12). */
-  serverModule({
-    name: 'import',
-    dependsOn: ['core'],
-    wire: (h) => ({ routes: importsRoutes(h) }),
   }),
   /** One receipt photo or PDF per expense, kept on the volume and in every backup (18 section 5.4). */
   serverModule({
