@@ -25,8 +25,8 @@ const seriesQuery = strictObject({ from: date, to: date, bucket: { enum: ['day',
 ]);
 const DAY = 86_400_000;
 
-/** A shift as the series and breakdowns read it: totals not computed yet count as 0. */
-export const seriesShift = (s: ShiftRow): SeriesShift => ({
+/** A shift as the series reads it: totals not computed yet count as 0. */
+const seriesShift = (s: ShiftRow): SeriesShift => ({
   id: s.id,
   vehicleId: s.vehicleId,
   localDate: s.localDate,
@@ -120,7 +120,8 @@ export function summaryRoute(app: FastifyInstance, ctx: SummaryContext) {
 
   /**
    * `GET /summary/series`: the summary's figures per day or per month, every slot of the range
-   * included, for the dashboard's and Analytics' charts. At most 366 days by day, two years by month.
+   * included, for the dashboard's charts and the Shifts page's bars. At most 366 days by day, two
+   * years by month.
    */
   app.get('/summary/series', { schema: { querystring: seriesQuery } }, async (req) => {
     const { userId } = ctx.auth(req, 'S');

@@ -35,7 +35,6 @@ tags:
   - { name: receipts }
   - { name: tax }
   - { name: goals }
-  - { name: analytics }
   - { name: maintenance }
   - { name: import }
   - { name: system }
@@ -121,11 +120,6 @@ x-modules:
     default: true
     dependsOn: [core]
     operations: [listGoals, createGoal, updateGoal, deleteGoal]
-  analytics:
-    toggle: modules.analytics
-    default: true
-    dependsOn: [core]
-    operations: [getAnalytics, getAnalyticsBreakdown]
   maintenance:
     toggle: modules.maintenance
     default: true
@@ -1286,7 +1280,7 @@ paths:
     get:
       tags: [system]
       operationId: getSummarySeries
-      summary: The summary's figures per day or per month, every slot of the range included (the dashboard's and Analytics' charts). At most 366 days by day, two years by month.
+      summary: The summary's figures per day or per month, every slot of the range included (the dashboard's charts and the Shifts page's bars). At most 366 days by day, two years by month.
       security: [{ sessionCookie: [] }]
       parameters:
         - { name: from, in: query, required: true, schema: { type: string, format: date } }
@@ -1912,51 +1906,6 @@ paths:
       responses:
         '204': { description: Deleted. }
         '404': { $ref: '#/components/responses/NotFound' }
-
-  /analytics:
-    get:
-      tags: [analytics]
-      operationId: getAnalytics
-      summary: One group of period figures, or every group with `all`. Unknown is null, never 0. The platform filter applies to earnings only.
-      security: [{ sessionCookie: [] }]
-      parameters:
-        - { $ref: '#/components/parameters/From' }
-        - { $ref: '#/components/parameters/To' }
-        - { name: group, in: query, schema: { enum: [trends, rhythm, sources, outlook, efficiency, order_economics, cards, all], default: cards } }
-        - { name: bucket, in: query, schema: { enum: [day, week, month], default: day }, description: trends only. }
-        - { name: platform, in: query, schema: { type: string } }
-      responses:
-        '200':
-          description: The group. The shape of data depends on the group (see 18 section 10.1); with `all` it is an object of every group by name.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [from, to, group, data]
-                properties:
-                  from: { type: string, format: date }
-                  to: { type: string, format: date }
-                  group: { enum: [trends, rhythm, sources, outlook, efficiency, order_economics, cards, all] }
-                  platform_filter: { const: earnings_only }
-                  data: { type: [object, array, 'null'] }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-
-  /analytics/breakdown:
-    get:
-      tags: [analytics]
-      operationId: getAnalyticsBreakdown
-      summary: A range by weekday and clock hour, per vehicle, per platform and per expense category. At most two years.
-      security: [{ sessionCookie: [] }]
-      parameters:
-        - { name: from, in: query, required: true, schema: { type: string, format: date } }
-        - { name: to, in: query, required: true, schema: { type: string, format: date } }
-      responses:
-        '200':
-          description: The breakdowns.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/AnalyticsBreakdown' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
 
   /vehicles/{id}/maintenance:
     parameters:
@@ -2594,7 +2543,7 @@ components:
     Modules:
       type: object
       description: Read-only module flags so clients can hide screens and buttons of absent modules.
-      required: [import, maintenance, analytics, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, stops, sync, diagnostics, capture, backup_download, exporters, countries]
+      required: [import, maintenance, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, stops, sync, diagnostics, capture, backup_download, exporters, countries]
       properties:
         platforms: { type: boolean, description: 'Platforms module registered (18 section 4.2).' }
         earnings: { type: boolean, description: 'Earnings module registered (18 section 4.3): the driver can type a total per shift and platform.' }
@@ -2602,7 +2551,6 @@ components:
         receipts: { type: boolean, description: 'Receipts module registered (18 section 5.4); needs expenses.' }
         tax: { type: boolean, description: 'Tax module registered (18 section 7). The estimate itself exists only for countries whose pack is verified or switched on.' }
         goals: { type: boolean, description: 'Goals module registered (18 section 8.1).' }
-        analytics: { type: boolean, description: 'Analytics module registered (18 section 10.1).' }
         maintenance: { type: boolean, description: 'Maintenance module registered (18 section 6).' }
         import: { type: boolean, description: 'Import module registered (18 section 12). The expenses kind also needs the expenses module.' }
         sync: { type: boolean }
@@ -3593,61 +3541,6 @@ components:
               platform: { type: string }
               earnings_cents: { type: integer }
               tips_cents: { type: integer }
-    AnalyticsBreakdown:
-      type: object
-      required: [from, to, week_hours, vehicles, platforms]
-      properties:
-        from: { type: string, format: date }
-        to: { type: string, format: date }
-        week_hours:
-          type: array
-          description: Shift time by weekday (0 Sunday) and clock hour in the instance time zone; only cells with shift time. A shift's earnings are spread over its hours in proportion to time.
-          items:
-            type: object
-            required: [weekday, hour, hours, paid_hours, earnings_cents]
-            properties:
-              weekday: { type: integer, minimum: 0, maximum: 6 }
-              hour: { type: integer, minimum: 0, maximum: 23 }
-              hours: { type: number }
-              paid_hours: { type: number, description: The part of hours from shifts with earnings. }
-              earnings_cents: { type: [integer, 'null'], description: null when no shift in the cell has earnings. }
-        vehicles:
-          type: array
-          items:
-            type: object
-            required: [vehicle_id, shifts, hours, business_m, personal_m, earnings_cents]
-            properties:
-              vehicle_id: { type: [integer, 'null'] }
-              shifts: { type: integer }
-              hours: { type: number }
-              business_m: { type: integer }
-              personal_m: { type: integer }
-              earnings_cents: { type: [integer, 'null'] }
-              expenses_cents: { type: integer, description: Present only with the expenses module on. }
-        platforms:
-          type: array
-          items:
-            type: object
-            required: [platform, earnings_cents, tips_cents, orders, online_minutes, shifts]
-            properties:
-              platform: { type: string }
-              earnings_cents: { type: integer }
-              tips_cents: { type: integer }
-              orders: { type: [integer, 'null'] }
-              online_minutes: { type: [integer, 'null'] }
-              shifts: { type: integer }
-        expense_categories:
-          type: array
-          description: Present only with the expenses module on. Every category with something paid in the range, largest first.
-          items:
-            type: object
-            required: [category, cents, spent_cents, count]
-            properties:
-              category: { type: string }
-              cents: { type: integer, description: The deductible part, by the same rule as the cards' expenses (nothing counted twice). }
-              spent_cents: { type: integer, description: What was paid, in full. }
-              count: { type: integer }
-
     Backup:
       type: object
       required: [id, created_at, size_bytes, sha256, integrity_ok, trigger]

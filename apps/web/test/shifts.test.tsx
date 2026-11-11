@@ -46,14 +46,41 @@ const summary = (over: object = {}) => ({
   ...over,
 });
 
-const bucket = (start: string, cents: number | null) => ({
-  start,
-  shifts: 1,
-  hours: 4.2,
-  distance_m: 10_000,
-  earnings_cents: cents,
-  hourly_cents: null,
-});
+// What the shifts earned by day; `GET /summary/series` answers with every slot of the range asked.
+const EARNED: Record<string, number> = { '2023-11-15': 9_000, '2023-11-16': 12_550 };
+const series: Handler = ({ url }) => {
+  const from = url.searchParams.get('from')!;
+  const to = url.searchParams.get('to')!;
+  const bucket = url.searchParams.get('bucket') ?? 'day';
+  const starts: string[] = [];
+  for (let t = Date.parse(`${from}T00:00:00Z`); t <= Date.parse(`${to}T00:00:00Z`); t += 864e5) {
+    const day = new Date(t).toISOString().slice(0, 10);
+    const start = bucket === 'month' ? `${day.slice(0, 7)}-01` : day;
+    if (!starts.includes(start)) starts.push(start);
+  }
+  const buckets = starts.map((start) => {
+    const days = Object.keys(EARNED).filter((d) =>
+      bucket === 'month' ? d.startsWith(start.slice(0, 7)) : d === start,
+    );
+    const cents = days.reduce((a, d) => a + EARNED[d]!, 0);
+    return {
+      start,
+      shift_count: days.length,
+      hours: days.length * 4.2,
+      earnings_cents: cents,
+      tips_cents: 0,
+      active_m: 0,
+      deadhead_m: 0,
+      personal_m: 0,
+      total_m: days.length * 10_000,
+      unsplit_m: 0,
+      platforms: days.length
+        ? [{ platform: 'doordash', earnings_cents: cents, tips_cents: 0 }]
+        : [],
+    };
+  });
+  return { body: { from, to, bucket, buckets } };
+};
 
 /** The dates on the shift cards, top to bottom. */
 const cards = () =>
@@ -72,17 +99,7 @@ function server(
       ...signedIn(settings),
       'GET /shifts': () => ({ body: { items, next_cursor: null } }),
       'GET /summary': () => ({ body: summary() }),
-      'GET /analytics': () => ({
-        body: {
-          from: '2023-11-13',
-          to: '2023-11-19',
-          group: 'trends',
-          data: {
-            bucket: 'day',
-            buckets: [bucket('2023-11-15', 9_000), bucket('2023-11-16', 12_550)],
-          },
-        },
-      }),
+      'GET /summary/series': series,
       ...extra,
     },
     url,
@@ -116,6 +133,15 @@ describe('shifts week view', () => {
     expect(screen.getByText('Shifts on Wednesday')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Wednesday: $90.00' }));
     expect(cards()).toEqual(['Thu, Nov 16', 'Wed, Nov 15']);
+    // A day with no shift has nothing entered, not $0.00.
+    expect(screen.getByRole('button', { name: 'Monday: not entered' })).toBeTruthy();
+  });
+
+  it('a range longer than a month has a bar per month with its earnings', async () => {
+    server([shift(1), shift(2)], {}, settingsFixture(), '/shifts?from=2023-09-01&to=2023-11-30');
+    expect(await screen.findByRole('button', { name: 'November 2023: $215.50' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'September 2023: not entered' })).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: /2023: / })).toHaveLength(3);
   });
 
   it('a row says what the shift earned, its tips and its platforms (the Comma phone row)', async () => {

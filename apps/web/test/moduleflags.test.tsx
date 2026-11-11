@@ -24,7 +24,6 @@ const ALL_OFF: Modules = {
   receipts: false,
   tax: false,
   goals: false,
-  analytics: false,
   maintenance: false,
   import: false,
   exporters: [],
@@ -77,8 +76,8 @@ const open = (modules: Partial<Modules>, url: string) =>
           hourly_earnings_cents: null,
         },
       }),
-      'GET /analytics': () => ({
-        body: { from: '2023-11-13', to: '2023-11-19', group: 'trends', data: { buckets: [] } },
+      'GET /summary/series': () => ({
+        body: { from: '2023-11-13', to: '2023-11-19', bucket: 'day', buckets: [] },
       }),
       'GET /shifts/1': () => ({ body: shift }),
       'GET /shifts/1/route': () => ({ body: routeBody }),
@@ -113,7 +112,6 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
     expect(await navNames()).toEqual([
       'Dashboard',
       'Shifts',
-      'Analytics',
       'Expenses',
       'Goals',
       'Tax',

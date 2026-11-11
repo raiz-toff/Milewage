@@ -781,7 +781,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The summary's figures per day or per month, every slot of the range included (the dashboard's and Analytics' charts). At most 366 days by day, two years by month. */
+        /** The summary's figures per day or per month, every slot of the range included (the dashboard's charts and the Shifts page's bars). At most 366 days by day, two years by month. */
         get: operations["getSummarySeries"];
         put?: never;
         post?: never;
@@ -1206,40 +1206,6 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["updateGoal"];
-        trace?: never;
-    };
-    "/analytics": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** One group of period figures, or every group with `all`. Unknown is null, never 0. The platform filter applies to earnings only. */
-        get: operations["getAnalytics"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/analytics/breakdown": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** A range by weekday and clock hour, per vehicle, per platform and per expense category. At most two years. */
-        get: operations["getAnalyticsBreakdown"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/vehicles/{id}/maintenance": {
@@ -1727,8 +1693,6 @@ export interface components {
             tax: boolean;
             /** @description Goals module registered (18 section 8.1). */
             goals: boolean;
-            /** @description Analytics module registered (18 section 10.1). */
-            analytics: boolean;
             /** @description Maintenance module registered (18 section 6). */
             maintenance: boolean;
             /** @description Import module registered (18 section 12). The expenses kind also needs the expenses module. */
@@ -2756,49 +2720,6 @@ export interface components {
                 platform: string;
                 earnings_cents: number;
                 tips_cents: number;
-            }[];
-        };
-        AnalyticsBreakdown: {
-            /** Format: date */
-            from: string;
-            /** Format: date */
-            to: string;
-            /** @description Shift time by weekday (0 Sunday) and clock hour in the instance time zone; only cells with shift time. A shift's earnings are spread over its hours in proportion to time. */
-            week_hours: {
-                weekday: number;
-                hour: number;
-                hours: number;
-                /** @description The part of hours from shifts with earnings. */
-                paid_hours: number;
-                /** @description null when no shift in the cell has earnings. */
-                earnings_cents: number | null;
-            }[];
-            vehicles: {
-                vehicle_id: number | null;
-                shifts: number;
-                hours: number;
-                business_m: number;
-                personal_m: number;
-                earnings_cents: number | null;
-                /** @description Present only with the expenses module on. */
-                expenses_cents?: number;
-            }[];
-            platforms: {
-                platform: string;
-                earnings_cents: number;
-                tips_cents: number;
-                orders: number | null;
-                online_minutes: number | null;
-                shifts: number;
-            }[];
-            /** @description Present only with the expenses module on. Every category with something paid in the range, largest first. */
-            expense_categories?: {
-                category: string;
-                /** @description The deductible part */
-                cents: number;
-                /** @description What was paid */
-                spent_cents: number;
-                count: number;
             }[];
         };
         Backup: {
@@ -5817,69 +5738,6 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
-            422: components["responses"]["Unprocessable"];
-        };
-    };
-    getAnalytics: {
-        parameters: {
-            query?: {
-                /** @description Local date YYYY-MM-DD in the instance timezone, inclusive. */
-                from?: components["parameters"]["From"];
-                to?: components["parameters"]["To"];
-                group?: "trends" | "rhythm" | "sources" | "outlook" | "efficiency" | "order_economics" | "cards" | "all";
-                /** @description trends only. */
-                bucket?: "day" | "week" | "month";
-                platform?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The group. The shape of data depends on the group (see 18 section 10.1); with `all` it is an object of every group by name. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** Format: date */
-                        from: string;
-                        /** Format: date */
-                        to: string;
-                        /** @enum {unknown} */
-                        group: "trends" | "rhythm" | "sources" | "outlook" | "efficiency" | "order_economics" | "cards" | "all";
-                        /** @constant */
-                        platform_filter?: "earnings_only";
-                        data: Record<string, never> | unknown[] | null;
-                    };
-                };
-            };
-            422: components["responses"]["Unprocessable"];
-        };
-    };
-    getAnalyticsBreakdown: {
-        parameters: {
-            query: {
-                from: string;
-                to: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The breakdowns. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AnalyticsBreakdown"];
-                };
-            };
             422: components["responses"]["Unprocessable"];
         };
     };

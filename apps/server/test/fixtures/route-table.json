@@ -18,8 +18,6 @@
   "DELETE /api/v1/tax/jar/:id": "tax",
   "DELETE /api/v1/trips/:id": "core",
   "DELETE /api/v1/vehicles/:id/tax-years/:year": "tax",
-  "GET /api/v1/analytics": "analytics",
-  "GET /api/v1/analytics/breakdown": "analytics",
   "GET /api/v1/app": "devices",
   "GET /api/v1/app/android.apk": "devices",
   "GET /api/v1/backups": "backup",

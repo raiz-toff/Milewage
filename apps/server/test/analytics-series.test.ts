@@ -1,10 +1,9 @@
 import { afterEach, describe, expect, test } from 'vitest';
-import { breakdown, bucketStarts, clockHours, summarySeries } from '../src/analytics-series';
+import { bucketStarts, summarySeries } from '../src/analytics-series';
 import type { SeriesShift } from '../src/analytics-series';
 import type { EffectiveRow } from '../src/db';
 import { harness, type Harness } from './support';
 
-const H = 3_600_000;
 const shift = (over: Partial<SeriesShift> = {}): SeriesShift => ({
   id: 1,
   vehicleId: 1,
@@ -111,129 +110,6 @@ describe('summarySeries', () => {
   });
 });
 
-describe('clockHours', () => {
-  test('splits at the local hour, so a half-hour zone and a DST change land where the clock was', () => {
-    // 09:30 to 11:15 in Chicago, a Monday.
-    const a = Date.parse('2027-01-11T15:30:00Z');
-    expect(clockHours(a, a + 1.75 * H, 'America/Chicago')).toEqual([
-      { weekday: 1, hour: 9, ms: 0.5 * H },
-      { weekday: 1, hour: 10, ms: H },
-      { weekday: 1, hour: 11, ms: 0.25 * H },
-    ]);
-    // India is UTC+5:30: 15:00 UTC is 20:30 there.
-    const b = Date.parse('2027-01-11T15:00:00Z');
-    expect(clockHours(b, b + H, 'Asia/Kolkata')).toEqual([
-      { weekday: 1, hour: 20, ms: 0.5 * H },
-      { weekday: 1, hour: 21, ms: 0.5 * H },
-    ]);
-    // Chicago springs forward at 02:00 on 2027-03-14: 01:30 to 03:30 local is one real hour.
-    const c = Date.parse('2027-03-14T07:30:00Z');
-    expect(clockHours(c, c + H, 'America/Chicago')).toEqual([
-      { weekday: 0, hour: 1, ms: 0.5 * H },
-      { weekday: 0, hour: 3, ms: 0.5 * H },
-    ]);
-  });
-});
-
-describe('breakdown', () => {
-  test('spreads a shift’s earnings over its hours; vehicles, platforms and categories', () => {
-    const b = breakdown({
-      from: '2027-01-11',
-      to: '2027-01-12',
-      timeZone: 'America/Chicago',
-      shifts: [
-        shift(), // Mon 09:00 to 11:00 in Chicago, 5 500 + 2 000
-        shift({
-          id: 2,
-          vehicleId: 2,
-          localDate: '2027-01-12',
-          startedAt: Date.parse('2027-01-12T15:00:00Z'),
-          endedAt: Date.parse('2027-01-12T16:00:00Z'),
-        }), // nothing entered
-      ],
-      earnings: [
-        earning(),
-        earning({
-          platform: 'ubereats',
-          grossCents: 2_000,
-          tipsCents: 0,
-          feesCents: 0,
-          orders: null,
-        }),
-      ],
-      expenses: [
-        { category: 'fuel', vehicleId: 1, cents: 4_000, spentCents: 4_000 },
-        { category: 'phone', vehicleId: null, cents: 1_500, spentCents: 3_000 },
-        { category: 'fuel', vehicleId: 2, cents: 1_000, spentCents: 1_000 },
-        // Covered by the mileage rate: paid, but nothing deductible.
-        { category: 'parking', vehicleId: null, cents: 0, spentCents: 700 },
-      ],
-    });
-    expect(b.week_hours).toEqual([
-      { weekday: 1, hour: 9, hours: 1, paid_hours: 1, earnings_cents: 3_750 },
-      { weekday: 1, hour: 10, hours: 1, paid_hours: 1, earnings_cents: 3_750 },
-      { weekday: 2, hour: 9, hours: 1, paid_hours: 0, earnings_cents: null },
-    ]);
-    expect(b.vehicles).toEqual([
-      {
-        vehicle_id: 1,
-        shifts: 1,
-        hours: 2,
-        business_m: 9_000,
-        personal_m: 1_000,
-        earnings_cents: 7_500,
-        expenses_cents: 4_000,
-      },
-      {
-        vehicle_id: 2,
-        shifts: 1,
-        hours: 1,
-        business_m: 9_000,
-        personal_m: 1_000,
-        earnings_cents: null,
-        expenses_cents: 1_000,
-      },
-    ]);
-    expect(b.platforms).toEqual([
-      {
-        platform: 'doordash',
-        earnings_cents: 5_500,
-        tips_cents: 1_000,
-        orders: 4,
-        online_minutes: null,
-        shifts: 1,
-      },
-      {
-        platform: 'ubereats',
-        earnings_cents: 2_000,
-        tips_cents: 0,
-        orders: null,
-        online_minutes: null,
-        shifts: 1,
-      },
-    ]);
-    expect(b.expense_categories).toEqual([
-      { category: 'fuel', cents: 5_000, spent_cents: 5_000, count: 2 },
-      { category: 'phone', cents: 1_500, spent_cents: 3_000, count: 1 },
-      { category: 'parking', cents: 0, spent_cents: 700, count: 1 },
-    ]);
-  });
-
-  test('without expenses there is no category list and no vehicle expenses', () => {
-    const b = breakdown({
-      from: '2027-01-11',
-      to: '2027-01-11',
-      timeZone: 'UTC',
-      shifts: [shift()],
-      earnings: [],
-      expenses: null,
-    });
-    expect('expense_categories' in b).toBe(false);
-    expect(b.vehicles[0]).not.toHaveProperty('expenses_cents');
-    expect(b.week_hours.every((c) => c.earnings_cents === null)).toBe(true);
-  });
-});
-
 // The routes, on a server; the clock is Friday 2027-01-15, 02:00 in Chicago.
 let h: Harness;
 let cookie: string;
@@ -266,12 +142,6 @@ async function setup(...args: Parameters<typeof harness>) {
     'PUT',
     `/shifts/${id}/earnings/doordash`,
     { gross_cents: 10_000, tips_cents: 2_000 },
-    { cookie },
-  );
-  await h.call(
-    'POST',
-    '/expenses',
-    { spent_on: '2027-01-14', category: 'phone', amount_cents: 1000 },
     { cookie },
   );
 }
@@ -319,57 +189,5 @@ describe('GET /summary/series', () => {
     await setup({ earnings: false, stops: false, tracking: false, replay: false });
     const body = (await send('GET', '/summary/series?from=2027-01-15&to=2027-01-15')).json();
     expect(body.buckets[0]).toMatchObject({ shift_count: 1, hours: 2, earnings_cents: null });
-  });
-});
-
-describe('GET /analytics/breakdown', () => {
-  test('the week grid in the driver’s zone, vehicles, platforms and expense categories', async () => {
-    await setup();
-    const body = (await send('GET', '/analytics/breakdown?from=2027-01-01&to=2027-01-31')).json();
-    // 02:00 to 04:00 on Friday in Chicago, 12 000 spread evenly.
-    expect(body.week_hours).toEqual([
-      { weekday: 5, hour: 2, hours: 1, paid_hours: 1, earnings_cents: 6_000 },
-      { weekday: 5, hour: 3, hours: 1, paid_hours: 1, earnings_cents: 6_000 },
-    ]);
-    expect(body.vehicles).toEqual([
-      {
-        vehicle_id: 1,
-        shifts: 1,
-        hours: 2,
-        business_m: 10_000,
-        personal_m: 0,
-        earnings_cents: 12_000,
-        expenses_cents: 0,
-      },
-    ]);
-    expect(body.platforms).toEqual([
-      {
-        platform: 'doordash',
-        earnings_cents: 12_000,
-        tips_cents: 2_000,
-        orders: null,
-        online_minutes: null,
-        shifts: 1,
-      },
-    ]);
-    // The phone expense is half deductible, as the cards count it; all of it was paid.
-    expect(body.expense_categories).toEqual([
-      { category: 'phone', cents: 500, spent_cents: 1000, count: 1 },
-    ]);
-    expect(
-      (await send('GET', '/analytics/breakdown?from=2020-01-01&to=2027-01-01')).statusCode,
-    ).toBe(422);
-  });
-
-  test('expenses off: no categories; analytics off: a 404', async () => {
-    await setup({ tax: false, expenses: false, receipts: false });
-    const body = (await send('GET', '/analytics/breakdown?from=2027-01-01&to=2027-01-31')).json();
-    expect(body).not.toHaveProperty('expense_categories');
-    h.close();
-    h = harness({ analytics: false });
-    ({ cookie } = await h.signUp());
-    expect(
-      (await send('GET', '/analytics/breakdown?from=2027-01-01&to=2027-01-31')).statusCode,
-    ).toBe(404);
   });
 });

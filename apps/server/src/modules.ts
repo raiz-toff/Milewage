@@ -20,7 +20,6 @@ import { createLateRecompute } from './processing/late-recompute';
 import { receiptsDirOf } from './receipts/store';
 import { taxReport } from './tax-report';
 import { SERVER_VERSION } from './version';
-import { analyticsRoutes } from './routes/analytics';
 import { backupRoutes } from './routes/backup';
 import { captureModuleParts } from './routes/capture';
 import { coreRoutes } from './routes/core';
@@ -171,14 +170,6 @@ export const serverModules = [
     dependsOn: ['core'],
     wire: (h) => ({
       routes: goalsRoutes({ ...h, override: h.config.comma.earningsOverride }),
-    }),
-  }),
-  /** Period groups over shifts, earnings and expenses; owns no table (18 section 10.1). */
-  serverModule({
-    name: 'analytics',
-    dependsOn: ['core'],
-    wire: (h) => ({
-      routes: analyticsRoutes({ ...h, override: h.config.comma.earningsOverride }),
     }),
   }),
   /** Per-vehicle service record; a cost becomes a linked expense (18 section 6). */

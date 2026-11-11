@@ -1,52 +1,10 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import { chartColor } from './colors';
 import { Swatch } from './frame';
 import { percent } from './scale';
 
-// The small figures: a sparkline in a table cell, a part-to-whole bar, ranked bars. None of them
-// has an axis; each sits beside the words and figures that carry its values.
-
-/**
- * A sparkline of discrete slots (days, months) as tiny columns, so days off read as gaps and
- * nothing is joined across them. `label` is its accessible name, a sentence of what it shows.
- */
-export function Sparkline({
-  values,
-  color,
-  label,
-  width = 72,
-  height = 20,
-}: {
-  values: (number | null)[];
-  color: string;
-  label: string;
-  width?: number;
-  height?: number;
-}) {
-  const max = Math.max(0, ...values.map((v) => v ?? 0));
-  const step = values.length > 0 ? width / values.length : width;
-  const bar = Math.max(1, Math.min(6, step - 1));
-  return (
-    <svg role="img" aria-label={label} width={width} height={height} className="block">
-      <line x1={0} x2={width} y1={height - 0.5} y2={height - 0.5} stroke={chartColor.grid} />
-      {values.map((v, i) => {
-        const h = max > 0 && v ? Math.max(1, (v / max) * (height - 2)) : 0;
-        return h > 0 ? (
-          <rect
-            key={i}
-            x={i * step + (step - bar) / 2}
-            y={height - 1 - h}
-            width={bar}
-            height={h}
-            rx={Math.min(1.5, bar / 2)}
-            style={{ fill: color }}
-          />
-        ) : null;
-      })}
-    </svg>
-  );
-}
+// The small figures: a part-to-whole bar and ranked bars. Neither has an axis; each sits beside the
+// words and figures that carry its values.
 
 export interface Part {
   key: string;
@@ -148,30 +106,5 @@ export function RankBars({ items, label }: { items: Rank[]; label: string }) {
         </li>
       ))}
     </ul>
-  );
-}
-
-/** A bar inside a table cell (a share of the column's largest), with the figure beside it. */
-export function InlineBar({
-  value,
-  max,
-  color,
-  children,
-}: {
-  value: number;
-  max: number;
-  color: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-end gap-2">
-      <span className="tabular-nums">{children}</span>
-      <span aria-hidden className="hidden h-2 w-16 sm:block">
-        <span
-          className="block h-2 min-w-0.5 rounded-full"
-          style={{ width: `${max > 0 ? Math.max(0, (value / max) * 100) : 0}%`, background: color }}
-        />
-      </span>
-    </div>
   );
 }

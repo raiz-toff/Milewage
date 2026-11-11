@@ -4,13 +4,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   BarChart,
   ChartFigure,
-  Heatmap,
-  LineChart,
   SegmentBar,
   bands,
-  binOf,
   labelStep,
-  linePath,
   percent,
   stackMax,
   stackRows,
@@ -19,7 +15,7 @@ import {
 } from '../src/ui/charts';
 import { Comparison } from '../src/ui/Comparison';
 import { comparedWith, slotNames } from '../src/series';
-import { formatDistanceTick, formatMoneyTick, hourLabel } from '../src/format';
+import { formatDistanceTick, formatMoneyTick } from '../src/format';
 import './support/kit'; // jsdom's missing ResizeObserver
 
 afterEach(cleanup);
@@ -71,17 +67,14 @@ describe('chart maths', () => {
     expect(stackMax([])).toBe(0);
   });
 
-  it('a line breaks at a null and a bar rounds only its data end', () => {
-    expect(linePath([{ x: 0, y: 0 }, { x: 1, y: 1 }, null, { x: 3, y: 3 }])).toBe('M0,0L1,1M3,3Z');
+  it('a bar rounds only its data end', () => {
     const d = topRoundedRect(0, 10, 20, 50, 4);
     expect(d.startsWith('M0,60V14Q0,10 4,10H16Q20,10 20,14V60Z')).toBe(true);
     expect(topRoundedRect(0, 0, 0, 10)).toBe('');
     expect(topRoundedRect(0, 0, 10, 2)).toContain('V2'); // the radius shrinks to the height
   });
 
-  it('bins and shares', () => {
-    expect([0, 1, 19, 20, 99, 100, 150].map((v) => binOf(v, 100))).toEqual([0, 0, 0, 1, 4, 4, 4]);
-    expect(binOf(5, 0)).toBe(0);
+  it('shares', () => {
     expect([percent(1, 3), percent(2, 3), percent(1, 0)]).toEqual([33, 67, 0]);
   });
 });
@@ -135,11 +128,6 @@ describe('periods compared and slot names', () => {
     expect(formatMoneyTick(2.5, 'USD')).toBe('US$2.50');
     expect(formatMoneyTick(12_000, 'CAD')).toBe('$12K');
     expect(formatDistanceTick(12.25, 'km')).toBe('12.3 km');
-    expect([hourLabel(0, '12h'), hourLabel(13, '12h'), hourLabel(9, '24h')]).toEqual([
-      '12 AM',
-      '1 PM',
-      '09:00',
-    ]);
   });
 });
 
@@ -236,55 +224,6 @@ describe('chart rendering', () => {
     expect(
       within(figure).getByRole('button', { name: 'Hide table' }).getAttribute('aria-expanded'),
     ).toBe('true');
-  });
-
-  it('dots alone for a rate: one marker per slot with a figure, never a line', () => {
-    render(
-      <LineChart
-        label="Per hour"
-        dots
-        slots={['a', 'b', 'c'].map((k) => ({ key: k, tick: k, name: k }))}
-        series={[{ key: 'r', label: 'Per hour', color: 'green', values: [20, null, 25] }]}
-        format={fmt}
-        reference={{ value: 22, label: '$22' }}
-      />,
-    );
-    const chart = screen.getByRole('group', { name: /^Per hour/ });
-    expect(chart.querySelectorAll('circle')).toHaveLength(2);
-    expect(chart.querySelectorAll('path')).toHaveLength(0);
-    fireEvent.focus(chart);
-    fireEvent.keyDown(chart, { key: 'ArrowRight' }); // b has no figure: skipped
-    expect(screen.getByRole('tooltip').textContent).toBe('$25c');
-  });
-
-  it('a heatmap moves across and down with the arrows and names the cell', () => {
-    const cell = (v: number | null, t: string) => ({ value: v, tip: { title: t } });
-    render(
-      <Heatmap
-        label="Pay per hour"
-        rows={['Mon', 'Tue']}
-        cols={['6 AM', '9 AM']}
-        cells={[
-          [cell(10, 'Mon 6'), cell(null, 'Mon 9')],
-          [cell(30, 'Tue 6'), cell(5, 'Tue 9')],
-        ]}
-        color="green"
-        format={fmt}
-      />,
-    );
-    const grid = screen.getByRole('group', { name: /^Pay per hour/ });
-    fireEvent.focus(grid);
-    expect(screen.getByRole('tooltip').textContent).toBe('Mon 6');
-    fireEvent.keyDown(grid, { key: 'ArrowDown' });
-    fireEvent.keyDown(grid, { key: 'ArrowRight' });
-    fireEvent.keyDown(grid, { key: 'ArrowRight' }); // stays at the edge
-    expect(screen.getByRole('tooltip').textContent).toBe('Tue 9');
-    // Cells with nothing are the muted fill; the others a step of the colour.
-    expect(grid.querySelector('[data-cell="0-1"]')!.className).toMatch(/bg-surface-container-low/);
-    expect((grid.querySelector('[data-cell="1-0"]') as HTMLElement).style.background).toContain(
-      'green 100%',
-    );
-    expect(screen.getByText('Under $6')).toBeTruthy();
   });
 
   it('a split names every part in its accessible name and lists only parts with distance', () => {

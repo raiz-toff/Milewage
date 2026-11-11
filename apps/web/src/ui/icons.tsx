@@ -73,7 +73,6 @@ import logout from '@iconify-icons/material-symbols/logout-rounded';
 import menu from '@iconify-icons/material-symbols/menu-rounded';
 import mobile from '@iconify-icons/material-symbols/mobile-outline-rounded';
 import mobileFill from '@iconify-icons/material-symbols/mobile-rounded';
-import monitoring from '@iconify-icons/material-symbols/monitoring-rounded';
 import moreHoriz from '@iconify-icons/material-symbols/more-horiz-rounded';
 import moreVert from '@iconify-icons/material-symbols/more-vert-rounded';
 import palette from '@iconify-icons/material-symbols/palette-outline-rounded';
@@ -194,7 +193,6 @@ export const SystemModeIcon = symbol(computer);
 // Navigation destinations (with a filled form for the selected one).
 export const DashboardIcon = symbol(dashboard, dashboardFill);
 export const ShiftsIcon = symbol(calendarMonth, calendarMonthFill);
-export const AnalyticsIcon = symbol(monitoring);
 export const ExpensesIcon = symbol(receiptLong, receiptLongFill);
 export const GoalsIcon = symbol(target);
 export const TaxIcon = symbol(accountBalance, accountBalanceFill);

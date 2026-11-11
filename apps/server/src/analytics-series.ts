@@ -2,8 +2,7 @@ import type { EffectiveRow } from './db';
 import { totalOf } from './db';
 
 // The series the web's charts draw (plan 18 section 10.1): figures per day or per month for a
-// range, and the breakdowns of a range by time of week, vehicle, platform and expense category.
-// Read-only, computed from the same rows as `/summary` and `/analytics`; unknown is null, never 0.
+// range. Read-only, computed from the same rows as `/summary`; unknown is null, never 0.
 
 const DAY = 86_400_000;
 const utc = (d: string) => Date.parse(`${d}T00:00:00Z`);
@@ -12,7 +11,7 @@ const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 /** Hours from milliseconds, to three decimals as `/summary` gives them. */
 const hoursOf = (ms: number) => Math.round((ms / 3_600_000) * 1000) / 1000;
 
-/** What the series and breakdowns read of a shift. */
+/** What the series reads of a shift. */
 export interface SeriesShift {
   id: number;
   vehicleId: number | null;
@@ -111,181 +110,5 @@ export function summarySeries(i: {
           ),
       };
     }),
-  };
-}
-
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-/**
- * Splits [start, end) into the local clock hours it covers in `timeZone`: weekday (0 Sunday), hour
- * and milliseconds. Steps hour boundary by hour boundary, so a DST change or a half-hour zone lands
- * each minute in the hour the driver's clock showed.
- */
-export function clockHours(start: number, end: number, timeZone: string) {
-  const fmt = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    weekday: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-  });
-  const out: { weekday: number; hour: number; ms: number }[] = [];
-  let t = start;
-  while (t < end) {
-    const p = Object.fromEntries(fmt.formatToParts(t).map((x) => [x.type, x.value]));
-    const into = (Number(p.minute) * 60 + Number(p.second)) * 1000 + (t % 1000);
-    const next = Math.min(end, t + 3_600_000 - into);
-    out.push({ weekday: WEEKDAYS.indexOf(p.weekday!), hour: Number(p.hour) % 24, ms: next - t });
-    t = next;
-  }
-  return out;
-}
-
-export interface BreakdownExpense {
-  category: string;
-  vehicleId: number | null;
-  /** The deductible part; 0 when the mileage rate already covers the expense. */
-  cents: number;
-  /** What was paid, in full. */
-  spentCents: number;
-}
-
-/**
- * The range broken down for Analytics: shift time and earnings by weekday and clock hour, and the
- * figures per vehicle, per platform and per expense category. A shift's earnings are spread over
- * its hours in proportion to time (the screen says so), so a cell's pay per hour is the time-weighted
- * average of the shifts that covered it. `expenses` is null when the expenses module is off.
- */
-export function breakdown(i: {
-  from: string;
-  to: string;
-  timeZone: string;
-  shifts: SeriesShift[];
-  earnings: EffectiveRow[];
-  expenses: BreakdownExpense[] | null;
-}) {
-  const earnedBy = new Map<number, number>();
-  for (const r of i.earnings) earnedBy.set(r.shiftId, (earnedBy.get(r.shiftId) ?? 0) + totalOf(r));
-
-  const cells = new Map<
-    string,
-    { weekday: number; hour: number; ms: number; paidMs: number; cents: number }
-  >();
-  for (const s of i.shifts) {
-    const length = s.endedAt - s.startedAt;
-    if (length <= 0) continue;
-    const earned = earnedBy.get(s.id);
-    for (const c of clockHours(s.startedAt, s.endedAt, i.timeZone)) {
-      const key = `${c.weekday}:${c.hour}`;
-      const cell = cells.get(key) ?? {
-        weekday: c.weekday,
-        hour: c.hour,
-        ms: 0,
-        paidMs: 0,
-        cents: 0,
-      };
-      cell.ms += c.ms;
-      if (earned !== undefined) {
-        cell.paidMs += c.ms;
-        cell.cents += (earned * c.ms) / length;
-      }
-      cells.set(key, cell);
-    }
-  }
-  const week_hours = [...cells.values()]
-    .sort((a, b) => a.weekday - b.weekday || a.hour - b.hour)
-    .map((c) => ({
-      weekday: c.weekday,
-      hour: c.hour,
-      hours: hoursOf(c.ms),
-      paid_hours: hoursOf(c.paidMs),
-      earnings_cents: c.paidMs > 0 ? Math.round(c.cents) : null,
-    }));
-
-  const vehicleIds = [...new Set(i.shifts.map((s) => s.vehicleId))];
-  const vehicles = vehicleIds
-    .map((vehicleId) => {
-      const ss = i.shifts.filter((s) => s.vehicleId === vehicleId);
-      const paid = ss.filter((s) => earnedBy.has(s.id));
-      return {
-        vehicle_id: vehicleId,
-        shifts: ss.length,
-        hours: hoursOf(sum(ss.map((s) => s.endedAt - s.startedAt))),
-        business_m: sum(ss.map((s) => s.activeM + s.deadheadM)),
-        personal_m: sum(ss.map((s) => s.personalM)),
-        earnings_cents: paid.length === 0 ? null : sum(paid.map((s) => earnedBy.get(s.id)!)),
-        ...(i.expenses === null
-          ? {}
-          : {
-              expenses_cents: sum(
-                i.expenses.filter((e) => e.vehicleId === vehicleId).map((e) => e.cents),
-              ),
-            }),
-      };
-    })
-    .sort((a, b) => b.business_m - a.business_m || (a.vehicle_id ?? 0) - (b.vehicle_id ?? 0));
-
-  const byPlatform = new Map<
-    string,
-    {
-      earnings: number;
-      tips: number;
-      orders: number | null;
-      online: number | null;
-      shifts: Set<number>;
-    }
-  >();
-  for (const r of i.earnings) {
-    const p = byPlatform.get(r.platform) ?? {
-      earnings: 0,
-      tips: 0,
-      orders: null,
-      online: null,
-      shifts: new Set<number>(),
-    };
-    p.earnings += totalOf(r);
-    p.tips += r.tipsCents;
-    if (r.orders !== null) p.orders = (p.orders ?? 0) + r.orders;
-    if (r.onlineMin !== null) p.online = (p.online ?? 0) + r.onlineMin;
-    p.shifts.add(r.shiftId);
-    byPlatform.set(r.platform, p);
-  }
-  const platforms = [...byPlatform]
-    .map(([platform, p]) => ({
-      platform,
-      earnings_cents: p.earnings,
-      tips_cents: p.tips,
-      orders: p.orders,
-      online_minutes: p.online,
-      shifts: p.shifts.size,
-    }))
-    .sort((a, b) => b.earnings_cents - a.earnings_cents || a.platform.localeCompare(b.platform));
-
-  const byCategory = new Map<string, { cents: number; spent: number; count: number }>();
-  for (const e of i.expenses ?? []) {
-    const c = byCategory.get(e.category) ?? { cents: 0, spent: 0, count: 0 };
-    c.cents += e.cents;
-    c.spent += e.spentCents;
-    c.count += 1;
-    byCategory.set(e.category, c);
-  }
-  const expense_categories = [...byCategory]
-    .map(([category, c]) => ({
-      category,
-      cents: c.cents,
-      spent_cents: c.spent,
-      count: c.count,
-    }))
-    .filter((c) => c.spent_cents > 0)
-    .sort((a, b) => b.spent_cents - a.spent_cents || a.category.localeCompare(b.category));
-
-  return {
-    from: i.from,
-    to: i.to,
-    week_hours,
-    vehicles,
-    platforms,
-    ...(i.expenses === null ? {} : { expense_categories }),
   };
 }

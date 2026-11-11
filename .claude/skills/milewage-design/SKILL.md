@@ -79,8 +79,8 @@ the house `BrandButton` (56 dp, `BrandSize.VEHICLE` 64 dp for Start shift), or a
 **Money colours.** `earned` (a clean green) is money in and `spent` (an orange, kept visibly apart
 from `error`'s red) is money out. Neither is bent toward the yellow. Use them only on money figures, never as the only signal: the label says it in words. They
 never mark status. Destructive actions use Material's `error`, never `spent`. On the web they mark
-only headline figures (the dashboard's earned figure, a shift's Earned, Expenses' total spend,
-Analytics' gross, expenses and net by its sign), through `StatCard tone` or `moneyText`; tables
+only headline figures (the dashboard's earned figure, a shift's Earned, Expenses' total spend), through
+`StatCard tone` or `moneyText`; tables
 and lists stay plain.
 
 **Themes.** On the web, light is the default. The app follows the OS or the Settings choice:

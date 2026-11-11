@@ -8,7 +8,6 @@ import {
   isoToDate,
   parseDay,
   period,
-  periodOffset,
   rangeText,
   startOfDay,
   todayIn,
@@ -78,15 +77,6 @@ describe('periods', () => {
     expect(period('month', '2028-02-10', 1)).toEqual({ from: '2028-02-01', to: '2028-02-29' });
     expect(period('year', '2027-07-04', 1)).toEqual({ from: '2027-01-01', to: '2027-12-31' });
     expect(period('year', '2027-07-04', 1, -1)).toEqual({ from: '2026-01-01', to: '2026-12-31' });
-  });
-
-  it('counts the periods from today to a day', () => {
-    expect(periodOffset('week', '2027-01-04', '2027-01-15', 1)).toBe(-1);
-    expect(periodOffset('week', '2027-01-11', '2027-01-15', 1)).toBe(0);
-    expect(periodOffset('week', '2027-01-10', '2027-01-15', 1)).toBe(-1);
-    expect(periodOffset('week', '2027-01-10', '2027-01-15', 0)).toBe(0);
-    expect(periodOffset('month', '2026-11-30', '2027-01-15', 1)).toBe(-2);
-    expect(periodOffset('year', '2024-06-01', '2027-01-15', 1)).toBe(-3);
   });
 
   it('the dashboard tabs run from the period start up to today', () => {

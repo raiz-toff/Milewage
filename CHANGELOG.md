@@ -55,24 +55,14 @@ you choose Your rate there; in a country without rates in MileWage it is used as
 
 ### Added
 
-- Charts on the dashboard and in Analytics. The dashboard compares the period's earnings with the
+- Charts on the dashboard. The dashboard compares the period's earnings with the
   period before up to the same point, in words and with an arrow; draws the period day by day (month
   by month for Year, today against the six days before) as earned, distance or time; and says where
-  the money came from by platform, or where the miles went. Analytics draws earnings by platform
-  (or pay and tips), the pace against the period before, pay per hour and per mile for each day
-  worked, the distance by kind with the estimate marked, when it pays (pay per hour by weekday and
-  time of day), money in and out (what was paid, by category, with the deductible part named) and the
-  deduction's value, and the
-  platforms and vehicles side by side. Every chart has a table ("Show as a table") and is read with
-  the keyboard. The shift start times chart and the trends table are replaced by these.
+  the money came from by platform, or where the miles went. Every chart has a table ("Show as a
+  table") and is read with the keyboard.
 
 - `GET /summary/series` (per day or month, every slot of a range included, with each platform's
-  earnings) and `GET /analytics/breakdown` (by weekday and clock hour, per vehicle, per platform,
-  per expense category: what was paid and its deductible part). `GET /analytics` takes
-  `group=all` for every group in one answer. Read-only.
-
-- Fixed: the previous period's earnings in `GET /analytics` (group `trends`) left out fees and
-  adjustments.
+  earnings). Read-only.
 
 - Shifts: the dates above the week's figure open a calendar, and a day picked there opens its week
   with that day chosen. The list's rows follow the Comma phone app's: platforms, day and times,
@@ -82,10 +72,6 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   kept for each tax year, off unless set). The instalment dates, the next-date chip and the
   quarterly amount show only when it is on; `PUT /tax/{year}` takes `pays_instalments`, and the
   report carries it with `instalments_note` from the country data.
-
-- Changed: Analytics' burn ratio and net take-home count what was paid for expenses, in full, no
-  longer only the deductible part. A "Spent" tile shows it beside "Deductible expenses"; the
-  `cards` group carries it as `spent_cents`.
 
 - The native Android app (`apps/android`): first run with pairing (the server found on the home
   Wi-Fi with a 6-digit link code, the QR scanner, a pasted code or address, Tailscale), one
@@ -158,10 +144,6 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   clears it (a failed run makes no file and was never in `GET /backups`).
 
 ### Changed
-
-- Analytics says "Earned, after app fees" where it said "Gross" (the figure was always after app
-  fees), shows "Per hour (online time)" only when online time was recorded, and shows the pay per
-  mile or per km of business distance.
 
 - The look is Material Design 3 on the web and the phone, from one colour scheme generated from
   Lane yellow, with earned and spent as matching extra colours (ADR 0010). The web's components
@@ -240,6 +222,12 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   own label on that stop, with the place's name as its place, so recorded shifts keep their labels
   and their active and deadhead split; then it deletes the `places` table. Because those stops
   now carry labels, the per-shift mileage log CSV can count their dropoffs as orders.
+- The analytics module, which was on by default: the Analytics page, `GET /analytics`,
+  `GET /analytics/breakdown` and the `modules.analytics` flag. It owned no table, so upgrading
+  deletes nothing; a `modules.analytics` left in `settings.json` or `MILEWAGE_MODULE_ANALYTICS` in
+  the environment is ignored. The dashboard's charts are unchanged (they read
+  `GET /summary/series`), and the Shifts page's bars now take each day's earnings from
+  `GET /summary/series` too, so they no longer depend on a module.
 
 ### Fixed
 

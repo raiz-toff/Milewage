@@ -85,16 +85,6 @@ export function period(kind: PeriodKind, day: string, weekStart: number, offset 
   return { from: `${y + offset}-01-01`, to: `${y + offset}-12-31` };
 }
 
-/** How many periods from the one holding `today` to the one holding `day` (≤ 0 in the past). */
-export function periodOffset(kind: PeriodKind, day: string, today: string, weekStart: number) {
-  const [y, m] = day.split('-').map(Number) as [number, number];
-  const [ty, tm] = today.split('-').map(Number) as [number, number];
-  if (kind === 'year') return y - ty;
-  if (kind === 'month') return (y - ty) * 12 + (m - tm);
-  const weeks = utcOf(weekOf(day, weekStart)) - utcOf(weekOf(today, weekStart));
-  return Math.round(weeks / (7 * DAY_MS));
-}
-
 /** The dashboard's period tabs, each from its first day up to today. */
 export const PERIODS: {
   id: 'today' | 'week' | 'month' | 'year' | '30d';
@@ -132,17 +122,6 @@ export function formatDay(iso: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }).format(
     Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()),
   );
-}
-
-/** A month (any day in it) in the driver's country's style: "Nov 2026". */
-export function formatMonth(iso: string, locale: string): string {
-  const d = isoToDate(iso);
-  if (!d) return '';
-  return new Intl.DateTimeFormat(locale, {
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(Date.UTC(d.getFullYear(), d.getMonth(), 1));
 }
 
 const MONTHS = Array.from({ length: 12 }, (_, i) =>

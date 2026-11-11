@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import {
-  AnalyticsIcon,
   BackupsIcon,
   DashboardIcon,
   DevicesIcon,
@@ -16,7 +15,6 @@ import {
 import type { IconComponent } from '@/ui/icons';
 import type { Modules, Settings as SettingsRecord } from './api/client';
 import { helpScreen } from './help';
-import { AnalyticsPage } from './pages/Analytics';
 import { Backups } from './pages/Backups';
 import { Dashboard } from './pages/Dashboard';
 import { ExpensesPage } from './pages/Expenses';
@@ -78,13 +76,6 @@ export const screens: Screen[] = [
     label: 'Shifts',
     element: <ShiftsRoutes />,
     nav: { icon: ShiftsIcon, group: 'overview' },
-  },
-  {
-    path: '/analytics',
-    label: 'Analytics',
-    visible: (m) => m.analytics,
-    element: <AnalyticsPage />,
-    nav: { icon: AnalyticsIcon, group: 'money' },
   },
   {
     path: '/expenses',

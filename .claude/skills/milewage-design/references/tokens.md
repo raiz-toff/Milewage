@@ -197,10 +197,8 @@ in a chart wears the text roles, never a series colour. The brand yellow is not 
 Derived steps are a `color-mix` of a token with the card in OKLab (`tint()` in `ui/charts`),
 validated with the data-viz skill in both themes: tips at 50 % of `chart-earned` beside pay;
 deadhead at 45 % of `chart-measure` beside active, with personal distance in `chart-series-7`
-(three greys cannot be told apart; adjacent CVD ΔE ≥ 19 light, ≥ 22 dark); the heatmap's five
-steps at 48, 61, 74, 87 and 100 % (monotone, ΔL ≥ 0.06, the light end at 2:1 on the card) for
-`chart-earned` and `chart-measure`. The tints sit under 3:1, which the legend, the 2 px gaps and
-the table relieve.
+(three greys cannot be told apart; adjacent CVD ΔE ≥ 19 light, ≥ 22 dark). The tints sit under
+3:1, which the legend, the 2 px gaps and the table relieve.
 
 ## shadcn names → roles (`index.css`)
 

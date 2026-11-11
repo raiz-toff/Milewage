@@ -71,7 +71,7 @@ The first four, and `MILEWAGE_TRUSTED_PROXIES`, are compose settings in `infra/d
 | `MILEWAGE_MODULE_<NAME>`          | Switch: turns a module on or off. `<NAME>` is the module name in capitals, for example `MILEWAGE_MODULE_TAX=0`. | see below | `settings.json` `modules.<name>`, or the environment          |
 | `MILEWAGE_MODULE_EXPORT_<FORMAT>` | Switch: offers one export format or hides it. Formats: `CSV`, `GPX`, `GEOJSON`, `EXPENSES`, `TAX_SUMMARY`.      | all on    | `settings.json` `modules.export_<format>`, or the environment |
 
-Modules on by default: `devices`, `tracking`, `stops`, `replay`, `sync`, `exporters`, `diagnostics`, `platforms`, `earnings`, `expenses`, `receipts`, `goals`, `analytics`, `maintenance`, `import`, `tax`.
+Modules on by default: `devices`, `tracking`, `stops`, `replay`, `sync`, `exporters`, `diagnostics`, `platforms`, `earnings`, `expenses`, `receipts`, `goals`, `maintenance`, `import`, `tax`.
 Off by default: `capture`.
 `core` and `backup` cannot be turned off. A module whose dependency is off stops the server at start with a message that names both (for example `receipts` needs `expenses`).
 

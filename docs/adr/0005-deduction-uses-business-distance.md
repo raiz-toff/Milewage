@@ -6,4 +6,4 @@ A shift's total distance includes trips the driver marked personal, and until 20
 
 - A shift with a personal trip deducts less than the same shift without one; a test guards this.
 - The phone's own estimate for shifts not yet sent still used the total when this was written; it follows the same rule.
-- The GB tax year (6 April) is not part of this decision: only the rate tier follows 6 April; the deduction method, double-counted expenses, the tax report, exports, analytics, goals and the odometer year check use the calendar year. The owner decides whether to change that.
+- The GB tax year (6 April) is not part of this decision: only the rate tier follows 6 April; the deduction method, double-counted expenses, the tax report, exports, goals and the odometer year check use the calendar year. The owner decides whether to change that.

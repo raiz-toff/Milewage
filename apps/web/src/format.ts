@@ -122,12 +122,6 @@ export const toMajor = (minor: number, currency: string) => minor / scale(curren
 export const formatDistanceTick = (value: number, unit: DistanceUnit) =>
   `${new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 1 }).format(value)} ${unit}`;
 
-/** "17:00", or "5 PM" with the 12h setting: the short form a chart's axis has room for. */
-export function hourLabel(hour: number, timeFormat: TimeFormat): string {
-  if (timeFormat === '24h') return `${String(hour).padStart(2, '0')}:00`;
-  return `${hour % 12 === 0 ? 12 : hour % 12} ${hour < 12 ? 'AM' : 'PM'}`;
-}
-
 /** Hours as a figure: "4.5 h" (one decimal), the way the dashboard writes shift time. */
 export const formatHours = (h: number) => `${h.toFixed(1)} h`;
 

@@ -1,8 +1,8 @@
 // The arithmetic every chart shares, as pure functions (tested in test/charts.test.ts). Nice
-// numbers and ticks come from d3-array and stacks and line paths from d3-shape: small, stable
+// numbers and ticks come from d3-array and stacks from d3-shape: small, stable
 // modules that own no DOM, so the drawing stays ours and in the system's tokens.
 import { nice, ticks } from 'd3-array';
-import { line, stack, stackOffsetDiverging, stackOrderNone } from 'd3-shape';
+import { stack, stackOffsetDiverging, stackOrderNone } from 'd3-shape';
 
 export interface ValueAxis {
   /** The top of the axis, a nice number at or above the largest value. */
@@ -85,16 +85,6 @@ export function stackRows(rows: (number | null)[][], seriesCount: number): [numb
 export const stackMax = (rows: (number | null)[][]) =>
   Math.max(0, ...rows.map((r) => r.reduce<number>((a, v) => a + Math.max(0, v ?? 0), 0)));
 
-/** An SVG path through the points; a null breaks the line, so a gap is never bridged. */
-export function linePath(points: ({ x: number; y: number } | null)[]): string {
-  return (
-    line<{ x: number; y: number } | null>()
-      .defined((p) => p !== null)
-      .x((p) => p!.x)
-      .y((p) => p!.y)(points) ?? ''
-  );
-}
-
 /**
  * A rectangle with the top two corners rounded by `r` (a bar's data end; Material and the data-viz
  * spec round the end away from the baseline and keep the base square). `r` shrinks to fit.
@@ -111,15 +101,6 @@ export function topRoundedRect(x: number, y: number, w: number, h: number, r = 4
     `V${y + h}`,
     'Z',
   ].join('');
-}
-
-/**
- * The bin (0 to `bins - 1`) of a value on equal steps from 0 to `max`, for a sequential scale.
- * Zero and below are bin 0; `max` and above are the last bin.
- */
-export function binOf(value: number, max: number, bins = 5): number {
-  if (!(max > 0) || value <= 0) return 0;
-  return Math.min(bins - 1, Math.floor((value / max) * bins));
 }
 
 /** The share of a part in a whole, rounded to a whole percent, so the shares read as 46%. */

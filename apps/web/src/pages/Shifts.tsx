@@ -29,6 +29,7 @@ import {
   weekOf,
   weekWords,
 } from '../days';
+import { useSeries } from '../series';
 import { useSession, useSettings } from '../session';
 import { useShiftRecord } from '../shift/record';
 import { earnedOf, reviewCount, showsSplit } from '../shift/view';
@@ -53,16 +54,15 @@ const isDate = (d: string | null): d is string => !!d && /^\d{4}-\d{2}-\d{2}$/.t
 
 type Summary = Schemas['Summary'];
 interface DayBucket {
+  /** The day, or the month (`YYYY-MM`) of a long range. */
   start: string;
   earnings_cents: number | null;
-  hours: number;
-  hourly_cents: number | null;
 }
 interface WeekData {
   shifts: Shift[];
   summary: Summary;
-  /** Per-day earnings from the analytics module; null when that module is off. */
-  buckets: DayBucket[] | null;
+  /** Earnings per day, or per month for a long range. */
+  buckets: DayBucket[];
 }
 
 /**
@@ -71,8 +71,6 @@ interface WeekData {
  */
 function useWeek(from: string, to: string, bucket: 'day' | 'month') {
   const { api } = useSession();
-  const settings = useSettings();
-  const analyticsOn = settings.modules.analytics;
   // Every page of the week, so its own key: one page of /shifts is a different answer.
   const shifts = useQuery({
     queryKey: ['/shifts', { query: { from, to } }, 'all pages'],
@@ -93,17 +91,15 @@ function useWeek(from: string, to: string, bucket: 'day' | 'month') {
     },
   });
   const summary = useApiQuery('/summary', { params: { query: { from, to } } });
-  const analytics = useApiQuery(
-    '/analytics',
-    { params: { query: { from, to, group: 'trends', bucket } } },
-    { enabled: analyticsOn },
-  );
-  const buckets = analyticsOn
-    ? analytics.data && ((analytics.data.data as { buckets?: DayBucket[] } | null)?.buckets ?? [])
-    : null;
-  const failed = [shifts, summary, ...(analyticsOn ? [analytics] : [])].find((q) => q.error);
+  const series = useSeries({ from, to }, bucket);
+  // A slot with no shift and nothing earned has no earnings to show ("not entered"), not 0.
+  const buckets = series.data?.buckets.map((b): DayBucket => ({
+    start: bucket === 'month' ? b.start.slice(0, 7) : b.start,
+    earnings_cents: b.shift_count === 0 && b.platforms.length === 0 ? null : b.earnings_cents,
+  }));
+  const failed = [shifts, summary, series].find((q) => q.error);
   const data: WeekData | null =
-    shifts.data && summary.data && buckets !== undefined
+    shifts.data && summary.data && buckets
       ? { shifts: shifts.data, summary: summary.data, buckets }
       : null;
   return { data, error: failed ? describe(failed.error) : null };
@@ -380,8 +376,8 @@ export function ShiftList() {
 
   const shifts = [...(data?.shifts ?? [])].sort((a, b) => b.started_at - a.started_at);
   const earnedWeek = data?.summary.earnings_cents ?? null;
-  // Bars show money when there is money and a breakdown of it; otherwise distance.
-  const byMoney = earnedWeek !== null && data?.buckets != null;
+  // Bars show money when there is money; otherwise distance.
+  const byMoney = earnedWeek !== null;
   const keys = byMonth
     ? [...new Set(Array.from({ length: span }, (_, i) => addDays(from, i).slice(0, 7)))]
     : Array.from({ length: span }, (_, i) => addDays(from, i));
@@ -391,7 +387,7 @@ export function ShiftList() {
       date,
       shifts: own,
       distance: own.reduce((t, s) => t + (s.total_m ?? 0), 0),
-      earned: data?.buckets?.find((b) => b.start === date)?.earnings_cents ?? null,
+      earned: data?.buckets.find((b) => b.start === date)?.earnings_cents ?? null,
       // Under the bar; in words for a screen reader and the headline.
       tick: byMonth
         ? dateWords(`${date}-01`, { month: 'short' })

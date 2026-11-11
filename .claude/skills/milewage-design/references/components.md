@@ -88,11 +88,11 @@ drawn by `index.css` as a small outlined button.
 ## Web: charts (`apps/web/src/ui/charts/`)
 
 One family of chart primitives, so every chart looks and behaves alike. A chart answers one
-question a driver asks ("How did this week go against the last? Where did the money come from?
-When is it worth being out?"); a chart that answers none is not drawn.
+question a driver asks ("How did this week go against the last? Where did the money come from?");
+a chart that answers none is not drawn.
 
 **Library decision (2026-11-10).** Hand-built SVG on `d3-array` (`nice`, `ticks`) and `d3-shape`
-(`stack` with the diverging offset, `line`), pinned exactly (3.2.5, 3.2.1: the d3 maintainers'
+(`stack` with the diverging offset), pinned exactly (3.2.5, 3.2.1: the d3 maintainers'
 2026-11-03 releases, published from GitHub with provenance; 3.2.5 fixes a `nice` rounding error).
 Both are pure maths that own no DOM, so the drawing stays in the system's tokens and states, and
 nothing is fetched at run time. Measured with esbuild, minified and gzipped, for the parts a
@@ -118,14 +118,11 @@ CSS from 21.58 to 21.86 kB. MUI X Charts (what OpenMiles uses) is ruled out: no 
 | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ChartFigure`                      | The frame of every chart: a `<figure>` named by `label`, a toolbar row (a measure switch) with **Show as a table**, the plot, the `Legend` (only with two or more series), a footnote, and the table a screen reader always gets (`sr-only` until shown).                                                                                                                               |
 | `BarChart`                         | Discrete slots (days, months): one series or stacked. Bars at most 24 px with 4 px rounded data ends, a 2 px surface gap between stacked parts, a nice zero-based axis. `future` slots draw nothing and the keyboard skips them; `emphasis` draws one slot in colour and the rest in `chart-other` (today against the week). One direct label: the tallest slot, or the emphasised one. |
-| `LineChart`                        | A measure continuous over the slots (a running total): 2 px lines, the last point ringed. `dots` for a rate that exists only on some slots (pay per hour on days worked): markers, never a line across a gap. `reference` draws one hairline (the period's figure); its words go in the figure's note.                                                                                  |
-| `Heatmap`                          | A grid (weekdays by 3-hour blocks): one hue in five validated steps (`HEAT_STEPS`), a scale legend, a muted cell with a hairline for "no shifts". Arrow keys move across and down.                                                                                                                                                                                                      |
 | `SegmentBar`                       | One whole split into parts, read beside its figures: a thin 8 px bar with rounded ends and 2 px gaps over a list of swatch, name, figure and share. Zero parts are left out.                                                                                                                                                                                                            |
 | `RankBars`                         | Parts compared with each other: one bar per part, largest first, **one hue** (the badge or the name carries identity).                                                                                                                                                                                                                                                                  |
-| `InlineBar`, `Sparkline`           | A bar beside a figure in a table cell; tiny columns of a row's figures across the period (columns, so days off read as gaps).                                                                                                                                                                                                                                                           |
 | `ChartSkeleton`, `ChartEmpty`      | Loading in the chart's shape (never a spinner); no data in words with one way forward ("No shifts this week yet. Start one on your phone.").                                                                                                                                                                                                                                            |
 | `Comparison` (`ui/Comparison.tsx`) | A figure against the period before in words and with the sign as an arrow, never colour alone: "↓ $43.25 (26%) less than by this point last week ($167.64)". A running period is compared to the same point (`comparedWith` in `series.ts`).                                                                                                                                            |
-| `scale.ts`                         | The pure maths, tested: `valueAxis`, `bands`, `labelStep`, `stackRows`, `linePath`, `topRoundedRect`, `binOf`, `percent`.                                                                                                                                                                                                                                                               |
+| `scale.ts`                         | The pure maths, tested: `valueAxis`, `bands`, `labelStep`, `stackRows`, `topRoundedRect`, `percent`.                                                                                                                                                                                                                                                                                    |
 
 **The rules every chart keeps.**
 
@@ -137,7 +134,7 @@ CSS from 21.58 to 21.86 kB. MUI X Charts (what OpenMiles uses) is ruled out: no 
   slots, Escape lets go, and a polite live region reads the slot. The hovered slot gets the state
   layer (on-surface at 8 %). Tooltips never gate: every value is in the table.
 - Every figure goes through the formatters (`formatMoney`, `formatMoneyTick`, `formatDistance`,
-  `formatDistanceTick`, `formatHours`, `hourLabel`) in the driver's currency, unit and time format;
+  `formatDistanceTick`, `formatHours`) in the driver's currency, unit and time format;
   weeks start at `settings.week_start`. A slot with nothing entered is "Not entered", never 0.
 - Colour: money in `chart-earned` (tips a 50 % tint of it), money out `chart-spent`, distance and
   time the steel `chart-measure` (deadhead a 45 % tint), personal distance `chart-series-7`, the
@@ -149,17 +146,13 @@ CSS from 21.58 to 21.86 kB. MUI X Charts (what OpenMiles uses) is ruled out: no 
   ResizeObserver).
 - A chart whose module is off, or with nothing to draw, is not rendered at all; the layout closes
   up (no empty card).
-- Estimates carry the asterisk and say so in the footnote (active and deadhead, the heatmap's
-  spread of a shift's pay over its hours).
+- Estimates carry the asterisk and say so in the footnote (active and deadhead).
 
 **Where they are used.** Dashboard (`pages/DashboardTrend.tsx`): the comparison under the earned
 figure, one trend chart per period tab (Today against the six days before; Week, Month and 30 days
 by day; Year by month) with an Earned / Distance / Time switch, and one breakdown card (where the
-money came from with two or more platforms, else where the miles went). Analytics
-(`pages/AnalyticsCharts.tsx`): earnings stacked by platform (or pay and tips), the pace against the
-period before, pay per hour and per mile as two small multiples, distance by kind, when it pays,
-money in and out, and the platform and vehicle tables. The data is `GET /summary/series` and
-`GET /analytics/breakdown` (`series.ts`).
+money came from with two or more platforms, else where the miles went). The data is
+`GET /summary/series` (`series.ts`).
 
 ## Web: states and feedback
 

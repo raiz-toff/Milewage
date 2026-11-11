@@ -158,7 +158,6 @@ export const ALL_ON: Modules = {
   receipts: true,
   tax: true,
   goals: true,
-  analytics: true,
   maintenance: true,
   import: true,
   backup_download: false,
