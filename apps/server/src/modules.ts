@@ -21,7 +21,6 @@ import { receiptsDirOf } from './receipts/store';
 import { taxReport } from './tax-report';
 import { SERVER_VERSION } from './version';
 import { backupRoutes } from './routes/backup';
-import { captureModuleParts } from './routes/capture';
 import { coreRoutes } from './routes/core';
 import { devicesRoutes } from './routes/devices';
 import { diagnosticsRoutes } from './routes/diagnostics';
@@ -74,7 +73,6 @@ export const serverModules = [
           secrets: h.secrets,
           book: h.book,
           exportFormats: h.exportFormats,
-          captureFor: h.captureFor,
           backupDownload: h.config.backup.download,
           comma: h.config.comma,
           drivers: h.drivers,
@@ -287,25 +285,6 @@ export const serverModules = [
           metrics.job,
         ],
       };
-    },
-  }),
-  /** Time-boxed dense recording, annotations and anonymized replay; off by default (16 section 8). */
-  serverModule({
-    name: 'capture',
-    dependsOn: ['diagnostics', 'tracking', 'devices'],
-    defaultEnabled: false,
-    wire: (h) => {
-      const capture = captureModuleParts({
-        db: h.db,
-        now: h.now,
-        authn: h.authn,
-        store: h.diagnostics.store,
-        disk: diskState(h),
-        purgeEveryMs: h.tuning.captureHousekeepingMs,
-        announce: (event, session, shiftsDone) =>
-          h.bus.emit('capture.state', { event, profile: session.profile, shiftsDone }),
-      });
-      return { routes: capture.routes, jobs: [capture.job] };
     },
   }),
   /** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */

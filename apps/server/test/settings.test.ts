@@ -21,22 +21,22 @@ test('GET /settings returns the preferences, engine version and diagnostics', as
   expect((await get('/settings')).json()).toMatchObject({
     ...{ country: 'US', distance_unit: 'mi', currency: 'USD', raw_retention_days: 90 },
     engine_version: algorithmVersion,
-    diagnostics: { level: 'basic', verbose_until: null, capture: null },
+    diagnostics: { level: 'basic', verbose_until: null },
   });
   expect((await h.call('GET', '/settings')).json().code).toBe('auth_required');
 });
 
 test('the modules object follows the registry: registered is true, absent is false', async () => {
-  const flagsOf = async (capture: boolean) => {
-    const other = harness({ capture });
+  const flagsOf = async (replay: boolean) => {
+    const other = harness({ replay });
     const { cookie } = await other.signUp();
     const res = await other.call('GET', '/settings', undefined, { cookie });
     await other.close();
     return res.json().modules;
   };
-  expect((await flagsOf(true)).capture).toBe(true);
+  expect((await flagsOf(true)).replay).toBe(true);
   expect(await flagsOf(false)).toMatchObject({
-    capture: false,
+    replay: false,
     tracking: true,
     stops: true,
     backup_download: true,

@@ -21,8 +21,6 @@ export interface BundleInput {
   versions: Record<string, string | number>;
   modules: Record<string, boolean>;
   health: unknown;
-  /** Already anonymized capture replay lines for the one session the owner ticked, if any. */
-  capture?: unknown;
 }
 
 const stringLeaves = (v: unknown, out: string[] = []): string[] => {
@@ -35,8 +33,8 @@ const stringLeaves = (v: unknown, out: string[] = []): string[] => {
 /**
  * The redacted debug bundle (16 section 10.2): relative times only, pseudonymous ids (D1, S1), flag codes without detail,
  * and every event re-validated against the shared schema; an event that fails, or whose text still looks like a coordinate
- * or a credential, is left out and counted. No dates, country, time zone, currency, names, addresses, odometer values,
- * labels or capture data (unless the owner ticked one session, passed in already anonymized).
+ * or a credential, is left out and counted. No dates, country, time zone, currency, names, addresses, odometer values
+ * or labels.
  */
 export function buildBundle(i: BundleInput) {
   const starts = [...i.events.map((e) => e.at), ...i.shifts.map((s) => s.startedAt)];
@@ -125,6 +123,5 @@ export function buildBundle(i: BundleInput) {
     })),
     events,
     excluded_events: excluded,
-    ...(i.capture === undefined ? {} : { capture: i.capture }),
   };
 }

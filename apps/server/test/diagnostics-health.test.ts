@@ -24,7 +24,6 @@ const ev = (
   level: 'basic',
   kind,
   shift,
-  cap: null,
   v: '1',
   data,
 });
@@ -175,7 +174,6 @@ describe('device health checks (16 section 10.1)', () => {
         gap_count: 0,
         service_restarts: 0,
         engine_ms: 1,
-        capture: false,
       }),
       shift: `0b1c8a52-8f0d-4c52-9d5b-5c8a0f3d1e${String(i).padStart(2, '0')}`,
       at: T0 + i * 1000,

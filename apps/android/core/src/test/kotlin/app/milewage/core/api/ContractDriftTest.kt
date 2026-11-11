@@ -110,7 +110,7 @@ class ContractDriftTest {
         assertEquals(30.5, s.ownMileageRate?.centsPerUnit)
         assertEquals(1, s.weekStart)
         assertEquals(DiagnosticsLevel.VERBOSE, s.diagnostics.level)
-        assertEquals(3, s.diagnostics.capture?.maxShifts)
+        assertEquals(1700086400000, s.diagnostics.verboseUntil)
         assertEquals(true, s.modules.tracking)
         val end = ApiJson.decodeFromString(EndShiftResult.serializer(), ContractFixtures.answers.getValue("endShift 200")[0])
         assertEquals(12000, end.shift.totalM)

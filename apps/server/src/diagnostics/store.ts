@@ -29,7 +29,6 @@ export interface EventRow {
   level: 'basic' | 'verbose';
   kind: string;
   shift: string | null;
-  cap: number | null;
   v: string | null;
   data: Record<string, unknown>;
 }
@@ -43,8 +42,6 @@ export interface StoredEvent {
 
 /** The diagnostics store (16 section 7.1): its own file, its own single writer. */
 export interface DiagnosticsStore {
-  /** The connection, for the `capture` module's own tables in the same file. */
-  db: Db;
   /** Inserts one event; returns false for a duplicate `(device, src, seq)`. */
   insert(e: StoredEvent): boolean;
   count(): number;
@@ -133,8 +130,8 @@ export function openDiagnosticsStore(
     db = openAndMigrate(path);
   }
   const insert = db.prepare(
-    `INSERT INTO diag_events (user_id, src, device_id, seq, at, received_at, level, kind, shift_client_id, capture_id, app_v, data, expires_at)
-     VALUES (@userId, @src, @deviceId, @seq, @at, @receivedAt, @level, @kind, @shift, @cap, @v, @data, @expiresAt)
+    `INSERT INTO diag_events (user_id, src, device_id, seq, at, received_at, level, kind, shift_client_id, app_v, data, expires_at)
+     VALUES (@userId, @src, @deviceId, @seq, @at, @receivedAt, @level, @kind, @shift, @v, @data, @expiresAt)
      ON CONFLICT DO NOTHING`,
   );
   let writes = 0;
@@ -163,7 +160,6 @@ export function openDiagnosticsStore(
   };
   const vacuum = () => void db.pragma('incremental_vacuum');
   return {
-    db,
     written: () => writes,
     liveBytes,
     pruneExpired(now, batch = 5000) {
@@ -205,7 +201,6 @@ export function openDiagnosticsStore(
         level: e.level,
         kind: e.kind,
         shift: e.shift ?? null,
-        cap: e.cap ?? null,
         v: e.v,
         data: JSON.stringify(e.data),
         expiresAt: expiresAt(e, receivedAt),
@@ -327,7 +322,7 @@ export function openDiagnosticsStore(
       const rows = db
         .prepare(
           `SELECT id, src, device_id AS deviceId, seq, at, received_at AS receivedAt, level, kind,
-                  shift_client_id AS shift, capture_id AS cap, app_v AS v, data
+                  shift_client_id AS shift, app_v AS v, data
              FROM diag_events WHERE ${where.join(' AND ')} ORDER BY at DESC, id DESC LIMIT @limit`,
         )
         .all(args) as (Omit<EventRow, 'data'> & { data: string })[];
