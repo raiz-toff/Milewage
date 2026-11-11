@@ -137,7 +137,7 @@ describe('dashboard recent shifts (Comma rows)', () => {
     fireEvent.click(await failed.findByRole('button', { name: 'Try again' }));
     expect(await failed.findByRole('link', { name: /Shift/ })).toBeTruthy();
   });
-  it('draws a sketch of the route, hidden from screen readers; none without a route or replay', async () => {
+  it('draws a sketch of the route, hidden from screen readers; none without a route or tracking', async () => {
     const list = () => ({ body: { items: [shift(1)], next_cursor: null } });
     open({ 'GET /shifts': list, 'GET /shifts/1/route': () => ({ body: route }) });
     const row = await (await recent()).findByRole('link', { name: /Shift/ });
@@ -157,7 +157,7 @@ describe('dashboard recent shifts (Comma rows)', () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(within(bare).queryByTestId('route-sketch')).toBeNull();
     cleanup();
-    const off = open({ 'GET /shifts': list }, { replay: false });
+    const off = open({ 'GET /shifts': list }, { tracking: false, stops: false });
     await (await recent()).findByRole('link', { name: /Shift/ });
     await new Promise((r) => setTimeout(r, 20));
     expect(off.calls.some((c) => c.path === '/shifts/1/route')).toBe(false);

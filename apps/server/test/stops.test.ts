@@ -258,9 +258,9 @@ describe('trips and route reads', () => {
 });
 
 describe('module switches', () => {
-  test('replay off: the route is 404 and trips still work', async () => {
+  test('a replay flag left from before is ignored: the route is served with tracking', async () => {
     await setup({ replay: false });
-    expect((await web('GET', `/shifts/${SHIFT}/route`)).json().code).toBe('not_found');
+    expect((await web('GET', `/shifts/${SHIFT}/route`)).statusCode).toBe(200);
     expect((await web('GET', `/shifts/${SHIFT}/trips`)).statusCode).toBe(200);
   });
   test('stops module off: no stops are derived or served', async () => {

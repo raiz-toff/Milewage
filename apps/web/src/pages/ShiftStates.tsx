@@ -20,11 +20,11 @@ const SHORT_MIN = 3;
  */
 export function NoRouteCard({
   shift,
-  replay,
+  tracking,
   onAdd,
 }: {
   shift: Shift;
-  replay: boolean;
+  tracking: boolean;
   /** Opens the add-a-trip form; absent when the shift cannot be changed. */
   onAdd?: () => void;
 }) {
@@ -36,9 +36,9 @@ export function NoRouteCard({
   return (
     <Section
       label="What happened"
-      title={replay ? 'No route for this shift' : 'No trips for this shift'}
+      title={tracking ? 'No route for this shift' : 'No trips for this shift'}
       description={
-        replay
+        tracking
           ? 'The phone sent no location points for this shift, so there is no map, and no trips or stops.'
           : 'No trips or stops were recorded for this shift.'
       }

@@ -115,11 +115,11 @@ describe('settings page', () => {
   });
 
   it('offers only the countries the server lists and shows the module flags', async () => {
-    server(settingsFixture({ modules: { countries: ['CA', 'GB'], replay: false } }));
+    server(settingsFixture({ modules: { countries: ['CA', 'GB'], diagnostics: false } }));
     expect(optionsOf(await screen.findByLabelText('Country'))).toEqual(['CA', 'GB']);
     await go('Server modules');
     await screen.findByRole('region', { name: 'Modules' });
-    expect(flag('replay')).toBe('Off');
+    expect(flag('diagnostics')).toBe('Off');
     expect(flag('sync')).toBe('On');
     const mods = screen.getByRole('region', { name: 'Modules' });
     expect(within(mods).getByText('csv')).toBeTruthy();

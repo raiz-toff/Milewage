@@ -14,7 +14,6 @@ const ALL_OFF: Modules = {
   sync: false,
   devices: false,
   tracking: false,
-  replay: false,
   stops: false,
   diagnostics: false,
   platforms: false,
@@ -141,8 +140,8 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
     expect(screen.queryByRole('button', { name: 'Pair a phone' })).toBeNull();
   });
 
-  it('replay off: shift detail has no route section and asks for no route', async () => {
-    const { calls } = open({ replay: false }, '/shifts/1');
+  it('tracking off: shift detail has no route section and asks for no route', async () => {
+    const { calls } = open({ tracking: false, stops: false }, '/shifts/1');
     await screen.findByRole('heading', { name: /Nov 14, 2023/ });
     expect(screen.queryByRole('region', { name: 'Route' })).toBeNull();
     expect(calls.some((c) => c.path.endsWith('/route'))).toBe(false);

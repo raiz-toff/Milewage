@@ -21,7 +21,7 @@ object ContractFixtures {
          "diagnostics":{"level":"verbose","verbose_until":1700086400000},
          "modules":{
            "tax":true,"receipts":true,"expenses":true,"earnings":true,
-           "platforms":true,"devices":true,"tracking":true,"replay":true,"stops":true,"sync":true,
+           "platforms":true,"devices":true,"tracking":true,"stops":true,"sync":true,
            "diagnostics":true,"backup_download":true,"local_export":false,
            "exporters":["csv","pdf"],"countries":["CA","US"]}}
     """.trimIndent()

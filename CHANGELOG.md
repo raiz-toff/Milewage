@@ -265,6 +265,13 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   screen any more; a choice already made is kept in `work_kinds`. `onboarded_at` leaves
   `GET /settings` and `onboarded` leaves `PATCH /settings`; upgrading drops the
   `settings.onboarded_at` column. The setup steps already finished or skipped stay.
+- The route replay on a shift's page: the slider under the map, its moving position marker, its
+  time and speed read-out and the coordinates under it. The map still draws the route, its start
+  and end and the numbered stops, and the timeline beside it is unchanged. The `replay` module
+  and its `modules.replay` flag go: `GET /shifts/{ref}/route` now belongs to the `tracking`
+  module, unchanged, so the map and the dashboard's route sketches show whenever tracking is on.
+  A `modules.replay` left in `settings.json` or `MILEWAGE_MODULE_REPLAY` in the environment is
+  ignored. The `motion` package leaves the web app.
 
 ### Fixed
 

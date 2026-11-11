@@ -112,7 +112,7 @@ export function shiftView(record: ShiftParts, settings: Settings): ShiftView {
   const { shift, trips, stops, route, earned, vehicle } = record;
   const { modules, timezone: tz, time_format: tf } = settings;
   const active = shift.status === 'active';
-  const replay = modules.replay;
+  const map = modules.tracking;
   const showEarnings = modules.earnings && !active;
   const stopList = stops.data ?? [];
   // Nothing was recorded: no trips, no stops and no route points (or no map to ask).
@@ -120,7 +120,7 @@ export function shiftView(record: ShiftParts, settings: Settings): ShiftView {
     !active &&
     trips.data?.length === 0 &&
     stopList.length === 0 &&
-    (!replay || route.points?.length === 0);
+    (!map || route.points?.length === 0);
   const orphans = !!shift.flags?.some((f) => f.code === 'label_orphaned');
   // Only start and end in the timeline.
   const sparse = active || empty;
@@ -143,8 +143,8 @@ export function shiftView(record: ShiftParts, settings: Settings): ShiftView {
     showEarnings,
     earned: showEarnings ? earned : undefined,
     platforms: showEarnings ? (earned?.platforms ?? []) : [],
-    main: active ? 'in-progress' : empty ? 'nothing-recorded' : replay ? 'map' : 'list',
-    sideBySide: replay || sparse,
+    main: active ? 'in-progress' : empty ? 'nothing-recorded' : map ? 'map' : 'list',
+    sideBySide: map || sparse,
     sparse,
     timelineNote: sparse
       ? 'Start and end only'
