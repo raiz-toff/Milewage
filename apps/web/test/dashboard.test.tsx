@@ -329,10 +329,7 @@ describe('dashboard charts', () => {
   });
 
   it('with earnings and stops off the switch has no Earned and the chart starts on distance', async () => {
-    openCharts(
-      week,
-      settingsFixture({ modules: { earnings: false, stops: false, progress: false } }),
-    );
+    openCharts(week, settingsFixture({ modules: { earnings: false, stops: false } }));
     const figure = await screen.findByRole('figure', {
       name: 'Business distance each day, this week',
     });

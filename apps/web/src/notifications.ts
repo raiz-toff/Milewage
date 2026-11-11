@@ -16,16 +16,6 @@ export function messageOf(n: Pick<Item, 'kind' | 'body_key' | 'ref'>): string {
       return `A backup failed on ${n.ref}. Check the Backups screen.`;
     case 'backup_overdue':
       return 'No successful backup in the last day and a half.';
-    case 'badge':
-      return 'You unlocked a badge.';
-    case 'level_up':
-      return 'You reached a new level.';
-    case 'challenge':
-      return 'A weekly challenge was completed.';
-    case 'streak_freeze':
-      return 'A streak freeze protected your streak.';
-    case 'streak_risk':
-      return 'Your streak is at risk today.';
     default:
       return 'Reminder';
   }

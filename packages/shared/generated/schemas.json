@@ -244,7 +244,6 @@
       "type": "object",
       "description": "Read-only module flags so clients can hide screens and buttons of absent modules.",
       "required": [
-        "progress",
         "schedule",
         "notifications",
         "import",
@@ -312,10 +311,6 @@
         "schedule": {
           "type": "boolean",
           "description": "Schedule module registered (18 section 9); off by default."
-        },
-        "progress": {
-          "type": "boolean",
-          "description": "Progress module registered (18 section 8.2); off by default."
         },
         "sync": {
           "type": "boolean"
@@ -3150,11 +3145,6 @@
         },
         "kind": {
           "enum": [
-            "badge",
-            "challenge",
-            "level_up",
-            "streak_freeze",
-            "streak_risk",
             "goal_met",
             "tax_deadline",
             "shift_reminder",
@@ -3214,7 +3204,6 @@
         "shift_reminders",
         "goals",
         "tax_deadlines",
-        "streak",
         "backup",
         "sync_reminder"
       ],
@@ -3227,9 +3216,6 @@
           "type": "boolean"
         },
         "tax_deadlines": {
-          "type": "boolean"
-        },
-        "streak": {
           "type": "boolean"
         },
         "backup": {
@@ -3253,9 +3239,6 @@
           "type": "boolean"
         },
         "tax_deadlines": {
-          "type": "boolean"
-        },
-        "streak": {
           "type": "boolean"
         },
         "backup": {
@@ -3478,121 +3461,6 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/ScheduleTemplate"
-          }
-        }
-      }
-    },
-    "Progress": {
-      "type": "object",
-      "required": [
-        "xp",
-        "level",
-        "xp_into_level",
-        "xp_per_level",
-        "streak",
-        "challenges",
-        "badges"
-      ],
-      "properties": {
-        "xp": {
-          "type": "integer"
-        },
-        "level": {
-          "type": "integer"
-        },
-        "xp_into_level": {
-          "type": "integer"
-        },
-        "xp_per_level": {
-          "type": "integer"
-        },
-        "streak": {
-          "type": "object",
-          "required": [
-            "days",
-            "freezes_held",
-            "at_risk"
-          ],
-          "properties": {
-            "days": {
-              "type": "integer"
-            },
-            "freezes_held": {
-              "type": "integer",
-              "maximum": 3
-            },
-            "at_risk": {
-              "type": "boolean"
-            }
-          }
-        },
-        "challenges": {
-          "type": "array",
-          "description": "The weekly challenges. The labelled drop-offs challenge is absent while nothing is labelled.",
-          "items": {
-            "type": "object",
-            "required": [
-              "id",
-              "label",
-              "value",
-              "target",
-              "done",
-              "week_start"
-            ],
-            "properties": {
-              "id": {
-                "enum": [
-                  "earn",
-                  "deliveries",
-                  "streak5"
-                ]
-              },
-              "label": {
-                "type": "string"
-              },
-              "value": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "description": "null when unknown (nothing entered this week)."
-              },
-              "target": {
-                "type": "integer"
-              },
-              "done": {
-                "type": "boolean"
-              },
-              "week_start": {
-                "type": "string",
-                "format": "date"
-              }
-            }
-          }
-        },
-        "badges": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": [
-              "slug",
-              "label",
-              "unlocked_at"
-            ],
-            "properties": {
-              "slug": {
-                "type": "string"
-              },
-              "label": {
-                "type": "string"
-              },
-              "unlocked_at": {
-                "type": [
-                  "integer",
-                  "null"
-                ]
-              }
-            }
           }
         }
       }

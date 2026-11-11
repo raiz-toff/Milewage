@@ -9,7 +9,6 @@ import {
   GoalsIcon,
   OdometerIcon,
   PlacesIcon,
-  ProgressIcon,
   ScheduleIcon,
   SettingsIcon,
   ShiftsIcon,
@@ -26,7 +25,6 @@ import { Dashboard } from './pages/Dashboard';
 import { ExpensesPage } from './pages/Expenses';
 import { ExportsPage } from './pages/Exports';
 import { Devices } from './pages/Devices';
-import { ProgressPage } from './pages/Progress';
 import { SchedulePage } from './pages/Schedule';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotificationsPage } from './pages/Notifications';
@@ -122,13 +120,6 @@ export const screens: Screen[] = [
     visible: (m) => m.goals,
     element: <GoalsPage />,
     nav: { icon: GoalsIcon, group: 'money' },
-  },
-  {
-    path: '/progress',
-    label: 'Progress',
-    visible: (m) => m.progress,
-    element: <ProgressPage />,
-    nav: { icon: ProgressIcon, group: 'money' },
   },
   {
     path: '/tax',

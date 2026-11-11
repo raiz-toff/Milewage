@@ -33,14 +33,12 @@ const PERIOD_WORD: Record<string, string> = {
 
 /**
  * The goal card of the dashboard (Comma's weekly goal card, 18 section 13): the first active
- * goal, how far along it is as a share and a meter, and the streak when the progress module runs.
+ * goal and how far along it is as a share and a meter.
  * Nothing appears without a goal; the checklist offers to set one. A failed request hides it.
  */
 export function GoalRing() {
-  const { modules, distance_unit: unit, currency } = useSettings();
+  const { distance_unit: unit, currency } = useSettings();
   const goal = useApiQuery('/goals').data?.find((g) => g.active) ?? null;
-  const progress = useApiQuery('/progress', undefined, { enabled: modules.progress }).data;
-  const streak = modules.progress ? (progress?.streak.days ?? 0) : 0;
   if (!goal) return null;
   const p = goal.progress;
   const pct = p.ratio === null ? null : Math.round(p.ratio * 100);
@@ -77,14 +75,7 @@ export function GoalRing() {
             ? (p.note ?? 'Progress unknown')
             : `${text(p.value)} of ${text(p.target)}${p.estimated ? ' (estimated)' : ''}`}
         </p>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          {streak > 0 ? (
-            <Badge variant="secondary" className="tabular-nums">
-              {streak}-day streak
-            </Badge>
-          ) : (
-            <span />
-          )}
+        <div className="flex justify-end">
           <Link to="/goals" className={cn(linkClass, 'text-label-large')}>
             Open Goals
           </Link>

@@ -40,7 +40,6 @@ import { maintenanceRoutes } from './routes/maintenance';
 import { notificationsRoutes } from './routes/notifications';
 import { placesRoutes } from './routes/places';
 import { platformKnown, platformsRoutes } from './routes/platforms';
-import { progressRoutes } from './routes/progress';
 import { receiptsRoutes } from './routes/receipts';
 import { replayRoutes } from './routes/replay';
 import { restoreRoutes } from './routes/restore';
@@ -227,19 +226,6 @@ export const serverModules = [
           }
         },
       },
-    }),
-  }),
-  /** XP, level, streak, weekly challenges and 24 badges, derived from what is already recorded; **off by default** (18 section 8.2). */
-  serverModule({
-    name: 'progress',
-    dependsOn: ['goals', 'earnings'],
-    defaultEnabled: false,
-    wire: (h) => ({
-      routes: progressRoutes({
-        ...h,
-        override: h.config.comma.earningsOverride,
-        challengeTargetCents: h.config.comma.challengeTargetCents,
-      }),
     }),
   }),
   /** Planned shifts, repeating templates and off days; **off by default** (18 section 9, 16 item 1). */

@@ -141,6 +141,41 @@ describe('migration runner', () => {
     migrate(db, real, { lockPath });
     expect(existsSync(lockPath)).toBe(false);
   });
+
+  test('a 0.2.0 database loses the progress tables, inbox rows and streak switch on upgrade', () => {
+    const db = open();
+    const drop = 'progress/0002_drop_progress';
+    migrate(
+      db,
+      real.filter((m) => `${m.module}/${m.id}` !== drop),
+    );
+    expect(tables(db)).toEqual(expect.arrayContaining(['badge_unlocks', 'progress_state']));
+    const userId = createUserRepository(db).create({
+      username: 'sam',
+      passwordHash: 'x',
+      createdAt: 1,
+    }).id;
+    const add = db.prepare(
+      'INSERT INTO notifications (user_id, kind, dedupe_key, body_key, created_at) VALUES (?, ?, ?, ?, 0)',
+    );
+    add.run(userId, 'badge', 'badge:first_shift', 'badge');
+    add.run(userId, 'goal_met', 'goal_met:1:2027-01-11', 'goal_met');
+    db.prepare('INSERT INTO notification_prefs (user_id, goals, streak) VALUES (?, 0, 0)').run(
+      userId,
+    );
+    expect(migrate(db, real)).toEqual([drop]);
+    expect(tables(db)).not.toContain('badge_unlocks');
+    expect(tables(db)).not.toContain('progress_state');
+    expect(db.prepare('SELECT kind FROM notifications').pluck().all()).toEqual(['goal_met']);
+    expect(db.prepare('SELECT * FROM notification_prefs').get()).toEqual({
+      user_id: userId,
+      shift_reminders: 1,
+      goals: 0,
+      tax_deadlines: 1,
+      backup: 1,
+      sync_reminder: 1,
+    });
+  });
 });
 
 describe('user repository', () => {

@@ -64,7 +64,6 @@
   "GET /api/v1/places": "stops",
   "GET /api/v1/platforms": "platforms",
   "GET /api/v1/platforms/:slug/logo": "platforms",
-  "GET /api/v1/progress": "progress",
   "GET /api/v1/schedule": "schedule",
   "GET /api/v1/settings": "core",
   "GET /api/v1/setup/status": "core",

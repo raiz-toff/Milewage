@@ -19,5 +19,5 @@ Drivers stop at the same restaurants, depots and homes again and again, and labe
 
 - The input digest includes labels, so a shift with a place-labelled stop has a different digest from the phone's unlabelled run. Labels never change the total, so the comparison at shift end and after is still `match`: exactly what a hand label gives today, not a new difference. When a later recalculation finds a total that differs for another reason, a place label is listed as `edited_on_web`, as a hand label is.
 - The server's trips (cut differently) reach the phone through the change feed after every such run; a phone trip edit made on its own cut can become `override_orphaned`, as after a hand label.
-- `stops.place_id` (stops migration 0002) records what the last run matched; a finalized shift keeps it, and a deleted place sets it to null. The progress module's delivery count reads hand dropoff labels only; place labels are not counted as deliveries.
+- `stops.place_id` (stops migration 0002) records what the last run matched; a finalized shift keeps it, and a deleted place sets it to null. The progress module (since removed) counted deliveries from hand dropoff labels only, never from place labels.
 - If the engine's stop detection changes, `detectedStopsOf` must keep mirroring `processShift`; the test in `apps/server/test/places.test.ts` fails otherwise.

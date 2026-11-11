@@ -68,7 +68,6 @@ function open(
     platforms?: object[];
     shifts?: object[];
     notifications?: object[];
-    streak?: number;
     kept?: Schemas['SetupStep'][];
   },
   modules: object = {},
@@ -92,17 +91,6 @@ function open(
       'GET /notifications': () => ({
         body: { items: world.notifications ?? [], next_cursor: null, unread_count: 0 },
       }),
-      'GET /progress': () => ({
-        body: {
-          xp: 0,
-          level: 1,
-          xp_into_level: 0,
-          xp_per_level: 100,
-          challenges: [],
-          badges: [],
-          streak: { days: world.streak ?? 0, freezes_held: 0, at_risk: false },
-        },
-      }),
     },
     '/dashboard',
   );
@@ -124,16 +112,6 @@ const shift = (id: number, review: boolean) => ({
 });
 
 describe('dashboard checklist and goal ring (18 section 13)', () => {
-  it('shows the streak with the goal while the progress module runs', async () => {
-    open({ goals: [goal()], streak: 6 });
-    expect(await screen.findByText('6-day streak')).toBeTruthy();
-    cleanup();
-    const off = open({ goals: [goal()], streak: 6 }, { progress: false });
-    await screen.findByRole('group', { name: 'Goal' });
-    expect(screen.queryByText(/streak/)).toBeNull();
-    expect(off.calls.some((c) => c.path === '/progress')).toBe(false);
-  });
-
   it('notices: shifts to review in the last 30 days and a backup problem, each with a link', async () => {
     const s = open({
       shifts: [shift(1, true), shift(2, false), shift(3, true)],

@@ -29,7 +29,6 @@ const ALL_OFF: Modules = {
   import: false,
   notifications: false,
   schedule: false,
-  progress: false,
   exporters: [],
 };
 
@@ -122,7 +121,6 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
       'Analytics',
       'Expenses',
       'Goals',
-      'Progress',
       'Tax',
       'Exports',
       'Vehicles',

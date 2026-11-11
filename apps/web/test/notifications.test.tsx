@@ -19,7 +19,6 @@ const prefs = {
   shift_reminders: true,
   goals: true,
   tax_deadlines: true,
-  streak: true,
   backup: true,
   sync_reminder: true,
 };
@@ -130,11 +129,6 @@ describe('notifications (module notifications)', () => {
       'goal_met',
       'backup_failed',
       'backup_overdue',
-      'badge',
-      'level_up',
-      'challenge',
-      'streak_freeze',
-      'streak_risk',
       'shift_reminder',
     ]) {
       expect(messageOf({ kind, body_key: kind, ref: 'x' } as never).length).toBeGreaterThan(5);

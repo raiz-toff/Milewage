@@ -218,7 +218,7 @@ the table relieve.
 | `border` / `input`                       | outline-variant / outline                    | (same)                      |
 | `ring`, `sidebar-ring`                   | primary (ink)                                | (same: near-white)          |
 | `chart-1` … `chart-5`                    | measure, earned, spent, series-1, other      | (same tokens)               |
-| `sidebar` / `sidebar-foreground`         | background / on-surface-variant              | (same)                      |
+| `sidebar` / `sidebar-foreground`         | surface (a step lighter than the page) / on-surface-variant | surface-container-low / (same) |
 | `sidebar-primary` (+ foreground)         | primary-container / on-primary-container     | (same)                      |
 | `sidebar-accent` (+ foreground)          | secondary-container / on-secondary-container | (same: the active pill)     |
 | `sidebar-border`                         | outline-variant                              | (same)                      |
@@ -240,7 +240,7 @@ a level of the surface model: they follow the theme.
 | `text-display-large`   | 57/64     | 400    | Unused                                          |
 | `text-display-medium`  | 45/52     | 400    | A page's hero figure from `sm`                  |
 | `text-display-small`   | 36/44     | 400    | Hero figure on phones (Dashboard, Shifts, Tax)  |
-| `text-headline-large`  | 32/40     | 400    | Progress level                                  |
+| `text-headline-large`  | 32/40     | 400    | Unused                                          |
 | `text-headline-medium` | 28/36     | 400    | Page title from `md` (`PageHeader`)             |
 | `text-headline-small`  | 24/32     | 400    | Page title on phones, sign-in card title        |
 | `text-title-large`     | 22/28     | 400    | `StatCard` figure (with `font-medium`)          |

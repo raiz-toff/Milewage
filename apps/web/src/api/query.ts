@@ -45,7 +45,7 @@ interface Sent {
 /**
  * The effects policy of a change that succeeded. The server derives most figures from several
  * records (an expense moves the tax estimate, the analytics and a vehicle's tax year; an earning
- * moves goals, progress and tax; settings move nearly everything), so the web does not keep a
+ * moves goals and tax; settings move nearly everything), so the web does not keep a
  * list of which read depends on which write: every cached read is invalidated. Shown reads are
  * read again before the change resolves; the rest are read when next shown. The reads the answer
  * itself updates (`puts`) are set from it and not asked again.

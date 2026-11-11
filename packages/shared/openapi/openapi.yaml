@@ -40,7 +40,6 @@ tags:
   - { name: import }
   - { name: notifications }
   - { name: schedule }
-  - { name: progress }
   - { name: mcp }
   - { name: system }
 
@@ -150,11 +149,6 @@ x-modules:
     default: false
     dependsOn: [core]
     operations: [listSchedule, createScheduleEntry, updateScheduleEntry, deleteScheduleEntry, createScheduleTemplate, updateScheduleTemplate, deleteScheduleTemplate, expandSchedule, putOffDay, deleteOffDay]
-  progress:
-    toggle: modules.progress
-    default: false
-    dependsOn: [goals, earnings]
-    operations: [getProgress]
   mcp:
     toggle: modules.mcp
     default: true
@@ -2631,19 +2625,6 @@ paths:
       responses:
         '204': { description: Removed (idempotent). }
 
-  /progress:
-    get:
-      tags: [progress]
-      operationId: getProgress
-      summary: XP, level, streak, freezes, this week's challenges and the badge grid. Evaluates and records new unlocks (idempotent); everything else is derived.
-      security: [{ sessionCookie: [] }]
-      responses:
-        '200':
-          description: Progress now.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Progress' }
-
   /exports/{format}:
     get:
       tags: [exports]
@@ -3134,7 +3115,7 @@ components:
     Modules:
       type: object
       description: Read-only module flags so clients can hide screens and buttons of absent modules.
-      required: [progress, schedule, notifications, import, maintenance, analytics, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, stops, sync, diagnostics, capture, mcp, backup_download, exporters, countries]
+      required: [schedule, notifications, import, maintenance, analytics, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, stops, sync, diagnostics, capture, mcp, backup_download, exporters, countries]
       properties:
         platforms: { type: boolean, description: 'Platforms module registered (18 section 4.2).' }
         earnings: { type: boolean, description: 'Earnings module registered (18 section 4.3): the driver can type a total per shift and platform.' }
@@ -3147,7 +3128,6 @@ components:
         import: { type: boolean, description: 'Import module registered (18 section 12). The expenses kind also needs the expenses module.' }
         notifications: { type: boolean, description: 'Notifications module registered (18 section 11): the in-app inbox.' }
         schedule: { type: boolean, description: 'Schedule module registered (18 section 9); off by default.' }
-        progress: { type: boolean, description: 'Progress module registered (18 section 8.2); off by default.' }
         sync: { type: boolean }
         local_export: { type: boolean, description: Reserved for v1.1; false in v1. }
         devices: { type: boolean }
@@ -3843,7 +3823,7 @@ components:
       required: [id, kind, body_key, ref, created_at, read_at]
       properties:
         id: { type: integer }
-        kind: { enum: [badge, challenge, level_up, streak_freeze, streak_risk, goal_met, tax_deadline, shift_reminder, backup_overdue, backup_failed, recurring_expense_due] }
+        kind: { enum: [goal_met, tax_deadline, shift_reminder, backup_overdue, backup_failed, recurring_expense_due] }
         body_key: { type: string, description: 'Message id; the client builds the text. No free text and no amounts.' }
         ref: { type: string, description: What it is about (a date or an id), from the dedupe key. }
         created_at: { $ref: '#/components/schemas/EpochMs' }
@@ -3857,12 +3837,11 @@ components:
         unread_count: { type: integer }
     NotificationPrefs:
       type: object
-      required: [shift_reminders, goals, tax_deadlines, streak, backup, sync_reminder]
+      required: [shift_reminders, goals, tax_deadlines, backup, sync_reminder]
       properties:
         shift_reminders: { type: boolean, description: Fired by the phone itself; the phone reads this. }
         goals: { type: boolean }
         tax_deadlines: { type: boolean }
-        streak: { type: boolean }
         backup: { type: boolean }
         sync_reminder: { type: boolean, description: Fired by the phone itself; the phone reads this. }
     NotificationPrefsPatch:
@@ -3873,7 +3852,6 @@ components:
         shift_reminders: { type: boolean }
         goals: { type: boolean }
         tax_deadlines: { type: boolean }
-        streak: { type: boolean }
         backup: { type: boolean }
         sync_reminder: { type: boolean }
 
@@ -3932,44 +3910,6 @@ components:
         entries: { type: array, items: { $ref: '#/components/schemas/ScheduleEntry' } }
         off_days: { type: array, items: { type: object, properties: { off_on: { type: string }, note: { type: [string, 'null'] } } } }
         templates: { type: array, items: { $ref: '#/components/schemas/ScheduleTemplate' } }
-
-    Progress:
-      type: object
-      required: [xp, level, xp_into_level, xp_per_level, streak, challenges, badges]
-      properties:
-        xp: { type: integer }
-        level: { type: integer }
-        xp_into_level: { type: integer }
-        xp_per_level: { type: integer }
-        streak:
-          type: object
-          required: [days, freezes_held, at_risk]
-          properties:
-            days: { type: integer }
-            freezes_held: { type: integer, maximum: 3 }
-            at_risk: { type: boolean }
-        challenges:
-          type: array
-          description: The weekly challenges. The labelled drop-offs challenge is absent while nothing is labelled.
-          items:
-            type: object
-            required: [id, label, value, target, done, week_start]
-            properties:
-              id: { enum: [earn, deliveries, streak5] }
-              label: { type: string }
-              value: { type: [integer, 'null'], description: null when unknown (nothing entered this week). }
-              target: { type: integer }
-              done: { type: boolean }
-              week_start: { type: string, format: date }
-        badges:
-          type: array
-          items:
-            type: object
-            required: [slug, label, unlocked_at]
-            properties:
-              slug: { type: string }
-              label: { type: string }
-              unlocked_at: { type: [integer, 'null'] }
 
     ShiftStatus: { enum: [active, ended, finalized] }
     ShiftStart:

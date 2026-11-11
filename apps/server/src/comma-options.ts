@@ -14,14 +14,11 @@ export interface CommaOptions {
    * without a pack (US, GB today) shows nothing.
    */
   taxCountries: readonly string[];
-  /** 16 item 6: the weekly "earn" challenge target in minor units of the settings currency. */
-  challengeTargetCents: number;
 }
 
 export const COMMA_DEFAULTS: CommaOptions = {
   earningsOverride: 'replace',
   taxCountries: ['CA'],
-  challengeTargetCents: 50_000,
 };
 
 export function loadCommaOptions(
@@ -45,16 +42,11 @@ export function loadCommaOptions(
   ) {
     throw new ConfigError('comma.tax_countries must be a list of country codes.');
   }
-  const target = file.challenge_target_cents;
-  if (target !== undefined && !(Number.isInteger(target) && (target as number) > 0)) {
-    throw new ConfigError('comma.challenge_target_cents must be a positive whole number.');
-  }
   return {
     earningsOverride:
       (override as CommaOptions['earningsOverride']) ?? COMMA_DEFAULTS.earningsOverride,
     taxCountries: ((countries as string[] | undefined) ?? [...COMMA_DEFAULTS.taxCountries]).map(
       (c) => c.toUpperCase(),
     ),
-    challengeTargetCents: (target as number | undefined) ?? COMMA_DEFAULTS.challengeTargetCents,
   };
 }

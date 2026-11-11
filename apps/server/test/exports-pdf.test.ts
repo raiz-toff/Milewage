@@ -219,7 +219,6 @@ describe('GET /exports/pdf', () => {
       receipts: false,
       import: false,
       earnings: false,
-      progress: false,
     });
     try {
       const a = await off.signUp();

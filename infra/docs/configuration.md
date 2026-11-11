@@ -73,8 +73,8 @@ The first four, and `MILEWAGE_TRUSTED_PROXIES`, are compose settings in `infra/d
 | `MILEWAGE_MODULE_EXPORT_<FORMAT>` | Switch: offers one export format or hides it. Formats: `CSV`, `GPX`, `GEOJSON`, `EXPENSES`, `TAX_SUMMARY`.                                         | all on                                                                    | `settings.json` `modules.export_<format>`, or the environment    |
 
 Modules on by default: `devices`, `tracking`, `stops`, `replay`, `sync`, `exporters`, `diagnostics`, `platforms`, `earnings`, `expenses`, `receipts`, `goals`, `analytics`, `maintenance`, `import`, `notifications`, `tax`, `mcp` (but see its row above).
-Off by default: `capture`, `schedule`, `progress`.
-`core` and `backup` cannot be turned off. A module whose dependency is off stops the server at start with a message that names both (for example `receipts` needs `expenses`, `progress` needs `goals` and `earnings`).
+Off by default: `capture`, `schedule`.
+`core` and `backup` cannot be turned off. A module whose dependency is off stops the server at start with a message that names both (for example `receipts` needs `expenses`).
 
 Apart from `MILEWAGE_MODULE_MCP`, a module switch in `.env` does not reach the API. Use `settings.json`, for example `{ "modules": { "schedule": true } }`.
 
@@ -84,8 +84,6 @@ Apart from `MILEWAGE_MODULE_MCP`, a module switch in `.env` does not reach the A
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------ |
 | `MILEWAGE_TAX_COUNTRIES`     | Countries whose tax estimate is shown, comma-separated, for example `CA`. It can only hide an estimate: a country without a checked tax pack shows nothing. | `CA`      | `settings.json` `comma.tax_countries` (a list), or the environment |
 | `MILEWAGE_EARNINGS_OVERRIDE` | A platform total typed for a shift `replace`s the sum of that platform's entries, or is added to it (`sum`).                                                | `replace` | `settings.json` `comma.earnings_override`, or the environment      |
-
-`comma.challenge_target_cents` in `settings.json` sets the weekly "earn" challenge of the `progress` module, in cents of your currency (default `50000`). It has no environment variable.
 
 ## 7. Phone app download
 

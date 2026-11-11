@@ -1686,23 +1686,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/progress": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** XP, level, streak, freezes, this week's challenges and the badge grid. Evaluates and records new unlocks (idempotent); everything else is derived. */
-        get: operations["getProgress"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/exports/{format}": {
         parameters: {
             query?: never;
@@ -2074,8 +2057,6 @@ export interface components {
             notifications: boolean;
             /** @description Schedule module registered (18 section 9); off by default. */
             schedule: boolean;
-            /** @description Progress module registered (18 section 8.2); off by default. */
-            progress: boolean;
             sync: boolean;
             /** @description Reserved for v1.1; false in v1. */
             local_export?: boolean;
@@ -2824,7 +2805,7 @@ export interface components {
         Notification: {
             id: number;
             /** @enum {unknown} */
-            kind: "badge" | "challenge" | "level_up" | "streak_freeze" | "streak_risk" | "goal_met" | "tax_deadline" | "shift_reminder" | "backup_overdue" | "backup_failed" | "recurring_expense_due";
+            kind: "goal_met" | "tax_deadline" | "shift_reminder" | "backup_overdue" | "backup_failed" | "recurring_expense_due";
             /** @description Message id; the client builds the text. No free text and no amounts. */
             body_key: string;
             /** @description What it is about (a date or an id) */
@@ -2842,7 +2823,6 @@ export interface components {
             shift_reminders: boolean;
             goals: boolean;
             tax_deadlines: boolean;
-            streak: boolean;
             backup: boolean;
             /** @description Fired by the phone itself; the phone reads this. */
             sync_reminder: boolean;
@@ -2851,7 +2831,6 @@ export interface components {
             shift_reminders?: boolean;
             goals?: boolean;
             tax_deadlines?: boolean;
-            streak?: boolean;
             backup?: boolean;
             sync_reminder?: boolean;
         };
@@ -2906,34 +2885,6 @@ export interface components {
                 note?: string | null;
             }[];
             templates: components["schemas"]["ScheduleTemplate"][];
-        };
-        Progress: {
-            xp: number;
-            level: number;
-            xp_into_level: number;
-            xp_per_level: number;
-            streak: {
-                days: number;
-                freezes_held: number;
-                at_risk: boolean;
-            };
-            /** @description The weekly challenges. The labelled drop-offs challenge is absent while nothing is labelled. */
-            challenges: {
-                /** @enum {unknown} */
-                id: "earn" | "deliveries" | "streak5";
-                label: string;
-                /** @description null when unknown (nothing entered this week). */
-                value: number | null;
-                target: number;
-                done: boolean;
-                /** Format: date */
-                week_start: string;
-            }[];
-            badges: {
-                slug: string;
-                label: string;
-                unlocked_at: number | null;
-            }[];
         };
         /** @enum {unknown} */
         ShiftStatus: "active" | "ended" | "finalized";
@@ -7347,26 +7298,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-        };
-    };
-    getProgress: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Progress now. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Progress"];
-                };
             };
         };
     };

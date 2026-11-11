@@ -254,9 +254,7 @@ describe('the override rule is a setting, not code (18 section 17)', () => {
       'CA',
       'US',
     ]);
-    expect(loadCommaOptions({}).challengeTargetCents).toBe(50_000);
     expect(() => loadCommaOptions({ comma: { earnings_override: 'x' } })).toThrow(ConfigError);
-    expect(() => loadCommaOptions({ comma: { challenge_target_cents: 0 } })).toThrow(ConfigError);
   });
 });
 

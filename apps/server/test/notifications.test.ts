@@ -103,7 +103,6 @@ describe('the toggles and the inbox', () => {
       shift_reminders: true,
       goals: true,
       tax_deadlines: true,
-      streak: true,
       backup: true,
       sync_reminder: true,
     });

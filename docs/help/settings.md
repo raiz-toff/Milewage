@@ -44,7 +44,7 @@ A deduction at your rate is always called your rate. See [Your mileage rate](mil
 
 ## Alerts
 
-Shown when the notifications module runs. Under "Tell me about" are switches for shift reminders, goals and progress, tax dates, streak, backup problems, and the "Shifts not yet sent (on the phone)".
+Shown when the notifications module runs. Under "Tell me about" are switches for shift reminders, goals, tax dates, backup problems, and the "Shifts not yet sent (on the phone)".
 
 Alerts appear on the Notifications page, behind the bell at the top. The two switches marked "on the phone" do not reach the phone yet. The phone app has its own reminder when shifts have been only on the phone for 3 days or more ("Shifts only on this phone"); to stop it, turn off its Reminders channel in the phone's notification settings for MileWage. Its home screen also says when shifts are on phone only.
 

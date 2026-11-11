@@ -340,10 +340,6 @@ _Avoid_: quota, objective
 The shifts the driver plans to work, one-off or repeating, and their days off.
 _Avoid_: roster, rota, calendar
 
-**Progress**:
-Experience points, levels, a streak, weekly challenges and badges, worked out from what is already recorded. It is not a goal's progress towards its target.
-_Avoid_: gamification, achievements
-
 **Analytics**:
 Charts of the driver's own shifts, earnings and expenses by period.
 _Avoid_: stats, insights, diagnostics

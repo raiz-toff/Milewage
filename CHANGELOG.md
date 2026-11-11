@@ -210,6 +210,12 @@ has the AI assistant endpoint off again, as it was in 0.1.0. Set `MILEWAGE_MODUL
   and Hermes dependencies (854 packages left the lockfile). Its Kotlin modules live on in the
   native app.
 - Android 7 (API 24 and 25): the app needs Android 8.0 or later.
+- The progress module (XP, levels, a streak, weekly challenges and badges), which was off by
+  default: the Progress page, the streak on the dashboard's goal card, `GET /progress`, the
+  `modules.progress` flag, the `comma.challenge_target_cents` setting, the Streak switch in
+  Settings > Alerts and the badge, level, challenge and streak messages in the inbox. Upgrading
+  deletes its tables (`badge_unlocks`, `progress_state`), those messages and the Streak switch's
+  setting; a `modules.progress` or `challenge_target_cents` left in `settings.json` is ignored.
 
 ### Fixed
 

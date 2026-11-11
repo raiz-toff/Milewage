@@ -67,42 +67,42 @@ describe('useApiQuery', () => {
   });
 });
 
-// The Progress page draws until the test makes it fail.
-const progress = vi.hoisted(() => ({ fail: false }));
-vi.mock('../src/pages/Progress', () => ({
-  ProgressPage: () => {
-    if (progress.fail) throw new Error('drawing failed');
-    return <h1>Progress drawn</h1>;
+// The Schedule page draws until the test makes it fail.
+const schedule = vi.hoisted(() => ({ fail: false }));
+vi.mock('../src/pages/Schedule', () => ({
+  SchedulePage: () => {
+    if (schedule.fail) throw new Error('drawing failed');
+    return <h1>Schedule drawn</h1>;
   },
 }));
 
 describe('page error boundary', () => {
   it('keeps the shell, says the page failed, and Try again drops the cache and draws it again', async () => {
     const quiet = vi.spyOn(console, 'error').mockImplementation(() => {});
-    progress.fail = true;
-    const { queryClient } = renderApp(signedIn(), '/progress');
+    schedule.fail = true;
+    const { queryClient } = renderApp(signedIn(), '/schedule');
     const alert = await screen.findByRole('alert');
     expect(
       within(alert).getByRole('heading', { name: 'This page could not be shown' }),
     ).toBeTruthy();
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeTruthy();
     const reset = vi.spyOn(queryClient, 'resetQueries');
-    progress.fail = false;
+    schedule.fail = false;
     fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }));
-    expect(await screen.findByRole('heading', { name: 'Progress drawn' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Schedule drawn' })).toBeTruthy();
     expect(reset).toHaveBeenCalled();
     quiet.mockRestore();
   });
 
   it('clears when the driver opens another page', async () => {
     const quiet = vi.spyOn(console, 'error').mockImplementation(() => {});
-    progress.fail = true;
-    renderApp({ ...signedIn(), 'GET /goals': () => ({ body: [] }) }, '/progress');
+    schedule.fail = true;
+    renderApp({ ...signedIn(), 'GET /goals': () => ({ body: [] }) }, '/schedule');
     await screen.findByRole('alert');
     fireEvent.click(screen.getByRole('link', { name: 'Goals' }));
     expect(await screen.findByRole('heading', { name: 'Goals' })).toBeTruthy();
     expect(screen.queryByText('This page could not be shown')).toBeNull();
-    progress.fail = false;
+    schedule.fail = false;
     quiet.mockRestore();
   });
 });
