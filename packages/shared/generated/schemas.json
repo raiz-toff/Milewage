@@ -251,7 +251,6 @@
         "platforms",
         "devices",
         "tracking",
-        "replay",
         "stops",
         "sync",
         "diagnostics",
@@ -291,9 +290,6 @@
           "type": "boolean"
         },
         "tracking": {
-          "type": "boolean"
-        },
-        "replay": {
           "type": "boolean"
         },
         "stops": {

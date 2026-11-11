@@ -40,7 +40,7 @@
   "GET /api/v1/shifts": "core",
   "GET /api/v1/shifts/:ref": "core",
   "GET /api/v1/shifts/:ref/earnings": "earnings",
-  "GET /api/v1/shifts/:ref/route": "replay",
+  "GET /api/v1/shifts/:ref/route": "tracking",
   "GET /api/v1/shifts/:ref/stops": "stops",
   "GET /api/v1/shifts/:ref/trips": "core",
   "GET /api/v1/summary": "core",

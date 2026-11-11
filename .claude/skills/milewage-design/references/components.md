@@ -193,9 +193,8 @@ The colours come from `m3-scheme.json` (`map/style.ts`): the blank canvas is a s
 (primary-container) over an on-primary-fixed casing, in both themes. The map is where the yellow
 lives; the small route sketch in a list (`RouteSketch`) is a quiet ink line on a `bg-muted` tile. MapLibre's
 controls are restyled in `index.css` onto surface-container with large or medium corners and
-shadows at levels 1 and 2. The replay slider is `ElasticSlider` (`components/elastic-slider.tsx`).
-A map always sits inside a `Section`. The coordinates and timeline beside it are the text
-alternative.
+shadows at levels 1 and 2.
+A map always sits inside a `Section`. The timeline beside it is the text alternative.
 
 ## Android: house composables (`apps/android/app/src/main/kotlin/app/milewage/phone/ui/components/`)
 

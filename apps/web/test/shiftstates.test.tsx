@@ -76,8 +76,8 @@ describe('shift detail with little or nothing recorded', () => {
     expect(screen.queryByText('No trips were recorded.')).toBeNull();
   });
 
-  it('with the route module off, says no trips were recorded and asks for no route', async () => {
-    const s = open(nothing, settingsFixture({ modules: { replay: false } }));
+  it('with tracking off, says no trips were recorded and asks for no route', async () => {
+    const s = open(nothing, settingsFixture({ modules: { tracking: false, stops: false } }));
     const card = await screen.findByRole('region', { name: 'What happened' });
     expect(within(card).getByText('No trips for this shift')).toBeTruthy();
     expect(screen.queryByText(/route map is off/)).toBeNull();

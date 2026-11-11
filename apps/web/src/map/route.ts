@@ -6,8 +6,6 @@ export interface RoutePoint {
   t: number;
   lat: number;
   lon: number;
-  /** Metres per second; null for archived routes (08 Route.speed_dmps is null-filled). */
-  speed: number | null;
 }
 
 /** Columnar arrays to points. Arrays of unequal length are cut to the shortest, never padded. */
@@ -15,12 +13,10 @@ export function toPoints(route: RouteData): RoutePoint[] {
   const n = Math.min(route.t.length, route.lat_e7.length, route.lon_e7.length);
   const points: RoutePoint[] = [];
   for (let i = 0; i < n; i++) {
-    const dmps = route.speed_dmps?.[i];
     points.push({
       t: route.t[i]!,
       lat: route.lat_e7[i]! / 1e7,
       lon: route.lon_e7[i]! / 1e7,
-      speed: typeof dmps === 'number' ? dmps / 10 : null,
     });
   }
   return points;
@@ -63,27 +59,7 @@ export function positionAt(points: RoutePoint[], t: number): RoutePoint | null {
     t,
     lat: a.lat + (b.lat - a.lat) * f,
     lon: a.lon + (b.lon - a.lon) * f,
-    speed: a.speed !== null && b.speed !== null ? a.speed + (b.speed - a.speed) * f : null,
   };
-}
-
-/** Slider position (0 to `steps`) to a time within the route, and back. */
-export const timeAt = (points: RoutePoint[], step: number, steps: number): number => {
-  const a = points[0]?.t ?? 0;
-  const b = points[points.length - 1]?.t ?? a;
-  return Math.round(a + ((b - a) * Math.min(Math.max(step, 0), steps)) / steps);
-};
-
-export const stepOf = (points: RoutePoint[], t: number, steps: number): number => {
-  const a = points[0]?.t ?? 0;
-  const b = points[points.length - 1]?.t ?? a;
-  return b === a ? 0 : Math.round(((t - a) / (b - a)) * steps);
-};
-
-/** Speed for display in the driver's unit; null stays null (an archived route has none). */
-export function speedIn(mps: number | null, unit: 'km' | 'mi'): string {
-  if (mps === null) return '—';
-  return unit === 'km' ? `${Math.round(mps * 3.6)} km/h` : `${Math.round(mps * 2.236936)} mph`;
 }
 
 /** GeoJSON line for the map source. Longitude first, as GeoJSON requires. */

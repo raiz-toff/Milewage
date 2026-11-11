@@ -71,9 +71,9 @@ export function changes(saved: Settings, draft: Draft): Patch {
 
 /** The read-only module list: what this server runs, so the driver can see why a screen is absent. */
 function ModuleFlags({ modules }: { modules: Settings['modules'] }) {
-  const flags = (
-    ['sync', 'devices', 'tracking', 'replay', 'stops', 'diagnostics', 'platforms'] as const
-  ).map((k) => [k, modules[k]] as const);
+  const flags = (['sync', 'devices', 'tracking', 'stops', 'diagnostics', 'platforms'] as const).map(
+    (k) => [k, modules[k]] as const,
+  );
   return (
     <SettingsCard>
       <section aria-label="Modules" className="space-y-4">

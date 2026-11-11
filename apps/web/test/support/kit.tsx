@@ -148,7 +148,6 @@ export const ALL_ON: Modules = {
   sync: true,
   devices: true,
   tracking: true,
-  replay: true,
   stops: true,
   diagnostics: true,
   platforms: true,

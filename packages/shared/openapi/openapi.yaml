@@ -49,18 +49,13 @@ x-modules:
     toggle: modules.tracking
     default: true
     dependsOn: [core, devices]
-    operations: [uploadTelemetryBatch, putTripOverride]
+    operations: [uploadTelemetryBatch, putTripOverride, getShiftRoute]
   sync:
     toggle: modules.sync
     default: true
     dependsOn: [core, devices]
     operations: [pullChanges]
   # local_export (v1.1): toggle modules.local_export, default false. Its restore route is not part of the v1 contract (15 section 9.1).
-  replay:
-    toggle: modules.replay
-    default: true
-    dependsOn: [tracking]
-    operations: [getShiftRoute]
   stops:
     toggle: settings.stops_enabled   # the one runtime toggle: a driver-facing setting, not a restart-time config switch (section 16.1)
     default: true
@@ -1023,7 +1018,7 @@ paths:
     get:
       tags: [shifts]
       operationId: getShiftRoute
-      summary: Compact columnar route for the map and replay scrubber (raw points, or the archive after retention).
+      summary: Compact columnar route for the shift's map (raw points, or the archive after retention).
       parameters:
         - { $ref: '#/components/parameters/Ref' }
       responses:
@@ -2127,7 +2122,7 @@ components:
     Modules:
       type: object
       description: Read-only module flags so clients can hide screens and buttons of absent modules.
-      required: [tax, receipts, expenses, earnings, platforms, devices, tracking, replay, stops, sync, diagnostics, backup_download, exporters, countries]
+      required: [tax, receipts, expenses, earnings, platforms, devices, tracking, stops, sync, diagnostics, backup_download, exporters, countries]
       properties:
         platforms: { type: boolean, description: 'Platforms module registered (18 section 4.2).' }
         earnings: { type: boolean, description: 'Earnings module registered (18 section 4.3): the driver can type a total per shift and platform.' }
@@ -2138,7 +2133,6 @@ components:
         local_export: { type: boolean, description: Reserved for v1.1; false in v1. }
         devices: { type: boolean }
         tracking: { type: boolean }
-        replay: { type: boolean }
         stops: { type: boolean, description: 'Effective flag: the stops module is registered AND settings.stops_enabled is true. When false the phone and the web hide every stop and estimated-split element.' }
         diagnostics: { type: boolean, description: 'Diagnostics module registered (16). When false the phone behaves as level off and the web hides the Diagnostics screens.' }
         backup_download: { type: boolean }

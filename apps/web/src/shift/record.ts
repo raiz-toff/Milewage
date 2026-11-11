@@ -27,7 +27,7 @@ export interface ShiftRecord {
   trips: Read<Schemas['Trip'][]>;
   /** Not asked while the stops module is off. */
   stops: Read<Schemas['Stop'][]>;
-  /** Not asked while the shift runs (the route is worked out when it ends) or replay is off. */
+  /** Not asked while the shift runs (the route is worked out when it ends) or tracking is off. */
   route: ShiftRoute;
   /** Not asked while the shift runs or the earnings module is off. */
   earnings: Read<Schemas['ShiftEarnings']>;
@@ -64,7 +64,7 @@ export function useShiftRecord(ref: string): ShiftRecord {
     { params: path },
     { enabled: on && modules.stops },
   );
-  const route = useShiftRoute(shift?.id ?? 0, ended && modules.replay);
+  const route = useShiftRoute(shift?.id ?? 0, ended && modules.tracking);
   const earnings = useApiQuery(
     '/shifts/{ref}/earnings',
     { params: path },

@@ -8,8 +8,8 @@ import type { ShiftBook } from '../processing/shift-book';
 
 const params = strictObject({ ref: refParam }, ['ref']);
 
-/** `GET /shifts/{ref}/route`: the stored points as parallel arrays for the map and the scrubber (module `replay`). */
-export function replayRoutes({
+/** `GET /shifts/{ref}/route`: the stored points as parallel arrays for the shift's map (module `tracking`). */
+export function shiftRouteRoutes({
   db,
   book,
   authn,
