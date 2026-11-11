@@ -19,7 +19,7 @@ import type { EventEmit } from '../events';
 import { str, strictObject, type AuthFn } from './util';
 
 /** The dashboard's "Finish setting up" steps; a listed step stays done (finished or skipped). */
-export const SETUP_STEPS = ['vehicle', 'goal', 'phone', 'backup'] as const;
+export const SETUP_STEPS = ['vehicle', 'phone', 'backup'] as const;
 
 const VERBOSE_MS = 7 * 24 * 60 * 60 * 1000;
 

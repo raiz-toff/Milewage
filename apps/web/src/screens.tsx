@@ -5,7 +5,6 @@ import {
   DevicesIcon,
   ExpensesIcon,
   ExportsIcon,
-  GoalsIcon,
   OdometerIcon,
   SettingsIcon,
   ShiftsIcon,
@@ -23,7 +22,6 @@ import { Devices } from './pages/Devices';
 import { SettingsPage } from './pages/SettingsPage';
 import { OdometerPage } from './pages/Odometer';
 import { ShiftsRoutes } from './pages/Shifts';
-import { GoalsPage } from './pages/Goals';
 import { TaxPage } from './pages/Tax';
 import { VehiclesPage } from './pages/Vehicles';
 import { publicPages } from './publicPages';
@@ -83,13 +81,6 @@ export const screens: Screen[] = [
     visible: (m) => m.expenses,
     element: <ExpensesPage />,
     nav: { icon: ExpensesIcon, group: 'money' },
-  },
-  {
-    path: '/goals',
-    label: 'Goals',
-    visible: (m) => m.goals,
-    element: <GoalsPage />,
-    nav: { icon: GoalsIcon, group: 'money' },
   },
   {
     path: '/tax',

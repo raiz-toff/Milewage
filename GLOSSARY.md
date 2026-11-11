@@ -326,11 +326,7 @@ _Avoid_: reserve, tax savings
 The money the driver has actually put away for tax in a year, entry by entry.
 _Avoid_: tax account, tax fund
 
-### Planning and motivation
-
-**Goal**:
-A target the driver sets for earnings, hours, shifts or active miles over a day, week, month or year.
-_Avoid_: quota, objective
+### Analytics
 
 ### Exports
 
@@ -375,7 +371,7 @@ _Avoid_: external backup, cloud backup
 ### Modules and diagnostics
 
 **Module**:
-A part of MileWage the owner can switch off, such as expenses, receipts, tax or goals. Shifts, trips and backups are never switched off.
+A part of MileWage the owner can switch off, such as expenses, receipts or tax. Shifts, trips and backups are never switched off.
 _Avoid_: plugin, add-on, feature flag
 
 **Diagnostics**:

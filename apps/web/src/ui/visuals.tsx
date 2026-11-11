@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import {
   BackupsIcon,
@@ -23,8 +22,8 @@ import type { IconComponent } from '@/ui/icons';
 
 /**
  * The pictures that keep a page from being a blank slate: an icon in a tonal tile before a row or
- * a figure, and a ring that fills toward a target. Colours are roles only: the neutral tile, the
- * selection tile, and the chart series for things that come in kinds (never Lane yellow).
+ * a figure. Colours are roles only: the neutral tile, the selection tile, and the chart series for
+ * things that come in kinds (never Lane yellow).
  */
 
 // Literal class names, so the stylesheet holds every one.
@@ -100,64 +99,4 @@ const CATEGORY: Record<string, [IconComponent, number]> = {
 export function CategoryTile({ slug, className }: { slug: string; className?: string }) {
   const [icon, tone] = CATEGORY[slug] ?? [TagIcon, 6];
   return <IconTile icon={icon} tone={tone} className={className} />;
-}
-
-/**
- * A ring that fills clockwise toward a target, with its content (a percentage, a tick) in the
- * middle. It is a picture: the page says the figures in words beside it, and the element that
- * holds the ring carries the progress role when one is wanted.
- */
-export function ProgressRing({
-  value,
-  size = 72,
-  done,
-  children,
-  className,
-}: {
-  /** 0 to 100. */
-  value: number;
-  size?: number;
-  /** Reached: the ring turns to the earned green. */
-  done?: boolean;
-  children?: ReactNode;
-  className?: string;
-}) {
-  const stroke = 8;
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  const pct = Math.max(0, Math.min(100, value));
-  return (
-    <span
-      aria-hidden="true"
-      className={cn('relative inline-flex shrink-0 items-center justify-center', className)}
-      style={{ width: size, height: size }}
-    >
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          strokeWidth={stroke}
-          className="stroke-secondary-container"
-        />
-        {pct > 0 ? (
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={r}
-            fill="none"
-            strokeWidth={stroke}
-            strokeLinecap="round"
-            strokeDasharray={`${(c * pct) / 100} ${c}`}
-            className={cn(
-              'transition-[stroke-dasharray] duration-500 ease-standard motion-reduce:transition-none',
-              done ? 'stroke-chart-earned' : 'stroke-primary',
-            )}
-          />
-        ) : null}
-      </svg>
-      <span className="absolute text-label-large text-on-surface tabular-nums">{children}</span>
-    </span>
-  );
 }

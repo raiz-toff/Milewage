@@ -17,10 +17,10 @@ import type { Handler } from './support/kit';
 
 afterEach(cleanup);
 
-const goal = (id: number, label: string) => ({ id, label });
+const place = (id: number, name: string) => ({ id, name });
 
 /**
- * A screen with the goals list and the tax estimate (a figure the server works out from
+ * A screen with the mileage rates list and the tax estimate (a figure the server works out from
  * expenses and earnings), and one change: the write path at its interface, against the fake
  * server at the fetch seam.
  */
@@ -36,7 +36,7 @@ function mount(table: Record<string, Handler>) {
   const view = renderHook(
     () => ({
       change: useChange(),
-      goals: useApiQuery('/goals'),
+      rates: useApiQuery('/own-mileage-rates'),
       tax: useApiQuery('/tax/{year}', { params: { path: { year: 2026 } } }),
     }),
     { wrapper },
@@ -47,14 +47,14 @@ function mount(table: Record<string, Handler>) {
 }
 
 const ready = async (r: ReturnType<typeof mount>['result']) =>
-  waitFor(() => expect(r.current.goals.data && r.current.tax.data).toBeTruthy());
+  waitFor(() => expect(r.current.rates.data && r.current.tax.data).toBeTruthy());
 
 describe('useChange: the one write path', () => {
   it('after a change every read is asked again, the shown ones before run resolves', async () => {
-    const goals = [goal(1, 'Fuel')];
+    const rates = [place(1, 'Depot')];
     let taxCents = 1000;
     const { result, gets, client } = mount({
-      'GET /goals': () => ({ body: goals }),
+      'GET /own-mileage-rates': () => ({ body: rates }),
       'GET /tax/2026': () => ({ body: { set_aside_cents: taxCents } }),
       'POST /expenses': () => {
         taxCents = 900; // an expense lowers the estimate on the server
@@ -87,7 +87,7 @@ describe('useChange: the one write path', () => {
     expect(done).toEqual({ data: { id: 7 } });
     // Both shown reads were read again before `run` resolved, the unrelated list too.
     expect(gets('/tax/2026')).toBe(2);
-    expect(gets('/goals')).toBe(2);
+    expect(gets('/own-mileage-rates')).toBe(2);
     await waitFor(() => expect(result.current.tax.data).toEqual({ set_aside_cents: 900 }));
     expect(client.getQueryState(apiKey('/vehicles'))?.isInvalidated).toBe(true);
     await waitFor(() => expect(result.current.change.error).toBeNull());
@@ -95,36 +95,41 @@ describe('useChange: the one write path', () => {
 
   it('a failed change reads nothing again and says why in the server’s words', async () => {
     const { result, gets } = mount({
-      'GET /goals': () => ({ body: [] }),
+      'GET /own-mileage-rates': () => ({ body: [] }),
       'GET /tax/2026': () => ({ body: {} }),
-      'POST /goals': () => ({
+      'POST /own-mileage-rates': () => ({
         status: 422,
         body: {
           code: 'validation_failed',
-          detail: 'The goal is not valid.',
-          errors: [{ path: 'target', message: 'must be above zero' }],
+          detail: 'The rate is not valid.',
+          errors: [{ path: 'cents_per_unit', message: 'must be more than 0' }],
         },
       }),
-      'DELETE /goals/1': () => ({ status: 429, body: { detail: 'Too many requests.' } }),
+      'DELETE /own-mileage-rates/1': () => ({
+        status: 429,
+        body: { detail: 'Too many requests.' },
+      }),
     });
     await ready(result);
     let done: unknown = 'not yet';
     await act(async () => {
       done = await result.current.change.run((api) =>
-        api.POST('/goals', {
-          body: { label: 'Rent', metric: 'earnings', period: 'weekly', target: 0 },
+        api.POST('/own-mileage-rates', {
+          body: { effective_from: null, cents_per_unit: 0, unit: 'km' },
         }),
       );
     });
     expect(done).toBeNull();
     // The first field error, as `describe` words it for a form.
-    await waitFor(() => expect(result.current.change.error).toBe('target: must be above zero'));
-    expect(gets('/goals')).toBe(1);
+    await waitFor(() =>
+      expect(result.current.change.error).toBe('cents_per_unit: must be more than 0'),
+    );
+    expect(gets('/own-mileage-rates')).toBe(1);
     expect(gets('/tax/2026')).toBe(1);
     // A problem without field errors: its detail.
     await act(async () => {
       await result.current.change.run((api) =>
-        api.DELETE('/goals/{id}', { params: { path: { id: 1 } } }),
+        api.DELETE('/own-mileage-rates/{id}', { params: { path: { id: 1 } } }),
       );
     });
     await waitFor(() => expect(result.current.change.error).toBe('Too many requests.'));
@@ -132,7 +137,7 @@ describe('useChange: the one write path', () => {
 
   it('says the server could not be reached when the request does not get through', async () => {
     const { result } = mount({
-      'GET /goals': () => ({ body: [] }),
+      'GET /own-mileage-rates': () => ({ body: [] }),
       'GET /tax/2026': () => ({ body: {} }),
     });
     await ready(result);
@@ -148,7 +153,7 @@ describe('useChange: the one write path', () => {
     let answer: () => void = () => {};
     const gate = new Promise<void>((resolve) => (answer = resolve));
     const { result } = mount({
-      'GET /goals': () => ({ body: [] }),
+      'GET /own-mileage-rates': () => ({ body: [] }),
       'GET /tax/2026': () => ({ body: {} }),
     });
     await ready(result);
@@ -170,7 +175,7 @@ describe('useChange: the one write path', () => {
 
   it('puts a known answer in the cache and does not ask for it again', async () => {
     const { result, gets } = mount({
-      'GET /goals': () => ({ body: [goal(1, 'Fuel')] }),
+      'GET /own-mileage-rates': () => ({ body: [place(1, 'Depot')] }),
       'GET /tax/2026': () => ({ body: { set_aside_bp: 2500 } }),
       'PUT /tax/2026': ({ body }) => ({
         body: { set_aside_bp: (body as { set_aside_bp: number }).set_aside_bp },
@@ -189,23 +194,26 @@ describe('useChange: the one write path', () => {
     });
     await waitFor(() => expect(result.current.tax.data).toEqual({ set_aside_bp: 3000 }));
     expect(gets('/tax/2026')).toBe(1);
-    expect(gets('/goals')).toBe(2);
+    expect(gets('/own-mileage-rates')).toBe(2);
   });
 
   it('a page check shares the error line until the next change, and reads fail on it too', async () => {
     const { result } = mount({
-      'GET /goals': () => ({ status: 500, body: { detail: 'The goals could not be read.' } }),
+      'GET /own-mileage-rates': () => ({
+        status: 500,
+        body: { detail: 'The rates could not be read.' },
+      }),
       'GET /tax/2026': () => ({ body: {} }),
-      'DELETE /goals/1': () => ({ status: 204 }),
+      'DELETE /own-mileage-rates/1': () => ({ status: 200, body: {} }),
     });
-    await waitFor(() => expect(result.current.goals.error).toBeTruthy());
-    const line = () => errorText(result.current.change, result.current.goals);
-    expect(line()).toBe('The goals could not be read.');
-    act(() => result.current.change.setError('Enter a target above zero.'));
-    expect(line()).toBe('Enter a target above zero.');
+    await waitFor(() => expect(result.current.rates.error).toBeTruthy());
+    const line = () => errorText(result.current.change, result.current.rates);
+    expect(line()).toBe('The rates could not be read.');
+    act(() => result.current.change.setError('Enter a radius of at least 25 m.'));
+    expect(line()).toBe('Enter a radius of at least 25 m.');
     await act(async () => {
       await result.current.change.run((api) =>
-        api.DELETE('/goals/{id}', { params: { path: { id: 1 } } }),
+        api.DELETE('/own-mileage-rates/{id}', { params: { path: { id: 1 } } }),
       );
     });
     await waitFor(() => expect(result.current.change.error).toBeNull());

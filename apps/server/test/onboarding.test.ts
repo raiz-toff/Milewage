@@ -85,12 +85,12 @@ test('the migration marks owners who already have a vehicle as onboarded', () =>
 
 test('setup steps stay done once listed; running setup again starts them over', async () => {
   expect((await web('GET', '/settings')).json().setup_done).toEqual([]);
-  await web('PATCH', '/settings', { setup_done: ['goal'] });
+  await web('PATCH', '/settings', { setup_done: ['phone'] });
   // Adding more keeps what is there; sending a step again does not repeat it.
-  const both = await web('PATCH', '/settings', { setup_done: ['backup', 'goal'] });
-  expect(both.json().setup_done).toEqual(['goal', 'backup']);
+  const both = await web('PATCH', '/settings', { setup_done: ['backup', 'phone'] });
+  expect(both.json().setup_done).toEqual(['phone', 'backup']);
   expect((await web('PATCH', '/settings', { setup_done: [] })).json().setup_done).toEqual([
-    'goal',
+    'phone',
     'backup',
   ]);
   expect((await web('PATCH', '/settings', { setup_done: ['platforms'] })).statusCode).toBe(422);

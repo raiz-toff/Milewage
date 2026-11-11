@@ -1,11 +1,10 @@
 import type { ComponentType } from 'react';
 import type { Schemas, Settings } from '../api/client';
-import { formatMoney } from '../format';
 import type { Country } from '../countries';
 import { RegionStep, WORK_LABELS, WorkStep } from './AboutSteps';
 import { AppStep } from './AppStep';
 import { CheckStep } from './CheckStep';
-import { GoalStep, PairStep } from './GoalPhoneSteps';
+import { PairStep } from './PhoneSteps';
 import { AppsStep, appsAnswered, listedApps, VehicleStep } from './SetupSteps';
 
 /** What the steps decide from: the server's own data, read when the wizard opens (plan 23 rule 3). */
@@ -17,8 +16,6 @@ export interface OnboardingCtx {
   platforms: Schemas['Platform'][];
   /** Active vehicles. */
   vehicles: Schemas['Vehicle'][];
-  /** Active weekly goals (module `goals`). */
-  goals: Schemas['Goal'][];
   /** Phones not revoked (module `devices`). */
   devices: Schemas['Device'][];
   /** Read the data again; a step calls it after saving. */
@@ -87,19 +84,6 @@ export const STEPS: Step[] = [
     done: (c) => c.vehicles.length > 0,
     summary: (c) => list(c.vehicles.map((v) => v.name)),
     Component: VehicleStep,
-  },
-  {
-    id: 'goal',
-    title: 'Weekly goal',
-    visible: (c) => c.settings.modules.goals,
-    done: (c) => c.goals.length > 0,
-    summary: (c) =>
-      list(
-        c.goals.map((g) =>
-          g.metric === 'earnings' ? formatMoney(g.target, c.settings.currency) : g.label,
-        ),
-      ),
-    Component: GoalStep,
   },
   {
     // No answer to save, so no summary on Check your answers; done once a phone has paired.

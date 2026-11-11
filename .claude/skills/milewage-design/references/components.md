@@ -62,8 +62,9 @@ primitive another screen needs lives in `ui/`. The shift page reads one record t
 | `FormError`           | The one error line under a form (`role="alert"`, error colour).                                                                                                             |
 | `Card`, `PrivacyLink` | The centred large-corner card for screens before sign-in, with the logo and the privacy link under it.                                                                      |
 
-Forms open inline on the page (Add expense, New vehicle, Add goal). Editing reuses the same form,
-pre-filled, with the heading changed ("Edit goal"), "Save changes", and a Cancel that resets it.
+Forms open inline on the page (Add expense, New vehicle, Add a place). Editing reuses the same
+form, pre-filled, with the heading changed ("Edit expense"), "Save changes", and a Cancel that
+resets it.
 Money fields read and show minor units through `moneyInput` and `parseMoney`. A file input is
 drawn by `index.css` as a small outlined button.
 

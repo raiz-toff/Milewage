@@ -4,7 +4,7 @@ import { AddIcon } from '@/ui/icons';
 import { Button } from '@/components/ui/button';
 import { PERIODS, dayOf } from '../days';
 import { useSettings } from '../session';
-import { GoalRing, Notices, SetupChecklist } from './DashboardExtras';
+import { Notices, SetupChecklist } from './DashboardExtras';
 import { PageHeader } from '../ui/layout';
 import { DashboardHero } from './DashboardHero';
 import { RecentShifts } from './DashboardShifts';
@@ -47,7 +47,7 @@ function Greeting({ now }: { now: number }) {
 
 /**
  * The dashboard, laid out like the Comma phone app's Home: greeting, the earnings hero with its
- * tiles and deduction tip, then setup, goal and the latest shifts. Only data MileWage has.
+ * tiles and deduction tip, then setup and the latest shifts. Only data MileWage has.
  */
 export function Dashboard({ now }: { now?: number }) {
   const settings = useSettings();
@@ -64,7 +64,6 @@ export function Dashboard({ now }: { now?: number }) {
       today={today}
     />
   );
-  const goal = settings.modules.goals ? <GoalRing /> : null;
   return (
     <section ref={ref} className="space-y-6">
       <Greeting now={at} />
@@ -72,7 +71,7 @@ export function Dashboard({ now }: { now?: number }) {
         <Notices today={today} now={at} />
       </div>
       {wide ? (
-        // Wide: setup and goal form a side column; without either the main column takes it all.
+        // Wide: setup and the breakdown form a side column; without both, the main one takes it all.
         <div className="grid grid-cols-[minmax(0,1fr)_20rem] items-start gap-6 has-[>[data-side]:empty]:grid-cols-1">
           <div className="min-w-0 space-y-6">
             {hero}
@@ -81,16 +80,14 @@ export function Dashboard({ now }: { now?: number }) {
           <div data-side="" className="space-y-4 empty:hidden">
             <SetupChecklist />
             {breakdown}
-            {goal}
           </div>
         </div>
       ) : (
-        // Narrow: one column with setup first while it is unfinished (Comma has it below the goal).
+        // Narrow: one column with setup first while it is unfinished.
         <div className="space-y-6">
           <SetupChecklist />
           {hero}
           {breakdown}
-          {goal}
           <RecentShifts />
         </div>
       )}

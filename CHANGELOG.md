@@ -228,6 +228,12 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   the environment is ignored. The dashboard's charts are unchanged (they read
   `GET /summary/series`), and the Shifts page's bars now take each day's earnings from
   `GET /summary/series` too, so they no longer depend on a module.
+- The goals module (earnings, hours, shifts or active-distance targets per day, week, month or
+  year), which was on by default: the Goals page, the goal card on the dashboard, the Weekly goal
+  step of the setup wizard, "Set a weekly goal" in Finish setting up, the `/goals` operations and
+  the `modules.goals` flag. The inbox no longer says a goal was reached. Upgrading deletes its
+  table (`goals`) and drops the goal step from the setup steps a driver finished or skipped; a
+  `modules.goals` left in `settings.json` or `MILEWAGE_MODULE_GOALS` in the environment is ignored.
 
 ### Fixed
 

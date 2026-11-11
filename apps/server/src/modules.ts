@@ -28,7 +28,6 @@ import { diagnosticsRoutes } from './routes/diagnostics';
 import { earningsRoutes } from './routes/earnings';
 import { expensesRoutes } from './routes/expenses';
 import { exportsRoutes } from './routes/exports';
-import { goalsRoutes } from './routes/goals';
 import { importsRoutes } from './routes/imports';
 import { maintenanceRoutes } from './routes/maintenance';
 import { platformKnown, platformsRoutes } from './routes/platforms';
@@ -163,14 +162,6 @@ export const serverModules = [
     name: 'expenses',
     dependsOn: ['core'],
     wire: (h) => ({ routes: expensesRoutes(h) }),
-  }),
-  /** Income, hours, shifts or active-distance goals with progress at read time (18 section 8.1). */
-  serverModule({
-    name: 'goals',
-    dependsOn: ['core'],
-    wire: (h) => ({
-      routes: goalsRoutes({ ...h, override: h.config.comma.earningsOverride }),
-    }),
   }),
   /** Per-vehicle service record; a cost becomes a linked expense (18 section 6). */
   serverModule({

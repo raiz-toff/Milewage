@@ -30,9 +30,8 @@ Next, setup asks one question per step. You can leave and come back later.
 1. Where you drive and what work you do, where your country has a choice.
 2. Your apps: tick every platform you work for. "Another app" adds one by name.
 3. Your vehicle: a name, a type and who owns it. Every shift needs a vehicle, so you cannot finish without one. See [Vehicles and the odometer](vehicles-and-odometer.md).
-4. Weekly goal: optional.
-5. Get the app, then Pair your phone: see below.
-6. Check your answers, then choose Finish.
+4. Get the app, then Pair your phone: see below.
+5. Check your answers, then choose Finish.
 
 The vehicle step names the mileage rate your vehicle gets. No rate in MileWage has yet been checked against the tax offices' own publications. See [Mileage rates and tax](mileage-rates-and-tax.md).
 

@@ -401,6 +401,37 @@ describe('migration runner', () => {
       },
     ]);
   });
+
+  test('a 0.2.0 database loses the goals table and the goal setup step on upgrade', () => {
+    const db = open();
+    const removal = ['core/0015_setup_without_goal', 'goals/0002_drop_goals'];
+    migrate(
+      db,
+      real.filter((m) => !removal.includes(`${m.module}/${m.id}`)),
+    );
+    expect(tables(db)).toContain('goals');
+    const users = createUserRepository(db);
+    const sam = users.create({ username: 'sam', passwordHash: 'x', createdAt: 1 }).id;
+    const ana = users.create({ username: 'ana', passwordHash: 'x', createdAt: 1 }).id;
+    const kim = users.create({ username: 'kim', passwordHash: 'x', createdAt: 1 }).id;
+    db.prepare(
+      "INSERT INTO goals (user_id, label, metric, period, target, created_at) VALUES (?, 'Weekly earnings', 'earnings', 'weekly', 80000, 0)",
+    ).run(sam);
+    const prefs = db.prepare(
+      "INSERT INTO settings (user_id, country, distance_unit, currency, timezone, updated_at, setup_done) VALUES (?, 'CA', 'km', 'CAD', 'America/Toronto', 0, ?)",
+    );
+    prefs.run(sam, '["vehicle","goal","backup"]');
+    prefs.run(ana, '["phone"]');
+    prefs.run(kim, null);
+    expect(migrate(db, real)).toEqual(removal);
+    expect(tables(db)).not.toContain('goals');
+    const indexes = db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE 'idx_goals%'")
+      .all();
+    expect(indexes).toEqual([]);
+    const done = db.prepare('SELECT setup_done FROM settings ORDER BY user_id').pluck().all();
+    expect(done).toEqual(['["vehicle","backup"]', '["phone"]', null]);
+  });
 });
 
 describe('user repository', () => {

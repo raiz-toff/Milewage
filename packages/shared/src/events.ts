@@ -70,8 +70,6 @@ export interface EventMap {
   'earnings.changed': { shiftId: string };
   /** An expense or a recurring template was created, changed or deleted (18 section 5). */
   'expense.changed': { expenseId: string };
-  /** A goal was created, changed or deleted (18 section 8.1). */
-  'goals.changed': { userId: string };
   'device.seen': { deviceId: string };
   'odometer.updated': { odometerId: string; userId: string; deleted?: boolean };
   'vehicle.updated': { vehicleId: string };

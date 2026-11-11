@@ -157,7 +157,6 @@ export const ALL_ON: Modules = {
   expenses: true,
   receipts: true,
   tax: true,
-  goals: true,
   maintenance: true,
   import: true,
   backup_download: false,

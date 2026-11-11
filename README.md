@@ -41,8 +41,8 @@ Three parts in one repository: the server and the web app in TypeScript, the pho
   shift?" question when you seem to be driving, and a "Still on shift?" reminder after a long stop.
 - Active and deadhead miles split by detected stops, with labels you add on the web. The split is
   an estimate and says so. Total miles never depend on it.
-- Expenses with receipt photos, earnings, vehicles and their service log, odometer readings,
-  goals and CSV import. Each module can be switched off.
+- Expenses with receipt photos, earnings, vehicles and their service log, odometer readings
+  and CSV import. Each module can be switched off.
 - Country packs for Canada, the United States and Great Britain: a mileage deduction, and for
   Canada a tax estimate. Your own mileage rate (an employer's or your accountant's) can replace the
   country's from a date you choose.
@@ -122,7 +122,7 @@ driving. When the server is reachable the shift is sent; until then it stays on 
 app says so.
 
 On the web, each shift has a map, a timeline, stops you can label, earnings, odometer and notes.
-The dashboard shows the week's earnings, goals and recent shifts. The Tax and Exports pages give
+The dashboard shows the week's earnings and recent shifts. The Tax and Exports pages give
 the figures and the CSV files for the year. Backups are nightly; the Backups page can make one now,
 download it, or make a new recovery key.
 

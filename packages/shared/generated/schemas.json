@@ -246,7 +246,6 @@
       "required": [
         "import",
         "maintenance",
-        "goals",
         "tax",
         "receipts",
         "expenses",
@@ -283,10 +282,6 @@
         "tax": {
           "type": "boolean",
           "description": "Tax module registered (18 section 7). The estimate itself exists only for countries whose pack is verified or switched on."
-        },
-        "goals": {
-          "type": "boolean",
-          "description": "Goals module registered (18 section 8.1)."
         },
         "maintenance": {
           "type": "boolean",
@@ -514,7 +509,7 @@
           "items": {
             "$ref": "#/$defs/SetupStep"
           },
-          "description": "Dashboard \"Finish setting up\" steps the driver finished or skipped. A listed step stays done even if, say, the goal is deleted later."
+          "description": "Dashboard \"Finish setting up\" steps the driver finished or skipped. A listed step stays done even if, say, the phone is unpaired later."
         },
         "diagnostics": {
           "$ref": "#/$defs/DiagnosticsSettings"
@@ -638,7 +633,6 @@
     "SetupStep": {
       "enum": [
         "vehicle",
-        "goal",
         "phone",
         "backup"
       ]
@@ -2290,176 +2284,6 @@
             "target_cents": {
               "type": [
                 "integer",
-                "null"
-              ]
-            }
-          }
-        }
-      }
-    },
-    "GoalCreate": {
-      "type": "object",
-      "required": [
-        "label",
-        "metric",
-        "period",
-        "target"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "label": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 60
-        },
-        "metric": {
-          "enum": [
-            "earnings",
-            "hours",
-            "shifts",
-            "active_distance"
-          ]
-        },
-        "period": {
-          "enum": [
-            "daily",
-            "weekly",
-            "monthly",
-            "yearly"
-          ]
-        },
-        "target": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "Cents, minutes, a count or metres, by metric."
-        },
-        "active": {
-          "type": "boolean"
-        }
-      }
-    },
-    "GoalPatch": {
-      "type": "object",
-      "additionalProperties": false,
-      "minProperties": 1,
-      "properties": {
-        "label": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 60
-        },
-        "metric": {
-          "enum": [
-            "earnings",
-            "hours",
-            "shifts",
-            "active_distance"
-          ]
-        },
-        "period": {
-          "enum": [
-            "daily",
-            "weekly",
-            "monthly",
-            "yearly"
-          ]
-        },
-        "target": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "active": {
-          "type": "boolean"
-        }
-      }
-    },
-    "Goal": {
-      "type": "object",
-      "required": [
-        "id",
-        "label",
-        "metric",
-        "period",
-        "target",
-        "active",
-        "created_at",
-        "progress"
-      ],
-      "properties": {
-        "id": {
-          "type": "integer"
-        },
-        "label": {
-          "type": "string"
-        },
-        "metric": {
-          "enum": [
-            "earnings",
-            "hours",
-            "shifts",
-            "active_distance"
-          ]
-        },
-        "period": {
-          "enum": [
-            "daily",
-            "weekly",
-            "monthly",
-            "yearly"
-          ]
-        },
-        "target": {
-          "type": "integer"
-        },
-        "active": {
-          "type": "boolean"
-        },
-        "created_at": {
-          "$ref": "#/$defs/EpochMs"
-        },
-        "progress": {
-          "type": "object",
-          "required": [
-            "value",
-            "target",
-            "ratio",
-            "period_from",
-            "period_to",
-            "estimated",
-            "note"
-          ],
-          "properties": {
-            "value": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "description": "null when it cannot be known (no earnings entered, no stop-based split), never 0."
-            },
-            "target": {
-              "type": "integer"
-            },
-            "ratio": {
-              "type": [
-                "number",
-                "null"
-              ]
-            },
-            "period_from": {
-              "type": "string",
-              "format": "date"
-            },
-            "period_to": {
-              "type": "string",
-              "format": "date"
-            },
-            "estimated": {
-              "type": "boolean",
-              "description": "True for active distance, the stop-based estimate of 14 section 6."
-            },
-            "note": {
-              "type": [
-                "string",
                 "null"
               ]
             }

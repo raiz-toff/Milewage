@@ -24,7 +24,6 @@ export type BooleanModule = {
 const MODULES: Record<BooleanModule, true> = {
   import: true,
   maintenance: true,
-  goals: true,
   tax: true,
   receipts: true,
   expenses: true,

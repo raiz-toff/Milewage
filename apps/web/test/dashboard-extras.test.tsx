@@ -39,30 +39,9 @@ const vehicle = {
   created_at: 1,
   archived_at: null,
 };
-const goal = (over: object = {}) => ({
-  id: 1,
-  label: 'Weekly pay',
-  metric: 'earnings',
-  period: 'weekly',
-  target: 50_000,
-  active: true,
-  created_at: 1,
-  progress: {
-    value: 25_000,
-    target: 50_000,
-    ratio: 0.5,
-    period_from: '2027-01-11',
-    period_to: '2027-01-17',
-    estimated: false,
-    note: null,
-  },
-  ...over,
-});
-
 function open(
   world: {
     vehicles?: object[];
-    goals?: object[];
     backups?: object[];
     devices?: object[];
     platforms?: object[];
@@ -83,7 +62,6 @@ function open(
       },
       'GET /summary': () => ({ body: summary }),
       'GET /vehicles': () => ({ body: world.vehicles ?? [] }),
-      'GET /goals': () => ({ body: world.goals ?? [] }),
       'GET /backups': () => ({ body: world.backups ?? [] }),
       'GET /devices': () => ({ body: world.devices ?? [] }),
       'GET /platforms': () => ({ body: world.platforms ?? [] }),
@@ -134,7 +112,7 @@ const shift = (id: number, review: boolean) => ({
   flags: review ? [{ code: 'gap_counted', severity: 'review' }] : [{ code: 'x', severity: 'info' }],
 });
 
-describe('dashboard checklist and goal ring (18 section 13)', () => {
+describe('dashboard checklist and notices (18 section 13)', () => {
   it('notices: shifts to review in the last 30 days and an overdue backup, each with a link', async () => {
     const s = open({
       shifts: [shift(1, true), shift(2, false), shift(3, true)],
@@ -189,18 +167,17 @@ describe('dashboard checklist and goal ring (18 section 13)', () => {
     expect(screen.queryByText(/No successful backup/)).toBeNull();
   });
 
-  it('wide: setup and goal sit in a side column after the hero and the shifts; narrow: setup first', async () => {
-    open({ goals: [goal()] });
+  it('wide: setup sits in a side column after the hero and the shifts; narrow: setup first', async () => {
+    open({});
     const card = await screen.findByRole('group', { name: 'Finish setting up' });
     const hero = await screen.findByRole('region', { name: 'Earned' });
     expect(card.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     cleanup();
     const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1000);
     try {
-      open({ goals: [goal()] });
+      open({});
       const side = (await screen.findByRole('group', { name: 'Finish setting up' })).parentElement!;
       expect(side.hasAttribute('data-side')).toBe(true);
-      expect(await within(side).findByRole('group', { name: 'Goal' })).toBeTruthy();
       const recent = await screen.findByRole('region', { name: 'Recent shifts' });
       expect(recent.compareDocumentPosition(side) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     } finally {
@@ -211,14 +188,13 @@ describe('dashboard checklist and goal ring (18 section 13)', () => {
   it('lists what is not done from server state as links, the next step marked, done folded away', async () => {
     open({ vehicles: [vehicle] });
     const card = await screen.findByRole('group', { name: 'Finish setting up' });
-    expect(within(card).getByText('1 of 4 done')).toBeTruthy();
+    expect(within(card).getByText('1 of 3 done')).toBeTruthy();
     expect(within(card).getByRole('progressbar').getAttribute('aria-valuenow')).toBe('1');
     const links = within(card)
       .getAllByRole('link')
       .map((l) => [l.textContent, l.getAttribute('href')]);
     expect(links).toEqual([
-      ['Set a weekly goalNextSee how far along the week you are.', '/goals'],
-      ['Pair your phoneThe phone records your shifts.', '/devices'],
+      ['Pair your phoneNextThe phone records your shifts.', '/devices'],
       ['Run a backupA copy of your data you can restore.', '/backups'],
       ['Continue setup', '/onboarding'],
     ]);
@@ -231,31 +207,31 @@ describe('dashboard checklist and goal ring (18 section 13)', () => {
     expect(card.textContent).toMatch(/Add your real vehicle \(done\)/);
   });
 
-  it('keeps a step done once seen done, so deleting the goal later does not reopen it (W8)', async () => {
+  it('keeps a step done once seen done, so unpairing the phone later does not reopen it (W8)', async () => {
     const s = open({ vehicles: [vehicle] });
     await waitFor(() =>
       expect(s.calls.find((c) => c.method === 'PATCH')?.body).toEqual({ setup_done: ['vehicle'] }),
     );
     cleanup();
-    // The goal was set (and kept) earlier, then deleted: it still counts as done.
-    open({ vehicles: [vehicle], kept: ['vehicle', 'goal'] });
+    // The phone was paired (and kept) earlier, then unpaired: it still counts as done.
+    open({ vehicles: [vehicle], kept: ['vehicle', 'phone'] });
     const card = await screen.findByRole('group', { name: 'Finish setting up' });
-    expect(within(card).getByText('2 of 4 done')).toBeTruthy();
-    expect(within(card).queryByRole('link', { name: /Set a weekly goal/ })).toBeNull();
+    expect(within(card).getByText('2 of 3 done')).toBeTruthy();
+    expect(within(card).queryByRole('link', { name: /Pair your phone/ })).toBeNull();
   });
 
   it('skips an optional step for good; required steps have no Skip', async () => {
     const s = open({ vehicles: [vehicle] });
     const card = await screen.findByRole('group', { name: 'Finish setting up' });
     expect(within(card).queryByRole('button', { name: /Skip: Pair your phone/ })).toBeNull();
-    fireEvent.click(within(card).getByRole('button', { name: 'Skip: Set a weekly goal' }));
+    fireEvent.click(within(card).getByRole('button', { name: 'Skip: Run a backup' }));
     await waitFor(() =>
-      expect(within(card).queryByRole('link', { name: /Set a weekly goal/ })).toBeNull(),
+      expect(within(card).queryByRole('link', { name: /Run a backup/ })).toBeNull(),
     );
     expect(s.calls.filter((c) => c.method === 'PATCH').map((c) => c.body)).toContainEqual({
-      setup_done: ['goal'],
+      setup_done: ['backup'],
     });
-    expect(within(card).getByText('2 of 4 done')).toBeTruthy();
+    expect(within(card).getByText('2 of 3 done')).toBeTruthy();
   });
 
   it('Hide for now is kept in this browser and can be undone', async () => {
@@ -264,7 +240,7 @@ describe('dashboard checklist and goal ring (18 section 13)', () => {
     const card = await screen.findByRole('group', { name: 'Finish setting up' });
     fireEvent.click(within(card).getByRole('button', { name: 'Hide for now' }));
     expect(screen.queryByRole('group', { name: 'Finish setting up' })).toBeNull();
-    expect(screen.getByText(/Setup steps hidden \(3 left\)/)).toBeTruthy();
+    expect(screen.getByText(/Setup steps hidden \(2 left\)/)).toBeTruthy();
     cleanup();
     open({ vehicles: [vehicle] });
     fireEvent.click(await screen.findByRole('button', { name: 'Show them' }));
@@ -301,34 +277,15 @@ describe('dashboard checklist and goal ring (18 section 13)', () => {
   it('leaves out the items of modules that are off, and disappears when everything left is done', async () => {
     const done = open(
       { vehicles: [vehicle], backups: [{ id: 1 }] },
-      { platforms: false, goals: false, devices: false },
+      { platforms: false, devices: false },
     );
     await waitFor(() => expect(done.calls.some((c) => c.path === '/backups')).toBe(true));
     await new Promise((r) => setTimeout(r, 20));
     expect(screen.queryByRole('group', { name: 'Finish setting up' })).toBeNull();
     cleanup();
-    open({ vehicles: [vehicle] }, { platforms: false, goals: false, devices: false });
+    open({ vehicles: [vehicle] }, { platforms: false, devices: false });
     const card = await screen.findByRole('group', { name: 'Finish setting up' });
-    expect(card.textContent).not.toMatch(/other apps|weekly goal|Pair your phone/);
-  });
-
-  it('shows the first active goal as the ring, and nothing without a goal or with the module off', async () => {
-    open({ vehicles: [vehicle], goals: [goal({ id: 2, label: 'Paused', active: false }), goal()] });
-    const ring = await screen.findByRole('group', { name: 'Goal' });
-    expect(ring.textContent).toMatch(/50%.*Weekly goal.*Weekly pay.*\$250\.00 of \$500\.00/);
-    expect(within(ring).getByRole('progressbar').getAttribute('aria-valuenow')).toBe('50');
-    expect(within(ring).getByRole('link', { name: 'Open Goals' }).getAttribute('href')).toBe(
-      '/goals',
-    );
-    cleanup();
-    open({ goals: [] });
-    await screen.findByRole('group', { name: 'Finish setting up' });
-    expect(screen.queryByRole('group', { name: 'Goal' })).toBeNull();
-    cleanup();
-    const off = open({ goals: [goal()] }, { goals: false });
-    await screen.findByRole('group', { name: 'Finish setting up' });
-    expect(screen.queryByRole('group', { name: 'Goal' })).toBeNull();
-    expect(off.calls.some((c) => c.path === '/goals')).toBe(false);
+    expect(card.textContent).not.toMatch(/other apps|Pair your phone/);
   });
 
   it('the Today and Week tabs ask /summary for one day and for the week from the week start', async () => {

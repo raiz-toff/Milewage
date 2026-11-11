@@ -97,10 +97,10 @@ describe('page error boundary', () => {
   it('clears when the driver opens another page', async () => {
     const quiet = vi.spyOn(console, 'error').mockImplementation(() => {});
     devices.fail = true;
-    renderApp({ ...signedIn(), 'GET /goals': () => ({ body: [] }) }, '/devices');
+    renderApp({ ...signedIn(), 'GET /vehicles': () => ({ body: [] }) }, '/devices');
     await screen.findByRole('alert');
-    fireEvent.click(screen.getByRole('link', { name: 'Goals' }));
-    expect(await screen.findByRole('heading', { name: 'Goals' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('link', { name: 'Vehicles' }));
+    expect(await screen.findByRole('heading', { name: 'Vehicles' })).toBeTruthy();
     expect(screen.queryByText('This page could not be shown')).toBeNull();
     devices.fail = false;
     quiet.mockRestore();

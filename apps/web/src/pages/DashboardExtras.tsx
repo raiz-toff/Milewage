@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { ProgressRing } from '../ui/visuals';
 import type { ReactNode } from 'react';
 import {
   BackupsIcon,
@@ -15,73 +14,13 @@ import { Link } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
 import type { Schemas } from '../api/client';
 import { useApiQuery, useChange } from '../api/query';
 import { levelWord, useCountries } from '../countries';
 import { addDays } from '../days';
 import { settingsPatch, useSettings } from '../session';
-import { valueText } from '../goals';
 import { formatDateTime } from '../format';
 import { reviewCount } from '../shift/view';
-
-const PERIOD_WORD: Record<string, string> = {
-  daily: "Today's goal",
-  weekly: 'Weekly goal',
-  monthly: 'Monthly goal',
-  yearly: 'Yearly goal',
-};
-
-/**
- * The goal card of the dashboard (Comma's weekly goal card, 18 section 13): the first active
- * goal and how far along it is as a share and a meter.
- * Nothing appears without a goal; the checklist offers to set one. A failed request hides it.
- */
-export function GoalRing() {
-  const { distance_unit: unit, currency } = useSettings();
-  const goal = useApiQuery('/goals').data?.find((g) => g.active) ?? null;
-  if (!goal) return null;
-  const p = goal.progress;
-  const pct = p.ratio === null ? null : Math.round(p.ratio * 100);
-  const text = (v: number) => valueText(goal.metric, v, unit, currency);
-  return (
-    <Card role="group" aria-label="Goal">
-      <CardContent className="space-y-3">
-        {/* The goal as a ring that fills, green with a tick once it is reached. */}
-        <div className="flex items-center gap-4">
-          <div
-            role="progressbar"
-            aria-label={`${goal.label} progress`}
-            aria-valuenow={pct ?? undefined}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            className="shrink-0"
-          >
-            <ProgressRing value={pct ?? 0} size={84} done={pct !== null && pct >= 100}>
-              {pct === null ? '—' : `${pct}%`}
-            </ProgressRing>
-          </div>
-          <div className="min-w-0 space-y-0.5">
-            <p className="text-label-medium text-on-surface-variant">
-              {PERIOD_WORD[goal.period] ?? 'Goal'}
-            </p>
-            <h2 className="truncate text-title-medium">{goal.label}</h2>
-            <p className="text-body-medium text-muted-foreground tabular-nums">
-              {p.value === null
-                ? (p.note ?? 'Progress unknown')
-                : `${text(p.value)} of ${text(p.target)}${p.estimated ? ' (estimated)' : ''}`}
-            </p>
-          </div>
-        </div>
-        <div className="flex justify-end">
-          <Link to="/goals" className={cn(linkClass, 'text-label-large')}>
-            Open Goals
-          </Link>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 interface Item {
   id: string;
@@ -91,7 +30,7 @@ interface Item {
   /** Where it is done. */
   to: string;
   visible: boolean;
-  /** Can be skipped: a goal or a backup is the driver's choice, not needed to record shifts. */
+  /** Can be skipped: a backup is the driver's choice, not needed to record shifts. */
   optional?: boolean;
   /** Undefined while the answer is not in (or could not be read). */
   done: boolean | undefined;
@@ -128,7 +67,7 @@ function storeHidden(hidden: boolean) {
  * done with why it matters, finished steps folded away, and "Hide for now" that can be undone.
  * If any answer cannot be read the card stays hidden rather than guess. Apps are chosen in the
  * setup wizard, so turning platforms on is not a step here (W4c). A step seen done, or skipped,
- * is kept on the server (`setup_done`) and stays done: deleting the goal later does not bring
+ * is kept on the server (`setup_done`) and stays done: unpairing the phone later does not bring
  * the card back (W8).
  */
 export function SetupChecklist() {
@@ -136,7 +75,6 @@ export function SetupChecklist() {
   const { run } = useChange();
   const { modules, setup_done: kept } = useSettings();
   const vehicles = useApiQuery('/vehicles').data;
-  const goals = useApiQuery('/goals', undefined, { enabled: modules.goals }).data;
   const devices = useApiQuery('/devices', undefined, { enabled: modules.devices }).data;
   const backups = useApiQuery('/backups').data;
   const items: Item[] = [
@@ -147,15 +85,6 @@ export function SetupChecklist() {
       to: '/vehicles',
       visible: true,
       done: vehicles && vehicles.length > 0,
-    },
-    {
-      id: 'goal',
-      text: 'Set a weekly goal',
-      why: 'See how far along the week you are.',
-      to: '/goals',
-      visible: modules.goals,
-      optional: true,
-      done: goals?.some((g) => g.period === 'weekly'),
     },
     {
       id: 'phone',
