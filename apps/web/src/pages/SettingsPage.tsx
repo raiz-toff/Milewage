@@ -15,7 +15,6 @@ import { PageHeader } from '../ui/layout';
 import { LinkRow, SectionNav } from '../ui/nav';
 import { Account } from './Account';
 import { ImportCard } from './Import';
-import { AlertsCard } from './Notifications';
 import { PlatformsCard } from './Platforms';
 import { InstallSection } from '../pwa/Install';
 import { MileageRateSection } from './MileageRates';
@@ -120,7 +119,6 @@ type SectionId =
   | 'profile'
   | 'rate'
   | 'units'
-  | 'alerts'
   | 'app'
   | 'help'
   | 'platforms'
@@ -143,7 +141,7 @@ interface Section {
   description: string;
   saves?: keyof typeof SAVES;
   /** Shown only when this module runs on the server. */
-  module?: 'platforms' | 'notifications';
+  module?: 'platforms';
 }
 
 /** The settings sections in groups, in order. One topic per section, one URL each. */
@@ -169,13 +167,6 @@ const GROUPS: { label: string; sections: Section[] }[] = [
         label: 'Units and format',
         description: 'How distances, money, dates and times are shown.',
         saves: 'shared',
-      },
-      {
-        id: 'alerts',
-        label: 'Alerts',
-        description: 'What MileWage tells you about, here and on the phone.',
-        saves: 'instant',
-        module: 'notifications',
       },
       {
         id: 'app',
@@ -599,11 +590,6 @@ export function SettingsPage() {
       <PrefsForm prefs={prefs}>
         <TrackingSection prefs={prefs} />
       </PrefsForm>
-    ),
-    alerts: (
-      <SettingsCard>
-        <AlertsCard />
-      </SettingsCard>
     ),
     app: (
       <SettingsCard>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
-/** One page of a keyset-paged list, as `/expenses`, `/notifications` and `/shifts` answer. */
+/** One page of a keyset-paged list, as `/expenses` and `/shifts` answer. */
 export interface Page<T> {
   items: T[];
   next_cursor: string | null;

@@ -15,7 +15,6 @@ import { createBackupRepository, createShiftRepository } from './db';
 import { createDiagnosticsKeeper } from './diagnostics/keeper';
 import { createServerMetrics } from './diagnostics/metrics';
 import { createServerRecorder, effectiveLevel } from './diagnostics/recorder';
-import { notify } from './notifications';
 import { createArchiver } from './processing/archive';
 import { createLateRecompute } from './processing/late-recompute';
 import { receiptsDirOf } from './receipts/store';
@@ -33,7 +32,6 @@ import { exportsRoutes } from './routes/exports';
 import { goalsRoutes } from './routes/goals';
 import { importsRoutes } from './routes/imports';
 import { maintenanceRoutes } from './routes/maintenance';
-import { notificationsRoutes } from './routes/notifications';
 import { placesRoutes } from './routes/places';
 import { platformKnown, platformsRoutes } from './routes/platforms';
 import { receiptsRoutes } from './routes/receipts';
@@ -91,6 +89,7 @@ export const serverModules = [
             state: h.state,
             disk: h.disk,
             lastBackup: () => h.backup.list()[0],
+            lastBackupFailure: () => h.backup.lastFailure(),
             diagnostics: (userId) => ({
               level: h.drivers.of(userId).settings.diagnosticsLevel,
               db_bytes: h.diagnostics.store().bytes(),
@@ -194,34 +193,6 @@ export const serverModules = [
     name: 'maintenance',
     dependsOn: ['core'],
     wire: (h) => ({ routes: maintenanceRoutes(h) }),
-  }),
-  /** The in-app inbox and its toggles; the phone fires its own local reminders (18 section 11). */
-  serverModule({
-    name: 'notifications',
-    dependsOn: ['core'],
-    wire: (h) => ({
-      routes: notificationsRoutes({
-        ...h,
-        taxCountries: h.config.comma.taxCountries,
-        override: h.config.comma.earningsOverride,
-      }),
-      subscriptions: {
-        // A failed backup is an event, not a state that can be re-read later, so it is recorded when it happens.
-        'backup.finished'(r) {
-          if (r.ok) return;
-          const owner = h.drivers.owner();
-          if (owner) {
-            notify(
-              { db: h.db, now: h.now, emit: h.bus.emit },
-              owner.userId,
-              'backup_failed',
-              `backup_failed:${owner.today()}`,
-              'backup_failed',
-            );
-          }
-        },
-      },
-    }),
   }),
   /** Generic CSV import of the driver's own expenses and shifts, in two steps (18 section 12). */
   serverModule({

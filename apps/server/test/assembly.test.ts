@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
@@ -107,7 +107,7 @@ describe('facts reach the modules that are on, whatever else is off', () => {
   let h: Harness;
   afterEach(() => h?.close());
 
-  test('tracking off: a failed backup lands in the inbox and in diagnostics', async () => {
+  test('tracking off: a failed backup shows in the system status and in diagnostics', async () => {
     h = harness(TRACKING_OFF);
     const { cookie } = await h.signUp();
     // A file where the backup folder should be: the run cannot write its copy.
@@ -115,8 +115,8 @@ describe('facts reach the modules that are on, whatever else is off', () => {
     const run = await h.call('POST', '/backups', undefined, { cookie });
     expect(run.statusCode).toBeGreaterThanOrEqual(500);
 
-    const inbox = (await h.call('GET', '/notifications', undefined, { cookie })).json();
-    expect(inbox.items.map((n: { kind: string }) => n.kind)).toContain('backup_failed');
+    const status = (await h.call('GET', '/system/status', undefined, { cookie })).json();
+    expect(status.last_backup_failure).toEqual(expect.objectContaining({ at: h.clock.t }));
     const events = (
       await h.call('GET', '/diagnostics/events?kind=backup.run&src=server', undefined, { cookie })
     ).json();
@@ -125,16 +125,14 @@ describe('facts reach the modules that are on, whatever else is off', () => {
     ]);
   });
 
-  test('a module that is off hears nothing: notifications off, a failed backup adds no inbox row', async () => {
-    h = harness({ notifications: false });
+  test('a module that is off hears nothing: diagnostics off, a failed backup records no event', async () => {
+    h = harness({ diagnostics: false });
     const { cookie } = await h.signUp();
     writeFileSync(join(h.dir, 'backups'), 'not a folder');
     await h.call('POST', '/backups', undefined, { cookie });
-    expect(h.db.prepare('SELECT count(*) FROM notifications').pluck().get()).toBe(0);
-    // The other listener still hears it.
-    const events = (
-      await h.call('GET', '/diagnostics/events?kind=backup.run&src=server', undefined, { cookie })
-    ).json();
-    expect(events.items).toHaveLength(1);
+    expect(existsSync(join(h.dir, 'diagnostics.db'))).toBe(false);
+    // The backup engine still knows, whatever is off.
+    const status = (await h.call('GET', '/system/status', undefined, { cookie })).json();
+    expect(status.last_backup_failure).not.toBeNull();
   });
 });

@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { BackupsIcon, DatabaseIcon, DevicesIcon, DiskIcon, TagIcon } from '@/ui/icons';
+import { useId, useState } from 'react';
+import { BackupsIcon, DatabaseIcon, DevicesIcon, DiskIcon, TagIcon, WarningIcon } from '@/ui/icons';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState, PageHeader, Section, StatCard, TableBox, tableClass } from '../ui/layout';
 import { errorText, put, useApiQuery, useChange } from '../api/query';
@@ -85,6 +86,7 @@ export function Backups() {
           Back up now
         </Button>
       </PageHeader>
+      {status?.last_backup_failure ? <LastRunFailed failure={status.last_backup_failure} /> : null}
       {warnings.map((w) => (
         <p
           key={w}
@@ -162,6 +164,31 @@ export function Backups() {
       ) : null}
       <NewRecoveryKey />
     </section>
+  );
+}
+
+/**
+ * The last run failed and none has succeeded since. A failed run leaves no file, so it is not in
+ * the list; the server keeps its time and reason until a run succeeds or the server restarts.
+ */
+function LastRunFailed({ failure }: { failure: NonNullable<Status['last_backup_failure']> }) {
+  const { timezone, time_format: tf } = useSettings();
+  const title = useId();
+  return (
+    <Alert variant="destructive" aria-labelledby={title}>
+      <WarningIcon />
+      <AlertTitle id={title}>The last backup failed</AlertTitle>
+      <AlertDescription>
+        <p>
+          It failed on {formatDateTime(failure.at, timezone, tf)}. The server said:{' '}
+          {failure.message}
+        </p>
+        <p>
+          Older backups are kept. Try Back up now. If it fails again, check the free disk space and
+          the server's log.
+        </p>
+      </AlertDescription>
+    </Alert>
   );
 }
 

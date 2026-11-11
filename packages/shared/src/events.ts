@@ -72,8 +72,6 @@ export interface EventMap {
   'expense.changed': { expenseId: string };
   /** A goal was created, changed or deleted (18 section 8.1). */
   'goals.changed': { userId: string };
-  /** A row was added to the in-app inbox (18 section 11). */
-  'notification.created': { notificationId: string; kind: string };
   'device.seen': { deviceId: string };
   'odometer.updated': { odometerId: string; userId: string; deleted?: boolean };
   'vehicle.updated': { vehicleId: string };

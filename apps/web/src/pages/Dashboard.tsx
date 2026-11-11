@@ -69,7 +69,7 @@ export function Dashboard({ now }: { now?: number }) {
     <section ref={ref} className="space-y-6">
       <Greeting now={at} />
       <div className="space-y-3 empty:hidden">
-        <Notices today={today} />
+        <Notices today={today} now={at} />
       </div>
       {wide ? (
         // Wide: setup and goal form a side column; without either the main column takes it all.

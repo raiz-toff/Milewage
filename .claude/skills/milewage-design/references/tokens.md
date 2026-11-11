@@ -251,7 +251,7 @@ a level of the surface model: they follow the theme.
 | `text-body-small`      | 12/16     | 400    | Hints (supporting text), captions under figures |
 | `text-label-large`     | 14/20     | 500    | Buttons, chips, segments, menu items            |
 | `text-label-medium`    | 12/16     | 500    | Badges, `StatCard` label                        |
-| `text-label-small`     | 11/16     | 500    | The `count` badge                               |
+| `text-label-small`     | 11/16     | 500    | Chart axis labels, the small `PlatformBadge`    |
 
 - `cn()` (`apps/web/src/lib/utils.ts`) knows these utilities, so `cn('text-title-medium',
 'text-on-surface')` keeps both. Export `typeScale` lists them.

@@ -4,7 +4,6 @@ import {
   DarkModeIcon,
   LightModeIcon,
   LogoutIcon,
-  NotificationsIcon,
   PersonIcon,
   PrivacyIcon,
   SettingsIcon,
@@ -12,7 +11,6 @@ import {
   UnfoldMoreIcon,
   WifiOffIcon,
 } from '@/ui/icons';
-import { Badge } from '@/components/ui/badge';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -58,7 +56,6 @@ import { Login } from './pages/Login';
 import { RecoveryKey } from './pages/RecoveryKey';
 import { Restore } from './pages/Restore';
 import { Setup } from './pages/Setup';
-import { useUnread } from './notifications';
 import { PageErrorBoundary } from './ui/ErrorBoundary';
 import { useSession } from './session';
 import { useTheme } from './theme';
@@ -294,10 +291,8 @@ function ThemeMenu() {
 
 function Shell({ settings }: { settings: Settings }) {
   const list = visibleScreens(screenFlags(settings));
-  const unread = useUnread(settings.modules.notifications);
   const { pathname } = useLocation();
   const current = list.find((s) => isUnder(pathname, routeOf(s)));
-  const notifications = list.some((s) => s.path === '/notifications');
 
   return (
     <TooltipProvider>
@@ -319,24 +314,6 @@ function Shell({ settings }: { settings: Settings }) {
             </Breadcrumb>
             <div className="ml-auto flex items-center gap-1">
               <ThemeMenu />
-              {notifications ? (
-                <Button variant="ghost" size="icon" className="relative" asChild>
-                  <NavLink
-                    to="/notifications"
-                    aria-label={unread > 0 ? `Notifications (${unread})` : 'Notifications'}
-                  >
-                    <NotificationsIcon filled={pathname === '/notifications'} />
-                    {unread > 0 ? (
-                      <Badge
-                        variant="count"
-                        className="pointer-events-none absolute top-1 left-[22px] tabular-nums"
-                      >
-                        {unread > 99 ? '99+' : unread}
-                      </Badge>
-                    ) : null}
-                  </NavLink>
-                </Button>
-              ) : null}
             </div>
           </header>
           <main className="flex-1 p-4 md:p-6">

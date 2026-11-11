@@ -67,7 +67,7 @@ If there is no Receipt column, receipts are switched off on your server. The own
 
 For a cost you pay on a schedule, open More details and set Repeats to Weekly, Monthly or Yearly. Next due starts as the expense's date.
 
-A repeating expense is a reminder, not an expense. It is not in All expenses and is not counted. Setting Repeats on a saved expense turns it into a reminder too, so it leaves the list and the totals. When its date comes, it shows under Due now on the Expenses page, and the Notifications page says "A repeating expense is due."
+A repeating expense is a reminder, not an expense. It is not in All expenses and is not counted. Setting Repeats on a saved expense turns it into a reminder too, so it leaves the list and the totals. When its date comes, it shows under Due now on the Expenses page.
 
 - Add it records an expense with the same details on the due date. The next due date moves on by a week, a month or a year.
 - Remind me in a week hides it for seven days.

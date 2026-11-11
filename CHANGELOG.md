@@ -151,6 +151,11 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   front of MileWage. Caddy keeps its `X-Forwarded-Proto`, `-Host` and `-For` and the API believes
   its client addresses, with no edit to the Caddyfile or the compose file.
 - Install guide section 7: a reverse proxy of your own, and the headers it must send.
+- A failed backup shows without the inbox: the Backups page says when the last run failed and the
+  reason the server gave, and the dashboard shows a notice with a link to Backups until a run
+  succeeds. The dashboard still says when no backup has worked for 36 hours. API:
+  `last_backup_failure` on `GET /system/status`, from the backup service's memory, so a restart
+  clears it (a failed run makes no file and was never in `GET /backups`).
 
 ### Changed
 
@@ -219,6 +224,16 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   `settings.json` or `MILEWAGE_MODULE_MCP` in `.env` is ignored. The server no longer depends on
   `@modelcontextprotocol/server`, `@modelcontextprotocol/client` or `zod` (5 packages left the
   lockfile).
+- The notifications module (the in-app inbox), on by default: the Notifications page, the bell
+  with its unread count in the top bar, Settings > Alerts and its four switches (Goals, Tax dates,
+  Backup problems, Shifts not yet sent), the `/notifications` operations and the
+  `modules.notifications` flag. With it go the messages it made: a goal reached, a tax date within
+  10 days, a repeating expense due, and a backup that failed or was overdue (the last two now show
+  on the Backups page and the dashboard, see Added). The goals, the Tax page's dates and Expenses'
+  Due now are unchanged. The phone's own notifications are unchanged. Upgrading deletes its tables
+  (`notifications`, `notification_prefs`) in migration `zz_removed/0001`, which runs after every
+  module's own migrations; a `modules.notifications` left in `settings.json` or
+  `MILEWAGE_MODULE_NOTIFICATIONS` in the environment is ignored.
 
 ### Fixed
 

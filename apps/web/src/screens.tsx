@@ -24,7 +24,6 @@ import { ExpensesPage } from './pages/Expenses';
 import { ExportsPage } from './pages/Exports';
 import { Devices } from './pages/Devices';
 import { SettingsPage } from './pages/SettingsPage';
-import { NotificationsPage } from './pages/Notifications';
 import { OdometerPage } from './pages/Odometer';
 import { PlacesPage } from './pages/Places';
 import { ShiftsRoutes } from './pages/Shifts';
@@ -55,7 +54,7 @@ export interface Screen {
   label: string;
   visible?: (flags: ScreenFlags) => boolean;
   element: ReactNode;
-  /** Sidebar entry. Absent means not in the sidebar (the header bell opens Notifications). */
+  /** Sidebar entry. Absent means not in the sidebar. */
   nav?: { icon: IconComponent; group: NavGroup };
 }
 
@@ -136,12 +135,6 @@ export const screens: Screen[] = [
     label: 'Odometer',
     element: <OdometerPage />,
     nav: { icon: OdometerIcon, group: 'vehicle' },
-  },
-  {
-    path: '/notifications',
-    label: 'Notifications',
-    visible: (m) => m.notifications,
-    element: <NotificationsPage />,
   },
   {
     path: '/devices',

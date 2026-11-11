@@ -27,7 +27,6 @@ const ALL_OFF: Modules = {
   analytics: false,
   maintenance: false,
   import: false,
-  notifications: false,
   exporters: [],
 };
 
@@ -107,7 +106,6 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
       'Settings',
       'Help',
     ]);
-    expect(screen.queryByRole('link', { name: /^Notifications/ })).toBeNull();
   });
 
   it('with every module on, the navigation lists each screen', async () => {
@@ -128,10 +126,6 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
       'Settings',
       'Help',
     ]);
-    // Notifications is the header bell, not a sidebar entry.
-    expect(screen.getByRole('link', { name: /^Notifications/ }).getAttribute('href')).toBe(
-      '/notifications',
-    );
   });
 
   it('the screen registry: a rule exists only for module-owned screens, core has none', () => {

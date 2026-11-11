@@ -46,6 +46,8 @@ export interface StatusContext {
   disk?: DiskMonitor;
   /** The newest backup_runs row, if any. */
   lastBackup?: () => BackupRunRow | undefined;
+  /** The last run's failure, while no run has succeeded since (kept in memory by the backup service). */
+  lastBackupFailure?: () => { at: number; message: string } | undefined;
   /** `diagnostics` block of SystemStatus; only called when the diagnostics module is on. */
   diagnostics?: (userId: number) => { level: string; db_bytes: number; event_count: number };
 }
@@ -60,6 +62,7 @@ export function statusRoute(app: FastifyInstance, ctx: StatusContext) {
     const t = ctx.now();
     const disk = ctx.disk?.snapshot();
     const last = ctx.lastBackup?.();
+    const failed = ctx.lastBackupFailure?.();
     const row = ctx.drivers.of(userId).settings;
     return {
       app_version: SERVER_VERSION,
@@ -70,6 +73,7 @@ export function statusRoute(app: FastifyInstance, ctx: StatusContext) {
       disk_free_bytes: disk?.freeBytes ?? 0,
       disk_state: disk?.state ?? 'ok',
       last_backup: last ? toBackup(last) : null,
+      last_backup_failure: failed ? { at: failed.at, message: failed.message } : null,
       offsite: offsiteState(row, last !== undefined, t),
       paired_device_count: count('SELECT count(*) FROM devices WHERE revoked_at IS NULL'),
       mode: state.mode,

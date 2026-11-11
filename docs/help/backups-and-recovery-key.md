@@ -20,7 +20,7 @@ The server keeps the newest backup of each of the last 7 days, 4 Sundays and 12 
 
 A backup is skipped when the free disk space is less than twice the size of the database. The Backups page then says "Disk space is too low to make a backup. Free some space." Free space on the server machine, then choose "Back up now".
 
-With Settings > Alerts > "Backup problems" on, the Notifications page tells you when a backup failed, or when none was made for 36 hours. Choose "Back up now" on the Backups page. If it fails again, check the disk space.
+When the last backup failed, the Backups page says so, with the time and the reason the server gave, and the dashboard shows a notice until a backup works again. The dashboard also says when no backup has worked for 36 hours. Choose "Back up now" on the Backups page. If it fails again, check the disk space. The server forgets a failure when it restarts; the 36-hour notice does not.
 
 ## Keep a copy somewhere else
 

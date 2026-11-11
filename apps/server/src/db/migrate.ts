@@ -14,8 +14,10 @@ export class MigrationError extends Error {
 
 /** Reads `<dir>/<module>/<NNNN_name>.sql`, ordered by module name then file name. Never edited after release. */
 export function loadMigrations(dir: string): Migration[] {
+  // Folders sorted here, not left to the file system: a migration may rely on an earlier folder's.
   return readdirSync(dir, { withFileTypes: true })
     .filter((d) => d.isDirectory())
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
     .flatMap((d) =>
       readdirSync(join(dir, d.name))
         .filter((f) => f.endsWith('.sql'))

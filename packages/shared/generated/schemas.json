@@ -244,7 +244,6 @@
       "type": "object",
       "description": "Read-only module flags so clients can hide screens and buttons of absent modules.",
       "required": [
-        "notifications",
         "import",
         "maintenance",
         "analytics",
@@ -301,10 +300,6 @@
         "import": {
           "type": "boolean",
           "description": "Import module registered (18 section 12). The expenses kind also needs the expenses module."
-        },
-        "notifications": {
-          "type": "boolean",
-          "description": "Notifications module registered (18 section 11): the in-app inbox."
         },
         "sync": {
           "type": "boolean"
@@ -3077,117 +3072,6 @@
         }
       }
     },
-    "Notification": {
-      "type": "object",
-      "required": [
-        "id",
-        "kind",
-        "body_key",
-        "ref",
-        "created_at",
-        "read_at"
-      ],
-      "properties": {
-        "id": {
-          "type": "integer"
-        },
-        "kind": {
-          "enum": [
-            "goal_met",
-            "tax_deadline",
-            "backup_overdue",
-            "backup_failed",
-            "recurring_expense_due"
-          ]
-        },
-        "body_key": {
-          "type": "string",
-          "description": "Message id; the client builds the text. No free text and no amounts."
-        },
-        "ref": {
-          "type": "string",
-          "description": "What it is about (a date or an id)",
-          "from the dedupe key.": null
-        },
-        "created_at": {
-          "$ref": "#/$defs/EpochMs"
-        },
-        "read_at": {
-          "type": [
-            "integer",
-            "null"
-          ]
-        }
-      }
-    },
-    "NotificationPage": {
-      "type": "object",
-      "required": [
-        "items",
-        "next_cursor",
-        "unread_count"
-      ],
-      "properties": {
-        "items": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Notification"
-          }
-        },
-        "next_cursor": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "unread_count": {
-          "type": "integer"
-        }
-      }
-    },
-    "NotificationPrefs": {
-      "type": "object",
-      "required": [
-        "goals",
-        "tax_deadlines",
-        "backup",
-        "sync_reminder"
-      ],
-      "properties": {
-        "goals": {
-          "type": "boolean"
-        },
-        "tax_deadlines": {
-          "type": "boolean"
-        },
-        "backup": {
-          "type": "boolean"
-        },
-        "sync_reminder": {
-          "type": "boolean",
-          "description": "Fired by the phone itself; the phone reads this."
-        }
-      }
-    },
-    "NotificationPrefsPatch": {
-      "type": "object",
-      "additionalProperties": false,
-      "minProperties": 1,
-      "properties": {
-        "goals": {
-          "type": "boolean"
-        },
-        "tax_deadlines": {
-          "type": "boolean"
-        },
-        "backup": {
-          "type": "boolean"
-        },
-        "sync_reminder": {
-          "type": "boolean"
-        }
-      }
-    },
     "ShiftStatus": {
       "enum": [
         "active",
@@ -4884,6 +4768,7 @@
         "disk_free_bytes",
         "disk_state",
         "last_backup",
+        "last_backup_failure",
         "offsite",
         "paired_device_count",
         "mode"
@@ -4919,6 +4804,31 @@
           "oneOf": [
             {
               "$ref": "#/$defs/Backup"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_backup_failure": {
+          "description": "The last backup run, when it failed and no run has succeeded since. Failed runs make no backup, so they are not in GET /backups. Kept in memory, so a restart clears it.",
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "at",
+                "message"
+              ],
+              "properties": {
+                "at": {
+                  "$ref": "#/$defs/EpochMs"
+                },
+                "message": {
+                  "type": "string",
+                  "description": "The server's reason",
+                  "in English.": null
+                }
+              }
             },
             {
               "type": "null"

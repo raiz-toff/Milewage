@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { parse } from 'yaml';
@@ -176,6 +177,7 @@ describe('GET /system/status (08, 10 section 11.1)', () => {
       'disk_free_bytes',
       'disk_state',
       'last_backup',
+      'last_backup_failure',
       'mode',
       'offsite',
       'paired_device_count',
@@ -188,6 +190,7 @@ describe('GET /system/status (08, 10 section 11.1)', () => {
       disk_state: 'ok',
       disk_free_bytes: 100 * GB,
       last_backup: null,
+      last_backup_failure: null,
       mode: 'normal',
       paired_device_count: 1,
       offsite: { last_download_at: null, synced_elsewhere_at: null, reminder_due: false },
@@ -223,6 +226,24 @@ describe('GET /system/status (08, 10 section 11.1)', () => {
     expect(
       (await h.call('GET', '/system/status', undefined, { cookie })).json().paired_device_count,
     ).toBe(0);
+  });
+
+  test('a failed run shows with its time and reason until a later run succeeds', async () => {
+    // A file where the backup folder should be: the run cannot write its copy.
+    writeFileSync(join(h.dir, 'backups'), 'not a folder');
+    expect((await h.call('POST', '/backups', undefined, { cookie })).statusCode).toBe(500);
+    let body = (await h.call('GET', '/system/status', undefined, { cookie })).json();
+    expect(body.last_backup).toBeNull();
+    expect(body.last_backup_failure).toEqual({
+      at: h.clock.t,
+      message: expect.stringMatching(/not a directory/),
+    });
+    rmSync(join(h.dir, 'backups'));
+    h.clock.t += 16 * 60_000; // past the 15-minute limit
+    expect((await h.call('POST', '/backups', undefined, { cookie })).statusCode).toBe(201);
+    body = (await h.call('GET', '/system/status', undefined, { cookie })).json();
+    expect(body.last_backup_failure).toBeNull();
+    expect(body.last_backup).toMatchObject({ trigger: 'manual', integrity_ok: true });
   });
 
   test('mode shows a restore in progress; the diagnostics block is absent with the module off', async () => {

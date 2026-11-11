@@ -88,6 +88,7 @@ describe('SQLite version gate (10 section 3.3, B12)', () => {
 
 describe('migration runner', () => {
   const real = loadMigrations(MIGRATIONS_DIR);
+  const INBOX_DROP = 'zz_removed/0001_drop_notifications';
 
   test('first migration creates users, settings, instance; applying twice is idempotent', () => {
     const db = open();
@@ -145,9 +146,11 @@ describe('migration runner', () => {
   test('a 0.2.0 database loses the progress tables, inbox rows and streak switch on upgrade', () => {
     const db = open();
     const drop = 'progress/0002_drop_progress';
+    // Up to before both drops; the inbox this test reads goes later (zz_removed/0001).
+    const beforeInbox = real.filter((m) => `${m.module}/${m.id}` !== INBOX_DROP);
     migrate(
       db,
-      real.filter((m) => `${m.module}/${m.id}` !== drop),
+      beforeInbox.filter((m) => `${m.module}/${m.id}` !== drop),
     );
     expect(tables(db)).toEqual(expect.arrayContaining(['badge_unlocks', 'progress_state']));
     const userId = createUserRepository(db).create({
@@ -163,7 +166,7 @@ describe('migration runner', () => {
     db.prepare('INSERT INTO notification_prefs (user_id, goals, streak) VALUES (?, 0, 0)').run(
       userId,
     );
-    expect(migrate(db, real)).toEqual([drop]);
+    expect(migrate(db, beforeInbox)).toEqual([drop]);
     expect(tables(db)).not.toContain('badge_unlocks');
     expect(tables(db)).not.toContain('progress_state');
     expect(db.prepare('SELECT kind FROM notifications').pluck().all()).toEqual(['goal_met']);
@@ -179,9 +182,11 @@ describe('migration runner', () => {
   test('a 0.2.0 database loses the schedule tables, shift reminders and their switch on upgrade', () => {
     const db = open();
     const drop = 'schedule/0002_drop_schedule';
+    // Up to before both drops; the inbox this test reads goes later (zz_removed/0001).
+    const beforeInbox = real.filter((m) => `${m.module}/${m.id}` !== INBOX_DROP);
     migrate(
       db,
-      real.filter((m) => `${m.module}/${m.id}` !== drop),
+      beforeInbox.filter((m) => `${m.module}/${m.id}` !== drop),
     );
     const planned = ['schedule_entries', 'schedule_off_days', 'schedule_templates'];
     expect(tables(db)).toEqual(expect.arrayContaining(planned));
@@ -209,7 +214,7 @@ describe('migration runner', () => {
     db.prepare(
       'INSERT INTO notification_prefs (user_id, shift_reminders, goals) VALUES (?, 0, 0)',
     ).run(userId);
-    expect(migrate(db, real)).toEqual([drop]);
+    expect(migrate(db, beforeInbox)).toEqual([drop]);
     for (const t of planned) expect(tables(db)).not.toContain(t);
     expect(db.prepare('SELECT kind FROM notifications').pluck().all()).toEqual(['goal_met']);
     expect(db.prepare('SELECT * FROM notification_prefs').get()).toEqual({
@@ -254,6 +259,55 @@ describe('migration runner', () => {
       .all();
     expect(indexes).toEqual([]);
     expect(createUserRepository(db).findByUsername('sam')?.id).toBe(userId);
+  });
+
+  test('the inbox drop runs after the progress and schedule drops that still write to the inbox', () => {
+    const order = real.map((m) => `${m.module}/${m.id}`);
+    const at = (k: string) => order.indexOf(k);
+    expect(at(INBOX_DROP)).toBe(order.length - 1);
+    expect(at('notifications/0001_notifications')).toBeLessThan(at('progress/0002_drop_progress'));
+    expect(at('progress/0002_drop_progress')).toBeLessThan(at(INBOX_DROP));
+    expect(at('schedule/0002_drop_schedule')).toBeLessThan(at(INBOX_DROP));
+    // A 0.2.0 database: all three pending at once, in one run.
+    const db = open();
+    const later = ['progress/0002_drop_progress', 'schedule/0002_drop_schedule', INBOX_DROP];
+    migrate(
+      db,
+      real.filter((m) => !later.includes(`${m.module}/${m.id}`)),
+    );
+    expect(migrate(db, real)).toEqual(later);
+    expect(tables(db)).not.toContain('notifications');
+  });
+
+  test('a database from before the inbox drop loses the inbox and its switches on upgrade', () => {
+    const db = open();
+    migrate(
+      db,
+      real.filter((m) => `${m.module}/${m.id}` !== INBOX_DROP),
+    );
+    expect(tables(db)).toEqual(expect.arrayContaining(['notifications', 'notification_prefs']));
+    const userId = createUserRepository(db).create({
+      username: 'sam',
+      passwordHash: 'x',
+      createdAt: 1,
+    }).id;
+    const add = db.prepare(
+      'INSERT INTO notifications (user_id, kind, dedupe_key, body_key, created_at, read_at) VALUES (?, ?, ?, ?, 0, ?)',
+    );
+    add.run(userId, 'goal_met', 'goal_met:1:2027-01-11', 'goal_met', null);
+    add.run(userId, 'backup_failed', 'backup_failed:2027-01-12', 'backup_failed', 5);
+    db.prepare(
+      'INSERT INTO notification_prefs (user_id, goals, tax_deadlines, backup, sync_reminder) VALUES (?, 0, 1, 0, 1)',
+    ).run(userId);
+    expect(migrate(db, real)).toEqual([INBOX_DROP]);
+    expect(tables(db)).not.toContain('notifications');
+    expect(tables(db)).not.toContain('notification_prefs');
+    const indexes = db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE 'idx_notif%'")
+      .all();
+    expect(indexes).toEqual([]);
+    expect(createUserRepository(db).findByUsername('sam')?.id).toBe(userId);
+    expect(migrate(db, real)).toEqual([]);
   });
 });
 

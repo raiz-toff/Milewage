@@ -42,7 +42,10 @@ export interface CoreContext {
   /** `config/secrets.json`; defaults to the `config` directory. */
   secrets?: SecretsStore;
   /** Inputs of `GET /system/status`; each is optional so a bare core still serves it. */
-  status?: Pick<StatusContext, 'state' | 'disk' | 'lastBackup' | 'diagnostics'>;
+  status?: Pick<
+    StatusContext,
+    'state' | 'disk' | 'lastBackup' | 'lastBackupFailure' | 'diagnostics'
+  >;
   /** `backup.download` (10 section 3.1); reported to clients as `modules.backup_download`. */
   backupDownload?: boolean;
   exportFormats?: (reg: ModuleRegistry) => string[];

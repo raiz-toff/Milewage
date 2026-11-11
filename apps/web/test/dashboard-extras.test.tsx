@@ -178,7 +178,9 @@ describe('dashboard checklist and goal ring (18 section 13)', () => {
       }),
     });
     const note = (
-      await screen.findByText(/The last backup failed on Jan 14, 2027, 22:00\. Older backups are kept\./)
+      await screen.findByText(
+        /The last backup failed on Jan 14, 2027, 22:00\. Older backups are kept\./,
+      )
     ).closest('[role="note"]') as HTMLElement;
     expect(within(note).getByRole('link', { name: 'Open Backups' }).getAttribute('href')).toBe(
       '/backups',

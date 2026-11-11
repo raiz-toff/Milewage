@@ -25,8 +25,8 @@ const fields = {
 const createBody = strictObject(fields, ['label', 'metric', 'period', 'target']);
 const patchBody = strictObject(fields, [], { minProperties: 1 });
 
-/** A goal with its progress now (also used by the notification triggers). */
-export function goalViewer({
+/** A goal with its progress now. */
+function goalViewer({
   db,
   drivers,
   registry,

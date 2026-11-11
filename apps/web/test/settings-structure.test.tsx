@@ -25,7 +25,6 @@ describe('settings structure', () => {
       'Profile and region',
       'Mileage rate',
       'Units and format',
-      'Alerts',
       'App on this device',
       'Help pages',
       'Platforms',
@@ -55,7 +54,7 @@ describe('settings structure', () => {
   });
 
   it('hides what is switched off on this server, in the list and by address', async () => {
-    open('/settings/alerts', { platforms: false, notifications: false, import: false });
+    open('/settings/platforms', { platforms: false, import: false });
     expect(await heading('Profile and region')).toBeTruthy();
     expect(await links()).toEqual([
       'Profile and region',

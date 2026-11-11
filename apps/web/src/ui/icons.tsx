@@ -56,7 +56,6 @@ import directionsCar from '@iconify-icons/material-symbols/directions-car-outlin
 import directionsCarFill from '@iconify-icons/material-symbols/directions-car-rounded';
 import directionsWalk from '@iconify-icons/material-symbols/directions-walk-rounded';
 import download from '@iconify-icons/material-symbols/download-rounded';
-import drafts from '@iconify-icons/material-symbols/drafts-outline-rounded';
 import edit from '@iconify-icons/material-symbols/edit-outline-rounded';
 import electricBike from '@iconify-icons/material-symbols/electric-bike-rounded';
 import expandLess from '@iconify-icons/material-symbols/expand-less-rounded';
@@ -72,15 +71,12 @@ import lightMode from '@iconify-icons/material-symbols/light-mode-outline-rounde
 import locationOn from '@iconify-icons/material-symbols/location-on-outline-rounded';
 import locationOnFill from '@iconify-icons/material-symbols/location-on-rounded';
 import logout from '@iconify-icons/material-symbols/logout-rounded';
-import mail from '@iconify-icons/material-symbols/mail-outline-rounded';
 import menu from '@iconify-icons/material-symbols/menu-rounded';
 import mobile from '@iconify-icons/material-symbols/mobile-outline-rounded';
 import mobileFill from '@iconify-icons/material-symbols/mobile-rounded';
 import monitoring from '@iconify-icons/material-symbols/monitoring-rounded';
 import moreHoriz from '@iconify-icons/material-symbols/more-horiz-rounded';
 import moreVert from '@iconify-icons/material-symbols/more-vert-rounded';
-import notifications from '@iconify-icons/material-symbols/notifications-outline-rounded';
-import notificationsFill from '@iconify-icons/material-symbols/notifications-rounded';
 import palette from '@iconify-icons/material-symbols/palette-outline-rounded';
 import pause from '@iconify-icons/material-symbols/pause-outline-rounded';
 import pedalBike from '@iconify-icons/material-symbols/pedal-bike-rounded';
@@ -188,8 +184,6 @@ export const CheckCircleIcon = symbol(checkCircle);
 export const CircleIcon = symbol(radioButtonUnchecked);
 export const FlagIcon = symbol(flag);
 export const LocationIcon = symbol(locationOn);
-export const MailIcon = symbol(mail);
-export const MailOpenIcon = symbol(drafts);
 export const KeyIcon = symbol(key);
 export const CalendarIcon = symbol(calendarToday);
 export const PrivacyIcon = symbol(privacyTip);
@@ -212,7 +206,6 @@ export const PlacesIcon = symbol(locationOn, locationOnFill);
 export const DevicesIcon = symbol(mobile, mobileFill);
 export const BackupsIcon = symbol(backup, backupFill);
 export const SettingsIcon = symbol(settings, settingsFill);
-export const NotificationsIcon = symbol(notifications, notificationsFill);
 export const MaintenanceIcon = symbol(build);
 
 // Vehicle kinds.

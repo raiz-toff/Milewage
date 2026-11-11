@@ -10,7 +10,7 @@ order: 110
 
 Settings has one page per section, listed in three groups: Preferences, Work and tracking, and Data and account. On a narrow screen it is a "Section:" menu at the top.
 
-Each section says how it saves. Profile and region, Units and format, Tracking and privacy and Help pages share one Save bar. It names the sections with unsaved changes; Save keeps them all, Discard drops them. Mileage rate, Alerts and Platforms save each change at once. Account and security has its own buttons.
+Each section says how it saves. Profile and region, Units and format, Tracking and privacy and Help pages share one Save bar. It names the sections with unsaved changes; Save keeps them all, Discard drops them. Mileage rate and Platforms save each change at once. Account and security has its own buttons.
 
 Some sections appear only when their module runs on your server. They are marked below.
 
@@ -41,12 +41,6 @@ A deduction at your rate is always called your rate. See [Your mileage rate](mil
 - **Week starts on**: Monday or Sunday. Dashboards and calendars count the week from it.
 - **Time format**: 24-hour or 12-hour.
 - **Time zone**: all dates and times are shown in it, and the nightly backup runs at 03:30 in it. A change applies to shifts started afterwards.
-
-## Alerts
-
-Shown when the notifications module runs. Under "Tell me about" are switches for goals, tax dates, backup problems, and the "Shifts not yet sent (on the phone)".
-
-Alerts appear on the Notifications page, behind the bell at the top. The switch marked "on the phone" does not reach the phone yet. The phone app has its own reminder when shifts have been only on the phone for 3 days or more ("Shifts only on this phone"); to stop it, turn off its Reminders channel in the phone's notification settings for MileWage. Its home screen also says when shifts are on phone only.
 
 ## App on this device
 

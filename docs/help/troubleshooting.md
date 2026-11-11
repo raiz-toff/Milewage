@@ -24,7 +24,7 @@ If the phone was paired with a home address only, its Settings show "Away" as "N
 
 ## Shifts are on phone only
 
-The phone's home screen counts what is not on the server yet: "Not yet on server", with the number of shifts and points and the age of the oldest. The phone sends them by itself as soon as it reaches your server, and keeps trying every minute or less. "Send now" sends at once. After 3 days the phone also shows a notification, "Shifts only on this phone", once a day, with stronger words after 7 days.
+The phone's home screen counts what is not on the server yet: "Not yet on server", with the number of shifts and points and the age of the oldest. The phone sends them by itself as soon as it reaches your server, and keeps trying every minute or less. "Send now" sends at once. After 3 days the phone also shows a notification, "Shifts only on this phone", once a day, with stronger words after 7 days. To stop it, turn off its Reminders channel in the phone's notification settings for MileWage.
 
 If it says "Some items could not be sent", tap "Open shifts" and open that shift to see why. If it says "This phone was removed from your server", the phone was revoked: tap "Pair this phone" and pair it again as [Phones and devices](phones-and-devices.md#pair-a-phone-again) says. Do not clear the app's storage meanwhile: see [If your phone is lost](if-your-phone-is-lost.md).
 

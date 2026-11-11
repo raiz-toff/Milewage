@@ -228,7 +228,7 @@ function shareServices(
       secrets,
       disk,
     });
-  // Every finished run is a fact on the bus, whichever modules are on (notifications, diagnostics).
+  // Every finished run is a fact on the bus, whichever modules are on (diagnostics).
   backup.onFinished((r) => bus.emit('backup.finished', r));
 
   const diagnosticsPath = join(config.dataDir, 'diagnostics.db');

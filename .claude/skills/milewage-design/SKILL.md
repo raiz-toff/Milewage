@@ -51,7 +51,7 @@ No neutral role carries any yellow (a test holds chroma under 0.02). The roles a
 | `primary` (ink)                        | Text and outlined buttons, links, a focused field, checked controls, progress, the tab indicator, the focus ring |
 | `primary-container` (Lane yellow)      | The one main action, the map's route, the drawer's lane dash; nothing else                                       |
 | `secondary-container` (cool grey)      | Selection: the active navigation pill, a chosen chip or segment, the tonal button, the `Next` badge              |
-| `error` / `error-container`            | Destructive actions, invalid fields, `FormError`, the unread `count` badge                                       |
+| `error` / `error-container`            | Destructive actions, invalid fields, `FormError`, a failed backup (`Alert` `destructive`)                        |
 | `inverse-surface`                      | Tooltips; Android snackbars, whose action is `inversePrimary` (Android: steel, not the web's yellow or gold)     |
 | `scrim`                                | Behind dialogs and sheets, at 32 %                                                                               |
 | `earned` / `spent` (extended)          | Money in / money out, and nothing else                                                                           |

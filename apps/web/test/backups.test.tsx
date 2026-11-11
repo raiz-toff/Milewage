@@ -23,6 +23,7 @@ const status = (over: object = {}) => ({
   disk_free_bytes: 50_000_000_000,
   disk_state: 'ok',
   last_backup: null,
+  last_backup_failure: null,
   offsite: { last_download_at: null, synced_elsewhere_at: null, reminder_due: false },
   paired_device_count: 1,
   mode: 'normal',
@@ -107,6 +108,38 @@ describe('backups page', () => {
     open();
     await screen.findByText('nightly');
     expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.queryByRole('alert', { name: 'The last backup failed' })).toBeNull();
+  });
+
+  it('says when the last backup failed and why, until a backup succeeds', async () => {
+    let st = status({
+      last_backup_failure: {
+        // 22:00 in Toronto.
+        at: Date.parse('2027-01-15T03:00:00Z'),
+        message: 'Not enough free disk space for a backup (it needs twice the database size).',
+      },
+    });
+    renderApp(
+      {
+        ...signedIn(),
+        'GET /backups': () => ({ body: [backup()] }),
+        'GET /system/status': () => ({ body: st }),
+        'POST /backups': () => {
+          st = status();
+          return { status: 201, body: backup({ id: 2, trigger: 'manual' }) };
+        },
+      } as never,
+      '/backups',
+    );
+    const alert = await screen.findByRole('alert', { name: 'The last backup failed' });
+    expect(alert.textContent).toContain(
+      'It failed on Jan 14, 2027, 22:00. The server said: Not enough free disk space for a backup (it needs twice the database size).',
+    );
+    expect(alert.textContent).toContain('Older backups are kept. Try Back up now.');
+    fireEvent.click(screen.getByRole('button', { name: 'Back up now' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('alert', { name: 'The last backup failed' })).toBeNull(),
+    );
   });
 
   it('download link is absent when modules.backup_download is off, present when on', async () => {
