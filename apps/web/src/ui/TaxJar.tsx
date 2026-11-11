@@ -58,7 +58,13 @@ export function TaxJar({
           />
           {/* The surface of what is inside, a shade lighter. */}
           {level > 0 ? (
-            <rect x="0" y={top} width="96" height="4" className="fill-surface opacity-30 dark:hidden" />
+            <rect
+              x="0"
+              y={top}
+              width="96"
+              height="4"
+              className="fill-surface opacity-30 dark:hidden"
+            />
           ) : null}
         </g>
         <path d={body} fill="none" strokeWidth="2" className="stroke-outline" />

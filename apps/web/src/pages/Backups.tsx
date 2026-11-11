@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BackupsIcon } from '@/ui/icons';
+import { BackupsIcon, DatabaseIcon, DevicesIcon, DiskIcon, TagIcon } from '@/ui/icons';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState, PageHeader, Section, StatCard, TableBox, tableClass } from '../ui/layout';
 import { errorText, put, useApiQuery, useChange } from '../api/query';
@@ -97,17 +97,21 @@ export function Backups() {
       <FormError message={error} />
       {status ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard label="Version" value={status.app_version} />
-          <StatCard label="Database" value={mb(status.db_bytes + status.wal_bytes)} />
-          <StatCard label="Free disk" value={mb(status.disk_free_bytes)} />
-          <StatCard label="Paired phones" value={status.paired_device_count} />
+          <StatCard icon={TagIcon} label="Version" value={status.app_version} />
+          <StatCard
+            icon={DatabaseIcon}
+            label="Database"
+            value={mb(status.db_bytes + status.wal_bytes)}
+          />
+          <StatCard icon={DiskIcon} label="Free disk" value={mb(status.disk_free_bytes)} />
+          <StatCard icon={DevicesIcon} label="Paired phones" value={status.paired_device_count} />
         </div>
       ) : null}
       <Section title="Backups on this server">
         {backups === null ? (
           <p className="text-body-medium text-muted-foreground">Loading</p>
         ) : backups.length === 0 ? (
-          <EmptyState>No backup has been made yet.</EmptyState>
+          <EmptyState icon={BackupsIcon}>No backup has been made yet.</EmptyState>
         ) : (
           <TableBox>
             <table className={tableClass}>

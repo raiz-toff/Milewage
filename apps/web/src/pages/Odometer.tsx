@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { OdometerIcon, VehiclesIcon } from '@/ui/icons';
 import { useQueries } from '@tanstack/react-query';
 import { EmptyState, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
 import { Button as UiButton } from '@/components/ui/button';
@@ -81,7 +82,9 @@ export function OdometerPage() {
     return (
       <section className="space-y-6">
         <PageHeader title="Odometer" />
-        <EmptyState>There is no vehicle yet. Add one on the Vehicles screen first.</EmptyState>
+        <EmptyState icon={VehiclesIcon}>
+          There is no vehicle yet. Add one on the Vehicles screen first.
+        </EmptyState>
       </section>
     );
 
@@ -187,7 +190,7 @@ function ReadingsTable({
   return (
     <Section label={title} title={<>{title}</>}>
       {rows.length === 0 ? (
-        <EmptyState>No readings.</EmptyState>
+        <EmptyState icon={OdometerIcon}>No readings.</EmptyState>
       ) : (
         <TableBox>
           <table className={tableClass}>

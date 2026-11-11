@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { IconTile } from '../ui/visuals';
+import { Badge } from '@/components/ui/badge';
 import { BlockIcon, DevicesIcon, EditIcon } from '@/ui/icons';
 import { RowMenu } from '../ui/RowMenu';
 import { EmptyState, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
@@ -33,7 +35,12 @@ function DeviceRow({ device }: { device: Device }) {
     <tr className="border-t border-border align-top">
       <td className="py-2 pr-4">
         {name === null ? (
-          <span className={revoked ? 'text-muted-foreground line-through' : ''}>{device.name}</span>
+          <span className="flex items-center gap-3">
+            <IconTile icon={DevicesIcon} tone={revoked ? 'neutral' : 'selected'} round />
+            <span className={revoked ? 'text-muted-foreground line-through' : ''}>
+              {device.name}
+            </span>
+          </span>
         ) : (
           <input
             aria-label={`New name for ${device.name}`}
@@ -49,7 +56,9 @@ function DeviceRow({ device }: { device: Device }) {
       <td className="pr-4 text-muted-foreground tabular-nums">
         {device.last_seen_at ? formatDateTime(device.last_seen_at, timezone, tf) : 'never'}
       </td>
-      <td className="pr-4 text-muted-foreground">{revoked ? 'revoked' : 'active'}</td>
+      <td className="pr-4">
+        <Badge variant={revoked ? 'outline' : 'secondary'}>{revoked ? 'revoked' : 'active'}</Badge>
+      </td>
       <td className="space-x-3 text-right whitespace-nowrap">
         {revoked ? null : name === null ? (
           confirming ? (
@@ -156,7 +165,7 @@ export function Devices() {
         {devices === null ? (
           <p className="text-body-medium text-muted-foreground">Loading</p>
         ) : devices.length === 0 ? (
-          <EmptyState>No phone is paired yet.</EmptyState>
+          <EmptyState icon={DevicesIcon}>No phone is paired yet.</EmptyState>
         ) : (
           <TableBox>
             <table className={tableClass}>

@@ -1,4 +1,7 @@
 import { useId, useState } from 'react';
+import { IconTile } from '../ui/visuals';
+import { MapIcon, PdfIcon, RouteIcon, TableIcon } from '@/ui/icons';
+import type { IconComponent } from '@/ui/icons';
 import { DownloadIcon } from '@/ui/icons';
 import { Button as UiButton } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -135,6 +138,15 @@ const NAME: Record<Format, string> = {
   gpx: 'GPX',
   geojson: 'GeoJSON',
 };
+/** Each file's picture and colour: spreadsheets, the printed report, routes. */
+const PICTURE: Record<Format, [IconComponent, number]> = {
+  csv: [TableIcon, 0],
+  pdf: [PdfIcon, 3],
+  expenses: [TableIcon, 0],
+  tax_summary: [TableIcon, 0],
+  gpx: [RouteIcon, 1],
+  geojson: [MapIcon, 1],
+};
 const HINT: Record<Format, string> = {
   csv: 'Your trips or shifts in the period, as a spreadsheet (CSV).',
   pdf: 'A summary, the rates used, the mileage log and your expenses, ready to print (PDF).',
@@ -213,11 +225,14 @@ export function ExportsPage() {
       key={f}
       className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
     >
-      <div className="min-w-0 space-y-1">
-        <p className="font-medium">{NAME[f]}</p>
-        <p className="text-body-medium text-muted-foreground">
-          {HINT[f].replace('{year}', from.slice(0, 4))}
-        </p>
+      <div className="flex min-w-0 items-center gap-3">
+        <IconTile icon={PICTURE[f][0]} tone={PICTURE[f][1]} />
+        <div className="min-w-0 space-y-1">
+          <p className="font-medium">{NAME[f]}</p>
+          <p className="text-body-medium text-muted-foreground">
+            {HINT[f].replace('{year}', from.slice(0, 4))}
+          </p>
+        </div>
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2">
         {f === 'csv' ? (

@@ -1,4 +1,6 @@
 import { useId, useState } from 'react';
+import { CategoryTile } from '../ui/visuals';
+import { ExpensesIcon, PaymentsIcon, TaxIcon } from '@/ui/icons';
 import { keepPreviousData } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -244,8 +246,13 @@ export function ExpensesPage() {
       <FormError message={error} />
       {totals ? (
         <div className="grid grid-cols-2 gap-3 sm:max-w-xl" aria-label="Year to date">
-          <StatCard label={`Deductible ${totals.year}`} value={money(totals.deductible_cents)} />
           <StatCard
+            icon={TaxIcon}
+            label={`Deductible ${totals.year}`}
+            value={money(totals.deductible_cents)}
+          />
+          <StatCard
+            icon={PaymentsIcon}
             label={`Total spend ${totals.year}`}
             value={money(totals.total_cents)}
             tone="spent"
@@ -522,7 +529,7 @@ export function ExpensesPage() {
         {items === null ? (
           <p className="text-body-medium text-muted-foreground">Loading</p>
         ) : items.length === 0 ? (
-          <EmptyState>No expenses yet.</EmptyState>
+          <EmptyState icon={ExpensesIcon}>No expenses yet.</EmptyState>
         ) : (
           <TableBox>
             <table className={tableClass}>
@@ -542,7 +549,12 @@ export function ExpensesPage() {
                 {items.map((x) => (
                   <tr key={x.id}>
                     <td className="whitespace-nowrap tabular-nums">{day(x.spent_on)}</td>
-                    <td className="pr-3">{cat(x.category)?.label ?? x.category}</td>
+                    <td className="pr-3">
+                      <span className="flex items-center gap-3">
+                        <CategoryTile slug={x.category} className="size-8" />
+                        {cat(x.category)?.label ?? x.category}
+                      </span>
+                    </td>
                     <td className="pr-3">{x.merchant}</td>
                     <td className="text-right tabular-nums">{money(x.amount_cents)}</td>
                     <td className="text-right tabular-nums">

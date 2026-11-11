@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { ProgressRing } from '../ui/visuals';
+import { CheckIcon, GoalsIcon } from '@/ui/icons';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState, PageHeader, Section } from '../ui/layout';
 import { DeleteIcon, EditIcon, PauseIcon, PlayIcon } from '@/ui/icons';
@@ -21,32 +23,48 @@ const METRICS = [
 const PERIODS = ['daily', 'weekly', 'monthly', 'yearly'].map((v) => ({ value: v, label: v }));
 const EMPTY = { label: '', metric: 'earnings', period: 'weekly', target: '' };
 
-/** A progress bar, also the "ring" of the dashboard card; null progress is "unknown", not an empty bar. */
+/**
+ * A goal as a ring that fills toward its target, with the figures in words beside it. Unknown
+ * progress is "unknown" and an empty ring, never 0%; a goal reached turns green with a tick.
+ */
 export function GoalBar({ goal }: { goal: Goal }) {
   const { distance_unit: unit, currency } = useSettings();
   const p = goal.progress;
+  const pct = p.ratio === null ? null : Math.round(p.ratio * 100);
+  const done = pct !== null && pct >= 100;
+  const left = p.value === null ? null : p.target - p.value;
   return (
-    <div>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-        <span className="text-title-medium">{goal.label}</span>
-        <span className="text-body-medium text-muted-foreground tabular-nums">
-          {p.value === null
-            ? (p.note ?? 'unknown')
-            : `${valueText(goal.metric, p.value, unit, currency)} of ${valueText(goal.metric, p.target, unit, currency)}${p.estimated ? ' (estimated)' : ''}`}
-        </span>
-      </div>
+    <div className="flex items-center gap-4">
       <div
         role="progressbar"
         aria-label={`${goal.label} progress`}
-        aria-valuenow={p.ratio === null ? undefined : Math.round(p.ratio * 100)}
+        aria-valuenow={pct ?? undefined}
         aria-valuemin={0}
         aria-valuemax={100}
-        className="mt-1 h-2 overflow-hidden rounded-full bg-secondary-container"
+        className="shrink-0"
       >
-        <div
-          className="h-2 rounded-full bg-primary"
-          style={{ width: `${Math.min(100, (p.ratio ?? 0) * 100)}%` }}
-        />
+        <ProgressRing value={pct ?? 0} done={done}>
+          {done ? (
+            <CheckIcon className="size-6 text-chart-earned" />
+          ) : pct === null ? (
+            '?'
+          ) : (
+            `${pct}%`
+          )}
+        </ProgressRing>
+      </div>
+      <div className="min-w-0 space-y-0.5">
+        <p className="truncate text-title-medium">{goal.label}</p>
+        <p className="text-body-medium text-muted-foreground tabular-nums">
+          {p.value === null
+            ? (p.note ?? 'unknown')
+            : `${valueText(goal.metric, p.value, unit, currency)} of ${valueText(goal.metric, p.target, unit, currency)}${p.estimated ? ' (estimated)' : ''}`}
+        </p>
+        {left === null ? null : (
+          <p className="text-body-small text-muted-foreground tabular-nums">
+            {done ? 'Reached' : `${valueText(goal.metric, left, unit, currency)} to go`}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -150,7 +168,7 @@ export function GoalsPage() {
       {goals === null ? (
         <p className="text-body-medium text-muted-foreground">Loading</p>
       ) : goals.length === 0 ? (
-        <EmptyState>No goals yet.</EmptyState>
+        <EmptyState icon={GoalsIcon}>No goals yet. Add one above.</EmptyState>
       ) : (
         <ul className="grid gap-4 md:grid-cols-2">
           {goals.map((g) => (

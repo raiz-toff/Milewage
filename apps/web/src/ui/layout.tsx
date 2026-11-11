@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { InboxIcon } from '@/ui/icons';
+import type { IconComponent } from '@/ui/icons';
 
 /**
  * The top of every page: title (Material headline, small on phones and medium from `md`), one
@@ -90,45 +92,75 @@ export function StatCard({
   value,
   sub,
   tone,
+  icon: Icon,
   className,
 }: {
   label: ReactNode;
   value: ReactNode;
   sub?: ReactNode;
+  /** A picture of what the figure is, in a tonal tile before it. */
+  icon?: IconComponent;
   /** Only for a money figure whose label says in words whether it came in or went out. */
   tone?: MoneyTone;
   className?: string;
 }) {
   return (
     <Card size="sm" className={className}>
-      <CardContent className="space-y-1">
-        <div className="text-label-medium text-on-surface-variant">{label}</div>
-        <div
-          className={cn(
-            'text-title-large font-medium text-on-surface tabular-nums',
-            tone && moneyText[tone],
-          )}
-        >
-          {value}
-        </div>
-        {sub ? (
-          <div className="text-body-small text-on-surface-variant tabular-nums">{sub}</div>
+      <CardContent className="flex items-center gap-3">
+        {Icon ? (
+          <span
+            aria-hidden="true"
+            className="flex size-10 shrink-0 items-center justify-center rounded-medium bg-secondary-container text-on-secondary-container"
+          >
+            <Icon className="size-5" />
+          </span>
         ) : null}
+        <div className="min-w-0 space-y-1">
+          <div className="text-label-medium text-on-surface-variant">{label}</div>
+          <div
+            className={cn(
+              'text-title-large font-medium text-on-surface tabular-nums',
+              tone && moneyText[tone],
+            )}
+          >
+            {value}
+          </div>
+          {sub ? (
+            <div className="text-body-small text-on-surface-variant tabular-nums">{sub}</div>
+          ) : null}
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-/** What a list says when it has nothing in it. */
-export function EmptyState({ children, className }: { children: ReactNode; className?: string }) {
+/**
+ * What a list says when it has nothing in it: a picture in a tonal circle (an inbox unless the
+ * page gives its own), then the words.
+ */
+export function EmptyState({
+  children,
+  icon: Icon = InboxIcon,
+  className,
+}: {
+  children: ReactNode;
+  icon?: IconComponent;
+  className?: string;
+}) {
   return (
     <div
       className={cn(
-        'rounded-xl border border-dashed border-outline-variant p-8 text-center text-body-medium text-on-surface-variant',
+        'flex flex-col items-center gap-3 rounded-xl border border-dashed border-outline-variant p-8 text-center text-body-medium text-on-surface-variant',
         className,
       )}
     >
-      {children}
+      <span
+        aria-hidden="true"
+        className="flex size-14 items-center justify-center rounded-full bg-surface-container-high"
+      >
+        <Icon className="size-7" />
+      </span>
+      <div>{children}</div>
     </div>
   );
 }

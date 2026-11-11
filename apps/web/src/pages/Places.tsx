@@ -1,7 +1,8 @@
 import { lazy, Suspense, useMemo, useState } from 'react';
+import { IconTile } from '../ui/visuals';
 import type { FormEvent } from 'react';
 import { useLocation } from 'react-router-dom';
-import { DeleteIcon, EditIcon } from '@/ui/icons';
+import { DeleteIcon, EditIcon, PlacesIcon } from '@/ui/icons';
 import type { Schemas } from '../api/client';
 import { errorText, useApiQuery, useChange } from '../api/query';
 import { HelpLink } from '../help';
@@ -250,14 +251,15 @@ export function PlacesPage() {
       </div>
       <Section label="Your places" title="Your places">
         {places === null ? null : places.length === 0 ? (
-          <EmptyState>
+          <EmptyState icon={PlacesIcon}>
             No places yet. Save one from a stop on a shift&apos;s page, or click the map above.
           </EmptyState>
         ) : (
           <ul className="divide-y divide-outline-variant">
             {places.map((p) => (
-              <li key={p.id} className="flex items-center justify-between gap-3 py-2">
-                <div className="min-w-0">
+              <li key={p.id} className="flex items-center gap-3 py-2">
+                <IconTile icon={PlacesIcon} tone="selected" round />
+                <div className="min-w-0 flex-1">
                   <p className="truncate text-body-large text-on-surface">{p.name}</p>
                   <p className="text-body-small text-on-surface-variant tabular-nums">
                     {roleWord(p.role)} · {p.radius_m} m
