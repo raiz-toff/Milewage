@@ -6,12 +6,17 @@ All notable changes to MileWage are listed here. The format follows
 
 ## [Unreleased]
 
-A new phone app and a new look. The phone app is now a native Android app (Kotlin, Jetpack
-Compose, Material 3) that needs nothing from Google; the Expo app is gone. The web app and the
-phone follow Google's Material Design 3 from one colour scheme (ADRs 0009 to 0011). Also: your own
-dated mileage rate, a PDF report for the accountant, parking and tolls on a shift, named places,
-editing a trip you added on the web, and a reverse proxy of your own in front of MileWage (GitHub
-issue #6).
+## [0.3.0] - 2026-11-11
+
+Third release: a new phone app, a new look and a smaller MileWage. The phone app is now a native
+Android app (Kotlin, Jetpack Compose, Material 3) that needs nothing from Google; the Expo app is
+gone. Install `milewage-0.3.0.apk` (versionCode 3) on the phone after the server is upgraded. The
+web app and the phone follow Google's Material Design 3 from one colour scheme (ADRs 0009 to
+0011). Also: your own dated mileage rate, in one or two steps (ADRs 0007 and 0012), a PDF report
+for the accountant, parking and tolls on a shift, editing a trip you added on the web, a reverse
+proxy of your own in front of MileWage (GitHub issue #6), and the country figures checked against
+the tax offices' pages. Features that were not earning their keep are removed; the list is under
+Removed.
 
 **After upgrading: the phone app.** The new Android app installs over the old one but starts
 empty: nothing is carried over. Before installing it, open the old app on a connection to your
@@ -32,18 +37,6 @@ you choose Your rate there; in a country without rates in MileWage it is used as
 
 ### Not yet verified
 
-- Phone: the app no longer stutters while it sends to or reads from the server. Sending, reading
-  the change log and every read behind a screen now run off the main thread; the many changes of a
-  round are folded into a few screen refreshes a second; and the stored credential is opened from
-  the Keystore once instead of for every refresh and request.
-- Country figures checked against the tax offices' pages (2026-11-11) and corrected: Nova Scotia's
-  HST is 14 % (it was shown as 15 %); the United Kingdom's 2027-28 rates are in (55p, then 35p
-  after 10,000 miles, announced and not yet law; motorcycles 24p); Canada's 2027 CPP ceilings are
-  in, though 2027 has no contribution estimate until its rate is confirmed; the odometer note says
-  "fiscal period" and the logbook sample rule says 10 percentage points. In Canada the Tax page,
-  the tax summary and the PDF report now say that the per-km rate is the CRA's limit on employer
-  allowances, not a deduction for the self-employed, so the mileage deduction is an estimate. The
-  United States rates are marked as checked.
 - The new Android app has never run on a real phone. Everything below was tested on a computer
   only (unit tests, the screens drawn by Robolectric, light and dark).
 - The engine's maths on a phone's processor (ART on arm64) and on an arm64 server (a Raspberry
@@ -55,8 +48,11 @@ you choose Your rate there; in a country without rates in MileWage it is used as
 - Battery over a long shift.
 - Phone makers' battery savers that stop background apps (Samsung, Xiaomi, Huawei and others).
 - The QR scanner (CameraX and ZXing) on real cameras; a phone without Google services.
-- The tax treatment of parking and tolls (deducted in full, beside the mileage rate), and every
-  mileage rate and tax figure, against the tax offices' own pages.
+- The tax treatment of parking and tolls (deducted in full, beside the mileage rate). The mileage
+  rates and tax figures were checked against the tax offices' pages on 2026-11-11 (see Changed);
+  still open are Canada's 2027 CPP rate and whether its per-km rates cover motorcycles, the United
+  Kingdom's log fields and whether its 10,000 miles count all of a driver's vehicles together, so
+  Canada and the United Kingdom keep their "unverified" notice.
 - The PDF report in a real viewer and printer.
 - No real shift over a real Tailscale network, as before.
 
@@ -147,6 +143,14 @@ you choose Your rate there; in a country without rates in MileWage it is used as
 
 ### Changed
 
+- Country figures checked against the tax offices' pages (2026-11-11) and corrected: Nova Scotia's
+  HST is 14 % (it was shown as 15 %); the United Kingdom's 2027-28 rates are in (55p, then 35p
+  after 10,000 miles, announced and not yet law; motorcycles 24p); Canada's 2027 CPP ceilings are
+  in, though 2027 has no contribution estimate until its rate is confirmed; the odometer note says
+  "fiscal period" and the logbook sample rule says 10 percentage points. In Canada the Tax page,
+  the tax summary and the PDF report now say that the per-km rate is the CRA's limit on employer
+  allowances, not a deduction for the self-employed, so the mileage deduction is an estimate. The
+  United States rates are marked as checked.
 - The look is Material Design 3 on the web and the phone, from one colour scheme generated from
   Lane yellow, with earned and spent as matching extra colours (ADR 0010). The web's components
   are restyled in place: Roboto Flex on the Material type scale, Material shapes, elevation and
@@ -297,6 +301,10 @@ you choose Your rate there; in a country without rates in MileWage it is used as
 
 ### Fixed
 
+- Phone: the app no longer stutters while it sends to or reads from the server. Sending, reading
+  the change log and every read behind a screen now run off the main thread; the many changes of a
+  round are folded into a few screen refreshes a second; and the stored credential is opened from
+  the Keystore once instead of for every refresh and request.
 - The web ignored the 12-hour time setting in 14 files; every time now follows Settings > Time
   format.
 - The shift timeline's time column no longer clips, and tax alerts name the platform.

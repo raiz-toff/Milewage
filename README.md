@@ -55,11 +55,11 @@ Three parts in one repository: the server and the web app in TypeScript, the pho
 - Phones pair with a QR code and hold a device token you can revoke at any time.
 - Diagnostics that stay on your server and never carry coordinates.
 
-**Status.** Version 0.2.0 is a complete build that has not yet been tried in the real
-world: no real shift on a real phone, no run over a real Tailscale network, and every mileage
-rate and tax figure is unverified against the tax offices' own pages. The Tax page (for Canada)
-and the tax summary export say so; the dashboard, shift pages and phone show deductions without
-that notice. Details under "Not yet verified" in [`CHANGELOG.md`](CHANGELOG.md).
+**Status.** Version 0.3.0 is a complete build that has not yet been tried in the real
+world: no real shift on a real phone with the new native Android app, and no run over a real
+Tailscale network. The mileage rates and tax figures were checked against the tax offices' pages
+on 2026-11-11; Canada and the United Kingdom still carry an "unverified" notice for the points
+left open. Details under "Not yet verified" in [`CHANGELOG.md`](CHANGELOG.md).
 
 The next version replaces the phone app with a native Android app, which has never run on a real
 phone. Its tests run on a computer only (unit tests, screens drawn by Robolectric, the engine
