@@ -1,6 +1,5 @@
 package app.milewage.phone.logic
 
-import app.milewage.tracking.TrackingController
 
 /*
  * The permissions ladder (09 section 5.3, 24 section 4.2, Android's guidance on location:
@@ -171,40 +170,4 @@ object PermissionLadder {
     fun next(steps: List<PermStep>): PermStep? = steps.firstOrNull { it.state != PermState.DONE && it.action != PermAction.NONE }
 
     fun battery(maker: String): BatteryAdvice = if (maker.contains("samsung", ignoreCase = true)) BatteryAdvice.SAMSUNG else BatteryAdvice.OTHER
-}
-
-/** Settings > "Ask to start a shift when I seem to be driving": the tracker's answer in the driver's terms. */
-enum class DetectionOutcome(val fix: Fix?) {
-    ON(null),
-    OFF(null),
-
-    /** The Location switch is off: name the switch. */
-    LOCATION_OFF(Fix.LOCATION_SETTINGS),
-
-    /** No precise location at all. */
-    NO_LOCATION(Fix.APP_SETTINGS),
-
-    /** Location only while in use: detection runs with no app on screen. */
-    NEEDS_ALL_THE_TIME(Fix.APP_SETTINGS),
-
-    /** Android refused to start the watch from here. */
-    NOT_ALLOWED(Fix.START_AGAIN),
-
-    /** The tracker is not part of this build (never on a phone). */
-    NOT_WIRED(null),
-    ;
-
-    companion object {
-        fun of(r: TrackingController.DetectionResult, locationSwitch: Boolean, precise: Boolean): DetectionOutcome = when (r) {
-            TrackingController.DetectionResult.ON -> ON
-            TrackingController.DetectionResult.OFF -> OFF
-            TrackingController.DetectionResult.NEEDS_BACKGROUND_LOCATION -> when {
-                !locationSwitch -> LOCATION_OFF
-                !precise -> NO_LOCATION
-                else -> NEEDS_ALL_THE_TIME
-            }
-            TrackingController.DetectionResult.NOT_ALLOWED -> NOT_ALLOWED
-            TrackingController.DetectionResult.NOT_WIRED -> NOT_WIRED
-        }
-    }
 }

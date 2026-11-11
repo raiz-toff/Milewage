@@ -19,7 +19,7 @@ data class TrackingPermissionState(
     val preciseLocation: Boolean,
     /** ACCESS_COARSE_LOCATION only (Android 12+ "Approximate"): not enough to record. */
     val approximateOnly: Boolean,
-    /** "Allow all the time" (Android 10+; implied below). Needed for drive detection and for starts after a reboot. */
+    /** "Allow all the time" (Android 10+; implied below). Needed for starts after a reboot. */
     val backgroundLocation: Boolean,
     /** POST_NOTIFICATIONS (Android 13+; implied below) and the app's notifications switched on. */
     val notifications: Boolean,
@@ -29,7 +29,6 @@ data class TrackingPermissionState(
     val ignoringBatteryOptimizations: Boolean,
 ) {
     val canRecord: Boolean get() = preciseLocation && locationEnabled
-    val canDetect: Boolean get() = canRecord && backgroundLocation
 }
 
 object TrackingPermissions {

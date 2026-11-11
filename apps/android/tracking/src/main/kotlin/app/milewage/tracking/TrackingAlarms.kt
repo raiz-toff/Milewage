@@ -9,7 +9,7 @@ import android.os.SystemClock
 /**
  * Wake-ups without the exact-alarm permission (SCHEDULE_EXACT_ALARM is Play-restricted and not in
  * the manifest policy): `setAndAllowWhileIdle` on the elapsed-realtime clock, which fires through
- * Doze but may come late. Used for the stillness and detector deadlines (a nudge a few minutes
+ * Doze but may come late. Used for the stillness deadlines (a nudge a few minutes
  * late is fine) and for the restart safety net after the task is removed, as the Expo tracker did.
  */
 internal object TrackingAlarms {

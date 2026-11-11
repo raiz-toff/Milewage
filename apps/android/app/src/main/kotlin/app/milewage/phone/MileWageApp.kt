@@ -24,8 +24,8 @@ import kotlinx.coroutines.withTimeoutOrNull
  *   worker finds `MileWageData` ([MileWageDataProvider]).
  * - `onCreate`: the reminder channel, then `MileWageData.start` (recovery of a shift a kill cut
  *   short, `app.start`, the sending loop, the hourly worker) and the shift notification's details.
- * - Each time the app comes to the foreground: `ensureRunning()` (a shift or detection that should
- *   record and does not is started again) and `kick()` (a send round). The network coming back
+ * - Each time the app comes to the foreground: `ensureRunning()` (a shift that should record and
+ *   does not is started again) and `kick()` (a send round). The network coming back
  *   kicks too (`MileWageData.create` registers that).
  * - A crash is recorded in the diagnostics ring before the process dies (never a coordinate).
  */

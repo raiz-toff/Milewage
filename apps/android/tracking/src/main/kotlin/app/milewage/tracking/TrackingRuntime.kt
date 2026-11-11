@@ -75,8 +75,6 @@ internal class TrackingRuntime private constructor(context: Context, val deps: T
     private fun apply(effects: List<TrackingEffect>) {
         for (e in effects) {
             when (e) {
-                is TrackingEffect.PostPrompt -> TrackingNotifications.postPrompt(app, e.driveStartedAtMs)
-                TrackingEffect.CancelPrompt -> TrackingNotifications.cancel(app, TrackingNotifications.ID_PROMPT)
                 is TrackingEffect.PostNudge ->
                     TrackingNotifications.postNudge(app, System.currentTimeMillis() - e.stillSinceMs)
                 TrackingEffect.CancelNudge -> TrackingNotifications.cancel(app, TrackingNotifications.ID_NUDGE)
@@ -96,7 +94,7 @@ internal class TrackingRuntime private constructor(context: Context, val deps: T
     }
 
     private fun needsService(e: TrackingEffect) = when (e) {
-        is TrackingEffect.ShowShift, TrackingEffect.ShowWatching -> true
+        is TrackingEffect.ShowShift -> true
         is TrackingEffect.ApplyPlan -> e.plan != LocationPlan.NONE
         else -> false
     }
@@ -139,14 +137,10 @@ internal class TrackingRuntime private constructor(context: Context, val deps: T
             }
         }
 
-        /** "Open MileWage" for whichever is meant to run: the shift first. */
+        /** "Open MileWage" when a shift is meant to be recording. */
         fun postStartProblem(context: Context) {
-            val prefs = PrefsTrackingStores.open(context)
-            val shift = PrefsTrackingStores.readActiveShift(prefs)
-            val detection = PrefsTrackingStores.readSettings(prefs).detectionEnabled
-            when {
-                shift != null -> TrackingNotifications.postProblem(context, TrackingNotifications.Problem.SHIFT_NOT_RECORDING)
-                detection -> TrackingNotifications.postProblem(context, TrackingNotifications.Problem.DETECTION_PAUSED)
+            if (PrefsTrackingStores.readActiveShift(PrefsTrackingStores.open(context)) != null) {
+                TrackingNotifications.postProblem(context, TrackingNotifications.Problem.SHIFT_NOT_RECORDING)
             }
         }
     }

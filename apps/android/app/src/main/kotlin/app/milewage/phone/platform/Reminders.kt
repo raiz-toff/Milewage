@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit
 
 /**
  * The app's own notification channel and permission. The tracking module owns its channels (shift
- * in progress, watching for drives, prompts, problems); this is the one for reminders. Created at
+ * in progress, prompts, problems); this is the one for reminders. Created at
  * start-up (cheap, idempotent), so it is listed in the phone's settings from the first run.
  */
 object AppNotifications {

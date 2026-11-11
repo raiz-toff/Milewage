@@ -71,6 +71,15 @@ class TrackingCoreTest {
     }
 
     @Test
+    fun `the state an older version kept for the drive prompt starts nothing`() = runBlocking {
+        val s = Stores()
+        s.state.save("detector", "v=1\nstate=DETECTED")
+        val out = s.core(caps).start(sim.timeMs)
+        assertEquals(TrackingEffect.Stop, out.last())
+        assertEquals(TrackingMode.STOPPED, s.core(caps).status.value.mode)
+    }
+
+    @Test
     fun `a shift stores every GNSS fix with increasing seq, counts the live distance and updates the notification by tenths`() = runBlocking {
         val s = Stores()
         val core = s.core(caps)
@@ -156,7 +165,7 @@ class TrackingCoreTest {
     }
 
     @Test
-    fun `stopping a shift stops the service, or goes back to watching when detection is on`() = runBlocking {
+    fun `stopping a shift stops the service`() = runBlocking {
         val s = Stores()
         val core = s.core(caps)
         core.startShift(ActiveShift("s", sim.timeMs), sim.timeMs)
@@ -165,64 +174,6 @@ class TrackingCoreTest {
         assertEquals(TrackingEffect.Stop, stop.last())
         assertNull(s.active.get())
         assertEquals(TrackingMode.STOPPED, core.status.value.mode)
-
-        s.settings.set(TrackingSettings(detectionEnabled = true))
-        core.startShift(ActiveShift("t", sim.timeMs), sim.timeMs)
-        val back = core.stopShift(sim.timeMs)
-        assertTrue(back.contains(TrackingEffect.ShowWatching))
-        assertEquals(TrackingMode.WATCHING, core.status.value.mode)
-        assertEquals(DetectorState.COOLDOWN, core.status.value.detection)
-    }
-
-    @Test
-    fun `detection prompts on a drive and a start from the prompt keeps the drive's fixes`() = runBlocking {
-        val s = Stores()
-        val core = s.core(caps)
-        val on = core.setDetection(true, sim.timeMs)
-        assertTrue(on.contains(TrackingEffect.ShowWatching))
-        assertEquals(LocationPlan.watching(WatchPower.IDLE, CadenceConfig(), caps), on.plans().single())
-        assertTrue(s.settings.get().detectionEnabled)
-
-        val probe = core.onSignificantMotion(sim.timeMs)
-        assertEquals(LocationPlan.watching(WatchPower.PROBE, CadenceConfig(), caps), probe.plans().single())
-        val drive = core.ride(1_000.0, speed = 15.0, everyMs = 3_000)
-        val prompt = drive.filterIsInstance<TrackingEffect.PostPrompt>().single()
-        assertEquals(DetectorState.DETECTED, core.status.value.detection)
-        assertTrue(s.fixes.all().isEmpty(), "nothing stored without a shift")
-
-        // The driver taps Start; the app starts its shift at the drive's start and calls startShift.
-        val started = core.startShift(ActiveShift("auto", prompt.driveStartedAtMs), sim.timeMs)
-        assertTrue(started.contains(TrackingEffect.CancelPrompt))
-        val carried = s.fixes.fixesFor("auto")
-        assertTrue(carried.size >= 10, "carried ${carried.size}")
-        assertTrue(core.status.value.distanceM > 300)
-        assertEquals(DetectorState.PAUSED, core.status.value.detection)
-    }
-
-    @Test
-    fun `not now goes back to the cheap watch`() = runBlocking {
-        val s = Stores()
-        val core = s.core(caps)
-        core.setDetection(true, sim.timeMs)
-        core.onSignificantMotion(sim.timeMs)
-        core.ride(1_000.0, speed = 15.0, everyMs = 3_000)
-        val out = core.notNow(sim.timeMs)
-        assertTrue(out.contains(TrackingEffect.CancelPrompt))
-        assertEquals(LocationPlan.watching(WatchPower.IDLE, CadenceConfig(), caps), out.plans().single())
-        val off = core.setDetection(false, sim.timeMs)
-        assertEquals(TrackingEffect.Stop, off.last())
-    }
-
-    @Test
-    fun `a restarted watcher with the prompt up posts it again`() = runBlocking {
-        val s = Stores()
-        val first = s.core(caps)
-        first.setDetection(true, sim.timeMs)
-        first.onSignificantMotion(sim.timeMs)
-        first.ride(1_000.0, speed = 15.0, everyMs = 3_000)
-        val again = s.core(caps).start(sim.timeMs)
-        assertTrue(again.any { it is TrackingEffect.PostPrompt })
-        assertEquals(LocationPlan.watching(WatchPower.DETECTED, CadenceConfig(), caps), again.plans().single())
     }
 
     @Test

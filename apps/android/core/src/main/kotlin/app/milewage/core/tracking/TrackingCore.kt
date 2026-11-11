@@ -14,14 +14,6 @@ sealed interface TrackingEffect {
     /** Show (or update) the ongoing shift notification. */
     data class ShowShift(val notice: ShiftNotice, val text: ShiftNotice.Text) : TrackingEffect
 
-    /** Show the ongoing "Watching for drives" notification. */
-    data object ShowWatching : TrackingEffect
-
-    /** Post "You seem to be driving. Start a shift?". */
-    data class PostPrompt(val driveStartedAtMs: Long) : TrackingEffect
-
-    data object CancelPrompt : TrackingEffect
-
     /** Post "Still on shift?". */
     data class PostNudge(val stillSinceMs: Long) : TrackingEffect
 
@@ -36,9 +28,8 @@ sealed interface TrackingEffect {
 
 /**
  * The brain of the tracking service, in plain Kotlin so all of it is tested on the JVM: which
- * mode (recording a shift, watching for drives, stopped), which location requests, what is
- * stored, the live distance, the low-power switch, the prompt and the nudge, and what survives a
- * kill. The Android service feeds it fixes, sensor triggers and ticks and applies the effects.
+ * mode (recording a shift, stopped), which location requests, what is stored, the live distance,
+ * the low-power switch, the nudge, and what survives a kill. The Android service feeds it fixes, sensor triggers and ticks and applies the effects.
  *
  * Calls are serialised; each returns the effects to apply in order.
  */
@@ -50,7 +41,6 @@ class TrackingCore(
     private val stateStore: TrackingStateStore,
     private val diagnostics: TrackingDiagnostics,
     private val caps: DeviceCapabilities,
-    private val detectorConfig: DetectorConfig = DetectorConfig(),
 ) {
     private val lock = Mutex()
     private val _status = MutableStateFlow(TrackingStatus())
@@ -63,7 +53,6 @@ class TrackingCore(
     private var live: LiveDistance? = null
     private var notice: ShiftNotice? = null
     private var shown: ShiftNotice.Text? = null
-    private var detector = DriveDetector(detectorConfig)
     private var applied: LocationPlan? = null
     private val dedupe = DuplicateFilter()
     private var storedFixes = 0
@@ -85,8 +74,7 @@ class TrackingCore(
 
     /**
      * The service started (first start, a sticky restart, the restart alarm, boot). Reads what
-     * was running and resumes it: the shift with its live distance and low-power state, or the
-     * detector with its buffered drive. A service found dead while a shift recorded at full
+     * was running and resumes it: the shift with its live distance and low-power state. A service found dead while a shift recorded at full
      * rate leaves a [InterruptionReason.SERVICE_RESTARTED] interruption from its last sign of life.
      */
     suspend fun start(nowMs: Long): List<TrackingEffect> = lock.withLock {
@@ -94,29 +82,14 @@ class TrackingCore(
         applied = null // a new service holds no requests yet
         shown = null
         settings = settingsStore.get()
-        detector = DriveDetector.restore(stateStore.load(K_DETECTOR), detectorConfig)
         restoreGnss()
         outage = decodeOutage(stateStore.load(K_OUTAGE))
         val active = activeShiftStore.get()
         if (active != null) {
             resumeShift(active, nowMs)
-            if (settings.detectionEnabled) {
-                detector.enable(nowMs)
-                out += detectorEffects(detector.shiftStarted())
-            } else {
-                out += detectorEffects(detector.disable())
-            }
             out += shiftNotification(force = true)
             out += plan()
             diagnostics.record("service_start", mapOf("mode" to "recording", "power" to monitor!!.power.name))
-        } else if (settings.detectionEnabled) {
-            mode = TrackingMode.WATCHING
-            detector.enable(nowMs)
-            detector.shiftEnded(nowMs) // PAUSED: the shift ended while the service was not running
-            out += TrackingEffect.ShowWatching
-            if (detector.state == DetectorState.DETECTED) out += TrackingEffect.PostPrompt(detector.driveStartedAtMs)
-            out += plan()
-            diagnostics.record("service_start", mapOf("mode" to "watching", "detector" to detector.state.name))
         } else {
             mode = TrackingMode.STOPPED
             out += stopEffects()
@@ -146,11 +119,7 @@ class TrackingCore(
         }
     }
 
-    /**
-     * Starts recording [newShift]. Fixes the detector buffered from 5 minutes before the start on
-     * (the engine's window) are stored first under the shift, so a "Start" on the prompt with the
-     * drive's start time loses none of the drive. The same shift again is a no-op.
-     */
+    /** Starts recording [newShift]. The same shift again is a no-op. */
     suspend fun startShift(newShift: ActiveShift, nowMs: Long): List<TrackingEffect> = lock.withLock {
         val out = ArrayList<TrackingEffect>()
         if (mode == TrackingMode.RECORDING && shift?.shiftClientId == newShift.shiftClientId) {
@@ -161,8 +130,6 @@ class TrackingCore(
         if (mode == TrackingMode.RECORDING) closeShift(nowMs) // a different shift: the old one stops here
         settings = settingsStore.get()
         activeShiftStore.set(newShift)
-        val carried = detector.bufferedSince(newShift.startedAt - LiveDistance.WINDOW_BEFORE_MS)
-        out += detectorEffects(detector.shiftStarted())
         mode = TrackingMode.RECORDING
         shift = newShift
         stateStore.save(K_NOTICE, null)
@@ -173,14 +140,10 @@ class TrackingCore(
         safely("read_fixes") { fixStore.fixesFor(newShift.shiftClientId).forEach(acc::push) }
         live = acc
         storedFixes = 0
-        val toStore = carried.filter { it.raw.provider == recordingProvider }
-            .mapNotNull { FixMapper.toRecordedFix(newShift.shiftClientId, it.raw, it.atMs) }
-        carried.forEach { m.onFix(it) } // nudge and power only start counting from here
-        store(toStore)
         out += TrackingEffect.CancelNudge
         out += shiftNotification(force = true)
         out += plan()
-        diagnostics.record("shift_start", mapOf("carried" to toStore.size.toString()))
+        diagnostics.record("shift_start", emptyMap())
         out += save(nowMs, force = true)
         finish(out)
     }
@@ -195,17 +158,8 @@ class TrackingCore(
         closeShift(nowMs)
         out += TrackingEffect.CancelNudge
         settings = settingsStore.get()
-        if (settings.detectionEnabled) {
-            mode = TrackingMode.WATCHING
-            detector.enable(nowMs)
-            if (detector.state != DetectorState.PAUSED) detector.shiftStarted()
-            detector.shiftEnded(nowMs) // quiet for a while, and not for the drive the shift ended in
-            out += TrackingEffect.ShowWatching
-            out += plan()
-        } else {
-            mode = TrackingMode.STOPPED
-            out += stopEffects()
-        }
+        mode = TrackingMode.STOPPED
+        out += stopEffects()
         out += save(nowMs, force = true)
         finish(out)
     }
@@ -227,34 +181,6 @@ class TrackingCore(
         live = null
         notice = null
         shown = null
-    }
-
-    /** Settings > drive detection. */
-    suspend fun setDetection(on: Boolean, nowMs: Long): List<TrackingEffect> = lock.withLock {
-        val out = ArrayList<TrackingEffect>()
-        settings = settingsStore.get().copy(detectionEnabled = on)
-        settingsStore.set(settings)
-        if (on) {
-            detector.enable(nowMs)
-            when (mode) {
-                TrackingMode.RECORDING -> out += detectorEffects(detector.shiftStarted())
-                TrackingMode.STOPPED -> {
-                    mode = TrackingMode.WATCHING
-                    out += TrackingEffect.ShowWatching
-                    out += plan()
-                }
-                TrackingMode.WATCHING -> Unit
-            }
-        } else {
-            out += detectorEffects(detector.disable())
-            if (mode == TrackingMode.WATCHING) {
-                mode = TrackingMode.STOPPED
-                out += stopEffects()
-            }
-        }
-        diagnostics.record("detection", mapOf("on" to on.toString()))
-        out += save(nowMs, force = true)
-        finish(out)
     }
 
     /** The cadence or nudge time changed in the store: use them now. */
@@ -282,8 +208,6 @@ class TrackingCore(
         if (mode == TrackingMode.STOPPED) return@withLock out
         val toStore = ArrayList<RecordedFix>()
         val beforePower = monitor?.power
-        val beforeWatch = detector.power
-        val beforeState = detector.state
         for (raw in raws) {
             if (!dedupe.isNew(raw)) continue
             val at = raw.phoneTimeAt(nowWallMs, nowElapsedMs)
@@ -299,14 +223,13 @@ class TrackingCore(
                     if (raw.provider == recordingProvider) FixMapper.toRecordedFix(sh.shiftClientId, raw, at)?.let(toStore::add)
                     out += stillnessEffects(monitor!!.onFix(s))
                 }
-                TrackingMode.WATCHING -> out += detectorEffects(detector.onFix(s))
                 TrackingMode.STOPPED -> Unit
             }
         }
         store(toStore)
         if (mode == TrackingMode.RECORDING) out += shiftNotification(force = false)
-        if (monitor?.power != beforePower || detector.power != beforeWatch) out += plan()
-        out += save(nowWallMs, force = monitor?.power != beforePower || detector.state != beforeState)
+        if (monitor?.power != beforePower) out += plan()
+        out += save(nowWallMs, force = monitor?.power != beforePower)
         finish(out)
     }
 
@@ -314,7 +237,6 @@ class TrackingCore(
         val out = ArrayList<TrackingEffect>()
         when (mode) {
             TrackingMode.RECORDING -> out += stillnessEffects(monitor!!.onSignificantMotion(nowMs))
-            TrackingMode.WATCHING -> out += detectorEffects(detector.onSignificantMotion(nowMs))
             TrackingMode.STOPPED -> Unit
         }
         diagnostics.record("significant_motion", mapOf("mode" to mode.name))
@@ -326,22 +248,13 @@ class TrackingCore(
     suspend fun onTick(nowMs: Long): List<TrackingEffect> = lock.withLock {
         val out = ArrayList<TrackingEffect>()
         val beforePower = monitor?.power
-        val beforeState = detector.state
         when (mode) {
             TrackingMode.RECORDING -> out += stillnessEffects(monitor!!.onTick(nowMs))
-            TrackingMode.WATCHING -> out += detectorEffects(detector.onTick(nowMs))
             TrackingMode.STOPPED -> Unit
         }
         out += plan()
-        out += save(nowMs, force = monitor?.power != beforePower || detector.state != beforeState)
+        out += save(nowMs, force = monitor?.power != beforePower)
         finish(out)
-    }
-
-    /** "Not now" on the prompt. */
-    suspend fun notNow(nowMs: Long): List<TrackingEffect> = lock.withLock {
-        detector.notNow(nowMs)
-        diagnostics.record("prompt_answer", mapOf("answer" to "not_now"))
-        finish(listOf(TrackingEffect.CancelPrompt) + plan() + save(nowMs, force = true))
     }
 
     /** "Keep going" on the nudge. */
@@ -415,28 +328,10 @@ class TrackingCore(
         }
     }
 
-    private fun detectorEffects(events: List<DetectorEvent>): List<TrackingEffect> = events.mapNotNull { e ->
-        when (e) {
-            is DetectorEvent.Prompt -> {
-                diagnostics.record("prompt", mapOf("posted" to "true"))
-                TrackingEffect.PostPrompt(e.driveStartedAtMs)
-            }
-            is DetectorEvent.WithdrawPrompt -> {
-                diagnostics.record("prompt", mapOf("withdrawn" to e.reason.name))
-                TrackingEffect.CancelPrompt
-            }
-            is DetectorEvent.Probe -> {
-                diagnostics.record("probe", mapOf("started" to e.started.toString(), "reason" to e.reason))
-                null
-            }
-        }
-    }
-
     /** The plan for the current state, only when it differs from the one applied. */
     private fun plan(): List<TrackingEffect> {
         val p = when (mode) {
             TrackingMode.RECORDING -> LocationPlan.recording(monitor!!.power, settings.cadence, caps)
-            TrackingMode.WATCHING -> LocationPlan.watching(detector.power, settings.cadence, caps)
             TrackingMode.STOPPED -> LocationPlan.NONE
         }
         if (p == applied) return emptyList()
@@ -447,7 +342,7 @@ class TrackingCore(
         return listOf(TrackingEffect.ApplyPlan(p))
     }
 
-    private fun stopEffects(): List<TrackingEffect> = plan() + TrackingEffect.CancelPrompt + TrackingEffect.Stop
+    private fun stopEffects(): List<TrackingEffect> = plan() + TrackingEffect.Stop
 
     /** The shift notification when what it shows changed (or [force]). */
     private fun shiftNotification(force: Boolean): List<TrackingEffect> {
@@ -462,7 +357,6 @@ class TrackingCore(
     private suspend fun save(nowMs: Long, force: Boolean): List<TrackingEffect> {
         if (!force && nowMs - lastSavedAt < SAVE_EVERY_MS) return emptyList()
         lastSavedAt = nowMs
-        stateStore.save(K_DETECTOR, detector.snapshot())
         val s = shift
         val m = monitor
         if (s != null && m != null) {
@@ -487,7 +381,6 @@ class TrackingCore(
     private fun finish(out: List<TrackingEffect>): List<TrackingEffect> {
         val deadline = when (mode) {
             TrackingMode.RECORDING -> monitor?.nextDeadlineMs()
-            TrackingMode.WATCHING -> detector.nextDeadlineMs()
             TrackingMode.STOPPED -> null
         }
         publish()
@@ -504,7 +397,6 @@ class TrackingCore(
             power = monitor?.power,
             storedFixes = storedFixes,
             lastFixAt = lastFixAt,
-            detection = detector.state,
             gnssOffsetMs = gnssOffsetMs,
             gnssOffsetAt = gnssOffsetAt,
             problem = problem,
@@ -533,7 +425,6 @@ class TrackingCore(
     }
 
     companion object {
-        const val K_DETECTOR = "detector"
         const val K_STILLNESS = "shift.stillness"
         const val K_NOTICE = "shift.notice"
         const val K_HEARTBEAT = "shift.heartbeat"

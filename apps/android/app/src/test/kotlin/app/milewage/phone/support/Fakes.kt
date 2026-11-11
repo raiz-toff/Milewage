@@ -427,25 +427,12 @@ class FakeNet : app.milewage.phone.model.NetView {
 
 class FakeTrackingSettings : app.milewage.phone.model.TrackingSettingsPort {
     var current = app.milewage.core.tracking.TrackingSettings()
-    var result = app.milewage.tracking.TrackingController.DetectionResult.ON
-    var perm = ALLOWED
 
     override suspend fun settings() = current
-
-    override suspend fun setDetection(on: Boolean): app.milewage.tracking.TrackingController.DetectionResult {
-        if (!on) {
-            current = current.copy(detectionEnabled = false)
-            return app.milewage.tracking.TrackingController.DetectionResult.OFF
-        }
-        if (result == app.milewage.tracking.TrackingController.DetectionResult.ON) current = current.copy(detectionEnabled = true)
-        return result
-    }
 
     override suspend fun setNudgeAfter(ms: Long) {
         current = current.copy(nudgeAfterMs = ms)
     }
-
-    override fun permissions() = perm
 }
 
 class FakeAppearance : app.milewage.phone.model.AppearancePort {

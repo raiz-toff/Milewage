@@ -37,8 +37,8 @@ Three parts in one repository: the server and the web app in TypeScript, the pho
   same engine the phone runs (a Kotlin port that gives the same bytes as the TypeScript) and flags
   any difference instead of overwriting it.
 - On the phone: a GPS fix every 5 seconds while you move, battery saving while you are stopped,
-  recording that resumes after the app is closed or the phone restarts, an optional "Start a
-  shift?" question when you seem to be driving, and a "Still on shift?" reminder after a long stop.
+  recording that resumes after the app is closed or the phone restarts, and a "Still on shift?"
+  reminder after a long stop.
 - Active and deadhead miles split by detected stops, with labels you add on the web. The split is
   an estimate and says so. Total miles never depend on it.
 - Expenses with receipt photos, earnings, vehicles and odometer readings.
@@ -66,7 +66,7 @@ The next version replaces the phone app with a native Android app, which has nev
 phone. Its tests run on a computer only (unit tests, screens drawn by Robolectric, the engine
 checked against Node on millions of cases). Unverified until the field test in
 [`TODO.md`](TODO.md): GPS waking up after a stop, battery use, phones that stop background apps,
-the QR scanner, finding the server on the Wi-Fi, recording after a restart, the drive prompt, and
+the QR scanner, finding the server on the Wi-Fi, recording after a restart, and
 the engine's maths on a phone's own processor.
 
 ## Install
@@ -117,8 +117,7 @@ starts empty and must be paired again.
 
 Start a shift on the phone before the first pickup and stop it after the last drop. The phone
 shows the live distance in its notification and keeps recording if the app is closed or the phone
-restarts. If you turn it on in Settings, the phone asks "Start a shift?" when you seem to be
-driving. When the server is reachable the shift is sent; until then it stays on the phone and the
+restarts. When the server is reachable the shift is sent; until then it stays on the phone and the
 app says so.
 
 On the web, each shift has a map, a timeline, stops you can label, earnings, odometer and notes.

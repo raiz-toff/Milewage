@@ -6,7 +6,7 @@
   - ACTIVITY_RECOGNITION is gone: it served Google Play Services activity transitions, and this app
     has no Google Play Services (it runs on de-Googled phones).
   - RECEIVE_BOOT_COMPLETED is requested (decision 2026-11-10, native app): :tracking's BootReceiver
-    (enabled) resumes a running shift, and drive detection if on, after a restart or an app update.
+    (enabled) resumes a running shift after a restart or an app update.
   - ACCESS_COARSE_LOCATION is listed: Android 12+ requires it next to fine location.
   The build fails when the merged manifest asks for anything else, a library's permission included
   (checkReleaseManifestPolicy in app/build.gradle.kts): a new permission is a decision, not an accident.

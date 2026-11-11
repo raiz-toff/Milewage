@@ -14,7 +14,7 @@ permissions ladder, Home, the running shift, Shifts, a shift's detail, Settings 
 | `:engine`   | plain Kotlin (JVM) | The port of `packages/track-engine`. Integer arithmetic, bit for bit with the TypeScript. See `engine/README.md`.                                                                                                         |
 | `:core`     | plain Kotlin (JVM) | Shared models, formatting (money in minor units, distance, clock times, days, durations), the home-address rule, and the ports (`SecretStore`, `Clock`) the Android modules implement.                                    |
 | `:data`     | Android library    | Room 3 database, the HTTP client (OkHttp, kotlinx.serialization), the Keystore-backed `SecretStore`, UI preferences (DataStore), sending (WorkManager).                                                                   |
-| `:tracking` | Android library    | Recording a shift and the opt-in drive prompt: the location foreground service, the notification buttons, the boot receiver (resumes a running shift after a restart) and `TrackingController`. See `tracking/README.md`. |
+| `:tracking` | Android library    | Recording a shift: the location foreground service, the notification buttons (End shift, Keep going), the boot receiver (resumes a running shift after a restart) and the `TrackingController`. See `tracking/README.md`. |
 | `:app`      | Android app        | `MileWageApp` (the service locator `AppGraph`, the tracking and sending wiring, reminders), `MainActivity`, `MileWageTheme`, navigation, the house components, the screens and their view models. See "The app" below.    |
 
 `:engine` and `:core` have no `android.*`, `androidx.*`, `java.*` or `javax.*` in `src/main`
@@ -126,7 +126,7 @@ state with its fix, End shift with a confirm, the odometer check), Shifts (weeks
 to check, paging), a shift's detail (route sketch on a Canvas, totals, trips with their purpose edit,
 added trips, stops, odometer, notes, the server's changes and checks in words with the web's advice,
 Send now), Settings (`ui/settings`: server and connection check, connect to a different server, the
-drive prompt and the "Still on shift?" reminder, sending, theme and wallpaper colours, the server's
+"Still on shift?" reminder, sending, theme and wallpaper colours, the server's
 units, Help on the server, About with the licences and the source), Diagnostics (long press on Home's
 title; a button in debug builds; also Settings > Diagnostics).
 

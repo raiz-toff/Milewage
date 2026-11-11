@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Location while a shift runs, including with the screen off (Android 10+ asks for "Allow all
-         the time" separately; drive detection and starts after a reboot need it). Coarse is listed
+         the time" separately; starts after a reboot need it). Coarse is listed
          because Android 12+ requires it next to fine. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
-    <!-- The running-shift notification (on Android 16+ it may show as a status bar chip), the drive
-         prompt, the "Still on shift?" nudge. -->
+    <!-- The running-shift notification (on Android 16+ it may show as a status bar chip) and the
+         "Still on shift?" nudge. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
-    <!-- Resuming a shift (and drive detection, if on) after the phone restarts. -->
+    <!-- Resuming a shift after the phone restarts. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Nothing else. No ACTIVITY_RECOGNITION: stillness comes from the fixes and the
          significant-motion sensor, which needs no permission (Sensor.TYPE_SIGNIFICANT_MOTION). No
@@ -24,21 +24,21 @@
     <uses-feature android:name="android.hardware.location.network" android:required="false" />
 
     <application>
-        <!-- Records a shift, or watches for a drive when detection is on. Survives the task being
-             swiped away (stopWithTask false, START_STICKY, a restart alarm). -->
+        <!-- Records a shift. Survives the task being swiped away (stopWithTask false, START_STICKY,
+             a restart alarm). -->
         <service
             android:name="app.milewage.tracking.LocationTrackingService"
             android:exported="false"
             android:foregroundServiceType="location"
             android:stopWithTask="false" />
 
-        <!-- Notification buttons (Start, Not now, End shift, Keep going) and the wake-up alarms. -->
+        <!-- Notification buttons (End shift, Keep going) and the wake-up alarms. -->
         <receiver
             android:name="app.milewage.tracking.TrackingReceiver"
             android:exported="false" />
 
-        <!-- Resumes a running shift (and detection, if on) after a restart or an app update. Not
-             exported: these broadcasts come from the system. -->
+        <!-- Resumes a running shift after a restart or an app update. Not exported: these
+             broadcasts come from the system. -->
         <receiver
             android:name="app.milewage.tracking.BootReceiver"
             android:enabled="true"

@@ -47,11 +47,9 @@ import app.milewage.data.prefs.AppTheme
 import app.milewage.phone.R
 import app.milewage.phone.logic.ConnectFix
 import app.milewage.phone.logic.ConnectionCheck
-import app.milewage.phone.logic.Fix
 import app.milewage.phone.logic.HelpLinks
 import app.milewage.phone.logic.NudgeChoices
 import app.milewage.phone.model.Countries
-import app.milewage.phone.platform.SystemScreens
 import app.milewage.phone.ui.Texts
 import app.milewage.phone.ui.ViewModels
 import app.milewage.phone.ui.components.ConfirmHost
@@ -81,10 +79,6 @@ interface SettingsActions {
     fun openTailscale()
 
     fun disconnect()
-
-    fun setDetection(on: Boolean)
-
-    fun fix(f: Fix)
 
     fun setNudge(minutes: Int)
 
@@ -139,14 +133,6 @@ fun SettingsRoute(
             override fun openTailscale() = vm.openTailscale()
 
             override fun disconnect() = vm.disconnect()
-
-            override fun setDetection(on: Boolean) = vm.setDetection(on)
-
-            override fun fix(f: Fix) = when (f) {
-                Fix.LOCATION_SETTINGS -> SystemScreens.locationSettings(context)
-                Fix.START_AGAIN -> vm.setDetection(true)
-                else -> onOpenPermissions()
-            }
 
             override fun setNudge(minutes: Int) = vm.setNudge(minutes)
 
@@ -206,10 +192,6 @@ fun SettingsRoute(
                 is SettingsEvent.Sent -> snackbars.show(res.getString(if (e.done) R.string.sync_all_sent else R.string.sync_still_waiting))
                 is SettingsEvent.OtherServerDeleted -> snackbars.show(res.getQuantityString(R.plurals.other_server_deleted, e.shifts, e.shifts))
                 SettingsEvent.DeleteFailed -> snackbars.show(res.getString(R.string.delete_failed))
-                is SettingsEvent.Detection -> {
-                    val fix = e.outcome.fix
-                    snackbars.show(res.getString(Texts.detection(e.outcome)), fix?.let { res.getString(Texts.fix(it)) }) { fix?.let(actions::fix) }
-                }
             }
         }
     }
@@ -244,7 +226,7 @@ fun SettingsContent(state: SettingsState, info: AppInfo, actions: SettingsAction
                 )
             }
         }
-        item(key = "tracking") { TrackingSection(state, actions) { nudgeOpen = true } }
+        item(key = "tracking") { TrackingSection(state) { nudgeOpen = true } }
         item(key = "sending") { SendingSection(state, actions) }
         item(key = "appearance") {
             Rows(label = stringResource(R.string.settings_appearance)) {
@@ -397,45 +379,20 @@ private fun ServerSection(state: SettingsState, actions: SettingsActions) {
 }
 
 @Composable
-private fun TrackingSection(state: SettingsState, actions: SettingsActions, onNudge: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Rows(label = stringResource(R.string.settings_tracking)) {
-            ListRow(
-                headline = stringResource(R.string.settings_detection),
-                supporting = stringResource(R.string.settings_detection_body),
-                trailing = {
-                    if (state.detectionBusy) {
-                        CircularProgressIndicator(Modifier.padding(4.dp), strokeWidth = 2.dp)
-                    } else {
-                        Switch(checked = state.detection, onCheckedChange = null)
-                    }
-                },
-                onClick = { actions.setDetection(!state.detection) },
-                role = Role.Switch,
-            )
-            RowDivider()
-            ListRow(
-                headline = stringResource(R.string.settings_nudge),
-                supporting = nudgeLabel((state.nudgeMs / 60_000).toInt()),
-                leading = { Icon(Icons.Timer, null) },
-                onClick = onNudge,
-            )
-            RowDivider()
-            ListRow(
-                headline = stringResource(R.string.settings_battery_saving),
-                supporting = stringResource(R.string.settings_battery_saving_body),
-                leading = { Icon(Icons.BatterySaving, null) },
-            )
-        }
-        state.detectionProblem?.let { p ->
-            NoticeCard(
-                title = stringResource(Texts.detection(p)),
-                icon = Icons.Warning,
-                tone = Tone.WARNING,
-                actionLabel = p.fix?.let { stringResource(Texts.fix(it)) },
-                onAction = p.fix?.let { f -> { actions.fix(f) } },
-            )
-        }
+private fun TrackingSection(state: SettingsState, onNudge: () -> Unit) {
+    Rows(label = stringResource(R.string.settings_tracking)) {
+        ListRow(
+            headline = stringResource(R.string.settings_nudge),
+            supporting = nudgeLabel((state.nudgeMs / 60_000).toInt()),
+            leading = { Icon(Icons.Timer, null) },
+            onClick = onNudge,
+        )
+        RowDivider()
+        ListRow(
+            headline = stringResource(R.string.settings_battery_saving),
+            supporting = stringResource(R.string.settings_battery_saving_body),
+            leading = { Icon(Icons.BatterySaving, null) },
+        )
     }
 }
 

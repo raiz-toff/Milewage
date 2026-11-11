@@ -2,14 +2,11 @@ package app.milewage.core.tracking
 
 /** What the tracking service is doing. */
 enum class TrackingMode {
-    /** Not running: no shift, detection off (or the service could not start). */
+    /** Not running: no shift (or the service could not start). */
     STOPPED,
 
     /** A shift is recording. */
     RECORDING,
-
-    /** No shift; drive detection is watching for a drive. */
-    WATCHING,
 }
 
 /** Something that stops tracking from working, for the app to explain (no coordinates). */
@@ -17,7 +14,7 @@ enum class TrackingProblem {
     /** No fine location permission (or only approximate): nothing can be recorded. */
     NO_LOCATION_PERMISSION,
 
-    /** No "Allow all the time": recording may stop with the screen off; detection cannot run. */
+    /** No "Allow all the time": recording may stop with the screen off. */
     NO_BACKGROUND_LOCATION,
 
     /** The phone's Location switch is off. */
@@ -46,7 +43,6 @@ data class TrackingStatus(
     val storedFixes: Int = 0,
     /** Phone time of the last fix of any kind. */
     val lastFixAt: Long? = null,
-    val detection: DetectorState = DetectorState.OFF,
     /** `fix_time - phone time` of the last GNSS fix (15 section 10), and when it was measured. */
     val gnssOffsetMs: Long? = null,
     val gnssOffsetAt: Long? = null,

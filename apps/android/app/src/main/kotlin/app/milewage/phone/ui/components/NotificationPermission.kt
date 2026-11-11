@@ -14,7 +14,7 @@ import app.milewage.phone.platform.SystemScreens
 
 /**
  * The notifications permission (Android 13+), the app's to ask: the running shift's time and
- * distance, the drive prompt and the reminders all need it. [NotificationAsk.request] asks the first
+ * distance and the reminders need it. [NotificationAsk.request] asks the first
  * time; once Android stops showing the question (asked before, or refused), it opens the app's
  * notification settings instead. [NotificationAsk.askOnce] asks only if it never asked (used on the
  * first Start shift) and never opens settings.

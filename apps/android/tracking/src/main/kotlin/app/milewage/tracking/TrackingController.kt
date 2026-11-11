@@ -13,8 +13,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * What the app calls. Start and stop recording, drive detection on or off, the notification's
- * details, and the live [status]. The app's shift logic (the shift row, the server, the engine
+ * What the app calls. Start and stop recording, the notification's details, and the live
+ * [status]. The app's shift logic (the shift row, the server, the engine
  * run at the end) stays in the app; this only records.
  *
  * Call the start methods while the app is on screen: Android lets a location foreground service
@@ -29,12 +29,9 @@ class TrackingController private constructor(private val context: Context) {
 
     enum class StartResult { STARTED, NO_LOCATION_PERMISSION, NOT_ALLOWED, NOT_WIRED }
 
-    enum class DetectionResult { ON, OFF, NEEDS_BACKGROUND_LOCATION, NOT_ALLOWED, NOT_WIRED }
-
     /**
-     * Starts recording [shiftClientId], which started at [startedAt] (phone clock, epoch ms). For
-     * a shift started from the drive prompt, [startedAt] is the drive's start, and the fixes the
-     * detector kept since then are stored first. Calling it again for the running shift is a no-op.
+     * Starts recording [shiftClientId], which started at [startedAt] (phone clock, epoch ms).
+     * Calling it again for the running shift is a no-op.
      */
     suspend fun startShift(shiftClientId: String, startedAt: Long): StartResult {
         val rt = runtime ?: return StartResult.NOT_WIRED
@@ -58,32 +55,10 @@ class TrackingController private constructor(private val context: Context) {
         rt.call { stopShift(System.currentTimeMillis()) }
     }
 
-    /**
-     * Settings > drive detection. Turning it on needs precise location "all the time" (it runs
-     * with no app on screen); the answer says what is missing.
-     */
-    suspend fun setDetection(on: Boolean): DetectionResult {
-        val rt = runtime ?: return DetectionResult.NOT_WIRED
-        if (!on) {
-            rt.call { setDetection(false, System.currentTimeMillis()) }
-            return DetectionResult.OFF
-        }
-        if (!TrackingPermissions.state(context).canDetect) return DetectionResult.NEEDS_BACKGROUND_LOCATION
-        val settings = rt.deps.settingsStore.get()
-        rt.deps.settingsStore.set(settings.copy(detectionEnabled = true))
-        if (rt.service == null && !TrackingRuntime.startService(context, fromForeground = true)) {
-            rt.deps.settingsStore.set(settings)
-            return DetectionResult.NOT_ALLOWED
-        }
-        rt.call { setDetection(true, System.currentTimeMillis()) }
-        return DetectionResult.ON
-    }
-
-    /** The cadence and the nudge time (detection has its own call). Applied at once. */
+    /** The cadence and the nudge time. Applied at once. */
     suspend fun updateSettings(settings: TrackingSettings) {
         val rt = runtime ?: return
-        val current = rt.deps.settingsStore.get()
-        rt.deps.settingsStore.set(settings.copy(detectionEnabled = current.detectionEnabled))
+        rt.deps.settingsStore.set(settings)
         rt.call { reloadSettings(System.currentTimeMillis()) }
     }
 
@@ -105,8 +80,8 @@ class TrackingController private constructor(private val context: Context) {
     fun permissions(): TrackingPermissionState = TrackingPermissions.state(context)
 
     /**
-     * Call when the app comes to the foreground: restarts a shift or detection that should be
-     * running but is not (killed, refused a background start). False when it still cannot run.
+     * Call when the app comes to the foreground: restarts a shift that should be recording but is
+     * not (killed, refused a background start). False when it still cannot run.
      */
     suspend fun ensureRunning(): Boolean {
         val rt = runtime ?: return false

@@ -64,8 +64,8 @@ Next comes one screen, Permissions, with everything MileWage needs to record a s
 
 - **Location switch**: the phone's Location must be on.
 - **Precise location**: choose Precise and While using the app.
-- **Location all the time**: Android opens MileWage's location settings. Choose "Allow all the time" there, then come back. It lets recording start again by itself after a restart, and the drive prompt needs it.
-- **Notifications**: the shift's time and distance, the drive prompt and the reminders.
+- **Location all the time**: Android opens MileWage's location settings. Choose "Allow all the time" there, then come back. It lets recording start again by itself after a restart.
+- **Notifications**: the shift's time and distance and the reminders.
 - **Battery use**: in the list that opens, find MileWage and choose not to optimise it. Some phones have their own setting as well; the row says where.
 
 Allow them all. When a row says "Allowed", go on to the next. Then tap Next, and on "You're ready" tap Go to home. Anything you did not allow stays on Home's checklist, "Finish setting up".
@@ -79,8 +79,6 @@ The screen shows the time, the distance and the deduction so far. The distance i
 After your last drop, tap End shift. The phone asks "End this shift?"; tap End shift again. That shift cannot be restarted. It is sent to the server. If the server cannot be reached, the shift stays on the phone and is sent later. The phone says so.
 
 If you gave a start reading, or a check is due, the phone then asks for the end reading. Type it and tap "Save reading", or tap Not now.
-
-To be asked when you start driving without a shift, turn on Settings > "Ask to start a shift when I seem to be driving" on the phone. See [Settings](settings.md#on-the-phone).
 
 ## See it on the web
 

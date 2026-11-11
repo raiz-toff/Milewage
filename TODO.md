@@ -37,12 +37,9 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
         phone"; pair again: every queued shift is sent within a minute. After a server restore:
         the banner and the resend of older shifts.
   - [ ] Settings > Diagnostics shows "Mileage maths check: Passed".
-  - [ ] The drive prompt: turn it on with no shift; drive off: the question comes within about a
-        minute (car) or 4 minutes (bicycle); Start begins a shift from the drive's start. Next day
-        "Not now": no second prompt on that drive or within the hour. Walking: no prompt; a bus may.
-  - [ ] Battery: the share used over a long shift, and over a day with the drive prompt on.
+  - [ ] Battery: the share used over a long shift.
   - [ ] A phone without Google services (LineageOS without microG, or GrapheneOS), if one is at
-        hand: pairing, a car shift, a stop, a reboot, the drive prompt.
+        hand: pairing, a car shift, a stop, a reboot.
   - [ ] Compare the phone's total for each test shift with the server's: they match, or the shift
         says why not.
 - [ ] **Owner decisions left open by the native app and the openmiles features** (2026-11-10).

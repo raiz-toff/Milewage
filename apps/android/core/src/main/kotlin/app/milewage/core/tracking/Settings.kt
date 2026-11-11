@@ -65,14 +65,11 @@ data class CadenceConfig(
 /**
  * Everything the driver or the app can tune about tracking.
  *
- * - [detectionEnabled]: the "You seem to be driving. Start a shift?" prompt. Opt-in, off until the
- *   driver turns it on in Settings (it needs "Allow all the time" location).
  * - [nudgeAfterMs]: the "Still on shift?" nudge after this long without moving during a shift;
  *   0 turns it off. Default 30 minutes, at least 10 minutes, at most 4 hours.
  */
 data class TrackingSettings(
     val cadence: CadenceConfig = CadenceConfig(),
-    val detectionEnabled: Boolean = false,
     val nudgeAfterMs: Long = DEFAULT_NUDGE_MS,
 ) {
     init {
@@ -80,7 +77,7 @@ data class TrackingSettings(
     }
 
     fun toMap(): Map<String, Any> =
-        cadence.toMap() + mapOf("detectionEnabled" to detectionEnabled, "nudgeAfterMs" to nudgeAfterMs)
+        cadence.toMap() + mapOf("nudgeAfterMs" to nudgeAfterMs)
 
     companion object {
         const val DEFAULT_NUDGE_MS = 30 * 60_000L
@@ -90,7 +87,8 @@ data class TrackingSettings(
         /**
          * Reads a stored map. Unlike [CadenceConfig.fromMap] it never throws: a bad stored value
          * must not stop a shift from recording, so the whole cadence falls back to the defaults
-         * and a bad nudge time to its default.
+         * and a bad nudge time to its default. A key it does not know is ignored, such as
+         * `detectionEnabled` from the drive prompt, removed on 2026-11-11.
          */
         fun fromMap(map: Map<String, Any?>?): TrackingSettings {
             if (map == null) return TrackingSettings()
@@ -101,7 +99,7 @@ data class TrackingSettings(
             }
             val nudge = (map["nudgeAfterMs"] as? Number)?.toLong()
                 ?.takeIf { it == 0L || it in MIN_NUDGE_MS..MAX_NUDGE_MS } ?: DEFAULT_NUDGE_MS
-            return TrackingSettings(cadence, map["detectionEnabled"] == true, nudge)
+            return TrackingSettings(cadence, nudge)
         }
     }
 }

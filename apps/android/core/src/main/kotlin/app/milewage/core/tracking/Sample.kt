@@ -21,12 +21,6 @@ data class Sample(val raw: RawLocation, val atMs: Long) {
 
     fun metresTo(o: Sample): Double = Geo.metres(latE7, lonE7, o.latE7, o.lonE7)
 
-    /** The speed between [prev] and this fix in m/s; null when time does not move forward. */
-    fun impliedSpeedFrom(prev: Sample): Double? {
-        val dt = atMs - prev.atMs
-        return if (dt <= 0) null else prev.metresTo(this) / (dt / 1000.0)
-    }
-
     companion object {
         const val QUALIFIED_ACCURACY_M = 50.0
 

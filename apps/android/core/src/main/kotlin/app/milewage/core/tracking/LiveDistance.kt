@@ -34,7 +34,6 @@ class LiveDistance(startedAt: Long) {
     fun runningTotalM(): Long = acc.runningTotalM()
 
     companion object {
-        const val WINDOW_BEFORE_MS = app.milewage.engine.WINDOW_BEFORE_MS
         const val MAX_ACCURACY_M = 50L
         const val MAX_SPEED_DMPS = 420L
         const val MIN_MOVE_DM = 200L

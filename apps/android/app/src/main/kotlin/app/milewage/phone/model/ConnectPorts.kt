@@ -13,7 +13,6 @@ import app.milewage.data.connect.AndroidNet
 import app.milewage.data.prefs.AppTheme
 import app.milewage.data.prefs.UiPreferences
 import app.milewage.tracking.TrackingController
-import app.milewage.tracking.TrackingPermissionState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -72,15 +71,11 @@ interface NetView {
     fun localNetworkPermissionNeeded(): Boolean
 }
 
-/** Drive detection and the "Still on shift?" reminder (over `TrackingController`). */
+/** The "Still on shift?" reminder (over `TrackingController`). */
 interface TrackingSettingsPort {
     suspend fun settings(): TrackingSettings
 
-    suspend fun setDetection(on: Boolean): TrackingController.DetectionResult
-
     suspend fun setNudgeAfter(ms: Long)
-
-    fun permissions(): TrackingPermissionState
 }
 
 /** How the app looks, kept on this phone (over `UiPreferences`). */
@@ -150,11 +145,7 @@ class AndroidNetView(private val net: AndroidNet?) : NetView {
 class ControllerTrackingSettings(private val c: TrackingController) : TrackingSettingsPort {
     override suspend fun settings(): TrackingSettings = c.settings()
 
-    override suspend fun setDetection(on: Boolean): TrackingController.DetectionResult = c.setDetection(on)
-
     override suspend fun setNudgeAfter(ms: Long) = c.updateSettings(c.settings().copy(nudgeAfterMs = ms))
-
-    override fun permissions(): TrackingPermissionState = c.permissions()
 }
 
 class PreferencesAppearance(private val prefs: UiPreferences) : AppearancePort {

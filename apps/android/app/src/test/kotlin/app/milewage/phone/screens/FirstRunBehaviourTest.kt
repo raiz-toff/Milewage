@@ -15,7 +15,6 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.milewage.core.connect.FoundServer
 import app.milewage.phone.logic.ConnectFix
-import app.milewage.phone.logic.Fix
 import app.milewage.phone.logic.HelpLinks
 import app.milewage.phone.logic.PermStep
 import app.milewage.phone.logic.PermStepId
@@ -266,7 +265,6 @@ class FirstRunBehaviourTest {
         compose.onNodeWithText("Connected at home").assertIsDisplayed()
         compose.onNodeWithText("Check").performClick()
         compose.onNodeWithText("Connect to a different server").performClick()
-        compose.onNodeWithText("Ask to start a shift when I seem to be driving").performClick()
         compose.onNodeWithText("Kilometres").assertIsDisplayed()
         compose.onNodeWithText("Set on the web, in Settings.", substring = true).assertIsDisplayed()
         compose.onNodeWithText("Troubleshooting").performClick()
@@ -274,24 +272,22 @@ class FirstRunBehaviourTest {
         compose.onNodeWithText("Version 4").assertIsDisplayed()
         compose.onNodeWithText("Diagnostics").performClick()
         assertEquals(
-            listOf("check", "disconnect", "detection false", "help ${HelpLinks.Page.TROUBLESHOOTING}", "licences", "diagnostics"),
+            listOf("check", "disconnect", "help ${HelpLinks.Page.TROUBLESHOOTING}", "licences", "diagnostics"),
             a.calls,
         )
     }
 
     @Test
-    fun `Settings - a failed check and a refused drive prompt each have their way forward`() {
+    fun `Settings - a failed check has its way forward`() {
         val a = RecordingSettingsActions()
         compose.setContent { Framed { SettingsContent(FirstRunStates.settingsTrouble, FirstRunStates.info, a) } }
         compose.onNodeWithText("Tailscale is off on this phone. Open Tailscale, connect, then try again.").assertIsDisplayed()
         compose.onNodeWithText("Open Tailscale").performClick()
-        compose.onNodeWithText("The drive prompt needs location all the time, because it runs with no app on screen.").assertIsDisplayed()
-        compose.onNodeWithText("Fix permissions").performClick()
         compose.onNodeWithText("Send now").performClick()
         compose.onNodeWithText("2 shifts · 340 points").assertIsDisplayed()
         // Help is hidden when the server turned it off.
         compose.onNodeWithText("Troubleshooting").assertDoesNotExist()
-        assertEquals(listOf("tailscale", "fix ${Fix.APP_SETTINGS}", "send"), a.calls)
+        assertEquals(listOf("tailscale", "send"), a.calls)
     }
 
     @Test

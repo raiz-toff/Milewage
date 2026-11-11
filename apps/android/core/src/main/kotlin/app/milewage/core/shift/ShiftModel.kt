@@ -106,12 +106,13 @@ class ShiftModel(
     suspend fun running(): ShiftRecord? = store.runningShift()?.takeIf { it.endedAt == null }
 
     /**
-     * Starts a shift with [vehicleId] at [startedAt] (now, or a detected drive's start). Records
-     * first: the tracker starts before anything is written, so a refusal leaves nothing behind.
+     * Starts a shift with [vehicleId] now. Records first: the tracker starts before anything is
+     * written, so a refusal leaves nothing behind.
      */
-    suspend fun start(vehicleId: Long, odometerStartM: Long? = null, startedAt: Long = clock.nowMs()): StartResult = lock.withLock {
+    suspend fun start(vehicleId: Long, odometerStartM: Long? = null): StartResult = lock.withLock {
         val ctx = context() ?: return@withLock StartResult.NotPaired
         store.runningShift()?.let { return@withLock StartResult.AlreadyRunning(it) }
+        val startedAt = clock.nowMs()
         val id = newId()
         // With the tracking module off on the server the tracker does not run at all (08 F22).
         if (ctx.tracking && !recorder.start(id, startedAt)) return@withLock StartResult.RecorderRefused
@@ -413,19 +414,10 @@ class ShiftModel(
     }
 
     // ------------------------------------------------------------------------------------------
-    // The notification buttons (`ShiftCommands` of :core tracking): "Start" on the drive prompt and
-    // "End shift". The app wires these into `trackingDependencies(shiftCommands = model.commands)`.
+    // The notification button (`ShiftCommands` of :core tracking): "End shift". The app wires it
+    // into `trackingDependencies(shiftCommands = model.commands)`.
 
     val commands: ShiftCommands = object : ShiftCommands {
-        override suspend fun startDetectedShift(startedAt: Long): CommandOutcome {
-            val vehicle = lastVehicleId() ?: store.vehicles().firstOrNull { it.archivedAt == null }?.id
-                ?: return CommandOutcome.OPEN_APP
-            return when (start(vehicle, null, startedAt)) {
-                is StartResult.Started, is StartResult.AlreadyRunning -> CommandOutcome.DONE
-                StartResult.NotPaired, StartResult.RecorderRefused -> CommandOutcome.OPEN_APP
-            }
-        }
-
         override suspend fun endShift(): CommandOutcome {
             end()
             return CommandOutcome.DONE

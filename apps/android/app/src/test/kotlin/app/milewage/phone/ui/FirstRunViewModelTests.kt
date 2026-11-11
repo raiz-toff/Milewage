@@ -14,10 +14,8 @@ import app.milewage.core.sync.OtherServerShifts
 import app.milewage.data.prefs.AppTheme
 import app.milewage.phone.logic.ConnectError
 import app.milewage.phone.logic.ConnectionCheck
-import app.milewage.phone.logic.DetectionOutcome
 import app.milewage.phone.logic.LinkFailure
 import app.milewage.phone.logic.Nearby
-import app.milewage.phone.support.ALLOWED
 import app.milewage.phone.support.CIVIC
 import app.milewage.phone.support.FakeAppearance
 import app.milewage.phone.support.FakeNet
@@ -35,7 +33,6 @@ import app.milewage.phone.ui.firstrun.TailscaleState
 import app.milewage.phone.ui.firstrun.TailscaleViewModel
 import app.milewage.phone.ui.settings.SettingsEvent
 import app.milewage.phone.ui.settings.SettingsViewModel
-import app.milewage.tracking.TrackingController.DetectionResult
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
@@ -313,25 +310,6 @@ class SettingsViewModelTest : VmTest() {
         vm.disconnect()
         assertEquals(listOf<SettingsEvent>(SettingsEvent.EndShiftFirst), events)
         assertTrue(pairing.calls.none { it.startsWith("unpair") })
-    }
-
-    @Test
-    fun `the drive prompt - on, and a refusal in words with the permission it needs`() = runTest {
-        val vm = vm()
-        val events = collect(vm.events)
-        vm.setDetection(true)
-        assertEquals(true, vm.state.value.detection)
-        vm.setDetection(false)
-        assertEquals(false, vm.state.value.detection)
-        tracking.result = DetectionResult.NEEDS_BACKGROUND_LOCATION
-        tracking.perm = ALLOWED.copy(backgroundLocation = false)
-        vm.setDetection(true)
-        assertEquals(false, vm.state.value.detection)
-        assertEquals(DetectionOutcome.NEEDS_ALL_THE_TIME, vm.state.value.detectionProblem)
-        assertEquals(SettingsEvent.Detection(DetectionOutcome.NEEDS_ALL_THE_TIME), events.last())
-        tracking.perm = ALLOWED.copy(locationEnabled = false)
-        vm.setDetection(true)
-        assertEquals(DetectionOutcome.LOCATION_OFF, vm.state.value.detectionProblem)
     }
 
     @Test

@@ -83,7 +83,7 @@ interface InterruptionLog {
 }
 
 /**
- * Small text values the service keeps across process death: the detector and stillness snapshots,
+ * Small text values the service keeps across process death: the stillness snapshot,
  * the notification details, the last GNSS offset. Keys are the service's own.
  */
 interface TrackingStateStore {
@@ -103,20 +103,12 @@ enum class CommandOutcome {
 }
 
 /**
- * The seam to the app's shift logic for the notification buttons. Starting and ending a shift is
- * more than recording (the shift row, the server call, the engine run and the hand-off at the
- * end), so the tracking layer never does either on its own: it asks the app, and the app calls
- * `TrackingController.startShift` / `stopShift` back.
+ * The seam to the app's shift logic for the notification buttons. Ending a shift is more than
+ * recording (the shift row, the server call, the engine run and the hand-off at the end), so the
+ * tracking layer never does it on its own: it asks the app, and the app calls
+ * `TrackingController.stopShift` back.
  */
 interface ShiftCommands {
-    /**
-     * "Start" on the drive prompt. [startedAt] is the phone time of the first fix of the detected
-     * drive (the drive's start, not the tap). The app starts a shift with that start time (its
-     * last vehicle, as a normal start would preselect) and calls `startShift`; the fixes buffered
-     * since the drive started are then stored under the new shift.
-     */
-    suspend fun startDetectedShift(startedAt: Long): CommandOutcome
-
     /** "End shift" on the shift or the "Still on shift?" notification. */
     suspend fun endShift(): CommandOutcome
 }

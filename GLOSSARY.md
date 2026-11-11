@@ -80,10 +80,6 @@ _Avoid_: live total, live mileage
 The phone's ongoing notification while a shift runs, showing the live distance.
 _Avoid_: pill, overlay, floating bubble
 
-**Drive prompt**:
-The phone's opt-in question "You seem to be driving. Start a shift?", asked when no shift runs and the phone seems to be driving. It never starts a shift by itself. Off unless the driver turns it on in the phone's Settings.
-_Avoid_: auto-start, drive detection (in driver text), trip detection
-
 **"Still on shift?" reminder**:
 The phone's question during a shift after a long time without moving. It never ends a shift by itself.
 _Avoid_: auto-stop, idle timeout

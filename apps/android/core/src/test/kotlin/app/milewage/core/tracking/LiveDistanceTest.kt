@@ -150,8 +150,10 @@ class CadenceConfigTest {
 
     @Test
     fun trackingSettingsRoundTripAndNeverThrowOnBadStoredValues() {
-        val s = TrackingSettings(CadenceConfig(intervalMs = 7_000L, maxUpdateDelayMs = 7_000L), detectionEnabled = true, nudgeAfterMs = 0)
+        val s = TrackingSettings(CadenceConfig(intervalMs = 7_000L, maxUpdateDelayMs = 7_000L), nudgeAfterMs = 0)
         assertEquals(s, TrackingSettings.fromMap(s.toMap()))
+        // The drive prompt's switch, stored by an older version, is ignored.
+        assertEquals(s, TrackingSettings.fromMap(s.toMap() + ("detectionEnabled" to true)))
         assertEquals(TrackingSettings(), TrackingSettings.fromMap(null))
         val bad = TrackingSettings.fromMap(mapOf("intervalMs" to 1, "nudgeAfterMs" to 5L, "detectionEnabled" to "yes"))
         assertEquals(TrackingSettings(), bad)

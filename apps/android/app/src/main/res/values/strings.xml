@@ -189,7 +189,7 @@
     <!-- Permissions (09 section 5.3) -->
     <string name="perm_title">Permissions</string>
     <string name="perm_intro">What MileWage needs to record a shift with the screen off.</string>
-    <string name="perm_disclosure">MileWage records your location, including when the app is closed or the screen is off, from when you start a shift until you end it. If you turn on the drive prompt in Settings, it also checks now and then whether you are driving. It uses your location only to count your miles and sends it to your own server.</string>
+    <string name="perm_disclosure">MileWage records your location, including when the app is closed or the screen is off, from when you start a shift until you end it. It uses your location only to count your miles and sends it to your own server.</string>
     <string name="perm_mode_ok">You can record shifts.</string>
     <string name="perm_mode_ok_all">Everything MileWage needs is allowed.</string>
     <string name="perm_mode_ok_left">The steps left are recommended; they keep recording reliable with the screen off.</string>
@@ -201,12 +201,12 @@
     <string name="perm_location_purpose">Counts your miles while a shift runs. Choose Precise and While using the app.</string>
     <string name="perm_always">Location all the time</string>
     <string name="perm_always_title">Location: %1$s</string>
-    <string name="perm_always_purpose">Lets the drive prompt work, and lets recording start again by itself if the phone stops it, for example after a restart. A shift you start in the app records with the screen off without it.</string>
+    <string name="perm_always_purpose">Lets recording start again by itself if the phone stops it, for example after a restart. A shift you start in the app records with the screen off without it.</string>
     <string name="perm_always_how">Android opens MileWage\'s location settings. Choose %1$s there, then come back.</string>
     <string name="perm_all_the_time_option">Allow all the time</string>
     <string name="perm_choose">Choose %1$s</string>
     <string name="perm_notifications">Notifications</string>
-    <string name="perm_notifications_purpose">Shows your shift\'s time and distance, the drive prompt and the reminders.</string>
+    <string name="perm_notifications_purpose">Shows your shift\'s time and distance and the reminders.</string>
     <string name="perm_battery">Battery use</string>
     <string name="perm_battery_purpose">Phone makers stop apps in the background to save battery, and a stopped app records nothing. Let MileWage run without battery limits: in the list that opens, find MileWage and choose not to optimise it.</string>
     <string name="perm_battery_samsung">On this phone also: Settings, Battery, Background usage limits, then add MileWage to Never sleeping apps.</string>
@@ -612,15 +612,6 @@
     <string name="unpair_done">Phone disconnected.</string>
     <string name="unpair_failed">Could not disconnect.</string>
     <string name="settings_tracking">Tracking</string>
-    <string name="settings_detection">Ask to start a shift when I seem to be driving</string>
-    <string name="settings_detection_body">A notification asks when you drive without a shift. Needs location all the time.</string>
-    <string name="detection_on">The drive prompt is on.</string>
-    <string name="detection_off">The drive prompt is off.</string>
-    <string name="detection_location_off">Location is switched off on this phone. Turn it on, then try again.</string>
-    <string name="detection_no_location">The drive prompt needs your location. Allow precise location first.</string>
-    <string name="detection_needs_always">The drive prompt needs location all the time, because it runs with no app on screen.</string>
-    <string name="detection_not_allowed">Android did not let MileWage start watching for drives.</string>
-    <string name="detection_not_wired">The drive prompt is not available in this build.</string>
     <string name="settings_nudge">“Still on shift?” reminder</string>
     <string name="nudge_dialog_title">“Still on shift?” reminder</string>
     <string name="nudge_dialog_text">Asks once if you have not moved for this long during a shift. It never ends a shift by itself.</string>

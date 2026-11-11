@@ -41,9 +41,8 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   check runs the conformance set on the phone itself.
 - GPS waking up after a stop (the motion sensor and the one-minute watch), recording through a
   tunnel, after the app is killed, after a force stop and after a reboot.
-- Battery over a long shift, and over a day with the drive prompt on.
+- Battery over a long shift.
 - Phone makers' battery savers that stop background apps (Samsung, Xiaomi, Huawei and others).
-- The drive prompt's thresholds for a car, a bicycle or scooter, walking and a bus.
 - The QR scanner (CameraX and ZXing) on real cameras, and finding the server on the Wi-Fi (NSD) on
   real routers; a phone without Google services.
 - The tax treatment of parking and tolls (deducted in full, beside the mileage rate), and every
@@ -83,10 +82,6 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   one stored; after 2½ minutes still it checks once a minute and wakes on the motion sensor;
   recording resumes by itself after the app is closed, updated or the phone restarts. Network
   positions (Wi-Fi, mobile masts) are never stored or counted.
-- Settings > "Ask to start a shift when I seem to be driving" on the phone, off by default: with
-  "Allow all the time" location it watches for a drive (a silent "Watching for drives"
-  notification) and asks "You seem to be driving. Start a shift?". Start counts from when the
-  drive began; Not now quiets it for that drive and an hour. It never starts a shift by itself.
 - The "Still on shift?" reminder on the phone after a stop of 30 minutes (15 to 120 minutes, or
   off, in Settings), with Keep going and End shift. It never ends a shift by itself.
 - The phone asks for an odometer reading at the start of a shift when a check is due ("Save and
@@ -263,6 +258,10 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   module, unchanged, so the map and the dashboard's route sketches show whenever tracking is on.
   A `modules.replay` left in `settings.json` or `MILEWAGE_MODULE_REPLAY` in the environment is
   ignored. The `motion` package leaves the web app.
+- The drive prompt of the new Android app, before any release: the optional "You seem to be
+  driving. Start a shift?" question when no shift ran, its switch in Settings, the "Watching for
+  drives" notification and the drive detection behind it. A shift starts only from Start shift.
+  "Still on shift?", battery saving while stopped and resuming after a kill or a restart stay.
 
 ### Fixed
 

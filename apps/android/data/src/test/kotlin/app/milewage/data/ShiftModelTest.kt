@@ -198,18 +198,13 @@ class ShiftModelTest {
     }
 
     @Test
-    fun theNotificationButtonsStartAShiftAtTheDrivesStartAndEndIt() = runBlocking {
+    fun theEndShiftButtonEndsTheShift() = runBlocking {
         val p = Phone(server())
-        assertEquals(CommandOutcome.OPEN_APP, p.data.shiftCommands.startDetectedShift(500)) // no vehicle known yet
         assertEquals(1, p.data.refreshVehicles().vehicles.size)
-        p.clock.t = 90_000
-        assertEquals(CommandOutcome.DONE, p.data.shiftCommands.startDetectedShift(30_000))
-        val s = p.data.shifts.running()!!
-        assertEquals(30_000L, s.startedAt) // the drive's start, not the tap
-        assertEquals(3L, s.vehicleId)
+        assertIs<StartResult.Started>(p.data.startShift(3))
         assertEquals(CommandOutcome.DONE, p.data.shiftCommands.endShift())
         assertNull(p.data.shifts.running())
-        // Offline, the kept vehicle list still starts a shift.
+        // Offline, the kept vehicle list stays.
         p.net.down = true
         val offline = p.data.refreshVehicles()
         assertTrue(offline.offline)

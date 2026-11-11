@@ -92,7 +92,7 @@ interface TrackingView {
     /** What the phone allows now (reads, never asks). */
     fun permissions(): TrackingPermissionState
 
-    /** Restarts a shift or detection that should run and does not; false when it still cannot. */
+    /** Restarts a shift that should record and does not; false when it still cannot. */
     suspend fun ensureRunning(): Boolean
 
     /** Starts recording [shiftClientId] again (a no-op when it already records); false when Android refused. */

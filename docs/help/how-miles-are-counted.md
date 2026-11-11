@@ -14,7 +14,7 @@ After 2½ minutes without moving, the phone saves battery: it asks for a fix onc
 
 Only GPS fixes count. Positions from Wi-Fi or mobile masts help the phone decide when you have stopped or started, but they are never stored or counted: indoors they can be 40 metres off and would add distance you never drove.
 
-When no shift is running, the phone records nothing. If you turned on "Ask to start a shift when I seem to be driving", it checks now and then whether you are driving, and keeps the fixes of that drive only if you tap Start.
+When no shift is running, the phone records nothing.
 
 ## What is left out of the total
 

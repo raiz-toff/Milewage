@@ -8,13 +8,11 @@ order: 20
 
 ## How much battery does it use?
 
-The target is under 3.5 percent per hour of tracking. It has not been measured on a real phone yet, so treat that as a goal, not a result. While you are stopped for more than 2½ minutes, the phone checks your position once a minute instead of every 5 seconds. The drive prompt, if you turn it on, costs some battery even with no shift running.
+The target is under 3.5 percent per hour of tracking. It has not been measured on a real phone yet, so treat that as a goal, not a result. While you are stopped for more than 2½ minutes, the phone checks your position once a minute instead of every 5 seconds.
 
 ## Does it track me when I am off shift?
 
 No. Nothing records until you start a shift, and it stops when you end it.
-
-If you turn on Settings > "Ask to start a shift when I seem to be driving" on the phone, it checks now and then whether you are driving, so it can ask. While it is on, a "Watching for drives" notification shows. Those fixes stay on the phone and are thrown away unless you tap Start. It is off unless you turn it on.
 
 ## Who can see my data?
 

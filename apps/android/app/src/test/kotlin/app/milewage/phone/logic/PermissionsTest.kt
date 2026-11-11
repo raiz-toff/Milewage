@@ -1,7 +1,5 @@
 package app.milewage.phone.logic
 
-import app.milewage.phone.support.ALLOWED
-import app.milewage.tracking.TrackingController.DetectionResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -115,18 +113,5 @@ class PermissionsTest {
         assertTrue(PermissionLadder.steps(all).none { it.id == PermStepId.LOCAL_NETWORK })
         val needs = all.copy(localNetworkNeeded = true, localNetwork = Runtime(false))
         assertEquals(PermAction.REQUEST, step(needs, PermStepId.LOCAL_NETWORK).action)
-    }
-
-    @Test
-    fun `the drive prompt's refusals name the real cause`() {
-        assertEquals(DetectionOutcome.ON, DetectionOutcome.of(DetectionResult.ON, true, true))
-        assertEquals(DetectionOutcome.LOCATION_OFF, DetectionOutcome.of(DetectionResult.NEEDS_BACKGROUND_LOCATION, false, true))
-        assertEquals(DetectionOutcome.NO_LOCATION, DetectionOutcome.of(DetectionResult.NEEDS_BACKGROUND_LOCATION, true, false))
-        assertEquals(DetectionOutcome.NEEDS_ALL_THE_TIME, DetectionOutcome.of(DetectionResult.NEEDS_BACKGROUND_LOCATION, true, true))
-        assertEquals(DetectionOutcome.NOT_ALLOWED, DetectionOutcome.of(DetectionResult.NOT_ALLOWED, true, true))
-        // Every refusal a driver can fix has its way forward.
-        listOf(DetectionOutcome.LOCATION_OFF, DetectionOutcome.NO_LOCATION, DetectionOutcome.NEEDS_ALL_THE_TIME, DetectionOutcome.NOT_ALLOWED)
-            .forEach { assertTrue(it.fix != null, "$it") }
-        assertEquals(true, ALLOWED.canDetect)
     }
 }

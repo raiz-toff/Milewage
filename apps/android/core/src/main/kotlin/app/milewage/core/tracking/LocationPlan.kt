@@ -35,7 +35,7 @@ data class ProviderRequest(
  *   ones, smooths, and is missing below Android 12. A phone without a GNSS receiver records from
  *   `network` instead.
  * - Only fixes from the recording provider are stored ([recordingProvider]). Network positions
- *   (Wi-Fi, cell) feed the stillness and drive decisions but are not stored: indoors a Wi-Fi
+ *   (Wi-Fi, cell) feed the stillness decisions but are not stored: indoors a Wi-Fi
  *   position can sit 40 m off with a 30 m radius, which the engine would count as a move.
  * - `passive` delivers fixes other apps asked for at no cost; GNSS ones among them are stored too.
  */
@@ -49,17 +49,8 @@ data class LocationPlan(
     companion object {
         val NONE = LocationPlan(emptyList(), significantMotion = false, recordingProvider = null)
 
-        /** Probe interval: 3 s (the reference detector's), no batching. */
-        const val PROBE_INTERVAL_MS = 3_000L
-
         /** Passive fixes at most this often. */
         const val PASSIVE_INTERVAL_MS = 5_000L
-
-        /** The idle watch's network interval. */
-        const val IDLE_NETWORK_INTERVAL_MS = 60_000L
-
-        /** The idle watch's GNSS interval, used only on a phone with neither network positions nor the motion sensor. */
-        const val IDLE_GPS_INTERVAL_MS = 120_000L
 
         /** During a shift. */
         fun recording(level: PowerLevel, cadence: CadenceConfig, caps: DeviceCapabilities): LocationPlan {
@@ -95,52 +86,6 @@ data class LocationPlan(
                     },
                     significantMotion = caps.hasSignificantMotion,
                     recordingProvider = provider,
-                )
-            }
-        }
-
-        /** While no shift runs and drive detection is on. Nothing is stored. */
-        fun watching(power: WatchPower, cadence: CadenceConfig, caps: DeviceCapabilities): LocationPlan {
-            val precise = when {
-                caps.hasGps -> RawLocation.GPS
-                caps.hasNetwork -> RawLocation.NETWORK
-                else -> null
-            }
-            return when (power) {
-                WatchPower.NONE -> NONE
-                WatchPower.IDLE -> LocationPlan(
-                    buildList {
-                        if (caps.hasNetwork) add(networkRequest(IDLE_NETWORK_INTERVAL_MS))
-                        if (!caps.hasNetwork && !caps.hasSignificantMotion && caps.hasGps) {
-                            add(
-                                ProviderRequest(
-                                    RawLocation.GPS, IDLE_GPS_INTERVAL_MS, 0f, IDLE_GPS_INTERVAL_MS,
-                                    RequestQuality.LOW_POWER,
-                                ),
-                            )
-                        }
-                        add(passiveRequest())
-                    },
-                    significantMotion = caps.hasSignificantMotion,
-                    recordingProvider = null,
-                )
-                WatchPower.PROBE -> LocationPlan(
-                    listOfNotNull(
-                        precise?.let {
-                            ProviderRequest(it, PROBE_INTERVAL_MS, 0f, PROBE_INTERVAL_MS, RequestQuality.HIGH_ACCURACY)
-                        },
-                    ),
-                    significantMotion = false,
-                    recordingProvider = null,
-                )
-                WatchPower.DETECTED -> LocationPlan(
-                    listOfNotNull(
-                        precise?.let {
-                            ProviderRequest(it, cadence.intervalMs, 0f, cadence.intervalMs, RequestQuality.HIGH_ACCURACY)
-                        },
-                    ),
-                    significantMotion = false,
-                    recordingProvider = null,
                 )
             }
         }

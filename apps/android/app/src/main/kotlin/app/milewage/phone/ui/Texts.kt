@@ -10,7 +10,6 @@ import app.milewage.data.prefs.AppTheme
 import app.milewage.phone.R
 import app.milewage.phone.logic.ConnectError
 import app.milewage.phone.logic.ConnectFix
-import app.milewage.phone.logic.DetectionOutcome
 import app.milewage.phone.logic.LinkFailure
 import app.milewage.phone.logic.PermAction
 import app.milewage.phone.logic.PermState
@@ -262,17 +261,6 @@ object Texts {
             PermStepId.LOCATION_SWITCH -> R.string.fix_location_settings
             PermStepId.BATTERY -> R.string.fix_battery_settings
         }
-    }
-
-    @StringRes
-    fun detection(o: DetectionOutcome): Int = when (o) {
-        DetectionOutcome.ON -> R.string.detection_on
-        DetectionOutcome.OFF -> R.string.detection_off
-        DetectionOutcome.LOCATION_OFF -> R.string.detection_location_off
-        DetectionOutcome.NO_LOCATION -> R.string.detection_no_location
-        DetectionOutcome.NEEDS_ALL_THE_TIME -> R.string.detection_needs_always
-        DetectionOutcome.NOT_ALLOWED -> R.string.detection_not_allowed
-        DetectionOutcome.NOT_WIRED -> R.string.detection_not_wired
     }
 
     @StringRes

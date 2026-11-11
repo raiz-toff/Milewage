@@ -66,7 +66,7 @@ object DiagnosticsReport {
         val t = i.tracking
         appendLine(
             "Tracking: ${t.mode.name.lowercase()}, power ${t.power?.name?.lowercase() ?: "-"}, fixes stored ${t.storedFixes}, " +
-                "detection ${t.detection.name.lowercase()}, problem ${t.problem?.name?.lowercase() ?: "none"}",
+                "problem ${t.problem?.name?.lowercase() ?: "none"}",
         )
         i.permissions?.let { p ->
             appendLine(

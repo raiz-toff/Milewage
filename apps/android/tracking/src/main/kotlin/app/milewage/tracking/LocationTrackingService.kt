@@ -32,8 +32,7 @@ import app.milewage.core.tracking.TrackingMode
 import app.milewage.core.tracking.TrackingProblem
 
 /**
- * The foreground service (type `location`) that records a shift, or watches for a drive when
- * detection is on. Thin on purpose: every decision is in `TrackingCore` (`:core`), tested on the
+ * The foreground service (type `location`) that records a shift. Thin on purpose: every decision is in `TrackingCore` (`:core`), tested on the
  * JVM; this class holds the platform `LocationManager` requests, the significant-motion trigger,
  * the ongoing notification and the restart safety net, and passes fixes in.
  *
@@ -91,9 +90,8 @@ class LocationTrackingService : Service(), ServiceSink {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val rt = runtime
-        val shiftRunning = PrefsTrackingStores.readActiveShift(PrefsTrackingStores.open(this)) != null
         // Every start (also a sticky restart with a null intent) must go foreground at once.
-        if (!goForeground(ongoing ?: TrackingNotifications.starting(this, shiftRunning))) {
+        if (!goForeground(ongoing ?: TrackingNotifications.starting(this))) {
             rt?.core?.reportProblem(TrackingProblem.START_NOT_ALLOWED)
             TrackingRuntime.postStartProblem(this)
             stopping = true
@@ -131,7 +129,6 @@ class LocationTrackingService : Service(), ServiceSink {
         when (effect) {
             is TrackingEffect.ApplyPlan -> applyPlan(effect.plan)
             is TrackingEffect.ShowShift -> show(TrackingNotifications.shift(this, effect.notice, effect.text))
-            TrackingEffect.ShowWatching -> show(TrackingNotifications.watching(this))
             is TrackingEffect.WakeAt -> {
                 val at = effect.atMs
                 if (at == null) {
@@ -280,7 +277,7 @@ class LocationTrackingService : Service(), ServiceSink {
         val rt = runtime
         if (rt?.service === this) rt.service = null
         // Destroyed without being asked to stop (the system killed it, Android 13+ task manager,
-        // the notification dismissed): a shift or detection still meant to run is restarted.
+        // the notification dismissed): a shift still meant to record is restarted.
         if (!stopping && rt != null && rt.core.currentMode != TrackingMode.STOPPED) TrackingAlarms.scheduleRestart(this)
         super.onDestroy()
     }

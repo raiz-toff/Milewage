@@ -38,10 +38,6 @@ To stop it happening again, open Settings > Permissions on the phone: location "
 
 After a restart the phone carries on recording a running shift by itself, if location is allowed all the time. Without it, it shows the same notification, and opening MileWage resumes the shift.
 
-## The phone does not ask to start a shift
-
-The question "You seem to be driving." comes only when Settings > "Ask to start a shift when I seem to be driving" is on, location is allowed all the time and no shift is running. A car is noticed within about a minute, a bicycle or scooter within about 4 minutes; walking never asks. After "Not now" the phone does not ask again during that drive or for an hour after it. If Settings says "The drive prompt needs location all the time", fix it in Settings > Permissions.
-
 ## The phone and the server totals differ
 
 The phone and the server each work out a shift's total. If they disagree, the shift's Checks on the web say "The phone and the server worked out different totals." On the phone the shift is marked "On server (total differs)" and shows both numbers. Neither is overwritten. The web app, the exports and the tax figures use the server's total.

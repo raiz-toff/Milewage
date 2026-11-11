@@ -1,6 +1,6 @@
 // The Android side of tracking: the location foreground service, its notifications, the
 // receivers (buttons, alarms, boot) and the controller the app calls. Every decision (what to
-// request, what to store, still or moving, the drive prompt) is plain Kotlin in :core
+// request, what to store, still or moving) is plain Kotlin in :core
 // (app.milewage.core.tracking) and tested there; this module only applies it.
 plugins {
     alias(libs.plugins.android.library)

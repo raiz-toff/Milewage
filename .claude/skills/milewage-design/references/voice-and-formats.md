@@ -72,15 +72,13 @@ shift's text is built in `:core` (`ShiftNotice` in `app.milewage.core.tracking`,
 tests). The patterns:
 
 - Channel names say what the driver will see in the phone's settings: "Shift in progress",
-  "Watching for drives", "Shift reminders", "Recording problems". Each has a one-sentence
+  "Shift reminders", "Recording problems". Each has a one-sentence
   description.
 - The ongoing notification leads with the figure: title "12.3 km this shift", the text "Today
   20.1 km · 2 shifts" or the start time and vehicle ("Started 09:02 · Toyota Prius"). Metric
   labels are one short word ("Shift", "Time", "Today"; Android allows 10 characters).
-- A prompt is a question with two plain buttons: "You seem to be driving." / "Start a shift? It
-  counts from when the drive began." with **Start** and **Not now**. The nudge is "Still on shift?"
-  / "You have not moved for 12 minutes." with **Keep going** and **End shift**. A nudge never ends a
-  shift by itself.
+- The nudge is a question with two plain buttons: "Still on shift?" / "You have not moved for 12
+  minutes." with **Keep going** and **End shift**. A nudge never ends a shift by itself.
 - A problem states the fact, then the way forward: "Your shift is not recording." / "Open MileWage
   to keep recording it."
 - Counts use `<plurals>`, never "minute(s)".

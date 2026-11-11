@@ -6,7 +6,6 @@ import app.milewage.core.connect.Where
 import app.milewage.data.prefs.AppTheme
 import app.milewage.phone.logic.ConnectError
 import app.milewage.phone.logic.ConnectionCheck
-import app.milewage.phone.logic.DetectionOutcome
 import app.milewage.phone.logic.LinkFailure
 import app.milewage.phone.logic.Nearby
 import app.milewage.phone.logic.PermissionFacts
@@ -96,7 +95,6 @@ object FirstRunStates {
         where = Where.HOME,
         check = ConnectionCheck.Ok(Where.HOME),
         display = ScreenStates.settings,
-        detection = true,
         theme = AppTheme.SYSTEM,
         helpBase = "http://192.168.1.20:8080",
     )
@@ -108,8 +106,6 @@ object FirstRunStates {
         check = ConnectionCheck.Failed(ConnectError.Failed(ConnectFailure.TailscaleOff)),
         unsentShifts = 2,
         unsentFixes = 340,
-        detection = false,
-        detectionProblem = DetectionOutcome.NEEDS_ALL_THE_TIME,
         nudgeMs = 0,
         theme = AppTheme.DARK,
         helpBase = null,

@@ -20,19 +20,19 @@ import java.time.Instant
 
 /**
  * The tracking layer's notifications: the ongoing one of the foreground service (the running
- * shift, or "Watching for drives"), the drive prompt, the "Still on shift?" nudge and the problem
- * notices that ask the driver to open the app. Standard templates only (custom layouts cannot be
+ * shift), the "Still on shift?" nudge and the problem notices that ask the driver to open the app. Standard templates only (custom layouts cannot be
  * promoted to Android 16's Live Updates).
  */
 internal object TrackingNotifications {
     const val CHANNEL_SHIFT = "milewage_shift" // the Expo app's channel: its settings carry over
-    const val CHANNEL_WATCH = "milewage_watch"
     const val CHANNEL_PROMPTS = "milewage_prompts"
     const val CHANNEL_PROBLEMS = "milewage_problems"
     private const val OLD_CHANNEL = "comma_tracker_channel_v2"
 
+    /** The drive prompt's "Watching for drives" channel (removed on 2026-11-11), deleted on old installs. */
+    private const val OLD_WATCH_CHANNEL = "milewage_watch"
+
     const val ID_ONGOING = 9876 // the Expo tracker's id
-    const val ID_PROMPT = 9877
     const val ID_NUDGE = 9878
     const val ID_PROBLEM = 9879
 
@@ -43,11 +43,12 @@ internal object TrackingNotifications {
     private const val METRIC_STYLE_SDK = 37
     private const val TAG = "MileWageTracking"
 
-    enum class Problem { SHIFT_NOT_RECORDING, DETECTION_PAUSED, START_FAILED, END_FAILED }
+    enum class Problem { SHIFT_NOT_RECORDING, END_FAILED }
 
     fun ensureChannels(context: Context) {
         val m = context.getSystemService(NotificationManager::class.java) ?: return
         m.deleteNotificationChannel(OLD_CHANNEL)
+        m.deleteNotificationChannel(OLD_WATCH_CHANNEL)
         fun channel(id: String, name: Int, description: Int, importance: Int, silent: Boolean) =
             NotificationChannel(id, context.getString(name), importance).apply {
                 this.description = context.getString(description)
@@ -61,9 +62,6 @@ internal object TrackingNotifications {
             listOf(
                 // Default importance so Android 16 can promote it; no sound or vibration, ever.
                 channel(CHANNEL_SHIFT, R.string.tracking_channel_shift, R.string.tracking_channel_shift_description, NotificationManager.IMPORTANCE_DEFAULT, true),
-                // Low, not min: a foreground service's notification at min importance makes Android
-                // show its own "running in the background" notice instead (NotificationManager.IMPORTANCE_MIN).
-                channel(CHANNEL_WATCH, R.string.tracking_channel_watch, R.string.tracking_channel_watch_description, NotificationManager.IMPORTANCE_LOW, true),
                 // Default (a sound, no heads-up over the map while driving).
                 channel(CHANNEL_PROMPTS, R.string.tracking_channel_prompts, R.string.tracking_channel_prompts_description, NotificationManager.IMPORTANCE_DEFAULT, false),
                 channel(CHANNEL_PROBLEMS, R.string.tracking_channel_problems, R.string.tracking_channel_problems_description, NotificationManager.IMPORTANCE_HIGH, false),
@@ -132,60 +130,18 @@ internal object TrackingNotifications {
         return style.setCriticalMetric(0)
     }
 
-    /** No shift: detection is watching. */
-    fun watching(context: Context): Notification =
-        NotificationCompat.Builder(context, CHANNEL_WATCH)
-            .setSmallIcon(R.drawable.ic_stat_milewage)
-            .setColor(ACCENT)
-            .setContentTitle(context.getString(R.string.tracking_watch_title))
-            .setContentText(context.getString(R.string.tracking_watch_text))
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setSilent(true)
-            .setShowWhen(false)
-            .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_DEFERRED)
-            .setContentIntent(openApp(context))
-            .build()
-
     /** What the service shows the instant it starts, before the state is read. */
-    fun starting(context: Context, shiftRunning: Boolean): Notification =
-        if (!shiftRunning) {
-            watching(context)
-        } else {
-            NotificationCompat.Builder(context, CHANNEL_SHIFT)
-                .setSmallIcon(R.drawable.ic_stat_milewage)
-                .setColor(ACCENT)
-                .setContentTitle(context.getString(R.string.tracking_starting_title))
-                .setOngoing(true)
-                .setSilent(true)
-                .setCategory(NotificationCompat.CATEGORY_SERVICE)
-                .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-                .setContentIntent(openApp(context))
-                .build()
-        }
-
-    fun postPrompt(context: Context, driveStartedAtMs: Long) {
-        val n = NotificationCompat.Builder(context, CHANNEL_PROMPTS)
+    fun starting(context: Context): Notification =
+        NotificationCompat.Builder(context, CHANNEL_SHIFT)
             .setSmallIcon(R.drawable.ic_stat_milewage)
             .setColor(ACCENT)
-            .setContentTitle(context.getString(R.string.tracking_prompt_title))
-            .setContentText(context.getString(R.string.tracking_prompt_text))
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .setOnlyAlertOnce(true)
-            .setAutoCancel(true)
+            .setContentTitle(context.getString(R.string.tracking_starting_title))
+            .setOngoing(true)
+            .setSilent(true)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setContentIntent(openApp(context))
-            .addAction(
-                0,
-                context.getString(R.string.tracking_prompt_start),
-                action(context, TrackingReceiver.ACTION_PROMPT_START) { putExtra(TrackingReceiver.EXTRA_STARTED_AT, driveStartedAtMs) },
-            )
-            .addAction(0, context.getString(R.string.tracking_prompt_not_now), action(context, TrackingReceiver.ACTION_PROMPT_NOT_NOW))
-            // A swipe is a "Not now" too, so the prompt does not come back for this drive.
-            .setDeleteIntent(action(context, TrackingReceiver.ACTION_PROMPT_NOT_NOW))
             .build()
-        notify(context, ID_PROMPT, n)
-    }
 
     fun postNudge(context: Context, stillMs: Long) {
         val minutes = Codecs.minutes(stillMs)
@@ -209,8 +165,6 @@ internal object TrackingNotifications {
     fun postProblem(context: Context, problem: Problem) {
         val (title, text) = when (problem) {
             Problem.SHIFT_NOT_RECORDING -> R.string.tracking_problem_shift_title to R.string.tracking_problem_shift_text
-            Problem.DETECTION_PAUSED -> R.string.tracking_problem_detection_title to R.string.tracking_problem_detection_text
-            Problem.START_FAILED -> R.string.tracking_problem_start_title to R.string.tracking_problem_start_text
             Problem.END_FAILED -> R.string.tracking_problem_end_title to R.string.tracking_problem_end_text
         }
         ensureChannels(context)
@@ -250,11 +204,11 @@ internal object TrackingNotifications {
         return PendingIntent.getActivity(context, 0, launch, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     }
 
-    private fun action(context: Context, name: String, extras: Intent.() -> Unit = {}): PendingIntent =
+    private fun action(context: Context, name: String): PendingIntent =
         PendingIntent.getBroadcast(
             context,
             name.hashCode(),
-            Intent(context, TrackingReceiver::class.java).setAction(name).apply(extras),
+            Intent(context, TrackingReceiver::class.java).setAction(name),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 }

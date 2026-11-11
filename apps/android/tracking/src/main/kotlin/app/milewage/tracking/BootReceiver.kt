@@ -7,7 +7,7 @@ import kotlinx.coroutines.launch
 
 /**
  * After a restart of the phone (or an update of the app, which also stops its service): resumes a
- * shift that was recording, and drive detection if it is on. Nothing else.
+ * shift that was recording. Nothing else.
  *
  * This reverses the 2026-11-03 "no boot receiver" decision (owner decision 2026-11-10, native app).
  * `BOOT_COMPLETED` and `MY_PACKAGE_REPLACED` are among the cases where Android lets an app start a

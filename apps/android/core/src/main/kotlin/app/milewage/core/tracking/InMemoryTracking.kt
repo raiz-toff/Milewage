@@ -83,13 +83,7 @@ class InMemoryTrackingStateStore : TrackingStateStore {
 
 /** [ShiftCommands] that records the calls and answers [outcome]. */
 class RecordingShiftCommands(var outcome: CommandOutcome = CommandOutcome.DONE) : ShiftCommands {
-    val started = ArrayList<Long>()
     var ended = 0
-
-    override suspend fun startDetectedShift(startedAt: Long): CommandOutcome {
-        started.add(startedAt)
-        return outcome
-    }
 
     override suspend fun endShift(): CommandOutcome {
         ended++

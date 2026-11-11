@@ -1,8 +1,8 @@
 package app.milewage.core.tracking
 
 /**
- * A tiny text format for the state that must survive process death (the detector, the stillness
- * monitor, the notification details). One `key=value` per line; a backslash and a line break in a
+ * A tiny text format for the state that must survive process death (the stillness monitor,
+ * the notification details). One `key=value` per line; a backslash and a line break in a
  * value are escaped. Plain Kotlin, so it moves to Kotlin Multiplatform as is, and a decoder that
  * meets a damaged or older snapshot falls back to defaults instead of throwing.
  */

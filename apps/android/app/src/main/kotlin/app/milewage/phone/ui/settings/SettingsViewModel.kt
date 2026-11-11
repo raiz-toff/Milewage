@@ -9,7 +9,6 @@ import app.milewage.core.sync.Progress
 import app.milewage.data.prefs.AppTheme
 import app.milewage.phone.logic.ConnectError
 import app.milewage.phone.logic.ConnectionCheck
-import app.milewage.phone.logic.DetectionOutcome
 import app.milewage.phone.logic.HelpLinks
 import app.milewage.phone.logic.NudgeChoices
 import app.milewage.phone.logic.ServerFacts
@@ -45,10 +44,6 @@ data class SettingsState(
     val unsentFixes: Long = 0,
     val sending: Boolean = false,
     val running: Boolean = false,
-    val detection: Boolean = false,
-    val detectionBusy: Boolean = false,
-    /** The last refusal of the drive prompt, shown under its switch with its way forward. */
-    val detectionProblem: DetectionOutcome? = null,
     val nudgeMs: Long = TrackingSettings.DEFAULT_NUDGE_MS,
     val theme: AppTheme = AppTheme.SYSTEM,
     val wallpaper: Boolean = false,
@@ -75,8 +70,6 @@ sealed interface SettingsEvent {
     /** Send now finished: [done] when nothing is left on the phone only. */
     data class Sent(val done: Boolean) : SettingsEvent
 
-    data class Detection(val outcome: DetectionOutcome) : SettingsEvent
-
     /** The driver deleted another server's shifts from the phone. */
     data class OtherServerDeleted(val shifts: Int) : SettingsEvent
 
@@ -85,8 +78,8 @@ sealed interface SettingsEvent {
 
 /**
  * Settings: the server (host names, connection, Check connection), this phone (connect to another
- * server, refused while unsent data waits unless the driver confirms), tracking (the drive prompt,
- * the "Still on shift?" reminder), appearance, the server's units and formats (read only), sending,
+ * server, refused while unsent data waits unless the driver confirms), tracking (the "Still on
+ * shift?" reminder), appearance, the server's units and formats (read only), sending,
  * Help and About.
  */
 class SettingsViewModel(
@@ -121,7 +114,7 @@ class SettingsViewModel(
         viewModelScope.launch { appearance.wallpaperColours.collect { w -> _state.update { it.copy(wallpaper = w) } } }
         viewModelScope.launch {
             val t = tracking.settings()
-            _state.update { it.copy(detection = t.detectionEnabled, nudgeMs = t.nudgeAfterMs) }
+            _state.update { it.copy(nudgeMs = t.nudgeAfterMs) }
         }
         viewModelScope.launch {
             // The server, then a check of the connection (the settings come back fresh with it).
@@ -195,26 +188,6 @@ class SettingsViewModel(
         }
     }
 
-    /** "Ask to start a shift when I seem to be driving". */
-    fun setDetection(on: Boolean) {
-        if (_state.value.detectionBusy) return
-        _state.update { it.copy(detectionBusy = true, detectionProblem = null) }
-        viewModelScope.launch {
-            val result = tracking.setDetection(on)
-            val perm = tracking.permissions()
-            val outcome = DetectionOutcome.of(result, perm.locationEnabled, perm.preciseLocation)
-            val enabled = outcome == DetectionOutcome.ON
-            _state.update {
-                it.copy(
-                    detectionBusy = false,
-                    detection = if (on) enabled else false,
-                    detectionProblem = outcome.takeUnless { o -> o == DetectionOutcome.ON || o == DetectionOutcome.OFF },
-                )
-            }
-            if (outcome != DetectionOutcome.ON && outcome != DetectionOutcome.OFF) _events.trySend(SettingsEvent.Detection(outcome))
-        }
-    }
-
     fun setNudge(minutes: Int) {
         val ms = NudgeChoices.ms(minutes)
         viewModelScope.launch {
@@ -253,7 +226,7 @@ class SettingsViewModel(
     fun onResume() {
         viewModelScope.launch {
             val t = tracking.settings()
-            _state.update { it.copy(detection = t.detectionEnabled, nudgeMs = t.nudgeAfterMs) }
+            _state.update { it.copy(nudgeMs = t.nudgeAfterMs) }
         }
     }
 }

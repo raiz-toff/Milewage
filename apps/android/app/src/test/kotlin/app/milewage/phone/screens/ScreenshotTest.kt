@@ -38,7 +38,6 @@ import app.milewage.core.connect.FoundServer
 import app.milewage.core.connect.Where
 import app.milewage.data.prefs.AppTheme
 import app.milewage.phone.logic.ConnectFix
-import app.milewage.phone.logic.Fix
 import app.milewage.phone.logic.HelpLinks
 import app.milewage.phone.ui.firstrun.ConnectActions
 import app.milewage.phone.ui.settings.SettingsActions
@@ -344,14 +343,6 @@ open class RecordingSettingsActions : SettingsActions {
 
     override fun disconnect() {
         calls += "disconnect"
-    }
-
-    override fun setDetection(on: Boolean) {
-        calls += "detection $on"
-    }
-
-    override fun fix(f: Fix) {
-        calls += "fix $f"
     }
 
     override fun setNudge(minutes: Int) {

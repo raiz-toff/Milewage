@@ -456,7 +456,7 @@ class PhoneDiagnostics(
     }
 
     /**
-     * The tracker's events as `service.event` (phone_native). Its other events (prompts, power
+     * The tracker's events as `service.event` (phone_native). Its other events (the nudge, power
      * changes the allowlist has no kind for) are counted as refused, never stored.
      */
     fun trackingSink(scope: CoroutineScope): TrackingDiagnostics = TrackingDiagnostics { event, detail ->

@@ -12,8 +12,7 @@ import app.milewage.core.tracking.Interruption
  */
 interface Recorder {
     /**
-     * Starts recording [shiftClientId] from [startedAt]. For a shift started from the drive prompt
-     * the tracker first stores the fixes it kept since the drive began. False when it could not
+     * Starts recording [shiftClientId] from [startedAt]. False when it could not
      * (no location permission, Android refused the service).
      */
     suspend fun start(shiftClientId: String, startedAt: Long): Boolean

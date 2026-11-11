@@ -6,23 +6,14 @@
     <!-- Channels, as the driver sees them in the phone's notification settings. -->
     <string name="tracking_channel_shift">Shift in progress</string>
     <string name="tracking_channel_shift_description">Distance and time of the running shift.</string>
-    <string name="tracking_channel_watch">Watching for drives</string>
-    <string name="tracking_channel_watch_description">Shown while MileWage watches for a drive to offer a shift.</string>
     <string name="tracking_channel_prompts">Shift reminders</string>
-    <string name="tracking_channel_prompts_description">Asks to start a shift when you seem to be driving, and checks on a shift that has not moved for a long time.</string>
+    <string name="tracking_channel_prompts_description">Checks on a shift that has not moved for a long time.</string>
     <string name="tracking_channel_problems">Recording problems</string>
     <string name="tracking_channel_problems_description">Tells you when MileWage cannot record a shift and what to do.</string>
 
-    <string name="tracking_watch_title">Watching for drives</string>
-    <string name="tracking_watch_text">MileWage asks to start a shift when you drive. Turn this off in Settings.</string>
     <string name="tracking_starting_title">Shift in progress</string>
 
     <string name="tracking_end_shift">End shift</string>
-
-    <string name="tracking_prompt_title">You seem to be driving.</string>
-    <string name="tracking_prompt_text">Start a shift? It counts from when the drive began.</string>
-    <string name="tracking_prompt_start">Start</string>
-    <string name="tracking_prompt_not_now">Not now</string>
 
     <string name="tracking_nudge_title">Still on shift?</string>
     <plurals name="tracking_nudge_text">
@@ -33,10 +24,6 @@
 
     <string name="tracking_problem_shift_title">Your shift is not recording.</string>
     <string name="tracking_problem_shift_text">Open MileWage to keep recording it.</string>
-    <string name="tracking_problem_detection_title">Drive detection is paused.</string>
-    <string name="tracking_problem_detection_text">Open MileWage to turn it back on.</string>
-    <string name="tracking_problem_start_title">The shift did not start.</string>
-    <string name="tracking_problem_start_text">Open MileWage to start it.</string>
     <string name="tracking_problem_end_title">The shift is still running.</string>
     <string name="tracking_problem_end_text">Open MileWage to end it.</string>
 </resources>
