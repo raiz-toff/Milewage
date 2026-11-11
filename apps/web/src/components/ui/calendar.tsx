@@ -94,20 +94,26 @@ function Calendar({
           'text-body-small text-on-surface-variant select-none',
           defaultClassNames.week_number,
         ),
+        // Only a day inside a range is squared off, and rounded again at a row's two ends. A
+        // chosen day keeps its own full circle: mixing two "full" radii of different sizes on one
+        // button made the browser flatten one side.
         day: cn(
-          'group/day relative aspect-square h-full w-full rounded-(--cell-radius) p-0 text-center select-none [&:last-child[data-selected=true]_button]:rounded-r-(--cell-radius)',
+          'group/day relative aspect-square h-full w-full rounded-(--cell-radius) p-0 text-center select-none [&:last-child_button[data-range-middle=true]]:rounded-r-(--cell-radius)',
           props.showWeekNumber
-            ? '[&:nth-child(2)[data-selected=true]_button]:rounded-l-(--cell-radius)'
-            : '[&:first-child[data-selected=true]_button]:rounded-l-(--cell-radius)',
+            ? '[&:nth-child(2)_button[data-range-middle=true]]:rounded-l-(--cell-radius)'
+            : '[&:first-child_button[data-range-middle=true]]:rounded-l-(--cell-radius)',
           defaultClassNames.day,
         ),
         range_start: cn(
-          'relative isolate z-0 rounded-l-(--cell-radius) bg-secondary-container after:absolute after:inset-y-0 after:right-0 after:w-4 after:bg-secondary-container',
+          // Material's range: the band runs from under the first day's circle to under the last
+          // one's. The start's cell is round on the left and square on the right, where it meets
+          // the band; a day that is both ends (a one-day range) stays round.
+          String.raw`relative isolate z-0 rounded-l-(--cell-radius) bg-secondary-container [&:not(.rdp-range\_end)]:rounded-r-none`,
           defaultClassNames.range_start,
         ),
         range_middle: cn('rounded-none', defaultClassNames.range_middle),
         range_end: cn(
-          'relative isolate z-0 rounded-r-(--cell-radius) bg-secondary-container after:absolute after:inset-y-0 after:left-0 after:w-4 after:bg-secondary-container',
+          String.raw`relative isolate z-0 rounded-r-(--cell-radius) bg-secondary-container [&:not(.rdp-range\_start)]:rounded-l-none`,
           defaultClassNames.range_end,
         ),
         today: cn(
@@ -184,7 +190,7 @@ function CalendarDayButton({
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        'relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 rounded-full border-0 text-body-large leading-none text-current group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:outline-3 group-data-[focused=true]/day:outline-ring data-[range-end=true]:rounded-(--cell-radius) data-[range-end=true]:rounded-r-(--cell-radius) data-[range-end=true]:bg-primary data-[range-end=true]:text-on-primary data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-secondary-container data-[range-middle=true]:text-on-secondary-container data-[range-start=true]:rounded-(--cell-radius) data-[range-start=true]:rounded-l-(--cell-radius) data-[range-start=true]:bg-primary data-[range-start=true]:text-on-primary data-[selected-single=true]:bg-primary data-[selected-single=true]:text-on-primary [&>span]:text-label-small [&>span]:opacity-70',
+        'relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 rounded-full border-0 text-body-large leading-none text-current group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 data-[range-end=true]:rounded-(--cell-radius) data-[range-end=true]:rounded-r-(--cell-radius) data-[range-end=true]:bg-primary data-[range-end=true]:text-on-primary data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-secondary-container data-[range-middle=true]:text-on-secondary-container data-[range-start=true]:rounded-(--cell-radius) data-[range-start=true]:rounded-l-(--cell-radius) data-[range-start=true]:bg-primary data-[range-start=true]:text-on-primary data-[selected-single=true]:bg-primary data-[selected-single=true]:text-on-primary [&>span]:text-label-small [&>span]:opacity-70',
         defaultClassNames.day,
         className,
       )}

@@ -137,19 +137,56 @@ describe('shifts week view', () => {
     expect(row.textContent).toMatch(/Distance: 10\.0 km/);
   });
 
-  it('the period opens a calendar; a day picked there opens its week with that day chosen', async () => {
+  const dayIn = (dialog: HTMLElement, day: RegExp) =>
+    [...dialog.querySelectorAll<HTMLButtonElement>('button[aria-label]')].find((b) =>
+      day.test(b.getAttribute('aria-label')!),
+    )!;
+
+  it('the period opens a calendar; one day confirmed with OK opens its week with that day chosen', async () => {
     server([shift(1), shift(2)]);
     await screen.findByText('$215.50');
-    fireEvent.click(screen.getByRole('button', { name: /^Pick a date: / }));
-    const dialog = await screen.findByRole('dialog', { name: 'Pick a date' });
-    const wed = [...dialog.querySelectorAll<HTMLButtonElement>('button[aria-label]')].find((b) =>
-      /November 15(th)?, 2023/.test(b.getAttribute('aria-label')!),
-    );
-    expect(wed).toBeTruthy();
-    fireEvent.click(wed!);
+    fireEvent.click(screen.getByRole('button', { name: /^Pick dates: / }));
+    const dialog = await screen.findByRole('dialog', { name: 'Pick dates' });
+    fireEvent.click(dayIn(dialog, /November 15(th)?, 2023/));
+    // Nothing changes until OK: the calendar stays open for the last day.
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(dialog.textContent).toMatch(/pick the last day/);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'OK' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(screen.getByText('Shifts on Wednesday')).toBeTruthy();
     expect(cards()).toEqual(['Wed, Nov 15']);
+  });
+
+  it('two days picked and OK show that range; Cancel changes nothing', async () => {
+    const asked: string[] = [];
+    server([shift(1), shift(2)], {
+      'GET /shifts': ({ url }) => {
+        asked.push(`${url.searchParams.get('from')}..${url.searchParams.get('to')}`);
+        return { body: { items: [shift(1), shift(2)], next_cursor: null } };
+      },
+    });
+    await screen.findByText('$215.50');
+    fireEvent.click(screen.getByRole('button', { name: /^Pick dates: / }));
+    let dialog = await screen.findByRole('dialog', { name: 'Pick dates' });
+    fireEvent.click(dayIn(dialog, /November 14(th)?, 2023/));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(asked).toEqual(['2023-11-13..2023-11-19']);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Pick dates: / }));
+    dialog = await screen.findByRole('dialog', { name: 'Pick dates' });
+    fireEvent.click(dayIn(dialog, /November 14(th)?, 2023/));
+    fireEvent.click(dayIn(dialog, /November 16(th)?, 2023/));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'OK' }));
+    await waitFor(() => expect(asked).toContain('2023-11-14..2023-11-16'));
+    expect(await screen.findByText('Shifts in this period')).toBeTruthy();
+    // Three bars, one per day of the range; the arrows move by the range's length.
+    expect(screen.getByRole('button', { name: 'Thursday: $125.50' })).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: /day: / })).toHaveLength(3);
+    fireEvent.click(screen.getByRole('button', { name: 'Previous period' }));
+    await waitFor(() => expect(asked).toContain('2023-11-11..2023-11-13'));
+    fireEvent.click(screen.getByRole('button', { name: 'This week' }));
+    await screen.findByText('Shifts this week');
   });
 
   it('moves between weeks, and cannot go past the current week', async () => {

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { DateRange } from 'react-day-picker';
 import { useQuery } from '@tanstack/react-query';
 import { EmptyState, PageHeader, Section, StatCard } from '../ui/layout';
 import { Link, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
@@ -17,7 +18,17 @@ import { deductionWord, formatDistance, formatDuration, formatMoney, formatTime 
 import { RouteView } from '../map/RouteView';
 import { PlatformBadge, PlatformName } from '../platforms/PlatformBadge';
 import { usePlatformOf } from '../platforms/usePlatforms';
-import { addDays, dateToIso, dateWords, isoToDate, todayIn, weekOf, weekWords } from '../days';
+import {
+  addDays,
+  dateLocale,
+  dateToIso,
+  dateWords,
+  isoToDate,
+  rangeText,
+  todayIn,
+  weekOf,
+  weekWords,
+} from '../days';
 import { useSession, useSettings } from '../session';
 import { useShiftRecord } from '../shift/record';
 import { earnedOf, reviewCount, showsSplit } from '../shift/view';
@@ -54,8 +65,11 @@ interface WeekData {
   buckets: DayBucket[] | null;
 }
 
-/** Everything the week view needs: the week's shifts (all pages), its summary, and per-day earnings. */
-function useWeek(from: string, to: string) {
+/**
+ * Everything the list needs for a range: its shifts (all pages), its summary, and the earnings per
+ * day, or per month for a long range.
+ */
+function useWeek(from: string, to: string, bucket: 'day' | 'month') {
   const { api } = useSession();
   const settings = useSettings();
   const analyticsOn = settings.modules.analytics;
@@ -81,7 +95,7 @@ function useWeek(from: string, to: string) {
   const summary = useApiQuery('/summary', { params: { query: { from, to } } });
   const analytics = useApiQuery(
     '/analytics',
-    { params: { query: { from, to, group: 'trends', bucket: 'day' } } },
+    { params: { query: { from, to, group: 'trends', bucket } } },
     { enabled: analyticsOn },
   );
   const buckets = analyticsOn
@@ -220,7 +234,120 @@ export function ShiftCard({ shift, settings }: { shift: Shift; settings: Setting
   );
 }
 
-/** The week of shifts (Comma's layout): week total, a bar per day, week figures, then the list. */
+const DAY_MS = 86_400_000;
+const daysIn = (from: string, to: string) =>
+  Math.round((Date.parse(to) - Date.parse(from)) / DAY_MS) + 1;
+
+/**
+ * The period's calendar, as Material's date range picker: pick the first day, then the last, and
+ * confirm with OK; Cancel leaves the page as it was. One day alone opens its week with that day
+ * chosen. A click after a whole range starts a new one, and a day before the start becomes the
+ * start.
+ */
+function PeriodPicker({
+  label,
+  from,
+  to,
+  day,
+  today,
+  weekStart,
+  onRange,
+}: {
+  label: string;
+  from: string;
+  to: string;
+  /** The single day chosen in the range shown, if any. */
+  day: string | null;
+  today: string;
+  weekStart: number;
+  onRange: (from: string, to: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<DateRange | undefined>();
+  const locale = dateLocale(useSettings().country);
+  const iso = (d: Date | undefined) => (d ? dateToIso(d) : null);
+  const start = iso(draft?.from);
+  const end = iso(draft?.to);
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        // Opens on what the page shows now.
+        if (o) setDraft({ from: isoToDate(day ?? from), to: isoToDate(day ?? to) });
+        setOpen(o);
+      }}
+    >
+      <PopoverTrigger asChild>
+        <UiButton
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-label={`Pick dates: ${label}`}
+          className="font-normal text-muted-foreground tabular-nums"
+        >
+          <CalendarIcon />
+          {label}
+        </UiButton>
+      </PopoverTrigger>
+      <PopoverContent
+        aria-label="Pick dates"
+        align="center"
+        className="w-auto p-0"
+        // The panel takes the focus itself, so no ring lands on a button nobody chose.
+        tabIndex={-1}
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          (e.currentTarget as HTMLElement).focus();
+        }}
+      >
+        <p aria-live="polite" className="px-6 pt-4 text-title-small text-on-surface tabular-nums">
+          {start === null
+            ? 'Pick the first day'
+            : end === null
+              ? `${rangeText(start, start, locale)} – pick the last day`
+              : rangeText(start, end, locale)}
+        </p>
+        <Calendar
+          mode="range"
+          captionLayout="dropdown"
+          selected={draft}
+          onSelect={(_, d) =>
+            setDraft((r) =>
+              !r?.from || r.to || d < r.from ? { from: d, to: undefined } : { from: r.from, to: d },
+            )
+          }
+          defaultMonth={isoToDate(day ?? to)}
+          startMonth={isoToDate(`${Number(today.slice(0, 4)) - 10}-01-01`)}
+          endMonth={isoToDate(today)}
+          today={isoToDate(today)}
+          weekStartsOn={weekStart as 0 | 1}
+          disabled={{ after: isoToDate(today)! }}
+        />
+        <div className="flex justify-end gap-2 px-3 pb-3">
+          <UiButton type="button" variant="ghost" onClick={() => setOpen(false)}>
+            Cancel
+          </UiButton>
+          <UiButton
+            type="button"
+            variant="ghost"
+            disabled={start === null}
+            onClick={() => {
+              if (start !== null) onRange(start, end ?? start);
+              setOpen(false);
+            }}
+          >
+            OK
+          </UiButton>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/**
+ * The shifts of a week, or of any range picked in the calendar (Comma's layout): the total, a bar
+ * per day (per month for a range over 31 days), the figures, then the list.
+ */
 export function ShiftList() {
   const settings = useSettings();
   const unit = settings.distance_unit;
@@ -229,34 +356,56 @@ export function ShiftList() {
   const today = todayIn(settings.timezone);
   const thisWeek = weekOf(today, settings.week_start);
   const asked = params.get('week');
-  const from = weekOf(isDate(asked) ? asked : today, settings.week_start);
-  const to = addDays(from, 6);
-  const { data, error } = useWeek(from, to);
-  // The day picked, by its bar or in the calendar; a day outside the week shown picks nothing.
+  const [askedFrom, askedTo] = [params.get('from'), params.get('to')];
+  // A range picked in the calendar (`from` and `to`), or else a week.
+  const custom = isDate(askedFrom) && isDate(askedTo) && askedFrom <= askedTo;
+  const from = custom ? askedFrom : weekOf(isDate(asked) ? asked : today, settings.week_start);
+  const to = custom ? askedTo : addDays(from, 6);
+  const span = daysIn(from, to);
+  const byMonth = span > 31;
+  const { data, error } = useWeek(from, to, byMonth ? 'month' : 'day');
+  // The bar picked (a day, or a month of a long range); one outside the range picks nothing.
   const [day, setDay] = useState<string | null>(null);
-  const [picking, setPicking] = useState(false);
 
   const go = (week: string, pick: string | null = null) => {
     setDay(pick);
     setParams(week === thisWeek ? {} : { week });
   };
+  const goRange = (a: string, b: string) => {
+    setDay(null);
+    setParams({ from: a, to: b });
+  };
+  const step = (n: number) =>
+    custom ? goRange(addDays(from, n * span), addDays(to, n * span)) : go(addDays(from, n * 7));
 
   const shifts = [...(data?.shifts ?? [])].sort((a, b) => b.started_at - a.started_at);
   const earnedWeek = data?.summary.earnings_cents ?? null;
-  // Bars show money when there is money and a per-day breakdown of it; otherwise distance.
+  // Bars show money when there is money and a breakdown of it; otherwise distance.
   const byMoney = earnedWeek !== null && data?.buckets != null;
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const date = addDays(from, i);
-    const own = shifts.filter((s) => s.local_date === date);
+  const keys = byMonth
+    ? [...new Set(Array.from({ length: span }, (_, i) => addDays(from, i).slice(0, 7)))]
+    : Array.from({ length: span }, (_, i) => addDays(from, i));
+  const days = keys.map((date) => {
+    const own = shifts.filter((s) => s.local_date.startsWith(date));
     return {
       date,
       shifts: own,
       distance: own.reduce((t, s) => t + (s.total_m ?? 0), 0),
       earned: data?.buckets?.find((b) => b.start === date)?.earnings_cents ?? null,
+      // Under the bar; in words for a screen reader and the headline.
+      tick: byMonth
+        ? dateWords(`${date}-01`, { month: 'short' })
+        : dateWords(date, span > 7 ? { day: 'numeric' } : { weekday: 'short' }),
+      name: byMonth
+        ? dateWords(`${date}-01`, { month: 'long', year: 'numeric' })
+        : dateWords(date, { weekday: 'long', month: 'short', day: 'numeric' }),
     };
   });
-  const valueOf = (d: (typeof days)[number]) => (byMoney ? (d.earned ?? 0) : d.distance);
-  const words = (d: (typeof days)[number]) =>
+  type Slot = (typeof days)[number];
+  const barName = (d: Slot) =>
+    !byMonth && span <= 7 ? dateWords(d.date, { weekday: 'long' }) : d.name;
+  const valueOf = (d: Slot) => (byMoney ? (d.earned ?? 0) : d.distance);
+  const words = (d: Slot) =>
     byMoney ? earnedWords(d.earned, currency) : formatDistance(d.distance, unit);
   const high = Math.max(0, ...days.map(valueOf));
   const picked = days.find((d) => d.date === day) ?? null;
@@ -270,14 +419,17 @@ export function ShiftList() {
       ? formatMoney(earnedWeek, currency)
       : formatDistance(weekDistance, unit);
   const heroLabel = picked
-    ? dateWords(picked.date, { weekday: 'long', month: 'short', day: 'numeric' })
-    : weekWords(from, to);
+    ? picked.name
+    : custom
+      ? rangeText(from, to, dateLocale(settings.country))
+      : weekWords(from, to);
+  const unitWord = custom ? 'period' : 'week';
 
   return (
     <section className="mx-auto max-w-3xl space-y-6">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-headline-small text-on-surface md:text-headline-medium">Shifts</h1>
-        {from !== thisWeek ? (
+        {custom || from !== thisWeek ? (
           <UiButton variant="outline" size="sm" onClick={() => go(thisWeek)}>
             This week
           </UiButton>
@@ -288,54 +440,21 @@ export function ShiftList() {
         <UiButton
           variant="ghost"
           size="icon"
-          aria-label="Previous week"
-          onClick={() => go(addDays(from, -7))}
+          aria-label={`Previous ${unitWord}`}
+          onClick={() => step(-1)}
         >
           <ChevronLeftIcon />
         </UiButton>
         <div className="min-w-0 text-center">
-          {/* The period opens a calendar: a day picked there opens its week with that day chosen. */}
-          <Popover open={picking} onOpenChange={setPicking}>
-            <PopoverTrigger asChild>
-              <UiButton
-                type="button"
-                variant="ghost"
-                size="sm"
-                aria-label={`Pick a date: ${heroLabel}`}
-                className="font-normal text-muted-foreground tabular-nums"
-              >
-                <CalendarIcon />
-                {heroLabel}
-              </UiButton>
-            </PopoverTrigger>
-            <PopoverContent aria-label="Pick a date" align="center" className="w-auto p-0">
-              <Calendar
-                mode="single"
-                captionLayout="dropdown"
-                autoFocus
-                selected={picked ? isoToDate(picked.date) : undefined}
-                defaultMonth={isoToDate(picked?.date ?? from)}
-                startMonth={isoToDate(`${Number(today.slice(0, 4)) - 10}-01-01`)}
-                endMonth={isoToDate(today)}
-                today={isoToDate(today)}
-                weekStartsOn={settings.week_start as 0 | 1}
-                disabled={{ after: isoToDate(today)! }}
-                modifiers={
-                  picked
-                    ? undefined
-                    : {
-                        range_start: isoToDate(from)!,
-                        range_middle: { after: isoToDate(from)!, before: isoToDate(to)! },
-                        range_end: isoToDate(to)!,
-                      }
-                }
-                onSelect={(d) => {
-                  if (d) go(weekOf(dateToIso(d), settings.week_start), dateToIso(d));
-                  setPicking(false);
-                }}
-              />
-            </PopoverContent>
-          </Popover>
+          <PeriodPicker
+            label={heroLabel}
+            from={from}
+            to={to}
+            day={picked && !byMonth ? picked.date : null}
+            today={today}
+            weekStart={settings.week_start}
+            onRange={(a, b) => (a === b ? go(weekOf(a, settings.week_start), a) : goRange(a, b))}
+          />
           <div
             aria-live="polite"
             className="truncate text-display-small font-medium tabular-nums sm:text-display-medium"
@@ -355,9 +474,9 @@ export function ShiftList() {
         <UiButton
           variant="ghost"
           size="icon"
-          aria-label="Next week"
-          disabled={from >= thisWeek}
-          onClick={() => go(addDays(from, 7))}
+          aria-label={`Next ${unitWord}`}
+          disabled={custom ? to >= today : from >= thisWeek}
+          onClick={() => step(1)}
         >
           <ChevronRightIcon />
         </UiButton>
@@ -365,7 +484,12 @@ export function ShiftList() {
 
       <Card>
         <CardContent>
-          <div className="relative flex h-40 items-stretch gap-2 sm:gap-3">
+          <div
+            className={cn(
+              'relative flex h-40 items-stretch',
+              days.length > 14 ? 'gap-0.5 sm:gap-1' : 'gap-2 sm:gap-3',
+            )}
+          >
             {high > 0 ? (
               <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-2">
                 <div className="flex-1 border-t border-dashed" />
@@ -374,7 +498,7 @@ export function ShiftList() {
                 </span>
               </div>
             ) : null}
-            {days.map((d) => {
+            {days.map((d, i) => {
               const selected = d.date === day;
               const value = valueOf(d);
               const pct = high > 0 ? (value / high) * 100 : 0;
@@ -384,7 +508,7 @@ export function ShiftList() {
                   key={d.date}
                   type="button"
                   aria-pressed={selected}
-                  aria-label={`${dateWords(d.date, { weekday: 'long' })}: ${words(d)}`}
+                  aria-label={`${barName(d)}: ${words(d)}`}
                   onClick={() => setDay(selected ? null : d.date)}
                   className="group flex flex-1 flex-col items-center gap-2 rounded-small pt-6 focus-ring"
                 >
@@ -405,7 +529,8 @@ export function ShiftList() {
                       selected || d.date === today ? 'text-foreground' : 'text-muted-foreground',
                     )}
                   >
-                    {dateWords(d.date, { weekday: 'short' })}
+                    {/* Many bars: a label on every fifth, so none run into each other. */}
+                    {days.length <= 14 || i % 5 === 0 ? d.tick : '\u00a0'}
                   </span>
                 </button>
               );
@@ -448,7 +573,11 @@ export function ShiftList() {
 
       <div className="space-y-3">
         <h2 className="text-title-small text-muted-foreground">
-          {picked ? `Shifts on ${dateWords(picked.date, { weekday: 'long' })}` : 'Shifts this week'}
+          {picked
+            ? byMonth
+              ? `Shifts in ${picked.name}`
+              : `Shifts on ${barName(picked)}`
+            : `Shifts ${custom ? 'in this period' : 'this week'}`}
         </h2>
         <FormError message={error} />
         {!data && !error ? (
@@ -458,7 +587,11 @@ export function ShiftList() {
           </div>
         ) : data && listed.length === 0 ? (
           <EmptyState>
-            {picked ? 'No shifts on this day.' : 'No shifts this week. Shifts start on the phone.'}
+            {picked
+              ? `No shifts ${byMonth ? 'in this month' : 'on this day'}.`
+              : custom
+                ? 'No shifts in this period.'
+                : 'No shifts this week. Shifts start on the phone.'}
           </EmptyState>
         ) : (
           <ul aria-label="Shifts" className="space-y-3">
