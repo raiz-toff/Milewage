@@ -122,7 +122,7 @@ describe('settings page', () => {
     expect(flag('replay')).toBe('Off');
     expect(flag('sync')).toBe('On');
     const mods = screen.getByRole('region', { name: 'Modules' });
-    expect(['csv', 'gpx', 'geojson'].every((f) => within(mods).getByText(f))).toBe(true);
+    expect(within(mods).getByText('csv')).toBeTruthy();
   });
 
   it('names countries, offers the regions in a drop-down and prompts for a region with its own rules', async () => {

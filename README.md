@@ -48,7 +48,7 @@ Three parts in one repository: the server and the web app in TypeScript, the pho
   country's from a date you choose.
 - Parking and tolls on a shift.
 - Exports for your accountant: a PDF mileage and expenses report, mileage log CSV per trip or per
-  shift, expenses CSV, tax summary, GPX and GeoJSON.
+  shift, expenses CSV and tax summary.
 - Nightly encrypted backups (age) and a recovery key shown once. Restore onto a fresh server. An
   upgrade takes a backup first. A failed migration is rolled back and the server stays up
   read-only on the old database version.

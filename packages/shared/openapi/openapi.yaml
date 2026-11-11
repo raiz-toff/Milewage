@@ -72,7 +72,7 @@ x-modules:
     default: true
     dependsOn: [core]
     operations: [exportData]
-    registry: { csv: [core], pdf: [core], gpx: [core, tracking], geojson: [core, tracking], expenses: [expenses], tax_summary: [tax] }
+    registry: { csv: [core], pdf: [core], expenses: [expenses], tax_summary: [tax] }
   backup:
     toggle: engine is not toggleable; backup.on_shift_end, backup.download
     default: true
@@ -1905,10 +1905,10 @@ paths:
     get:
       tags: [exports]
       operationId: exportData
-      summary: 'Download a file from a registered exporter (csv, pdf, gpx, geojson, expenses, tax_summary). A disabled or unknown format returns 404. pdf is the mileage and expenses report for an accountant: from/to (at most 366 days) or year (the calendar year, as the tax summary), default this year.'
+      summary: 'Download a file from a registered exporter (csv, pdf, expenses, tax_summary). A disabled or unknown format returns 404. pdf is the mileage and expenses report for an accountant: from/to (at most 366 days) or year (the calendar year, as the tax summary), default this year.'
       security: [{ sessionCookie: [] }]
       parameters:
-        - { name: format, in: path, required: true, schema: { enum: [csv, pdf, gpx, geojson, expenses, tax_summary] }, description: 'Only formats whose exporter is registered and enabled exist. expenses, tax_summary and pdf are reports over a period, not a selection of shifts: from/to are optional for them, year selects the tax year, format=json is for tax_summary only.' }
+        - { name: format, in: path, required: true, schema: { enum: [csv, pdf, expenses, tax_summary] }, description: 'Only formats whose exporter is registered and enabled exist. expenses, tax_summary and pdf are reports over a period, not a selection of shifts: from/to are optional for them, year selects the tax year, format=json is for tax_summary only.' }
         - { $ref: '#/components/parameters/From' }
         - { $ref: '#/components/parameters/To' }
         - { name: shift_id, in: query, schema: { type: integer }, description: Alternative to from/to. }
@@ -1926,8 +1926,6 @@ paths:
           content:
             text/csv: { schema: { type: string } }
             application/pdf: { schema: { type: string, contentMediaType: application/pdf } }
-            application/gpx+xml: { schema: { type: string } }
-            application/geo+json: { schema: { type: object } }
         '422': { $ref: '#/components/responses/Unprocessable' }
         '429': { $ref: '#/components/responses/RateLimited' }
 
@@ -2408,7 +2406,7 @@ components:
         diagnostics: { type: boolean, description: 'Diagnostics module registered (16). When false the phone behaves as level off and the web hides the Diagnostics screens.' }
         capture: { type: boolean, description: 'Capture module registered (16 section 8); false by default.' }
         backup_download: { type: boolean }
-        exporters: { type: array, items: { enum: [csv, pdf, gpx, geojson, expenses, tax_summary] } }
+        exporters: { type: array, items: { enum: [csv, pdf, expenses, tax_summary] } }
         countries: { type: array, items: { type: string, minLength: 2, maxLength: 2 } }
     Settings:
       type: object

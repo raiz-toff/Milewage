@@ -114,7 +114,7 @@ describe('route archive and raw-point retention (M6.6)', () => {
     expect((await web('GET', `/shifts/${SHIFT}/trips`)).json()).toEqual(trips);
   });
 
-  test('the route read, GPX and GeoJSON use the archive and say simplified', async () => {
+  test('the route read uses the archive', async () => {
     await setup();
     const rawRoute = (await web('GET', `/shifts/${SHIFT}/route`)).json();
     expect(rawRoute.source).toBe('raw');
@@ -127,17 +127,6 @@ describe('route archive and raw-point retention (M6.6)', () => {
     expect(route.lat_e7[0]).toBe(rawRoute.lat_e7[0]);
     expect(route.lon_e7.at(-1)).toBe(rawRoute.lon_e7.at(-1));
     expect(route.t[0]).toBe(Math.round(rawRoute.t[0] / 1000) * 1000);
-
-    const day = (await web('GET', `/shifts/${SHIFT}`)).json().local_date;
-    const gpx = (await web('GET', `/exports/gpx?from=${day}&to=${day}`)).body;
-    expect(gpx).toContain('[simplified]');
-    expect((gpx.match(/<trkpt /g) ?? []).length).toBe(route.t.length);
-    const geo = (await web('GET', `/exports/geojson?from=${day}&to=${day}`)).json();
-    const line = geo.features.find(
-      (f: { properties: { kind: string } }) => f.properties.kind === 'shift',
-    );
-    expect(line.properties.simplified).toBe(true);
-    expect(line.geometry.coordinates).toHaveLength(route.t.length);
   });
 
   test('an archived shift cannot be recomputed or relabelled; manual trips still count', async () => {

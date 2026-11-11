@@ -146,92 +146,18 @@ describe('csv (08 section 11)', () => {
   });
 });
 
-describe('gpx and geojson', () => {
-  beforeEach(async () => {
-    await setup();
-    await label({
-      platform: 'ubereats',
-      payout_cents: 850,
-      tip_cents: 200,
-      place: 'Pizza Place',
-      notes: 'door code 1234',
-    });
-  });
-
-  test('GPX 1.1: one track, every stored fix, no money, labels or places', async () => {
-    const res = await web(`/exports/gpx${range}`);
-    expect(res.headers['content-type']).toBe('application/gpx+xml');
-    const body = res.body;
-    expect(body.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true);
-    expect(body).toContain(
-      '<gpx version="1.1" creator="MileWage" xmlns="http://www.topografix.com/GPX/1/1">',
-    );
-    expect(body.match(/<trk>/g)).toHaveLength(1);
-    expect(body.match(/<trkpt /g)).toHaveLength(fixes.length);
-    expect(body).toContain(
-      `<time>${new Date(fixes[0]!.recordedAt).toISOString().replace('.000Z', 'Z')}</time>`,
-    );
-    for (const secret of ['ubereats', '850', 'Pizza', 'door code', 'payout', 'tip']) {
-      expect(body.toLowerCase()).not.toContain(secret.toLowerCase());
-    }
-    expect(body.trimEnd().endsWith('</gpx>')).toBe(true);
-  });
-
-  test('GeoJSON (RFC 7946): a LineString per shift in lon,lat order and a Point per stop, no labels', async () => {
-    const res = await web(`/exports/geojson${range}`);
-    expect(res.headers['content-type']).toBe('application/geo+json');
-    const doc = JSON.parse(res.body);
-    expect(doc.type).toBe('FeatureCollection');
-    const [line, ...stops] = doc.features;
-    expect(line.geometry.type).toBe('LineString');
-    expect(line.geometry.coordinates).toHaveLength(fixes.length);
-    expect(line.geometry.coordinates[0]).toEqual([fixes[0]!.lonE7 / 1e7, fixes[0]!.latE7 / 1e7]);
-    expect(line.properties).toMatchObject({
-      shift_id: 1,
-      total_m: engine().totals.totalM,
-      split_estimated: true,
-      simplified: false,
-    });
-    expect(stops).toHaveLength(1);
-    expect(stops[0].geometry.type).toBe('Point');
-    expect(stops[0].properties).toMatchObject({
-      kind: 'stop',
-      role: 'pickup',
-      confidence: expect.any(String),
-    });
-    const flat = res.body.toLowerCase();
-    for (const secret of [
-      'ubereats',
-      'pizza',
-      'door code',
-      'payout',
-      'tip_cents',
-      'platform',
-      'notes',
-    ]) {
-      expect(flat).not.toContain(secret);
-    }
-  });
-
-  test('with the stops setting off the stop points are left out', async () => {
-    await h.call('PATCH', '/settings', { stops_enabled: false }, { cookie });
-    const doc = JSON.parse(await text(`/exports/geojson${range}`));
-    expect(doc.features).toHaveLength(1);
-  });
-});
-
 describe('which formats exist', () => {
   test('GET /settings lists them; unknown and switched-off formats are 404', async () => {
-    await setup({}, { enabledExportFormats: () => ['csv', 'gpx'] });
-    expect((await web('/settings')).json().modules.exporters).toEqual(['csv', 'gpx']);
-    for (const f of ['pdf', 'geojson', 'xlsx']) {
+    await setup({}, { enabledExportFormats: () => ['csv', 'expenses'] });
+    expect((await web('/settings')).json().modules.exporters).toEqual(['csv', 'expenses']);
+    for (const f of ['pdf', 'gpx', 'xlsx']) {
       const res = await web(`/exports/${f}${range}`);
       expect([res.statusCode, res.json().code]).toEqual([404, 'not_found']);
     }
-    expect((await web(`/exports/gpx${range}`)).statusCode).toBe(200);
+    expect((await web(`/exports/expenses${range}`)).statusCode).toBe(200);
   });
 
-  test('tracking off: gpx and geojson are gone, csv stays', async () => {
+  test('tracking off: every format stays', async () => {
     await setup(TRACKING_OFF);
     expect((await web('/settings')).json().modules.exporters).toEqual([
       'csv',
@@ -239,8 +165,6 @@ describe('which formats exist', () => {
       'tax_summary',
       'pdf',
     ]);
-    expect((await web(`/exports/gpx${range}`)).statusCode).toBe(404);
-    expect((await web(`/exports/geojson${range}`)).statusCode).toBe(404);
     expect((await web(`/exports/csv${range}`)).statusCode).toBe(200);
   });
 
@@ -264,6 +188,6 @@ describe('which formats exist', () => {
     expect((await web('/settings')).json().modules.exporters).toEqual(['csv', 'txt']);
     const res = await web(`/exports/txt${range}`);
     expect([res.statusCode, res.body]).toEqual([200, 'shifts: 1\n']);
-    expect((await web(`/exports/gpx${range}`)).statusCode).toBe(404);
+    expect((await web(`/exports/pdf${range}`)).statusCode).toBe(404);
   });
 });

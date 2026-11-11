@@ -159,7 +159,7 @@ export const ALL_ON: Modules = {
   tax: true,
   maintenance: true,
   backup_download: false,
-  exporters: ['csv', 'gpx', 'geojson'],
+  exporters: ['csv'],
   countries: ['US', 'CA', 'GB'],
 };
 

@@ -323,8 +323,6 @@
             "enum": [
               "csv",
               "pdf",
-              "gpx",
-              "geojson",
               "expenses",
               "tax_summary"
             ]

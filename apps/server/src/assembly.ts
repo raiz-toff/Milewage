@@ -20,7 +20,6 @@ import { createMileageDeduction, type MileageDeduction } from './mileage-deducti
 import { createCaptureStore, stateOf } from './diagnostics/capture';
 import { openDiagnosticsStore, type DiagnosticsStore } from './diagnostics/store';
 import { csvExporter } from './exporters/csv';
-import { geojsonExporter, gpxExporter } from './exporters/geo';
 import { createExporterRegistry, type ExporterRegistry } from './exporters/registry';
 import { pdfExporter } from './exporters/pdf';
 import { expensesExporter, taxSummaryExporter } from './exporters/reports';
@@ -50,7 +49,7 @@ export interface ServerTuning {
   captureHousekeepingMs?: number;
   /** Passed to the restore service (forces a revert). */
   restoreVerify?: (db: Db) => void;
-  /** Exporters in place of csv, gpx, geojson, expenses, tax_summary and pdf. */
+  /** Exporters in place of csv, expenses, tax_summary and pdf. */
   exporters?: ExporterRegistry;
 }
 
@@ -175,14 +174,7 @@ export function assembleServer(input: ServerInput): App {
 
 /** The default exporters (08 sections 11 and 16.3); a new format registers here without other edits. */
 export const serverExporters = () =>
-  createExporterRegistry([
-    csvExporter,
-    gpxExporter,
-    geojsonExporter,
-    expensesExporter,
-    taxSummaryExporter,
-    pdfExporter,
-  ]);
+  createExporterRegistry([csvExporter, expensesExporter, taxSummaryExporter, pdfExporter]);
 
 /** Builds the backup service for a connection; the time zone is the owner's, UTC before setup. */
 export function buildBackupService(o: {

@@ -36,16 +36,6 @@ export interface ExportContext {
     trips(shiftId: number): TripRow[];
     stops(shiftId: number): StopRow[];
     labels(shiftId: number): StopLabelRow[];
-    /** Points of a shift in time order: the raw ones, or the vertices of its route archive. */
-    points(shiftId: number): Iterable<{
-      t: number;
-      latE7: number;
-      lonE7: number;
-      speedDmps: number | null;
-      altitudeM: number | null;
-    }>;
-    /** True when the raw points were replaced by the simplified route archive (07 section 4.2). */
-    simplified(shiftId: number): boolean;
     /** The shift's mileage deduction and the rate that valued it (the country's or yours). */
     deduction(shift: ShiftRow): ValuedShift;
     /** The shift's effective earnings per platform (labels and typed totals); empty when none. */
@@ -56,7 +46,7 @@ export interface ExportContext {
 }
 
 export interface Exporter {
-  /** `csv`, `gpx`, ...: the `{format}` of `GET /exports/{format}`. */
+  /** `csv`, `pdf`, ...: the `{format}` of `GET /exports/{format}`. */
   format: string;
   contentType: string;
   extension: string;

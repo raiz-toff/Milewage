@@ -1218,7 +1218,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Download a file from a registered exporter (csv, pdf, gpx, geojson, expenses, tax_summary). A disabled or unknown format returns 404. pdf is the mileage and expenses report for an accountant: from/to (at most 366 days) or year (the calendar year, as the tax summary), default this year. */
+        /** Download a file from a registered exporter (csv, pdf, expenses, tax_summary). A disabled or unknown format returns 404. pdf is the mileage and expenses report for an accountant: from/to (at most 366 days) or year (the calendar year, as the tax summary), default this year. */
         get: operations["exportData"];
         put?: never;
         post?: never;
@@ -1585,7 +1585,7 @@ export interface components {
             /** @description Capture module registered (16 section 8); false by default. */
             capture: boolean;
             backup_download: boolean;
-            exporters: ("csv" | "pdf" | "gpx" | "geojson" | "expenses" | "tax_summary")[];
+            exporters: ("csv" | "pdf" | "expenses" | "tax_summary")[];
             countries: string[];
         };
         Settings: {
@@ -5484,7 +5484,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Only formats whose exporter is registered and enabled exist. expenses, tax_summary and pdf are reports over a period, not a selection of shifts: from/to are optional for them, year selects the tax year, format=json is for tax_summary only. */
-                format: "csv" | "pdf" | "gpx" | "geojson" | "expenses" | "tax_summary";
+                format: "csv" | "pdf" | "expenses" | "tax_summary";
             };
             cookie?: never;
         };
@@ -5499,8 +5499,6 @@ export interface operations {
                 content: {
                     "text/csv": string;
                     "application/pdf": string;
-                    "application/gpx+xml": string;
-                    "application/geo+json": Record<string, never>;
                 };
             };
             422: components["responses"]["Unprocessable"];

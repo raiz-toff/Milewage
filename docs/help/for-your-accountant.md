@@ -16,7 +16,6 @@ Open the Exports page in the web app. Pick a period, then download:
 - **Mileage log (CSV).** One row per trip, or one row per shift. It opens in any spreadsheet. The shift file has the date, times, vehicle, platform, active, deadhead and total distance, the deduction value, which rate gave it (country rate or your rate) and your notes. It also has your odometer readings and a check against the GPS total. The active and deadhead columns are estimates, and a column says so.
 - **Expenses (CSV).** Your expenses for the period, with the category and the deductible part.
 - **Tax summary.** The numbers behind the year's tax estimate, with the working shown.
-- **GPX and GeoJSON.** Your routes, for map programs and for anyone who wants to look at them on a map. They never contain money, labels or customer details.
 
 ## The PDF report
 

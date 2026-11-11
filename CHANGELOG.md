@@ -208,7 +208,7 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   `MILEWAGE_MODULE_NOTIFICATIONS` in the environment is ignored.
 - Places (named places that labelled the stops inside them): the Places page, the `/places`
   operations, "Save as a place" and the Saved place column under Label stops, and a stop's
-  `place` in the API and the GeoJSON export. Upgrading turns every label a place gave into your
+  `place` in the API. Upgrading turns every label a place gave into your
   own label on that stop, with the place's name as its place, so recorded shifts keep their labels
   and their active and deadhead split; then it deletes the `places` table. Because those stops
   now carry labels, the per-shift mileage log CSV can count their dropoffs as orders.
@@ -229,6 +229,11 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   `modules.import` flag. It had no tables: shifts, trips, expenses and earnings an import wrote
   stay, and the exports still mark those shifts as imported. A `modules.import` left in
   `settings.json` or `MILEWAGE_MODULE_IMPORT` in the environment is ignored.
+- The GPX and GeoJSON exports: the route files on the Exports page and on a shift's page, and
+  `gpx` and `geojson` in `GET /exports/{format}` and `modules.exporters`. The PDF report and the
+  mileage log, expenses and tax summary files stay. An `export_gpx` or `export_geojson` left in
+  `settings.json`, or `MILEWAGE_MODULE_EXPORT_GPX` or `MILEWAGE_MODULE_EXPORT_GEOJSON` in the
+  environment, is ignored.
 
 ### Fixed
 

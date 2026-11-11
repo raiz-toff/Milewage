@@ -24,7 +24,7 @@ object ContractFixtures {
            "tax":true,"receipts":true,"expenses":true,"earnings":true,
            "platforms":true,"devices":true,"tracking":true,"replay":true,"stops":true,"sync":true,
            "diagnostics":true,"capture":true,"backup_download":true,"local_export":false,
-           "exporters":["csv","pdf","gpx"],"countries":["CA","US"]}}
+           "exporters":["csv","pdf"],"countries":["CA","US"]}}
     """.trimIndent()
 
     val SHIFT = """

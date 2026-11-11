@@ -335,7 +335,7 @@ A file made from a period of the driver's data, for an accountant or a map progr
 _Avoid_: report, download, dump
 
 **Export format**:
-One kind of export: mileage log, expenses, tax summary, mileage and expenses report, GPX or GeoJSON. Each can be switched off.
+One kind of export: mileage log, expenses, tax summary, or mileage and expenses report. Each can be switched off.
 _Avoid_: exporter
 
 **Mileage log**:

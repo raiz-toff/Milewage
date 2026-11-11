@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import { IconTile } from '../ui/visuals';
-import { MapIcon, PdfIcon, RouteIcon, TableIcon } from '@/ui/icons';
+import { PdfIcon, TableIcon } from '@/ui/icons';
 import type { IconComponent } from '@/ui/icons';
 import { DownloadIcon } from '@/ui/icons';
 import { Button as UiButton } from '@/components/ui/button';
@@ -21,8 +21,6 @@ const DAY = 86_400_000;
 const LABEL: Record<Format, string> = {
   csv: 'CSV',
   pdf: 'PDF',
-  gpx: 'GPX',
-  geojson: 'GeoJSON',
   expenses: 'Expenses CSV',
   tax_summary: 'Tax summary',
 };
@@ -135,25 +133,19 @@ const NAME: Record<Format, string> = {
   pdf: 'Mileage and expenses report',
   expenses: 'Expenses',
   tax_summary: 'Tax summary',
-  gpx: 'GPX',
-  geojson: 'GeoJSON',
 };
-/** Each file's picture and colour: spreadsheets, the printed report, routes. */
+/** Each file's picture and colour: spreadsheets and the printed report. */
 const PICTURE: Record<Format, [IconComponent, number]> = {
   csv: [TableIcon, 0],
   pdf: [PdfIcon, 3],
   expenses: [TableIcon, 0],
   tax_summary: [TableIcon, 0],
-  gpx: [RouteIcon, 1],
-  geojson: [MapIcon, 1],
 };
 const HINT: Record<Format, string> = {
   csv: 'Your trips or shifts in the period, as a spreadsheet (CSV).',
   pdf: 'A summary, the rates used, the mileage log and your expenses, ready to print (PDF).',
   expenses: 'Your expenses in the period, as a spreadsheet (CSV). No receipt files.',
   tax_summary: 'The estimate for {year} with its working (CSV): an estimate, not tax advice.',
-  gpx: 'The recorded routes, for map and GPS apps. No money, labels or notes.',
-  geojson: 'Routes and detected stops, for mapping tools. No money, labels or notes.',
 };
 const GROUPS: { title: string; description?: string; formats: Format[] }[] = [
   {
@@ -161,7 +153,6 @@ const GROUPS: { title: string; description?: string; formats: Format[] }[] = [
     description: 'MileWage makes no claim that a file meets a tax office’s record-keeping rules.',
     formats: ['csv', 'expenses', 'tax_summary', 'pdf'],
   },
-  { title: 'Routes for map apps', formats: ['gpx', 'geojson'] },
 ];
 
 /** Ready-made periods, each within the 366-day limit; "Custom" shows the two date pickers. */

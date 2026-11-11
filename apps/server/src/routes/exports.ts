@@ -4,7 +4,6 @@ import type { Authenticator } from '../auth/authenticator';
 import {
   createProcessingRepository,
   createShiftRepository,
-  createArchiveRepository,
   createVehicleRepository,
   createEarningsRepository,
   type Db,
@@ -142,10 +141,6 @@ export function exportsRoutes({
           .list(userId, true)
           .map((v) => [v.id, v]),
       );
-      const archive = createArchiveRepository(db);
-      const points = db.prepare(
-        'SELECT recorded_at AS t, lat_e7 AS latE7, lon_e7 AS lonE7, speed_dmps AS speedDmps, altitude_m AS altitudeM FROM telemetry_points WHERE shift_id = ? ORDER BY recorded_at, seq',
-      );
       // Every selected shift's deduction in one go, on first use (only the CSV asks).
       let deductions: Map<number, ValuedShift> | undefined;
       const deductionOf = (s: ShiftRow) => {
@@ -176,31 +171,6 @@ export function exportsRoutes({
           trips: processing.tripsOf,
           stops: processing.stopsOf,
           labels: processing.labelsOf,
-          // A shift at a time, not a live cursor: other requests share the one connection.
-          points: (id) => {
-            const raw = points.all(id) as {
-              t: number;
-              latE7: number;
-              lonE7: number;
-              speedDmps: number | null;
-              altitudeM: number | null;
-            }[];
-            if (raw.length > 0) return raw;
-            const a = archive.archiveOf(id);
-            if (!a) return raw;
-            const g = JSON.parse(a.geometry) as {
-              coordinates: [number, number][];
-              properties: { times: number[] };
-            };
-            return g.coordinates.map((c, i) => ({
-              t: g.properties.times[i]! * 1000,
-              latE7: Math.round(c[1] * 1e7),
-              lonE7: Math.round(c[0] * 1e7),
-              speedDmps: null,
-              altitudeM: null,
-            }));
-          },
-          simplified: (id) => archive.hasArchive(id),
           deduction: deductionOf,
           earnings: (s) =>
             earnings

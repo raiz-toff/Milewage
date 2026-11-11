@@ -61,8 +61,6 @@ function open(
       }),
       'GET /shifts/1': () => ({ body: shift() }),
       'GET /exports/csv': file,
-      'GET /exports/gpx': file,
-      'GET /exports/geojson': file,
       ...extra,
     },
     url,
@@ -75,19 +73,14 @@ describe('exports screen', () => {
     const accountant = within(await screen.findByRole('region', { name: 'For your accountant' }));
     expect(accountant.getByRole('button', { name: 'Download Mileage log' })).toBeTruthy();
     expect(accountant.getByLabelText('CSV rows')).toBeTruthy();
-    const routes = within(screen.getByRole('region', { name: 'Routes for map apps' }));
-    expect(routes.getByRole('button', { name: 'Download GPX' })).toBeTruthy();
-    expect(routes.getByRole('button', { name: 'Download GeoJSON' })).toBeTruthy();
-    expect(routes.queryByLabelText('CSV rows')).toBeNull();
     expect(screen.queryByRole('button', { name: /Mileage report|PDF/ })).toBeNull();
-    expect(routes.getAllByText(/No money, labels or notes/).length).toBe(2);
     expect(screen.queryByRole('heading', { name: 'Formats' })).toBeNull();
   });
 
   it('a preset period by default; the date pickers only for Custom', async () => {
     const seen: string[] = [];
     open(
-      { exporters: ['csv', 'gpx', 'geojson', 'tax_summary'] },
+      { exporters: ['csv', 'tax_summary'] },
       {
         'GET /exports/csv': ({ url }) => (seen.push(url.search), file({ body: undefined, url })),
       },
@@ -170,18 +163,18 @@ describe('exports screen', () => {
     expect([q.get('from'), q.get('to')]).toEqual(['2026-02-20', '2026-02-27']);
   });
 
-  it('GPX gets no level parameter', async () => {
+  it('the expenses CSV gets no level parameter', async () => {
     const seen: string[] = [];
     open(
-      {},
+      { exporters: ['csv', 'expenses'] },
       {
-        'GET /exports/gpx': ({ url }) => {
+        'GET /exports/expenses': ({ url }) => {
           seen.push(url.search);
           return file({ body: undefined, url });
         },
       },
     );
-    fireEvent.click(await screen.findByRole('button', { name: 'Download GPX' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Download Expenses' }));
     await waitFor(() => expect(seen.length).toBe(1));
     expect(seen[0]).not.toContain('level');
   });
@@ -196,7 +189,7 @@ describe('exports screen', () => {
     fireEvent.click(download);
     pickDate('From', '2026-03-16');
     expect(screen.getByRole('alert').textContent).toContain('must not be after');
-    fireEvent.click(screen.getByRole('button', { name: 'Download GPX' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Download Mileage log' }));
     expect(calls.some((c) => c.path.startsWith('/exports'))).toBe(false);
   });
 
@@ -222,7 +215,7 @@ describe('exports screen', () => {
     open(
       {},
       {
-        'GET /exports/gpx': ({ url }) => {
+        'GET /exports/csv': ({ url }) => {
           seen.push(url.search);
           return file({ body: undefined, url });
         },
@@ -230,7 +223,7 @@ describe('exports screen', () => {
       '/shifts/1',
     );
     const region = within(await screen.findByRole('region', { name: 'Export' }));
-    fireEvent.click(region.getByRole('button', { name: 'Download GPX' }));
+    fireEvent.click(region.getByRole('button', { name: 'Download CSV' }));
     await waitFor(() => expect(saved.length).toBe(1));
     expect(seen[0]).toBe('?shift_id=1');
   });
@@ -297,11 +290,11 @@ describe('exporters module off', () => {
     expect(screen.queryByRole('heading', { name: 'Exports' })).toBeNull();
   });
 
-  it('only the registered formats get buttons (gpx alone)', async () => {
-    open({ exporters: ['gpx'] });
-    await screen.findByRole('button', { name: 'Download GPX' });
+  it('only the registered formats get buttons (expenses alone)', async () => {
+    open({ exporters: ['expenses'] });
+    await screen.findByRole('button', { name: 'Download Expenses' });
     expect(screen.queryByRole('button', { name: 'Download Mileage log' })).toBeNull();
     expect(screen.queryByLabelText('CSV rows')).toBeNull();
-    expect(screen.queryByRole('region', { name: 'For your accountant' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Download Tax summary' })).toBeNull();
   });
 });
