@@ -234,6 +234,12 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   (`notifications`, `notification_prefs`) in migration `zz_removed/0001`, which runs after every
   module's own migrations; a `modules.notifications` left in `settings.json` or
   `MILEWAGE_MODULE_NOTIFICATIONS` in the environment is ignored.
+- Places (named places that labelled the stops inside them): the Places page, the `/places`
+  operations, "Save as a place" and the Saved place column under Label stops, and a stop's
+  `place` in the API and the GeoJSON export. Upgrading turns every label a place gave into your
+  own label on that stop, with the place's name as its place, so recorded shifts keep their labels
+  and their active and deadhead split; then it deletes the `places` table. Because those stops
+  now carry labels, the per-shift mileage log CSV can count their dropoffs as orders.
 
 ### Fixed
 

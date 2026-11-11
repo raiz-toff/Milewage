@@ -28,10 +28,6 @@ On a shift page in the web app, you can mark a stop as a pickup or a dropoff. Yo
 
 Labelling is optional and only done on the web. Nothing here is needed for your total miles.
 
-## Places label stops for you
-
-If you stop at the same restaurant or depot again and again, save it as a place. A stop inside a place is then labelled with the place's label, unless you labelled it yourself, and shows the place's name. See [Places](places.md).
-
 ## Turning stops off
 
-In Settings there is a switch, "Detect stops and estimate active vs deadhead". When it is off, MileWage does not look for stops. Each shift is one trip, with a total and no split, and places label nothing. The setting applies to shifts you start afterwards. Shifts already stored keep their stops and labels.
+In Settings there is a switch, "Detect stops and estimate active vs deadhead". When it is off, MileWage does not look for stops. Each shift is one trip, with a total and no split. The setting applies to shifts you start afterwards. Shifts already stored keep their stops and labels.

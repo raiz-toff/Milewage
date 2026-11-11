@@ -309,6 +309,98 @@ describe('migration runner', () => {
     expect(createUserRepository(db).findByUsername('sam')?.id).toBe(userId);
     expect(migrate(db, real)).toEqual([]);
   });
+
+  test('a 0.2.0 database turns place labels into the driver own labels, then loses places', () => {
+    const db = open();
+    const drop = 'stops/0003_drop_places';
+    migrate(
+      db,
+      real.filter((m) => `${m.module}/${m.id}` !== drop),
+    );
+    const userId = createUserRepository(db).create({
+      username: 'sam',
+      passwordHash: 'x',
+      createdAt: 1,
+    }).id;
+    db.exec(`
+      INSERT INTO vehicles (id, user_id, name, kind, created_at) VALUES (7, ${userId}, 'Civic', 'car', 1);
+      INSERT INTO shifts (id, user_id, client_id, vehicle_id, status, started_at, local_date, segmenter, updated_at, calculated_at) VALUES
+        (1, ${userId}, 'a', 7, 'ended', 1, '2027-01-11', 'stops', 1, 500),
+        (2, ${userId}, 'b', 7, 'finalized', 1, '2027-01-12', 'stops', 1, 600);
+      INSERT INTO places (id, user_id, name, lat_e7, lon_e7, radius_m, role, created_at, updated_at) VALUES
+        (1, ${userId}, 'Pizza Place', 0, 0, 100, 'dropoff', 1, 1),
+        (2, ${userId}, 'Depot', 0, 0, 100, 'pickup', 1, 900);
+      INSERT INTO stops (user_id, shift_id, stop_key, started_at, ended_at, dwell_s, lat_e7, lon_e7, confidence, est_role, role, place_id) VALUES
+        (${userId}, 1, 'by-place', 1, 2, 300, 0, 0, 'high', 'pickup', 'dropoff', 1),
+        (${userId}, 1, 'by-hand', 3, 4, 300, 0, 0, 'high', 'pickup', 'other', 1),
+        (${userId}, 1, 'by-hand-named', 5, 6, 300, 0, 0, 'high', 'pickup', 'pickup', 1),
+        (${userId}, 1, 'nowhere', 7, 8, 300, 0, 0, 'high', 'pickup', 'pickup', NULL),
+        (${userId}, 2, 'place-changed-since', 1, 2, 300, 0, 0, 'high', 'none', 'dropoff', 2);
+      INSERT INTO stop_labels (user_id, shift_id, stop_key, role, platform, place, edited_at) VALUES
+        (${userId}, 1, 'by-hand', 'other', 'ubereats', NULL, 50),
+        (${userId}, 1, 'by-hand-named', 'pickup', NULL, 'Back door', 60);
+    `);
+    expect(migrate(db, real)).toEqual([drop]);
+    expect(tables(db)).not.toContain('places');
+    expect(db.prepare("SELECT name FROM pragma_table_info('stops')").pluck().all()).not.toContain(
+      'place_id',
+    );
+    expect(
+      db
+        .prepare(
+          'SELECT shift_id, stop_key, role, platform, place, payout_cents, tip_cents, notes, edited_at FROM stop_labels ORDER BY shift_id, stop_key',
+        )
+        .all(),
+    ).toEqual([
+      // A hand label already won; it keeps its role and gets the name it was shown with.
+      {
+        shift_id: 1,
+        stop_key: 'by-hand',
+        role: 'other',
+        platform: 'ubereats',
+        place: 'Pizza Place',
+        payout_cents: 0,
+        tip_cents: 0,
+        notes: null,
+        edited_at: 50,
+      },
+      {
+        shift_id: 1,
+        stop_key: 'by-hand-named',
+        role: 'pickup',
+        platform: null,
+        place: 'Back door',
+        payout_cents: 0,
+        tip_cents: 0,
+        notes: null,
+        edited_at: 60,
+      },
+      // A place label: the role the stop took in the last run, dated by that run.
+      {
+        shift_id: 1,
+        stop_key: 'by-place',
+        role: 'dropoff',
+        platform: null,
+        place: 'Pizza Place',
+        payout_cents: 0,
+        tip_cents: 0,
+        notes: null,
+        edited_at: 500,
+      },
+      // A finalized shift keeps what its run used, even when the place was changed later.
+      {
+        shift_id: 2,
+        stop_key: 'place-changed-since',
+        role: 'dropoff',
+        platform: null,
+        place: 'Depot',
+        payout_cents: 0,
+        tip_cents: 0,
+        notes: null,
+        edited_at: 600,
+      },
+    ]);
+  });
 });
 
 describe('user repository', () => {

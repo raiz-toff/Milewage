@@ -69,7 +69,7 @@ x-modules:
     toggle: settings.stops_enabled   # the one runtime toggle: a driver-facing setting, not a restart-time config switch (section 16.1)
     default: true
     dependsOn: [core, tracking]
-    operations: [listShiftStops, putStopLabel, deleteStopLabel, listPlaces, createPlace, updatePlace, deletePlace]
+    operations: [listShiftStops, putStopLabel, deleteStopLabel]
   exporters:
     toggle: modules.export_<format>
     default: true
@@ -1232,71 +1232,6 @@ paths:
               schema: { $ref: '#/components/schemas/StopLabelResult' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
-
-  /places:
-    get:
-      tags: [stops]
-      operationId: listPlaces
-      summary: 'Your named places, oldest first (ADR 0008). A detected stop inside a place shows its name and, unless you labelled the stop by hand, takes its label. Web session only; 404 while the stops setting is off.'
-      security: [{ sessionCookie: [] }]
-      responses:
-        '200':
-          description: The places.
-          content:
-            application/json:
-              schema: { type: array, items: { $ref: '#/components/schemas/Place' } }
-        '404': { $ref: '#/components/responses/NotFound' }
-    post:
-      tags: [stops]
-      operationId: createPlace
-      summary: 'Save a place. Every ended (not finalized) shift with a stop inside it is worked out again, as a stop label does; finalized shifts and shifts whose raw points were archived keep their figures.'
-      security: [{ sessionCookie: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/PlaceCreate' }
-      responses:
-        '201':
-          description: Saved, with how many shifts were worked out again and how many kept their figures.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/PlaceChangeResult' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-  /places/{id}:
-    parameters:
-      - { name: id, in: path, required: true, schema: { type: integer } }
-    patch:
-      tags: [stops]
-      operationId: updatePlace
-      summary: Rename, move, resize or change the label of a place. Shifts with a stop inside the old or the new circle are worked out again.
-      security: [{ sessionCookie: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/PlacePatch' }
-      responses:
-        '200':
-          description: Updated.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/PlaceChangeResult' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-    delete:
-      tags: [stops]
-      operationId: deletePlace
-      summary: Delete a place. Shifts with a stop inside it are worked out again without it; place is null in the answer.
-      security: [{ sessionCookie: [] }]
-      responses:
-        '200':
-          description: Deleted.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/PlaceChangeResult' }
-        '404': { $ref: '#/components/responses/NotFound' }
 
   /telemetry/batch:
     post:
@@ -3546,7 +3481,7 @@ components:
             shift_id: { type: integer }
     Stop:
       type: object
-      required: [stop_key, shift_id, started_at, ended_at, dwell_s, lat_e7, lon_e7, confidence, est_role, role, label, place]
+      required: [stop_key, shift_id, started_at, ended_at, dwell_s, lat_e7, lon_e7, confidence, est_role, role, label]
       description: A derived stop (14 section 6). Never written by a client.
       properties:
         stop_key: { type: string }
@@ -3560,56 +3495,6 @@ components:
         est_role: { enum: [pickup, dropoff, none], description: The engine's estimate; none = recorded but does not change the estimate. }
         role: { enum: [pickup, dropoff, other, none], description: The role used, the driver's label if any else est_role. }
         label: { oneOf: [{ $ref: '#/components/schemas/StopLabel' }, { type: 'null' }] }
-        place:
-          oneOf: [{ $ref: '#/components/schemas/StopPlace' }, { type: 'null' }]
-          description: 'The named place the stop was inside when its shift was last worked out (ADR 0008), with its current name; null when none. Its role is the label the stop took unless label is set (a hand label always wins).'
-    StopPlace:
-      type: object
-      required: [id, name, role]
-      properties:
-        id: { type: integer }
-        name: { type: string }
-        role: { $ref: '#/components/schemas/StopRole' }
-    Place:
-      type: object
-      required: [id, name, lat_e7, lon_e7, radius_m, role, created_at, updated_at]
-      description: 'A named place (ADR 0008): a stop whose position is within radius_m of the centre is inside it; when places overlap the nearest centre wins, an exact tie the older place.'
-      properties:
-        id: { type: integer }
-        name: { type: string, minLength: 1, maxLength: 120 }
-        lat_e7: { type: integer, minimum: -900000000, maximum: 900000000 }
-        lon_e7: { type: integer, minimum: -1800000000, maximum: 1800000000 }
-        radius_m: { type: integer, minimum: 25, maximum: 1000 }
-        role: { $ref: '#/components/schemas/StopRole' }
-        created_at: { $ref: '#/components/schemas/EpochMs' }
-        updated_at: { $ref: '#/components/schemas/EpochMs' }
-    PlaceCreate:
-      type: object
-      additionalProperties: false
-      required: [name, lat_e7, lon_e7, role]
-      properties:
-        name: { type: string, minLength: 1, maxLength: 120 }
-        lat_e7: { type: integer, minimum: -900000000, maximum: 900000000 }
-        lon_e7: { type: integer, minimum: -1800000000, maximum: 1800000000 }
-        radius_m: { type: integer, minimum: 25, maximum: 1000, default: 100 }
-        role: { $ref: '#/components/schemas/StopRole' }
-    PlacePatch:
-      type: object
-      additionalProperties: false
-      minProperties: 1
-      properties:
-        name: { type: string, minLength: 1, maxLength: 120 }
-        lat_e7: { type: integer, minimum: -900000000, maximum: 900000000 }
-        lon_e7: { type: integer, minimum: -1800000000, maximum: 1800000000 }
-        radius_m: { type: integer, minimum: 25, maximum: 1000 }
-        role: { $ref: '#/components/schemas/StopRole' }
-    PlaceChangeResult:
-      type: object
-      required: [place, shifts_recalculated, shifts_kept]
-      properties:
-        place: { oneOf: [{ $ref: '#/components/schemas/Place' }, { type: 'null' }], description: Null after a delete. }
-        shifts_recalculated: { type: integer, minimum: 0, description: Ended shifts with a stop inside the old or new circle, worked out again. }
-        shifts_kept: { type: integer, minimum: 0, description: Such shifts that keep their figures - finalized, or their raw points archived. }
     StopLabelResult:
       type: object
       required: [stop, shift]

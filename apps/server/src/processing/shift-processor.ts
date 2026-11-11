@@ -2,16 +2,13 @@ import { performance } from 'node:perf_hooks';
 import { processShift, type ShiftInput, type ShiftResult } from '@milewage/track-engine';
 import {
   createArchiveRepository,
-  createPlaceRepository,
   createProcessingRepository,
   type Db,
-  type PlaceRow,
   type ShiftPatch,
   type ShiftRow,
 } from '../db';
 import { ProblemError } from '../errors';
 import type { EventEmit } from '../events';
-import { withPlaces, type PlacedInput } from './places';
 import { reconcile, reconFromStored, type PhoneSummary, type Recon } from './recon';
 
 /** Flags a driver should look at; the rest are information (14 section 8). */
@@ -41,21 +38,16 @@ export function addTrip(
 
 type ProcessingRepo = ReturnType<typeof createProcessingRepository>;
 
-/**
- * What the engine reads for a shift: its stored points, segmenter, interruptions, labels and
- * overrides. With labels, the driver's places are resolved to labels too (ADR 0008): a hand label
- * always wins over a place.
- */
-export function placedShiftInput(
+/** What the engine reads for a shift: its stored points, segmenter, interruptions, labels and overrides. */
+export function buildShiftInput(
   repo: ProcessingRepo,
   shift: ShiftRow,
   withLabels: boolean,
-  places: readonly PlaceRow[] = [],
-): PlacedInput {
+): ShiftInput {
   const interruptions = shift.interruptionsJson
     ? (JSON.parse(shift.interruptionsJson) as { from_ms: number; to_ms: number }[])
     : [];
-  const input: ShiftInput = {
+  return {
     shiftClientId: shift.clientId,
     startedAt: shift.startedAt,
     endedAt: shift.endedAt ?? shift.startedAt,
@@ -69,17 +61,6 @@ export function placedShiftInput(
       .overridesOf(shift.id)
       .map((o) => ({ tripKey: o.tripKey, kind: o.kind, purpose: o.purpose })),
   };
-  return withLabels ? withPlaces(input, places) : { input, placeOf: new Map(), placeLabels: 0 };
-}
-
-/** The engine's input alone (see `placedShiftInput`). */
-export function buildShiftInput(
-  repo: ProcessingRepo,
-  shift: ShiftRow,
-  withLabels: boolean,
-  places: readonly PlaceRow[] = [],
-): ShiftInput {
-  return placedShiftInput(repo, shift, withLabels, places).input;
 }
 
 export interface PhoneReport {
@@ -120,7 +101,6 @@ export type ShiftProcessor = ReturnType<typeof createShiftProcessor>;
 export function createShiftProcessor({ db, now, stopsModule, emit }: ShiftProcessorOptions) {
   const repo = createProcessingRepository(db);
   const archive = createArchiveRepository(db);
-  const placeRepo = createPlaceRepository(db);
   /** The engine needs the raw points; once they are archived the stored totals and trips are all there is. */
   const assertRecomputable = (shift: ShiftRow) => {
     if (archive.hasArchive(shift.id))
@@ -130,11 +110,7 @@ export function createShiftProcessor({ db, now, stopsModule, emit }: ShiftProces
       );
   };
 
-  /** Labels and places are read only while the `stops` module is on, as before places existed. */
-  const inputOf = (shift: ShiftRow): PlacedInput => {
-    const on = stopsModule();
-    return placedShiftInput(repo, shift, on, on ? placeRepo.list(shift.userId) : []);
-  };
+  const inputOf = (shift: ShiftRow): ShiftInput => buildShiftInput(repo, shift, stopsModule());
 
   /** Facts for the bus (08 section 16.4); a listener's failure never reaches the shift request. */
   const announce = (
@@ -195,8 +171,7 @@ export function createShiftProcessor({ db, now, stopsModule, emit }: ShiftProces
     run(shift: ShiftRow, phone: PhoneReport = {}, extra: ShiftPatch = {}): ProcessOutcome {
       assertRecomputable(shift);
       const started = performance.now();
-      const placed = inputOf(shift);
-      const result = processShift(placed.input);
+      const result = processShift(inputOf(shift));
       const ms = Math.round(performance.now() - started);
       const t = now();
       // Manual trips (distance typed in) are kept by the write below and count in the totals (07 section 3).
@@ -206,11 +181,10 @@ export function createShiftProcessor({ db, now, stopsModule, emit }: ShiftProces
       const overrides = repo.overridesOf(shift.id);
       const editedAt = new Map(overrides.map((o) => [o.tripKey, o.editedAt]));
       // Anything the web (or a manual trip) added after the phone's own run explains a different total.
-      // A label from a place is recorded exactly as a hand label is (ADR 0008).
       const editedOnWeb =
         manual.length > 0 ||
         overrides.some((o) => o.deviceId === null) ||
-        (stopsModule() && (repo.labelsOf(shift.id).length > 0 || placed.placeLabels > 0));
+        (stopsModule() && repo.labelsOf(shift.id).length > 0);
       const stored =
         shift.phoneTotalM !== null && shift.phoneCalcVersion !== null && shift.inputDigest !== null
           ? {
@@ -304,7 +278,6 @@ export function createShiftProcessor({ db, now, stopsModule, emit }: ShiftProces
               confidence: s.confidence,
               estRole: s.estRole,
               role: s.role,
-              placeId: placed.placeOf.get(s.stopKey) ?? null,
             }))
           : undefined,
       });

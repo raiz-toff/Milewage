@@ -59,8 +59,8 @@ No neutral role carries any yellow (a test holds chroma under 0.02). The roles a
 | `tertiary` (teal), `signal` (extended) | Unused. Do not spend them on decoration                                                                          |
 
 **Where the yellow appears, the complete list:** the logo; the one main action per screen
-(`<Button>` default, Android's `BrandButton` / extended FAB); the route (and place circles and
-markers) on a map, and on Android the lane line of the shift's route sketch (on an asphalt ribbon);
+(`<Button>` default, Android's `BrandButton` / extended FAB); the route on a map, and on Android
+the lane line of the shift's route sketch (on an asphalt ribbon);
 a short lane dash at the leading edge of the current destination in the navigation drawer and
 rail, and on Android above the selected item of the bottom navigation bar; on Android the QR
 scanner's viewfinder corners (the scan screen's one target, on the camera image). Android's

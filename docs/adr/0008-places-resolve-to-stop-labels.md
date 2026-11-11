@@ -1,5 +1,7 @@
 # Named places become stop labels on the server, before the engine runs; a hand label always wins
 
+Places was removed on 2026-11-11 and stop labels are now only the driver's own: stops migration 0003 wrote each label a place had given as the driver's own label on that stop (the role the stop took in its shift's last run, with the place's name as the label's place), put the place's name into a hand label on such a stop that had no place, then dropped `places` and `stops.place_id`, so recorded shifts keep their labels and their active and deadhead split.
+
 Drivers stop at the same restaurants, depots and homes again and again, and labelling each stop by hand on the web does not scale (2026-11-10). A **place** is a name, a centre (degrees x 1e7), a radius of 25 to 1000 m (100 m by default) and one of the existing label roles (pickup, dropoff, other). We decided that places are resolved to the engine's existing `stopLabels` input on the server only, just before each engine run, and that the engine is not changed: the server finds the shift's stops with the engine's own stages 1, 2 and 5 (`normalize`, `qualify`, `detectStops`, which read no label), matches each stop to a place, adds a label for every matched stop that has no hand label, and runs `processShift` with the result. Every rule is deterministic:
 
 - A stop is inside a place when the engine's integer `haversineDm` from the centre to the stop's anchor is at most `radius_m * 10` (the edge counts).

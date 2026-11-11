@@ -1,10 +1,8 @@
 import type { ServerRouteHost } from '../app';
 import type { Authenticator } from '../auth/authenticator';
 import {
-  createPlaceRepository,
   createProcessingRepository,
   type Db,
-  type PlaceRow,
   type ShiftRow,
   type StopLabelRow,
   type StopRow,
@@ -32,22 +30,10 @@ const labelBody = strictObject(
 );
 
 const labelView = (l: StopLabelRow) => snakeKeys(l, 'userId');
-/**
- * The `Stop` object. `place` is the named place the stop was inside when the engine last ran on its
- * shift (ADR 0008), with its current name; null when none (or the place was deleted since).
- */
-export const stopView = (
-  s: StopRow,
-  label: StopLabelRow | undefined,
-  places: ReadonlyMap<number, PlaceRow> = new Map(),
-) => {
-  const place = s.placeId === null ? undefined : places.get(s.placeId);
-  return {
-    ...snakeKeys(s, 'id', 'userId', 'placeId'),
-    label: label ? labelView(label) : null,
-    place: place ? { id: place.id, name: place.name, role: place.role } : null,
-  };
-};
+export const stopView = (s: StopRow, label: StopLabelRow | undefined) => ({
+  ...snakeKeys(s, 'id', 'userId'),
+  label: label ? labelView(label) : null,
+});
 
 /**
  * Stops and the driver's optional labels (08 sections 3 and 4.4, 14 section 6.6). Web session only.
@@ -74,8 +60,6 @@ export function stopsRoutes({
 }) {
   return ({ app, bus }: ServerRouteHost) => {
     const repo = createProcessingRepository(db);
-    const placeRepo = createPlaceRepository(db);
-    const placesOf = (userId: number) => new Map(placeRepo.list(userId).map((x) => [x.id, x]));
 
     /** The shift and its owner's settings guard. */
     const open = (req: Parameters<typeof authn.authenticate>[0]) => {
@@ -88,14 +72,13 @@ export function stopsRoutes({
     const keyOf = (req: { params: unknown }) => (req.params as { stop_key: string }).stop_key;
     const withLabel = (shift: ShiftRow, key: string) => {
       const stop = repo.stopsOf(shift.id).find((s) => s.stopKey === key);
-      return stop && stopView(stop, repo.findLabel(shift.id, key), placesOf(shift.userId));
+      return stop && stopView(stop, repo.findLabel(shift.id, key));
     };
 
     app.get('/shifts/:ref/stops', { schema: { params: shiftParams } }, async (req) => {
       const { shift } = open(req);
       const labels = new Map(repo.labelsOf(shift.id).map((l) => [l.stopKey, l]));
-      const places = placesOf(shift.userId);
-      return repo.stopsOf(shift.id).map((s) => stopView(s, labels.get(s.stopKey), places));
+      return repo.stopsOf(shift.id).map((s) => stopView(s, labels.get(s.stopKey)));
     });
 
     /** Labels change only an ended, not finalized, shift: the engine reads them when it runs. */

@@ -216,16 +216,12 @@ export function ShiftTimeline({
         }
         const s = e.stop;
         const on = picked?.kind === 'stop' && picked.key === s.stop_key;
-        // A hand label, else the label a saved place gave (ADR 0008), else the estimate.
-        const fromPlace = !s.label && s.place !== null && s.role !== 'none';
         const what = s.label
           ? ROLE[s.label.role]
-          : fromPlace
-            ? ROLE[s.role]
-            : s.est_role === 'none'
-              ? 'Stop'
-              : ROLE[s.est_role];
-        const where = s.label?.place || s.place?.name || s.label?.platform;
+          : s.est_role === 'none'
+            ? 'Stop'
+            : ROLE[s.est_role];
+        const where = s.label?.place || s.label?.platform;
         return (
           <Row
             key={s.stop_key}
@@ -235,7 +231,7 @@ export function ShiftTimeline({
             title={
               <>
                 Stop {e.n} · {what}
-                {!s.label && !fromPlace && s.est_role !== 'none' ? est : null}
+                {!s.label && s.est_role !== 'none' ? est : null}
                 {where ? ` · ${where}` : ''}
               </>
             }

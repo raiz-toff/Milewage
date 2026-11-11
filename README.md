@@ -28,7 +28,7 @@ Three parts in one repository: the server and the web app in TypeScript, the pho
 | Part                       | What it is                                                                                                                                                                            |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Server (`apps/server`)     | Fastify and SQLite in Docker, behind Caddy. Holds the data, recomputes every shift, makes the backups.                                                                                |
-| Web app (`apps/web`)       | React, restyled to Material Design 3. Dashboard, shifts, expenses, tax, exports, places, backups, devices, settings.                                                                  |
+| Web app (`apps/web`)       | React, restyled to Material Design 3. Dashboard, shifts, expenses, tax, exports, backups, devices, settings.                                                                          |
 | Phone app (`apps/android`) | A native Android app: Kotlin, Jetpack Compose, Material 3. Records GPS while a shift runs and sends it when the server is reachable. No Google Play Services: de-Googled phones work. |
 
 ## Features
@@ -46,8 +46,7 @@ Three parts in one repository: the server and the web app in TypeScript, the pho
 - Country packs for Canada, the United States and Great Britain: a mileage deduction, and for
   Canada a tax estimate. Your own mileage rate (an employer's or your accountant's) can replace the
   country's from a date you choose.
-- Named places that label the stops inside them, parking and tolls on a shift, and import of a
-  MileIQ drive report.
+- Parking and tolls on a shift, and import of a MileIQ drive report.
 - Exports for your accountant: a PDF mileage and expenses report, mileage log CSV per trip or per
   shift, expenses CSV, tax summary, GPX and GeoJSON.
 - Nightly encrypted backups (age) and a recovery key shown once. Restore onto a fresh server. An

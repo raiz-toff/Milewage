@@ -1,4 +1,3 @@
-import { createPlaceRepository } from '../db';
 import type { ExportContext, Exporter } from './registry';
 
 const xml = (s: string) =>
@@ -40,16 +39,9 @@ function* gpx(c: ExportContext) {
   yield '</gpx>\n';
 }
 
-/** RFC 7946: a LineString per shift (totals as properties) and a Point per detected stop (role, confidence, place). */
+/** RFC 7946: a LineString per shift (totals as properties) and a Point per detected stop (role, confidence). */
 function* geojson(c: ExportContext) {
   yield '{"type":"FeatureCollection","features":[';
-  let names: Map<number, string> | undefined;
-  const placeNames = () =>
-    (names ??= new Map(
-      createPlaceRepository(c.db)
-        .list(c.userId)
-        .map((p) => [p.id, p.name]),
-    ));
   let first = true;
   const feature = (f: object) => {
     const text = (first ? '' : ',') + JSON.stringify(f);
@@ -79,7 +71,6 @@ function* geojson(c: ExportContext) {
     });
     if (!c.driver.stopsOn) continue;
     for (const p of c.readers.stops(s.id)) {
-      const place = p.placeId === null ? undefined : placeNames().get(p.placeId);
       yield feature({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [p.lonE7 / 1e7, p.latE7 / 1e7] },
@@ -92,8 +83,6 @@ function* geojson(c: ExportContext) {
           role: p.role,
           est_role: p.estRole,
           confidence: p.confidence,
-          // The named place the stop was in (ADR 0008), only where stops are exported anyway.
-          place: place ?? null,
         },
       });
     }

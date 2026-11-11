@@ -248,21 +248,6 @@ export const stops = sqliteTable('stops', {
   confidence: text('confidence', { enum: ['low', 'medium', 'high'] }).notNull(),
   estRole: text('est_role', { enum: ['pickup', 'dropoff', 'none'] }).notNull(),
   role: text('role', { enum: ['pickup', 'dropoff', 'other', 'none'] }).notNull(),
-  /** The place the stop was inside at the last engine run (ADR 0008); null when none. */
-  placeId: integer('place_id'),
-});
-
-/** The driver's named places (ADR 0008): a centre and a radius that name and label stops. */
-export const places = sqliteTable('places', {
-  id: integer('id').primaryKey(),
-  userId: userRef(),
-  name: text('name').notNull(),
-  latE7: integer('lat_e7').notNull(),
-  lonE7: integer('lon_e7').notNull(),
-  radiusM: integer('radius_m').notNull(),
-  role: text('role', { enum: ['pickup', 'dropoff', 'other'] }).notNull(),
-  createdAt: integer('created_at').notNull(),
-  updatedAt: integer('updated_at').notNull(),
 });
 
 export const stopLabels = sqliteTable(

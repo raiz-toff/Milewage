@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import type { Schemas } from '../api/client';
 import { put, useChange } from '../api/query';
 import { formatTime, minorDigits, moneyInput, parseMoney } from '../format';
@@ -10,7 +9,6 @@ import type { Column } from '../ui/SortTable';
 import { Button, FormError, Picker, denseField } from '../ui/form';
 import { cn } from '@/lib/utils';
 import type { Read } from '../shift/view';
-import type { PlaceDraft } from '../places';
 
 type Stop = Schemas['Stop'];
 type Shift = Schemas['Shift'];
@@ -70,21 +68,6 @@ const ROLES = [
 ];
 
 const FIELD = cn(denseField, 'min-w-24');
-const ROLE_WORD = { pickup: 'Pickup', dropoff: 'Dropoff', other: 'Other' } as const;
-
-/** The label choices of a row: "Not labelled" says so when a saved place gives the label. */
-const rolesOf = (s: Stop) =>
-  s.place && !s.label
-    ? [{ value: '', label: `From ${s.place.name}: ${ROLE_WORD[s.place.role]}` }, ...ROLES.slice(1)]
-    : ROLES;
-
-/** What "Save as a place" hands to the Places page: the stop's position and the label it has now. */
-export const draftFromStop = (s: Stop): PlaceDraft => ({
-  lat_e7: s.lat_e7,
-  lon_e7: s.lon_e7,
-  role: s.label?.role ?? (s.role === 'none' ? 'other' : s.role),
-  name: s.label?.place ?? '',
-});
 
 /**
  * Detected stops of a shift with optional labels (module `stops`, web only). A save or a clear
@@ -100,7 +83,6 @@ export function StopsPanel({
   data: Read<Stop[]>;
 }) {
   const { currency, timezone, time_format: tf } = useSettings();
-  const navigate = useNavigate();
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   // One change for the panel; its error and busy flag show on the row it was about.
   const change = useChange();
@@ -224,7 +206,7 @@ export function StopsPanel({
             className="min-w-32"
             value={(drafts[s.stop_key] ?? draftOf(s, currency)).role}
             onChange={(v) => set(s, { role: v as Draft['role'] })}
-            options={rolesOf(s)}
+            options={ROLES}
           />
         ),
       },
@@ -241,26 +223,6 @@ export function StopsPanel({
         sortValue: (s) => s.label?.place ?? null,
         text: (s) => s.label?.place ?? '',
         render: (s) => input(s, 'place', 'Place'),
-      },
-      {
-        key: 'saved',
-        label: 'Saved place',
-        sortValue: (s) => s.place?.name ?? null,
-        text: (s) => s.place?.name ?? '',
-        render: (s) =>
-          s.place ? (
-            <span className="whitespace-nowrap">{s.place.name}</span>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              aria-label={`Save the stop at ${formatTime(s.started_at, timezone, tf)} as a place`}
-              onClick={() => void navigate('/places', { state: { draft: draftFromStop(s) } })}
-            >
-              Save as a place
-            </Button>
-          ),
       },
       {
         key: 'payout',

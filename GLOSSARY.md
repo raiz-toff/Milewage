@@ -150,10 +150,6 @@ _Avoid_: collection, restaurant stop
 A stop where an order was handed over. The driver is deadhead from there.
 _Avoid_: delivery, destination
 
-**Place**:
-A spot the driver stops at often, saved on the web with a name, a centre, a radius and a stop label role. A stop inside it shows its name and takes its label unless the driver labelled that stop by hand; when places overlap, the nearest centre wins. Places are never sent to the phone.
-_Avoid_: location, geofence, saved address, favourite
-
 ### Phone and server agreeing
 
 **Phone result**:

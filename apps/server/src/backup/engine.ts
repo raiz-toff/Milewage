@@ -62,7 +62,7 @@ export interface BackupEngineOptions {
 }
 
 // Tables compared live-vs-copy (10 section 3.1 step 3); telemetry differs by writes during the copy.
-const COMPARED = ['shifts', 'stop_labels', 'places'];
+const COMPARED = ['shifts', 'stop_labels'];
 /** Pages copied per event-loop turn, so the single writer is never starved for long. */
 const PAGES_PER_STEP = 256;
 

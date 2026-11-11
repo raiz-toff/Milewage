@@ -26,7 +26,7 @@ Below the figures:
 - **The map**: a simplified line through your route, for display only.
 - **The timeline**: each trip with its time, distance, kind and purpose, and each stop. Choose one to find it on the map.
 - **Checks**: facts about the recording, with "What to do" under them. Ones marked Review come first.
-- **Odometer**, **Parking and tolls**, **Notes**, **Export this shift**, and **Label stops** where stops were found. A stop inside one of your [places](places.md) shows the place's name and its label.
+- **Odometer**, **Parking and tolls**, **Notes**, **Export this shift**, and **Label stops** where stops were found.
 
 ## Parking and tolls
 
@@ -81,7 +81,7 @@ Labelling stops on the web is the other way to correct the split. See [Active an
 
 ## How the server works out a shift
 
-The server runs the same track engine as the phone on the GPS points it received. It does this when the shift ends, when late points arrive, and when you add, change or delete a trip, label a stop, or add, change or delete a place with a stop inside it. It keeps your trip edits, stop labels and trips added by hand. See [How miles are counted](how-miles-are-counted.md).
+The server runs the same track engine as the phone on the GPS points it received. It does this when the shift ends, when late points arrive, and when you add, change or delete a trip, or label a stop. It keeps your trip edits, stop labels and trips added by hand. See [How miles are counted](how-miles-are-counted.md).
 
 The web app has no Recalculate button in this version. After an upgrade, stored shifts keep their figures until one of those things happens.
 
