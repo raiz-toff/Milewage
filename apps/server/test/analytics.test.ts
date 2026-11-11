@@ -68,9 +68,10 @@ describe('groups', () => {
     const c = (await get('cards')).data;
     expect(c).toEqual({
       gross_cents: 30_000,
-      expenses_cents: 500,
-      burn_ratio: 0.017,
-      net_take_home_cents: 22_000, // 30 000 - 500 - 25 % set-aside
+      expenses_cents: 500, // the deductible half
+      spent_cents: 1000,
+      burn_ratio: 0.033, // of what was paid
+      net_take_home_cents: 21_500, // 30 000 - 1 000 paid - 25 % set-aside
       tax_set_aside_cents: 7500,
       hourly_shift_cents: 5000,
       hourly_online_cents: 6000, // 10 000 over 100 online minutes

@@ -104,9 +104,12 @@ export function analyticsRoutes({
       const prevRows = eff(prevFrom, prevTo);
 
       let expensesCents: number | null = null;
+      let spentCents: number | null = null;
       if (registry.isEnabled('expenses')) {
         expensesCents = 0;
+        spentCents = 0;
         for (const e of createExpenseRepository(db).between(userId, from, to)) {
+          spentCents += e.amountCents;
           if (!deduction.doubleCounts(userId, e)) expensesCents += deductibleCents(e);
         }
       }
@@ -123,6 +126,7 @@ export function analyticsRoutes({
           prevRows.length === 0 ? null : prevRows.reduce((a, r) => a + totalOf(r), 0),
         previousShifts: processing.shiftsInPeriod(userId, prevFrom, prevTo).map(ashift),
         expensesCents,
+        spentCents,
         setAsideBp: registry.isEnabled('tax')
           ? createTaxRepository(db).year(userId, Number(to.slice(0, 4))).setAsideBp
           : null,

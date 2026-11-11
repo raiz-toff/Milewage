@@ -9,8 +9,9 @@ const groups = (over: Record<string, unknown> = {}): Record<string, unknown> => 
   cards: {
     gross_cents: 30_000,
     expenses_cents: 500,
-    burn_ratio: 0.017,
-    net_take_home_cents: 22_000,
+    spent_cents: 800,
+    burn_ratio: 0.027,
+    net_take_home_cents: 21_700,
     tax_set_aside_cents: 7500,
     hourly_shift_cents: 5000,
     hourly_online_cents: null,
@@ -256,7 +257,9 @@ describe('analytics screen (module analytics)', () => {
     open();
     const figures = await screen.findByLabelText('Figures');
     expect(figures.textContent).toMatch(/Earned, after app fees\$300\.00/);
-    expect(figures.textContent).toMatch(/Net take-home\$220\.00/);
+    // Take-home and burn ratio count what was paid (8.00), not only its deductible part (5.00).
+    expect(figures.textContent).toMatch(/Spent\$8\.00Deductible expenses\$5\.00Burn ratio2\.7%/);
+    expect(figures.textContent).toMatch(/Net take-home\$217\.00/);
     // 300.00 over 20 km of business distance.
     expect(figures.textContent).toMatch(/Per km \(business\)\$15\.00/);
     expect(figures.textContent).not.toMatch(/online time/);
@@ -298,7 +301,9 @@ describe('analytics screen (module analytics)', () => {
       },
     });
     const figures = await screen.findByLabelText('Figures');
-    expect(figures.textContent).not.toMatch(/Expenses|Burn ratio|Net take-home|Tax set-aside/);
+    expect(figures.textContent).not.toMatch(
+      /Spent|expenses|Burn ratio|Net take-home|Tax set-aside/,
+    );
   });
 
   it('the navigator asks for the previous period and week, month and year ranges', async () => {

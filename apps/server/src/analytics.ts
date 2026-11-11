@@ -28,7 +28,10 @@ export interface AnalyticsInput {
   /** Earnings of the previous period of the same length, null when none. */
   previousEarningsCents: number | null;
   previousShifts: AShift[];
+  /** The deductible part of the period's expenses; null with the expenses module off. */
   expensesCents: number | null;
+  /** What was paid for the period's expenses, in full; null with the expenses module off. */
+  spentCents: number | null;
   setAsideBp: number | null;
 }
 
@@ -190,8 +193,11 @@ export function analytics(i: AnalyticsInput) {
       ? {}
       : {
           expenses_cents: i.expensesCents,
-          burn_ratio: total ? Math.round((i.expensesCents / total) * 1000) / 1000 : null,
-          net_take_home_cents: total === null ? null : total - i.expensesCents - (setAside ?? 0),
+          // Burn ratio and take-home count money really paid, not only its deductible part.
+          spent_cents: i.spentCents ?? 0,
+          burn_ratio: total ? Math.round(((i.spentCents ?? 0) / total) * 1000) / 1000 : null,
+          net_take_home_cents:
+            total === null ? null : total - (i.spentCents ?? 0) - (setAside ?? 0),
         }),
     ...(setAside === null && i.setAsideBp === null ? {} : { tax_set_aside_cents: setAside }),
     hourly_shift_cents: total !== null && totalH > 0 ? Math.round(total / totalH) : null,

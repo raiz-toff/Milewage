@@ -114,10 +114,11 @@ export function AnalyticsPage() {
           ? []
           : ([
               [
-                'Deductible expenses',
-                money(cards.expenses_cents),
-                inOut(cards.expenses_cents, 'spent'),
+                'Spent',
+                money(cards.spent_cents ?? cards.expenses_cents),
+                inOut(cards.spent_cents ?? cards.expenses_cents, 'spent'),
               ],
+              ['Deductible expenses', money(cards.expenses_cents)],
               [
                 'Burn ratio',
                 cards.burn_ratio == null

@@ -78,6 +78,10 @@ has the AI assistant endpoint off again, as it was in 0.1.0. Set `MILEWAGE_MODUL
 - Fixed: the previous period's earnings in `GET /analytics` (group `trends`) left out fees and
   adjustments.
 
+- Changed: Analytics' burn ratio and net take-home count what was paid for expenses, in full, no
+  longer only the deductible part. A "Spent" tile shows it beside "Deductible expenses"; the
+  `cards` group carries it as `spent_cents`.
+
 - The native Android app (`apps/android`): first run with pairing (the server found on the home
   Wi-Fi with a 6-digit link code, the QR scanner, a pasted code or address, Tailscale), one
   permissions screen, Home with the summary, the sending banner, the setup checklist and Start
