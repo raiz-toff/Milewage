@@ -339,10 +339,21 @@ export function reportFormats(c: Pick<ExportContext, 'driver'>) {
 const PAPER: Record<PaperSize, string> = { a4: 'A4', letter: 'LETTER' };
 const MARGIN = 42;
 const FOOTER = 28;
-const INK = '#1d1b16';
-const MUTED = '#5f5c52';
-const RULE = '#c9c5b9';
-const FILL = '#f2efe4';
+// The brand on paper (branding/README, the design guide's tokens): Asphalt ink on white, the
+// neutral greys of the app's light theme, and Lane yellow only as the mark: the coin, the lane
+// dashes under the cover band and the dash before a heading. Never yellow text, never a yellow fill
+// behind figures.
+const ASPHALT = '#111416';
+const LANE = '#FFC21F';
+const INK = ASPHALT;
+const MUTED = '#41474d';
+const RULE = '#c1c7ce';
+const FILL = '#edeef1';
+const ON_ASPHALT = '#ffffff';
+const ON_ASPHALT_MUTED = '#c1c7ce';
+/** The road across the coin (branding/coin-thin), in the mark's 100 by 100 box. */
+const ROAD = 'M-10 86 L36 68 L64 32 L110 14';
+const BAND = 64;
 
 type Cell = string | { text: string; sub?: string };
 interface Column {
@@ -390,6 +401,20 @@ export function renderReport(m: ReportModel, f: ReturnType<typeof reportFormats>
     draw();
     doc.endMarkedContent();
   };
+  /**
+   * The Coin Road mark, `size` points wide: the yellow coin with an Asphalt road on a dark ground,
+   * the Asphalt coin with a yellow road on paper (yellow alone is too faint on white).
+   */
+  const mark = (x: number, y: number, size: number, onDark: boolean) => {
+    const [coin, road] = onDark ? [LANE, ASPHALT] : [ASPHALT, LANE];
+    doc.save();
+    doc.translate(x, y).scale(size / 100);
+    doc.circle(50, 50, 46).fill(coin);
+    doc.circle(50, 50, 46).clip();
+    doc.path(ROAD).lineWidth(19).lineJoin('miter').stroke(road);
+    doc.path(ROAD).lineWidth(3).dash(7, { space: 7 }).stroke(coin);
+    doc.restore();
+  };
   const ensure = (h: number) => {
     if (doc.y + h > bottom()) doc.addPage();
   };
@@ -398,15 +423,22 @@ export function renderReport(m: ReportModel, f: ReturnType<typeof reportFormats>
     // A heading is never the last thing on a page: room for it and a few lines under it.
     ensure(level === 'H1' ? size * 3 : 80);
     if (level === 'H2') doc.moveDown(0.8);
+    // A section heading starts with one lane dash, the brand's mark of "you are here".
+    const inset = level === 'H2' ? 14 : 0;
+    if (level === 'H2') {
+      const y = doc.y;
+      artifact(() => doc.roundedRect(left(), y + size * 0.42, 9, 3, 1.5).fill(LANE));
+    }
     parent.add(
       doc.struct(level, {}, () =>
         doc
           .font('bold')
           .fontSize(size)
           .fillColor(INK)
-          .text(text, left(), doc.y, { width: width() }),
+          .text(text, left() + inset, doc.y, { width: width() - inset }),
       ),
     );
+    doc.x = left();
     doc.moveDown(level === 'H1' ? 0.3 : 0.35);
   };
   const paragraph = (parent: PDFKit.PDFStructureElement, text: string, muted = false) => {
@@ -464,11 +496,12 @@ export function renderReport(m: ReportModel, f: ReturnType<typeof reportFormats>
       const w = widths();
       artifact(() => {
         if (shade) doc.rect(left(), y, width(), h).fill(FILL);
+        // A header or totals row sits on an Asphalt rule; data rows on a hairline.
         doc
           .moveTo(left(), y + h)
           .lineTo(left() + width(), y + h)
-          .lineWidth(0.5)
-          .strokeColor(RULE)
+          .lineWidth(shade ? 1 : 0.5)
+          .strokeColor(shade ? ASPHALT : RULE)
           .stroke();
       });
       const tr = doc.struct('TR');
@@ -567,6 +600,35 @@ export function renderReport(m: ReportModel, f: ReturnType<typeof reportFormats>
     t.end();
   };
 
+  // The cover band: the mark and the name on Asphalt, edge to edge, over a line of lane dashes.
+  // It is decoration; the title and the facts under it are the tagged content.
+  artifact(() => {
+    doc.rect(0, 0, doc.page.width, BAND).fill(ASPHALT);
+    mark(left(), (BAND - 34) / 2, 34, true);
+    doc
+      .font('bold')
+      .fontSize(17)
+      .fillColor(ON_ASPHALT)
+      .text('MileWage', left() + 44, BAND / 2 - 15, { lineBreak: false });
+    doc
+      .font('regular')
+      .fontSize(8.5)
+      .fillColor(ON_ASPHALT_MUTED)
+      .text('Mileage and earnings', left() + 44, BAND / 2 + 5, { lineBreak: false });
+    doc
+      .font('regular')
+      .fontSize(9)
+      .fillColor(ON_ASPHALT_MUTED)
+      .text(`${f.day(m.from)} to ${f.day(m.to)}`, left(), BAND / 2 - 5, {
+        width: width(),
+        align: 'right',
+        lineBreak: false,
+      });
+    for (let x = 0; x < doc.page.width; x += 30) doc.rect(x, BAND + 5, 18, 3).fill(LANE);
+  });
+  doc.x = left();
+  doc.y = BAND + 30;
+
   // Cover block.
   const cover = doc.struct('Sect');
   root.add(cover);
@@ -633,6 +695,42 @@ export function renderReport(m: ReportModel, f: ReturnType<typeof reportFormats>
       items.push(['Of which tips', f.money(m.earnings.tipsCents)]);
       if (m.earnings.feesCents) items.push(['App fees taken', f.money(-m.earnings.feesCents)]);
     }
+  }
+  // The four figures an accountant looks for first, as tiles. They repeat the list under them, so
+  // they are decoration for a screen reader, which reads the list.
+  const tiles: [string, string][] = [
+    ['Business distance', f.distance(m.businessM)],
+    ['Mileage deduction', f.money(m.mileageCents)],
+    ...(m.expenses
+      ? ([['Deductible expenses', f.money(m.expenses.deductibleCents)]] as [string, string][])
+      : []),
+    ...(m.earnings && m.earnings.totalCents !== null
+      ? ([['Earnings after app fees', f.money(m.earnings.totalCents)]] as [string, string][])
+      : []),
+  ];
+  ensure(58);
+  {
+    const gap = 8;
+    const w = (width() - gap * (tiles.length - 1)) / tiles.length;
+    const y = doc.y;
+    artifact(() => {
+      tiles.forEach(([label, value], i) => {
+        const x = left() + i * (w + gap);
+        doc.roundedRect(x, y, w, 46, 6).fill(FILL);
+        doc
+          .font('regular')
+          .fontSize(7.5)
+          .fillColor(MUTED)
+          .text(label, x + 8, y + 8, { width: w - 16, lineBreak: false, ellipsis: true });
+        doc
+          .font('bold')
+          .fontSize(13)
+          .fillColor(INK)
+          .text(value, x + 8, y + 21, { width: w - 16, lineBreak: false, ellipsis: true });
+      });
+    });
+    doc.x = left();
+    doc.y = y + 46 + 12;
   }
   pairs(summary, items);
 
@@ -849,16 +947,24 @@ export function renderReport(m: ReportModel, f: ReturnType<typeof reportFormats>
     doc.page.margins.bottom = 0; // writing in the margin must not open a new page
     const y = doc.page.height - MARGIN - 10;
     artifact(() => {
+      // A hairline, the small mark, then what this is and the page.
+      doc
+        .moveTo(left(), y - 7)
+        .lineTo(left() + width(), y - 7)
+        .lineWidth(0.5)
+        .strokeColor(RULE)
+        .stroke();
+      mark(left(), y - 2, 11, false);
       doc
         .font('regular')
         .fontSize(7.5)
         .fillColor(MUTED)
-        .text(`${m.title} · ${f.day(m.from)} to ${f.day(m.to)}`, left(), y, {
-          width: width() / 2,
+        .text(`MileWage · ${m.title} · ${f.day(m.from)} to ${f.day(m.to)}`, left() + 16, y, {
+          width: (width() * 3) / 4 - 16,
           lineBreak: false,
         })
-        .text(`Page ${i + 1} of ${range.count}`, left() + width() / 2, y, {
-          width: width() / 2,
+        .text(`Page ${i + 1} of ${range.count}`, left() + (width() * 3) / 4, y, {
+          width: width() / 4,
           align: 'right',
           lineBreak: false,
         });
