@@ -103,7 +103,7 @@ describe('fallbacks', () => {
     const again = drivers.of(1);
     expect([again.rateSource, again.ownRate, again.weekStart, again.region]).toEqual([
       'official',
-      { centsPerUnit: 30.5, unit: 'km' },
+      { centsPerUnit: 30.5, unit: 'km', tier: null },
       0,
       'CA',
     ]);

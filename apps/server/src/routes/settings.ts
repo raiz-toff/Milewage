@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ModuleRegistry } from '@milewage/shared';
-import { countryModules, resolvePlace, WORK_KINDS } from '@milewage/shared';
+import { countryModules, ownPeriodStart, resolvePlace, WORK_KINDS } from '@milewage/shared';
 import { algorithmVersion } from '@milewage/track-engine';
 import {
   createOwnRateRepository,
@@ -117,7 +117,26 @@ type ReaderContext = {
   backupDownload?: boolean;
   /** Export formats that exist right now (registered, switched on, requirements met). */
   exportFormats?: (reg: ModuleRegistry) => string[];
+  /**
+   * Business metres of the ended shifts from a local date on, by vehicle kind: what a rate with a
+   * step has already counted (ADR 0012), for the phone's own estimate.
+   */
+  drivenSince?: (userId: number, from: string) => Record<string, number>;
 };
+
+/** `drivenSince` read from the shifts table. */
+export function drivenSinceReader(db: Db) {
+  const q = db.prepare(
+    `SELECT v.kind AS kind, SUM(MAX(0, COALESCE(s.total_m, 0) - COALESCE(s.personal_m, 0))) AS m
+       FROM shifts s JOIN vehicles v ON v.id = s.vehicle_id
+      WHERE s.user_id = ? AND s.status IN ('ended','finalized') AND s.local_date >= ?
+      GROUP BY v.kind`,
+  );
+  return (userId: number, from: string): Record<string, number> =>
+    Object.fromEntries(
+      (q.all(userId, from) as { kind: string; m: number }[]).map((r) => [r.kind, r.m]),
+    );
+}
 
 /** The odometer note of the driver's place (plan 21 `logbook` slot), or null. */
 function logbookOf(d: DriverContext) {
@@ -133,6 +152,17 @@ export function settingsReader(ctx: ReaderContext) {
     const verbose = row.diagnosticsLevel === 'verbose';
     const expired = verbose && (row.diagnosticsVerboseUntil ?? 0) <= ctx.now();
     const own = d.ownRate;
+    // A rate with a step: the phone needs the step and what the server has counted so far.
+    const periodStart = own?.tier ? ownPeriodStart(d.pack, d.today()) : null;
+    const step =
+      own?.tier && periodStart
+        ? {
+            threshold_units: own.tier.thresholdUnits,
+            cents_per_unit_after: own.tier.afterCentsPerUnit,
+            period_start: periodStart,
+            driven_m: ctx.drivenSince?.(userId, periodStart) ?? {},
+          }
+        : null;
     return {
       modules: moduleFlags(
         ctx.registry,
@@ -153,7 +183,7 @@ export function settingsReader(ctx: ReaderContext) {
       region: row.region,
       logbook: logbookOf(d),
       // Your rate in force today; the dated list is `GET /own-mileage-rates` (ADR 0007).
-      own_mileage_rate: own && { cents_per_unit: own.centsPerUnit, unit: own.unit },
+      own_mileage_rate: own && { cents_per_unit: own.centsPerUnit, unit: own.unit, step },
       mileage_rate: d.rateSource,
       use_own_mileage_rate: d.ownRates.use,
       week_start: row.weekStart,
@@ -175,7 +205,10 @@ export function settingsRoutes(
   ctx: ReaderContext & { db: Db; auth: AuthFn; emit?: EventEmit },
 ) {
   const repo = createSettingsRepository(ctx.db);
-  const read = settingsReader(ctx);
+  const read = settingsReader({
+    ...ctx,
+    drivenSince: ctx.drivenSince ?? drivenSinceReader(ctx.db),
+  });
 
   app.get('/settings', async (req) => {
     const { userId } = ctx.auth(req, 'SD');

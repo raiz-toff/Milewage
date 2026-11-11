@@ -199,6 +199,21 @@ data class DiagnosticsSettings(
 data class OwnMileageRate(
     @SerialName("cents_per_unit") val centsPerUnit: Double,
     val unit: DistanceUnit,
+    /** The second step of a rate that has one (ADR 0012); null or absent: one flat rate. */
+    val step: OwnRateStep? = null,
+)
+
+/**
+ * A rate in two steps: [OwnMileageRate.centsPerUnit] up to [thresholdUnits] km or miles of business
+ * distance in the rate period that starts on [periodStart], then [centsPerUnitAfter]. [drivenM] is
+ * what the server has counted since then, by vehicle kind; the phone adds its unsent shifts.
+ */
+@Serializable
+data class OwnRateStep(
+    @SerialName("threshold_units") val thresholdUnits: Long,
+    @SerialName("cents_per_unit_after") val centsPerUnitAfter: Double,
+    @SerialName("period_start") val periodStart: String,
+    @SerialName("driven_m") val drivenM: Map<String, Long> = emptyMap(),
 )
 
 @Serializable

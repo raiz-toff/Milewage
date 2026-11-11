@@ -2020,7 +2020,7 @@ components:
             readings: { type: string }
             notes: { type: array, items: { type: string } }
         own_mileage_rate:
-          oneOf: [{ $ref: '#/components/schemas/OwnMileageRate' }, { type: 'null' }]
+          oneOf: [{ $ref: '#/components/schemas/OwnMileageRateInForce' }, { type: 'null' }]
           description: 'Your mileage rate in force today (plan 21 Q5, ADR 0007), or null. The dated list is GET /own-mileage-rates. It values mileage where the country has no official rates, and replaces them from its date when use_own_mileage_rate is true.'
         mileage_rate: { enum: [official, yours, none], description: 'Which rate values mileage driven today: the country''s published rates, the driver''s own (screens and exports label it "your rate", never official), or none. Older shifts may differ by date: Shift.deduction_rate says which valued each.' }
         use_own_mileage_rate: { type: boolean, description: 'ADR 0007: your mileage rates replace the country''s from their dates. Default false. Without country rates your rate applies anyway.' }
@@ -2065,6 +2065,29 @@ components:
       properties:
         cents_per_unit: { type: number, exclusiveMinimum: 0, maximum: 100000, description: 'Minor units of the currency per km or mile; hundredths are kept (30.5).' }
         unit: { enum: [km, mi] }
+    OwnMileageRateInForce:
+      type: object
+      additionalProperties: false
+      required: [cents_per_unit, unit, step]
+      description: 'Your mileage rate in force today, as GET /settings gives it. The phone values shifts it has not sent yet with it.'
+      properties:
+        cents_per_unit: { type: number, exclusiveMinimum: 0, maximum: 100000 }
+        unit: { enum: [km, mi] }
+        step:
+          description: 'ADR 0012: the second step of a rate that has one, else null. cents_per_unit values business distance up to threshold_units in the rate period, cents_per_unit_after the rest.'
+          oneOf:
+            - { type: 'null' }
+            - type: object
+              additionalProperties: false
+              required: [threshold_units, cents_per_unit_after, period_start, driven_m]
+              properties:
+                threshold_units: { type: integer, minimum: 1 }
+                cents_per_unit_after: { type: number, exclusiveMinimum: 0 }
+                period_start: { type: string, format: date, description: 'First local date of the rate period that contains today; the count restarts there each year.' }
+                driven_m:
+                  type: object
+                  description: 'Business metres of the ended shifts the server holds since period_start, by vehicle kind (a kind not listed has none). The phone adds its unsent shifts to it.'
+                  additionalProperties: { type: integer, minimum: 0 }
     DatedOwnMileageRate:
       type: object
       additionalProperties: false

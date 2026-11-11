@@ -479,7 +479,8 @@ class MileWageData private constructor(
         /** The driver's own rate where the settings choose it; the country packs are not on the phone yet. */
         fun ratesOf(s: Settings?): MileageRates {
             val own = s?.ownMileageRate ?: return MileageRates.None
-            return if (s.mileageRate == MileageRate.YOURS || s.mileageRate == null) MileageRates.OwnRate(own.centsPerUnit, own.unit) else MileageRates.None
+            val step = own.step?.let { MileageRates.Step(it.thresholdUnits, it.centsPerUnitAfter, it.periodStart, it.drivenM) }
+            return if (s.mileageRate == MileageRate.YOURS || s.mileageRate == null) MileageRates.OwnRate(own.centsPerUnit, own.unit, step) else MileageRates.None
         }
 
         /**

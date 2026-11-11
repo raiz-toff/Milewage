@@ -12,5 +12,5 @@ ADR 0007 gave a driver their own dated mileage rate and rejected tiers for it: t
 
 - A driver must type the rule themselves; MileWage does not suggest the country's figures as an own rate and still calls it "your rate", never official.
 - An own rate that starts in the middle of a rate period finds part of its threshold already used by the distance driven before it.
-- `GET /settings` `own_mileage_rate` stays the first rate only, so the phone's estimate for unsent shifts ignores the step until the phone learns it; the server's figure is the one that counts.
+- `GET /settings` `own_mileage_rate` carries the step with the start of the rate period and the business distance the server has counted in it by vehicle kind (`step`), so the phone's estimate for unsent shifts splits at the threshold too: the server's count, then the phone's unsent shifts, then the shift itself. The count is as old as the phone's last read of the settings; the server's figure replaces the estimate once the shift is sent.
 - The PDF report's rate table shows the second rate and its threshold under the first.

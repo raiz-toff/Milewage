@@ -15,7 +15,7 @@ object ContractFixtures {
         {"country":"CA","distance_unit":"km","currency":"CAD","timezone":"America/Toronto",
          "raw_retention_days":90,"stops_enabled":true,"help_enabled":true,"display_name":"Sam","region":"ON",
          "logbook":{"readings":"Start and end of the year","notes":["Keep the log for six years."]},
-         "own_mileage_rate":{"cents_per_unit":30.5,"unit":"km"},"mileage_rate":"official","week_start":1,
+         "own_mileage_rate":{"cents_per_unit":30.5,"unit":"km","step":null},"mileage_rate":"official","week_start":1,
          "time_format":"24h","default_vehicle_id":3,"work_kinds":["delivery","ride_hailing"],
          "onboarded_at":1700000000000,"setup_done":["vehicle","phone"],"engine_version":4,
          "diagnostics":{"level":"verbose","verbose_until":1700086400000},
@@ -64,7 +64,7 @@ object ContractFixtures {
         ),
         "getSettings 200" to listOf(
             SETTINGS,
-            SETTINGS.replace(""""own_mileage_rate":{"cents_per_unit":30.5,"unit":"km"}""", """"own_mileage_rate":null""")
+            SETTINGS.replace(""""own_mileage_rate":{"cents_per_unit":30.5,"unit":"km","step":null}""", """"own_mileage_rate":null""")
                 .replace(""""logbook":{"readings":"Start and end of the year","notes":["Keep the log for six years."]}""", """"logbook":null"""),
         ),
         "listVehicles 200" to listOf(

@@ -120,7 +120,8 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   distance"). The distance is counted as for a country rate: all business distance of that kind of
   vehicle since the start of the year, and a shift that crosses it is split. A rate without the
   tick stays flat (ADR 0012). API: `threshold_units` and `cents_per_unit_after` on
-  `/own-mileage-rates`. Core migration 0016.
+  `/own-mileage-rates`. Core migration 0016. The phone's estimate for shifts it has not sent yet
+  follows the two steps as well (`own_mileage_rate.step` in the settings).
 - Exports > Mileage and expenses report: a PDF for your accountant with a cover block, the summary
   (distances, the mileage deduction and the rates used, expenses by category, earnings), the
   mileage log with odometer readings and flags such as "distance estimated across a signal gap",

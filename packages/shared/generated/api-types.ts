@@ -1379,7 +1379,7 @@ export interface components {
                 notes: string[];
             } | null;
             /** @description Your mileage rate in force today (plan 21 Q5, ADR 0007), or null. The dated list is GET /own-mileage-rates. It values mileage where the country has no official rates, and replaces them from its date when use_own_mileage_rate is true. */
-            own_mileage_rate: components["schemas"]["OwnMileageRate"] | null;
+            own_mileage_rate: components["schemas"]["OwnMileageRateInForce"] | null;
             /**
              * @description Which rate values mileage driven today: the country's published rates, the driver's own (screens and exports label it "your rate", never official), or none. Older shifts may differ by date: Shift.deduction_rate says which valued each.
              * @enum {unknown}
@@ -1444,6 +1444,26 @@ export interface components {
             cents_per_unit: number;
             /** @enum {unknown} */
             unit: "km" | "mi";
+        };
+        /** @description Your mileage rate in force today, as GET /settings gives it. The phone values shifts it has not sent yet with it. */
+        OwnMileageRateInForce: {
+            cents_per_unit: number;
+            /** @enum {unknown} */
+            unit: "km" | "mi";
+            /** @description ADR 0012: the second step of a rate that has one, else null. cents_per_unit values business distance up to threshold_units in the rate period, cents_per_unit_after the rest. */
+            step: null | {
+                threshold_units: number;
+                cents_per_unit_after: number;
+                /**
+                 * Format: date
+                 * @description First local date of the rate period that contains today; the count restarts there each year.
+                 */
+                period_start: string;
+                /** @description Business metres of the ended shifts the server holds since period_start, by vehicle kind (a kind not listed has none). The phone adds its unsent shifts to it. */
+                driven_m: {
+                    [key: string]: number;
+                };
+            };
         };
         /** @description One of your mileage rates (ADR 0007): in force from effective_from until the next rate. Shown as "your rate", never as an official rate. */
         DatedOwnMileageRate: {

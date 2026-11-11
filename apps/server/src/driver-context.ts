@@ -95,7 +95,11 @@ function contextOf(
   const today = localDate(now(), timeZone);
   const ownRates = { rates, use: row.useOwnRate === 1 };
   const inForce = ownRateAt(rates, today);
-  const ownRate = inForce && { centsPerUnit: inForce.centsPerUnit, unit: inForce.unit };
+  const ownRate = inForce && {
+    centsPerUnit: inForce.centsPerUnit,
+    unit: inForce.unit,
+    tier: inForce.tier ?? null,
+  };
   return {
     userId: row.userId,
     settings: row,

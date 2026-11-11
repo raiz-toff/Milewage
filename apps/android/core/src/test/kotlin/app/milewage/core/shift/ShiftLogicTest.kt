@@ -101,6 +101,23 @@ class ShiftLogicTest {
     }
 
     @Test
+    fun anOwnRateInTwoStepsCountsTheServersDistanceThenTheUnsentShifts() {
+        val step = MileageRates.Step(thresholdUnits = 5_000, centsPerUnitAfter = 64.0, periodStart = "2026-01-01", serverM = mapOf("car" to 4_990_000L))
+        val own = MileageRates.OwnRate(70.0, DistanceUnit.KM, step)
+        assertEquals(700, own.deduction(10_000, 0, "2026-11-10", "car")) // the last 10 km below 5,000
+        assertEquals(670, own.deduction(10_000, 5_000, "2026-11-10", "car")) // 5 km at 70, 5 km at 64
+        assertEquals(640, own.deduction(10_000, 10_000, "2026-11-10", "car"))
+        assertEquals(700, own.deduction(10_000, 0, "2026-11-10", "van")) // the server counted no van
+        assertEquals(700, own.deduction(10_000, 0, "2027-01-02", "car")) // a new year starts again
+        assertNull(own.deduction(10_000, 0, "2026-11-10", "bicycle"))
+        // Two unsent shifts: the second is priced after the first; a shift the server valued adds nothing.
+        val valued = row("2026-11-08", 9_000).copy(serverDeductionKnown = true, serverDeductionCents = 630)
+        val unsent = listOf(row("2026-11-09", 5_000, send = SendState.ON_PHONE_ONLY), row("2026-11-10", 10_000, send = SendState.ON_PHONE_ONLY))
+        val s = Summaries.summarize(listOf(valued) + unsent, "2026-11-10", own, emptyMap())
+        assertEquals(630 + 350 + 670, s.month.deductionCents)
+    }
+
+    @Test
     fun theRunningShiftIsPricedAfterTheShiftsBeforeIt() {
         val before = listOf(row("2025-10-01", 4_500))
         val running = row("2025-10-15", null, status = ShiftStatus.RUNNING, id = "run")

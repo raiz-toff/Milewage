@@ -32,14 +32,36 @@ interface MileageRates {
         override fun deduction(businessM: Long, priorM: Long, date: String, vehicleKind: String): Long? = null
     }
 
-    /** The driver's own rate (plan 21 Q5), only where the country has none; never for a non-automobile. */
-    class OwnRate(private val centsPerUnit: Double, private val unit: DistanceUnit) : MileageRates {
-        override fun periodOf(date: String) = ""
+    /**
+     * The second step of the driver's own rate (ADR 0012): the rate after [thresholdUnits] km or
+     * miles of the rate period that starts on [periodStart], and what the server has counted in that
+     * period so far, by vehicle kind.
+     */
+    data class Step(val thresholdUnits: Long, val centsPerUnitAfter: Double, val periodStart: String, val serverM: Map<String, Long>)
+
+    /**
+     * The driver's own rate (plan 21 Q5, ADR 0007); never for a non-automobile. With a [step] the
+     * distance is split at the threshold as the server does it: the server's count for the period
+     * first, then the shifts the phone has not sent ([deduction]'s `priorM`), then this shift.
+     */
+    class OwnRate(private val centsPerUnit: Double, private val unit: DistanceUnit, private val step: Step? = null) : MileageRates {
+        /** The rate period of [date]: the year that starts on the step's month and day. */
+        override fun periodOf(date: String): String {
+            val s = step ?: return ""
+            val start = date.take(4) + s.periodStart.drop(4)
+            return if (date >= start) start else "${date.take(4).toInt() - 1}${s.periodStart.drop(4)}"
+        }
 
         override fun deduction(businessM: Long, priorM: Long, date: String, vehicleKind: String): Long? {
             if (vehicleKind in NOT_AUTOMOBILE) return null
             val unitM = if (unit == DistanceUnit.KM) 1000.0 else 1609.344
-            return (businessM / unitM * centsPerUnit).roundToLong()
+            val s = step ?: return (businessM / unitM * centsPerUnit).roundToLong()
+            // The server's count belongs to its own period; a shift in another one starts from the phone's.
+            val counted = priorM + if (periodOf(date) == s.periodStart) s.serverM[vehicleKind] ?: 0 else 0
+            val firstM = (s.thresholdUnits * unitM - counted).coerceIn(0.0, businessM.toDouble())
+            // Rounded twice, as the server does: to 1/100 cent, then to a whole cent.
+            val hundredths = ((firstM * centsPerUnit + (businessM - firstM) * s.centsPerUnitAfter) / unitM * 100).roundToLong()
+            return (hundredths / 100.0).roundToLong()
         }
     }
 
@@ -115,7 +137,8 @@ object Summaries {
             val before = prior[key] ?: 0
             val business = r.distances!!.businessM
             out[r.clientId] = if (r.serverDeductionKnown) r.serverDeductionCents else rates.deduction(business, before, r.localDate, kind)
-            prior[key] = before + business
+            // A shift the server has valued is in the server's own count (the rate's step carries it).
+            if (!r.serverDeductionKnown) prior[key] = before + business
         }
         return out
     }

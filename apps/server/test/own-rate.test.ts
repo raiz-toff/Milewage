@@ -176,6 +176,18 @@ describe('dated own rates', () => {
     expect(byId.get(4)).toEqual([250, 'yours']); // past the 20 km: all at 50
     expect(byId.get(5)).toEqual([500, 'yours']); // a new year: the count starts again
     expect(byId.get(2)).toEqual([null, null]); // the bicycle, as ever
+    // The phone gets the step and what the server has counted this year (the clock is in 2027).
+    const today = (await web('GET', '/settings')).json().own_mileage_rate;
+    expect(today).toEqual({
+      cents_per_unit: 100,
+      unit: 'km',
+      step: {
+        threshold_units: 20,
+        cents_per_unit_after: 50,
+        period_start: '2027-01-01',
+        driven_m: { car: 5000 },
+      },
+    });
     // Back to one flat rate: both fields cleared together.
     const flat = await web('PATCH', `/own-mileage-rates/${a.json().id}`, {
       threshold_units: null,

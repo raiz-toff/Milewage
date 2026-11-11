@@ -29,7 +29,7 @@ import { receiptsDirOf } from './receipts/store';
 import { createEarningsPolicy, type EarningsPolicy } from './routes/earnings';
 import { availableFormats } from './routes/exports';
 import { taxDeductionMethods } from './routes/tax';
-import { settingsReader } from './routes/settings';
+import { drivenSinceReader, settingsReader } from './routes/settings';
 import { createServerState, type ServerState } from './state';
 
 export type Log = (message: string, fields?: object) => void;
@@ -277,6 +277,7 @@ function shareServices(
     diagnostics,
     readSettings: settingsReader({
       drivers,
+      drivenSince: drivenSinceReader(db),
       now,
       registry,
       countries: countryModules.codes(),
