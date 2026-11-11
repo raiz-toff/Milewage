@@ -200,7 +200,6 @@ data class Settings(
     @SerialName("time_format") val timeFormat: String? = null,
     @SerialName("default_vehicle_id") val defaultVehicleId: Long? = null,
     @SerialName("work_kinds") val workKinds: List<String> = emptyList(),
-    @SerialName("onboarded_at") val onboardedAt: Long? = null,
     @SerialName("setup_done") val setupDone: List<String> = emptyList(),
 )
 

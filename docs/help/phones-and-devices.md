@@ -24,8 +24,6 @@ This works from anywhere the phone can reach the server.
 
 The phone's camera app works too: it opens a page with "Open in the MileWage app", and the phone asks "Connect to this server?"; tap "Yes, connect". Or copy the text under "Show code text" and use "Paste the code" on the phone. MileWage reads the code itself, without Google services, so this works on a phone without them.
 
-The setup wizard has the same step, "Pair your phone".
-
 If the phone says the code is not valid, has expired or was already used, choose "Pair a phone" again for a new code.
 
 ## Link a phone on your home Wi-Fi

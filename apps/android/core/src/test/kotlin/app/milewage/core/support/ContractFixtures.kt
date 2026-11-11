@@ -17,7 +17,7 @@ object ContractFixtures {
          "logbook":{"readings":"Start and end of the year","notes":["Keep the log for six years."]},
          "own_mileage_rate":{"cents_per_unit":30.5,"unit":"km"},"mileage_rate":"official","week_start":1,
          "time_format":"24h","default_vehicle_id":3,"work_kinds":["delivery","ride_hailing"],
-         "onboarded_at":1700000000000,"setup_done":["vehicle","phone"],"engine_version":4,
+         "setup_done":["vehicle","phone"],"engine_version":4,
          "diagnostics":{"level":"verbose","verbose_until":1700086400000},
          "modules":{
            "tax":true,"receipts":true,"expenses":true,"earnings":true,

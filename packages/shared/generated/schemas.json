@@ -141,7 +141,7 @@
           "items": {
             "$ref": "#/$defs/WorkKind"
           },
-          "description": "Kinds of platform work the country's data covers (plan 21 section 3.6a). With one kind, onboarding does not ask (plan 23)."
+          "description": "Kinds of platform work the country's data covers (plan 21 section 3.6a). With one kind, that is the driver's work without asking (plan 23)."
         },
         "regional_rules": {
           "type": "boolean",
@@ -347,7 +347,6 @@
         "time_format",
         "default_vehicle_id",
         "work_kinds",
-        "onboarded_at",
         "setup_done",
         "engine_version",
         "diagnostics",
@@ -476,17 +475,6 @@
           },
           "description": "The work the driver does, among what the country offers. When none is chosen and the country offers one kind, that kind (plan 23 rule 1)."
         },
-        "onboarded_at": {
-          "oneOf": [
-            {
-              "$ref": "#/$defs/EpochMs"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "When the driver finished the web onboarding (plan 23); null while it is not finished, so the web opens it."
-        },
         "setup_done": {
           "type": "array",
           "items": {
@@ -598,10 +586,6 @@
             "$ref": "#/$defs/WorkKind"
           },
           "description": "Only kinds the country offers (422 otherwise); a new country drops the kinds it does not offer."
-        },
-        "onboarded": {
-          "type": "boolean",
-          "description": "true: onboarding finished (sets onboarded_at, keeping an earlier time); false: run it again (clears onboarded_at and setup_done)."
         },
         "setup_done": {
           "type": "array",

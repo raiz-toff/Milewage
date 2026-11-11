@@ -588,6 +588,37 @@ describe('migration runner', () => {
     ]);
     expect(migrate(db, diag)).toEqual([]);
   });
+
+  test('a 0.2.0 database loses the setup wizard flag on upgrade; the other settings stay', () => {
+    const db = open();
+    const drop = 'core/0016_drop_onboarded';
+    migrate(
+      db,
+      real.filter((m) => `${m.module}/${m.id}` !== drop),
+    );
+    const columns = () =>
+      (db.prepare('PRAGMA table_info(settings)').all() as { name: string }[]).map((c) => c.name);
+    expect(columns()).toContain('onboarded_at');
+    const users = createUserRepository(db);
+    const sam = users.create({ username: 'sam', passwordHash: 'x', createdAt: 1 }).id;
+    const ana = users.create({ username: 'ana', passwordHash: 'x', createdAt: 1 }).id;
+    const prefs = db.prepare(
+      "INSERT INTO settings (user_id, country, distance_unit, currency, timezone, region, updated_at, work_kinds, setup_done, onboarded_at) VALUES (?, 'CA', 'km', 'CAD', 'America/Toronto', 'ON', 0, ?, ?, ?)",
+    );
+    prefs.run(sam, '["delivery"]', '["vehicle","phone"]', 1_700_000_000_000);
+    prefs.run(ana, null, null, null);
+    const others = () =>
+      db
+        .prepare(
+          'SELECT user_id, country, region, work_kinds, setup_done FROM settings ORDER BY user_id',
+        )
+        .all();
+    const before = others();
+    expect(migrate(db, real)).toEqual([drop]);
+    expect(columns()).not.toContain('onboarded_at');
+    expect(others()).toEqual(before);
+    expect(before).toHaveLength(2);
+  });
 });
 
 describe('user repository', () => {

@@ -184,31 +184,4 @@ describe('the cache and the session', () => {
     // The answer of the PATCH is the new settings: they are not asked for again.
     expect(gets('/settings')).toBe(1);
   });
-
-  it('leaving the setup wizard has the screens read their answers again', async () => {
-    let current = settingsFixture({ onboarded_at: 1, region: 'ON' });
-    const civic = { id: 1, name: 'Civic', kind: 'car', archived_at: null };
-    const client = keeping();
-    // The vehicles page was seen before the wizard, when there was no vehicle.
-    client.setQueryData(['/vehicles', { query: { include_archived: false } }], []);
-    renderApp(
-      {
-        ...signedIn(current),
-        'GET /settings': () => ({ body: current }),
-        'GET /vehicles': () => ({ body: [civic] }),
-        'PATCH /settings': ({ body }) => {
-          current = {
-            ...current,
-            onboarded_at: (body as { onboarded?: boolean }).onboarded ? 5 : 1,
-          };
-          return { body: current };
-        },
-      },
-      '/onboarding/check',
-      client,
-    );
-    fireEvent.click(await screen.findByRole('button', { name: 'Finish' }));
-    fireEvent.click(await screen.findByRole('link', { name: 'Vehicles' }));
-    expect(await screen.findByRole('listitem', { name: 'Civic' })).toBeTruthy();
-  });
 });

@@ -23,26 +23,28 @@ The next screen shows your recovery key, once. Every backup is locked with it. T
 
 Save it in a password manager or on paper. Then type its last 6 characters and choose "I saved it". Until you do, setup is not finished. If the page reloads before that, the key is not shown again: type the last 6 characters of the key you saved.
 
-## Answer the setup questions
+## Finish setting up
 
-Next, setup asks one question per step. You can leave and come back later.
+Next, the Dashboard opens. Its card "Finish setting up" lists what is left, the next step first. Each step opens the page where you do it.
 
-1. Where you drive and what work you do, where your country has a choice.
-2. Your apps: tick every platform you work for. "Another app" adds one by name.
-3. Your vehicle: a name, a type and who owns it. Every shift needs a vehicle, so you cannot finish without one. See [Vehicles and the odometer](vehicles-and-odometer.md).
-4. Get the app, then Pair your phone: see below.
-5. Check your answers, then choose Finish.
+1. **Add your vehicle**, on the Vehicles page: a name, a type and who owns it. Every shift needs a vehicle, so the phone cannot start one without it. See [Vehicles and the odometer](vehicles-and-odometer.md).
+2. **Pair your phone**, on the Devices page: see below.
+3. **Run a backup**, on the Backups page. You can skip this one.
 
-The vehicle step names the mileage rate your vehicle gets. No rate in MileWage has yet been checked against the tax offices' own publications. See [Mileage rates and tax](mileage-rates-and-tax.md).
+"Hide for now" hides the card in this browser. A finished step stays finished.
 
-To go through the questions again later: Settings > Profile and region > Run setup again.
+Then check these in Settings:
+
+- **Profile and region**: your province or state. Until you choose one, only the national rules apply.
+- **Platforms**: the apps you work for. Every app your country lists starts switched on. Switch off the ones you do not use, and add your own.
+- **Mileage rate**: the rate your deduction uses. No rate in MileWage has yet been checked against the tax offices' own publications. See [Mileage rates and tax](mileage-rates-and-tax.md).
 
 ## Install the phone app
 
 The phone app is for Android 8.0 or later. It is not on Google Play yet. It needs nothing from Google, so a phone without Google services works too. Get it in one of two ways:
 
 - From the [latest GitHub release](https://github.com/raiz-toff/Milewage/releases/latest): the file `milewage-<version>.apk`, with the version of your server.
-- From your own server, if the app file was put there ([install guide, section 3a](../../infra/docs/install.md#3a-the-phone-app-from-your-own-server)). The setup step Get the app shows a QR code for your server's download page. Scan it with the phone's camera.
+- From your own server, if the app file was put there ([install guide, section 3a](../../infra/docs/install.md#3a-the-phone-app-from-your-own-server)). On the phone, open your server's download page, `https://<your address>/app`. On the Devices page, "Get the app" under the pairing code opens the same page.
 
 The first time, Android asks to let your browser install apps. Tap Settings, turn on Allow from this source, go back, then tap Install.
 
@@ -50,9 +52,9 @@ The first time, Android asks to let your browser install apps. Tap Settings, tur
 
 Open MileWage on the phone and tap "I have a server". The screen "Connect to your server" offers two ways to pair.
 
-**On your home Wi-Fi.** This needs home network access on the server ([install guide, section 2a](../../infra/docs/install.md#2a-home-network-access-optional-recommended-for-a-home-server)). The phone finds the server under "On this Wi-Fi". Tap it, and the phone shows a 6-digit code under "Link this phone". On the computer, the setup step Pair your phone, or the Devices page, lists the phone under "Link a phone on your Wi-Fi". Type the code and choose Link.
+**On your home Wi-Fi.** This needs home network access on the server ([install guide, section 2a](../../infra/docs/install.md#2a-home-network-access-optional-recommended-for-a-home-server)). The phone finds the server under "On this Wi-Fi". Tap it, and the phone shows a 6-digit code under "Link this phone". On the computer, the Devices page lists the phone under "Link a phone on your Wi-Fi". Type the code and choose Link.
 
-**With the QR code.** The setup step shows a pairing code; on the Devices page, "Pair a phone" makes one. On the phone, tap "Scan the code" and allow the camera. A code works once, for 10 minutes. Without the camera, use "Paste the code" with the code text from under the QR code.
+**With the QR code.** On the Devices page, "Pair a phone" makes a pairing code. On the phone, tap "Scan the code" and allow the camera. A code works once, for 10 minutes. Without the camera, use "Paste the code" with the code text from under the QR code.
 
 Under the code, the page says where the phone will connect: the home address on your Wi-Fi, and the https address, normally Tailscale, everywhere else. Plain http is allowed only on the home address. With no away address, shifts wait on the phone until you are back home. If an address is wrong, choose Change address. More in [Phones and devices](phones-and-devices.md).
 

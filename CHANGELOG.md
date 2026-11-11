@@ -256,6 +256,15 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   diagnostics events; capture data was never a file on the volume and never in a backup.
   Diagnostics, the health view and the debug bundle stay. A `modules.capture` left in
   `settings.json` or `MILEWAGE_MODULE_CAPTURE` in the environment is ignored.
+- The setup wizard (the questions after the recovery key: region, kind of work, apps, vehicle, get
+  the app, pair the phone, check your answers), "Continue setup" on the dashboard and "Run setup
+  again" in Settings. A new owner now goes from the recovery key to the Dashboard, where "Finish
+  setting up" lists Add your vehicle (first, and it cannot be skipped: a shift needs one), Pair
+  your phone and Run a backup. The region is set in Settings > Profile and region, the apps in
+  Settings > Platforms, your mileage rate in Settings > Mileage rate. The kind of work has no
+  screen any more; a choice already made is kept in `work_kinds`. `onboarded_at` leaves
+  `GET /settings` and `onboarded` leaves `PATCH /settings`; upgrading drops the
+  `settings.onboarded_at` column. The setup steps already finished or skipped stay.
 
 ### Fixed
 
