@@ -27,16 +27,16 @@ test('GET /settings returns the preferences, engine version and diagnostics', as
 });
 
 test('the modules object follows the registry: registered is true, absent is false', async () => {
-  const flagsOf = async (replay: boolean) => {
-    const other = harness({ replay });
+  const flagsOf = async (receipts: boolean) => {
+    const other = harness({ receipts });
     const { cookie } = await other.signUp();
     const res = await other.call('GET', '/settings', undefined, { cookie });
     await other.close();
     return res.json().modules;
   };
-  expect((await flagsOf(true)).replay).toBe(true);
+  expect((await flagsOf(true)).receipts).toBe(true);
   expect(await flagsOf(false)).toMatchObject({
-    replay: false,
+    receipts: false,
     tracking: true,
     stops: true,
     backup_download: true,
