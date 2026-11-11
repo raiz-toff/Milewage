@@ -51,6 +51,7 @@ import app.milewage.phone.logic.ConnectFix
 import app.milewage.phone.ui.Texts
 import app.milewage.phone.ui.components.BottomAction
 import app.milewage.phone.ui.components.BrandButton
+import app.milewage.phone.ui.components.IconTile
 import app.milewage.phone.ui.components.ListRow
 import app.milewage.phone.ui.components.NoticeCard
 import app.milewage.phone.ui.components.RowDivider
@@ -265,7 +266,7 @@ private fun Section(
     CardSurface(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                IconTile(icon)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(stringResource(title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
                     Text(stringResource(body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -347,9 +348,9 @@ fun ConnectedContent(state: SetupState, countryName: (String) -> String, onCheck
         if (f != null) {
             item(key = "server") {
                 Rows(label = stringResource(R.string.settings_server)) {
-                    ListRow(stringResource(R.string.row_home), supporting = f.homeHost ?: stringResource(R.string.not_set), leading = { Icon(Icons.Wifi, null) })
+                    ListRow(stringResource(R.string.row_home), supporting = f.homeHost ?: stringResource(R.string.not_set), leading = { IconTile(Icons.Wifi) })
                     RowDivider()
-                    ListRow(stringResource(R.string.row_away), supporting = f.awayHost ?: stringResource(R.string.away_not_set), leading = { Icon(Icons.Tailscale, null) })
+                    ListRow(stringResource(R.string.row_away), supporting = f.awayHost ?: stringResource(R.string.away_not_set), leading = { IconTile(Icons.Tailscale) })
                 }
             }
             item(key = "sent") {

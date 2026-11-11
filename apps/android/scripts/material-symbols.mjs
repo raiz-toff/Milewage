@@ -82,6 +82,13 @@ const ICONS = [
   ['Licences', 'description-outline-rounded'],
   ['Privacy', 'privacy-tip-outline-rounded'],
   ['Key', 'key-outline-rounded'],
+  // Pictures in an icon tile (web: ui/visuals.tsx).
+  ['Route', 'route-outline-rounded'],
+  ['Savings', 'savings-outline-rounded'],
+  ['Time', 'schedule-outline-rounded'],
+  ['Odometer', 'speed-outline-rounded'],
+  ['Globe', 'language'],
+  ['Payments', 'payments-outline-rounded'],
   // Navigation destinations (with a filled form for the selected one).
   ['Home', 'home-outline-rounded', 'home-rounded'],
   ['Shifts', 'calendar-month-outline-rounded', 'calendar-month-rounded'],

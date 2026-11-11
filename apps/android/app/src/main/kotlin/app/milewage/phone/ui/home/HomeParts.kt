@@ -61,6 +61,8 @@ import app.milewage.phone.ui.Texts
 import app.milewage.phone.ui.components.BigFigure
 import app.milewage.phone.ui.components.NoticeCard
 import app.milewage.phone.ui.components.FigureRow
+import app.milewage.phone.ui.components.IconTile
+import app.milewage.phone.ui.components.TileTone
 import app.milewage.phone.ui.components.StatCell
 import app.milewage.phone.ui.components.Tone
 import app.milewage.phone.ui.theme.surfaces
@@ -85,18 +87,21 @@ fun SummarySection(summary: PeriodSummary?, period: Period, settings: DisplaySet
         val p = summary
         // One card: the distance large, then the shifts and the deduction under a hairline.
         CardSurface(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                val label = stringResource(R.string.summary_distance)
-                val value = f.distance(p?.totalM)
-                Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                BigFigure(value, MaterialTheme.typography.displaySmall, Modifier.semantics { contentDescription = "$label, $value" })
-                if (p != null && p.unsent > 0) {
-                    Text(
-                        pluralStringResource(R.plurals.summary_unsent, p.unsent, p.unsent),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+            Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    val label = stringResource(R.string.summary_distance)
+                    val value = f.distance(p?.totalM)
+                    Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    BigFigure(value, MaterialTheme.typography.displaySmall, Modifier.semantics { contentDescription = "$label, $value" })
+                    if (p != null && p.unsent > 0) {
+                        Text(
+                            pluralStringResource(R.plurals.summary_unsent, p.unsent, p.unsent),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
+                IconTile(Icons.Route, tone = TileTone.Kind(1), size = 48.dp)
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             val shifts = stringResource(R.string.summary_shifts)
@@ -105,8 +110,8 @@ fun SummarySection(summary: PeriodSummary?, period: Period, settings: DisplaySet
             val estimate = stringResource(R.string.estimate)
             FigureRow(
                 cells = listOf(
-                    { m -> StatCell(shifts, p?.shifts?.toString() ?: "0", m, caption = business) },
-                    { m -> StatCell(deduction, f.money(p?.deductionCents), m, caption = estimate) },
+                    { m -> StatCell(shifts, p?.shifts?.toString() ?: "0", m, caption = business, icon = Icons.Shifts, tile = TileTone.Kind(0)) },
+                    { m -> StatCell(deduction, f.money(p?.deductionCents), m, caption = estimate, icon = Icons.Savings, tile = TileTone.Kind(2)) },
                 ),
             )
         }
@@ -234,7 +239,10 @@ fun SetupCard(items: List<SetupItem>, onFix: (Fix) -> Unit) {
 fun NextShiftCard(v: VehicleChoice, unpaired: Boolean, onSelect: (Long) -> Unit, onFix: (Fix) -> Unit) {
     CardSurface(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.next_shift), style = MaterialTheme.typography.titleMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconTile(Icons.Vehicles, tone = TileTone.Selected)
+                Text(stringResource(R.string.next_shift), style = MaterialTheme.typography.titleMedium)
+            }
             val muted = MaterialTheme.colorScheme.onSurfaceVariant
             when {
                 unpaired -> Text(stringResource(R.string.not_paired_note), style = MaterialTheme.typography.bodyMedium, color = muted)

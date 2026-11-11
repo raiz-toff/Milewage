@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -17,7 +15,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -39,6 +36,8 @@ import app.milewage.phone.model.Formats
 import app.milewage.phone.ui.Texts
 import app.milewage.phone.ui.ViewModels
 import app.milewage.phone.ui.components.EmptyState
+import app.milewage.phone.ui.components.IconTile
+import app.milewage.phone.ui.components.TileTone
 import app.milewage.phone.ui.components.ListRow
 import app.milewage.phone.ui.components.LocalSnackbars
 import app.milewage.phone.ui.components.RowDivider
@@ -111,12 +110,6 @@ private fun WeekGroup(g: ShiftGroup, f: Formats, onOpenShift: (String) -> Unit) 
     }
 }
 
-private fun markerIcon(m: ShiftMarker): ImageVector = when (m) {
-    ShiftMarker.SENT -> Icons.CheckCircle
-    ShiftMarker.NEEDS_ATTENTION, ShiftMarker.SENT_DIFFERS -> Icons.Warning
-    ShiftMarker.ON_PHONE_ONLY, ShiftMarker.SENDING, ShiftMarker.OTHER_SERVER -> Icons.Info
-}
-
 /** One shift: day and times, distance, who calculated it, its send state in words, and what to check. */
 @Composable
 fun ShiftListRow(row: ShiftRow, f: Formats, onClick: () -> Unit) {
@@ -137,16 +130,12 @@ fun ShiftListRow(row: ShiftRow, f: Formats, onClick: () -> Unit) {
         headline = "$day · $times",
         supporting = if (review != null) "$supporting\n$review" else supporting,
         leading = {
-            Icon(
-                if (row.running) Icons.Location else markerIcon(row.marker),
-                contentDescription = null,
-                tint = when {
-                    row.running -> MaterialTheme.colorScheme.primary
-                    row.marker == ShiftMarker.NEEDS_ATTENTION -> MaterialTheme.colorScheme.error
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                modifier = Modifier.size(24.dp),
-            )
+            // The picture says what the row is; the send state stays in the words under the day.
+            when {
+                row.running -> IconTile(Icons.Location, tone = TileTone.Selected, round = true)
+                row.marker == ShiftMarker.NEEDS_ATTENTION || row.marker == ShiftMarker.SENT_DIFFERS -> IconTile(Icons.Warning, tone = TileTone.Problem, round = true)
+                else -> IconTile(Icons.Route, tone = TileTone.Kind(0), round = true)
+            }
         },
         trailing = { Text(distance, style = MaterialTheme.typography.titleMedium.tabular()) },
         onClick = onClick,

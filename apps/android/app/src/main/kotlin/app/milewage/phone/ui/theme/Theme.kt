@@ -83,7 +83,10 @@ fun MileWageTheme(
         }
     }
     val surfaces = remember(colorScheme, darkTheme) { Surfaces.of(colorScheme, darkTheme) }
-    CompositionLocalProvider(LocalExtendedColors provides extended, LocalSurfaces provides surfaces) {
+    val kinds = remember(colorScheme, darkTheme, dynamic) {
+        (if (darkTheme) Kinds.Dark else Kinds.Light).let { if (dynamic) it.harmonizedWith(colorScheme.primary.toArgb()) else it }
+    }
+    CompositionLocalProvider(LocalExtendedColors provides extended, LocalSurfaces provides surfaces, LocalKinds provides kinds) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = MileWageTypography,
@@ -102,3 +105,8 @@ val MaterialTheme.extendedColors: ExtendedColors
 val MaterialTheme.surfaces: Surfaces
     @Composable @ReadOnlyComposable
     get() = LocalSurfaces.current
+
+/** The colours for things in kinds, for an icon tile: `MaterialTheme.kinds[0]`. */
+val MaterialTheme.kinds: Kinds
+    @Composable @ReadOnlyComposable
+    get() = LocalKinds.current

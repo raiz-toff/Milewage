@@ -54,7 +54,9 @@ import app.milewage.phone.ui.Texts
 import app.milewage.phone.ui.ViewModels
 import app.milewage.phone.ui.components.ConfirmHost
 import app.milewage.phone.ui.components.ConfirmRequest
+import app.milewage.phone.ui.components.IconTile
 import app.milewage.phone.ui.components.ListRow
+import app.milewage.phone.ui.components.TileTone
 import app.milewage.phone.ui.components.LocalSnackbars
 import app.milewage.phone.ui.components.NoticeCard
 import app.milewage.phone.ui.components.OtherServerCard
@@ -211,7 +213,7 @@ fun SettingsContent(state: SettingsState, info: AppInfo, actions: SettingsAction
                 ListRow(
                     headline = stringResource(R.string.settings_permissions),
                     supporting = stringResource(R.string.settings_permissions_body),
-                    leading = { Icon(Icons.Location, null) },
+                    leading = { IconTile(Icons.Location, tone = TileTone.Kind(2)) },
                     trailing = { Icon(Icons.ChevronRight, null) },
                     onClick = actions::openPermissions,
                 )
@@ -220,7 +222,7 @@ fun SettingsContent(state: SettingsState, info: AppInfo, actions: SettingsAction
                 ListRow(
                     headline = stringResource(R.string.settings_disconnect),
                     supporting = state.facts?.let { stringResource(R.string.settings_disconnect_body, it.host) },
-                    leading = { Icon(Icons.Close, null, tint = MaterialTheme.colorScheme.error) },
+                    leading = { IconTile(Icons.Close, tone = TileTone.Problem) },
                     headlineColor = MaterialTheme.colorScheme.error,
                     onClick = actions::disconnect,
                 )
@@ -233,7 +235,7 @@ fun SettingsContent(state: SettingsState, info: AppInfo, actions: SettingsAction
                 ListRow(
                     headline = stringResource(R.string.settings_theme),
                     supporting = stringResource(Texts.theme(state.theme)),
-                    leading = { Icon(Icons.Palette, null) },
+                    leading = { IconTile(Icons.Palette, tone = TileTone.Kind(4)) },
                     onClick = { themeOpen = true },
                 )
                 RowDivider()
@@ -252,14 +254,14 @@ fun SettingsContent(state: SettingsState, info: AppInfo, actions: SettingsAction
         if (state.helpBase != null) item(key = "help") { HelpSection(actions) }
         item(key = "about") {
             Rows(label = stringResource(R.string.settings_about)) {
-                ListRow(stringResource(R.string.settings_version), supporting = stringResource(R.string.settings_version_value, info.version, info.build))
+                ListRow(stringResource(R.string.settings_version), supporting = stringResource(R.string.settings_version_value, info.version, info.build), leading = { IconTile(Icons.Info) })
                 RowDivider()
-                ListRow(stringResource(R.string.settings_engine), supporting = stringResource(R.string.settings_engine_value, info.engine))
+                ListRow(stringResource(R.string.settings_engine), supporting = stringResource(R.string.settings_engine_value, info.engine), leading = { IconTile(Icons.Route) })
                 RowDivider()
                 ListRow(
                     stringResource(R.string.settings_licences),
                     supporting = stringResource(R.string.settings_licences_body),
-                    leading = { Icon(Icons.Licences, null) },
+                    leading = { IconTile(Icons.Licences) },
                     trailing = { Icon(Icons.ChevronRight, null) },
                     onClick = actions::openLicences,
                 )
@@ -267,7 +269,7 @@ fun SettingsContent(state: SettingsState, info: AppInfo, actions: SettingsAction
                 ListRow(
                     stringResource(R.string.settings_source),
                     supporting = stringResource(R.string.settings_source_body),
-                    leading = { Icon(Icons.Code, null) },
+                    leading = { IconTile(Icons.Code) },
                     trailing = { Icon(Icons.OpenInNew, null) },
                     onClick = actions::openSource,
                 )
@@ -275,7 +277,7 @@ fun SettingsContent(state: SettingsState, info: AppInfo, actions: SettingsAction
                 ListRow(
                     headline = stringResource(R.string.settings_diagnostics),
                     supporting = stringResource(R.string.settings_diagnostics_body),
-                    leading = { Icon(Icons.Maintenance, null) },
+                    leading = { IconTile(Icons.Maintenance) },
                     trailing = { Icon(Icons.ChevronRight, null) },
                     onClick = actions::openDiagnostics,
                 )
@@ -331,14 +333,14 @@ private fun ServerSection(state: SettingsState, actions: SettingsActions) {
                 headline = stringResource(R.string.row_home),
                 supporting = f.homeHost?.let { if (state.where == Where.HOME) stringResource(R.string.settings_using_now, it) else it }
                     ?: stringResource(R.string.not_set),
-                leading = { Icon(Icons.Wifi, null) },
+                leading = { IconTile(Icons.Wifi, tone = TileTone.Kind(0)) },
             )
             RowDivider()
             ListRow(
                 headline = stringResource(R.string.row_away),
                 supporting = f.awayHost?.let { if (state.where == Where.AWAY) stringResource(R.string.settings_using_now, it) else it }
                     ?: stringResource(R.string.away_not_set),
-                leading = { Icon(Icons.Tailscale, null) },
+                leading = { IconTile(Icons.Tailscale, tone = TileTone.Kind(0)) },
             )
             RowDivider()
             ListRow(
@@ -354,7 +356,7 @@ private fun ServerSection(state: SettingsState, actions: SettingsActions) {
                     )
                     is ConnectionCheck.Failed -> stringResource(R.string.connection_failed)
                 },
-                leading = { Icon(Icons.Server, null) },
+                leading = { IconTile(Icons.Server, tone = TileTone.Kind(0)) },
                 trailing = {
                     if (state.check == ConnectionCheck.Checking) {
                         CircularProgressIndicator(Modifier.padding(4.dp), strokeWidth = 2.dp)
@@ -384,14 +386,14 @@ private fun TrackingSection(state: SettingsState, onNudge: () -> Unit) {
         ListRow(
             headline = stringResource(R.string.settings_nudge),
             supporting = nudgeLabel((state.nudgeMs / 60_000).toInt()),
-            leading = { Icon(Icons.Timer, null) },
+            leading = { IconTile(Icons.Timer, tone = TileTone.Kind(1)) },
             onClick = onNudge,
         )
         RowDivider()
         ListRow(
             headline = stringResource(R.string.settings_battery_saving),
             supporting = stringResource(R.string.settings_battery_saving_body),
-            leading = { Icon(Icons.BatterySaving, null) },
+            leading = { IconTile(Icons.BatterySaving, tone = TileTone.Kind(1)) },
         )
     }
 }
@@ -419,7 +421,7 @@ private fun SendingRows(state: SettingsState, actions: SettingsActions) {
             } else {
                 null
             },
-            leading = { Icon(if (waiting) Icons.Send else Icons.CheckCircle, null) },
+            leading = { IconTile(if (waiting) Icons.Send else Icons.CheckCircle, tone = TileTone.Kind(2)) },
             trailing = {
                 if (state.sending) {
                     CircularProgressIndicator(Modifier.padding(4.dp), strokeWidth = 2.dp)
@@ -437,18 +439,18 @@ private fun UnitsSection(state: SettingsState) {
     val d = state.display
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Rows(label = stringResource(R.string.settings_units)) {
-            ListRow(stringResource(R.string.units_distance), supporting = stringResource(if (d.unit == DistanceUnit.MI) R.string.units_miles else R.string.units_km), leading = { Icon(Icons.Units, null) })
+            ListRow(stringResource(R.string.units_distance), supporting = stringResource(if (d.unit == DistanceUnit.MI) R.string.units_miles else R.string.units_km), leading = { IconTile(Icons.Units, tone = TileTone.Kind(5)) })
             RowDivider()
-            ListRow(stringResource(R.string.units_currency), supporting = d.currency)
+            ListRow(stringResource(R.string.units_currency), supporting = d.currency, leading = { IconTile(Icons.Payments, tone = TileTone.Kind(5)) })
             RowDivider()
-            ListRow(stringResource(R.string.units_timezone), supporting = d.timezone)
+            ListRow(stringResource(R.string.units_timezone), supporting = d.timezone, leading = { IconTile(Icons.Globe, tone = TileTone.Kind(5)) })
             RowDivider()
-            ListRow(stringResource(R.string.units_time_format), supporting = stringResource(if (d.timeFormat == TimeFormat.H12) R.string.units_12h else R.string.units_24h))
+            ListRow(stringResource(R.string.units_time_format), supporting = stringResource(if (d.timeFormat == TimeFormat.H12) R.string.units_12h else R.string.units_24h), leading = { IconTile(Icons.Time, tone = TileTone.Kind(5)) })
             RowDivider()
-            ListRow(stringResource(R.string.units_week_start), supporting = stringResource(if (d.weekStart == 0) R.string.units_sunday else R.string.units_monday))
+            ListRow(stringResource(R.string.units_week_start), supporting = stringResource(if (d.weekStart == 0) R.string.units_sunday else R.string.units_monday), leading = { IconTile(Icons.Shifts, tone = TileTone.Kind(5)) })
             if (d.country.isNotBlank()) {
                 RowDivider()
-                ListRow(stringResource(R.string.row_country), supporting = Countries.name(d.country))
+                ListRow(stringResource(R.string.row_country), supporting = Countries.name(d.country), leading = { IconTile(Icons.Flag, tone = TileTone.Kind(5)) })
             }
         }
         Text(
@@ -473,7 +475,7 @@ private fun HelpSection(actions: SettingsActions) {
                 if (i > 0) RowDivider()
                 ListRow(
                     headline = stringResource(label),
-                    leading = { Icon(Icons.Help, null) },
+                    leading = { IconTile(Icons.Help, tone = TileTone.Kind(6)) },
                     trailing = { Icon(Icons.OpenInNew, null) },
                     onClick = { actions.openHelp(page) },
                 )
