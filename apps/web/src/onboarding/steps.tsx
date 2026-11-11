@@ -1,7 +1,7 @@
 import type { ComponentType } from 'react';
 import type { Schemas, Settings } from '../api/client';
 import type { Country } from '../countries';
-import { RegionStep, WORK_LABELS, WorkStep } from './AboutSteps';
+import { RegionStep } from './AboutSteps';
 import { AppStep } from './AppStep';
 import { CheckStep } from './CheckStep';
 import { PairStep } from './PhoneSteps';
@@ -55,14 +55,6 @@ export const STEPS: Step[] = [
     done: (c) => c.settings.region !== null,
     summary: (c) => c.country?.regions.find((r) => r.code === c.settings.region)?.name ?? 'Not set',
     Component: RegionStep,
-  },
-  {
-    id: 'work',
-    title: 'What work you do',
-    visible: (c) => (c.country?.work.length ?? 0) > 1,
-    done: (c) => c.settings.work_kinds.length > 0,
-    summary: (c) => list(c.settings.work_kinds.map((k) => WORK_LABELS[k])),
-    Component: WorkStep,
   },
   {
     id: 'apps',

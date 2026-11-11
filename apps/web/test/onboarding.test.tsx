@@ -9,19 +9,6 @@ import { countriesFixture } from './support/fixtures';
 
 afterEach(cleanup);
 
-// A country whose data covers two kinds of work, so the wizard asks (plan 23 rule 1).
-const twoKinds = () => [
-  ...countriesFixture(),
-  {
-    ...countriesFixture()[0]!,
-    code: 'YY',
-    name: 'Testland',
-    work: ['delivery' as const, 'moto_taxi' as const],
-    labels: { region: 'state', city: null },
-    regions: [{ code: 'NO', name: 'North', own_rules: false, verified: false, cities: [] }],
-  },
-];
-
 type Platform = Schemas['Platform'];
 const app = (slug: string, label: string): Platform => ({
   slug,
@@ -90,7 +77,7 @@ const patches = (calls: { method: string; path: string; body: unknown }[]) =>
 describe('onboarding wizard (plan 23)', () => {
   it('opens for a driver not yet onboarded; Canada asks only the province', async () => {
     const { calls } = wizard();
-    // One kind of work in Canada: that step is not shown (region, apps, vehicle, app, phone, check).
+    // Region, apps, vehicle, app, phone, check.
     expect(await heading('Where you drive — Step 1 of 6')).toBeTruthy();
     expect(document.title).toBe('Where you drive — Step 1 of 6 — MileWage');
     expect(
@@ -104,28 +91,20 @@ describe('onboarding wizard (plan 23)', () => {
     expect(patches(calls)).toEqual([{ region: 'ON' }]);
   });
 
-  it('asks the work kinds where there are several; back and skip keep answers', async () => {
-    const { calls } = wizard({ country: 'YY', work_kinds: [] }, '/', twoKinds());
+  it('skip saves nothing and Back returns to the step before', async () => {
+    const { calls } = wizard();
     expect(await heading(/Where you drive — Step 1 of \d/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Skip this step' }));
-    expect(await heading(/What work you do — Step 2 of \d/)).toBeTruthy();
+    expect(await heading(/Your apps — Step 2 of \d/)).toBeTruthy();
     expect(patches(calls)).toEqual([]);
 
     fireEvent.click(screen.getByRole('link', { name: 'Back' }));
     expect(await heading(/Where you drive — Step 1 of \d/)).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Skip this step' }));
-    await heading(/What work you do/);
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Motorcycle taxi' }));
-    fireEvent.click(screen.getByRole('checkbox', { name: /Delivery/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    // Kept in the country's order, whatever the order of the clicks.
-    await heading(/Your apps/);
-    expect(patches(calls)).toEqual([{ work_kinds: ['delivery', 'moto_taxi'] }]);
   });
 
   it('resumes at the first step not done, read from the server', async () => {
-    wizard({ country: 'YY', region: 'NO', work_kinds: [] }, '/dashboard', twoKinds());
-    expect(await heading(/What work you do — Step 2 of \d/)).toBeTruthy();
+    wizard({ region: 'ON' }, '/dashboard');
+    expect(await heading(/Your apps — Step 2 of \d/)).toBeTruthy();
   });
 
   it('an onboarded driver gets the app; the wizard still opens at its address', async () => {

@@ -27,7 +27,7 @@ Save it in a password manager or on paper. Then type its last 6 characters and c
 
 Next, setup asks one question per step. You can leave and come back later.
 
-1. Where you drive and what work you do, where your country has a choice.
+1. Where you drive, where your country has regions.
 2. Your apps: tick every platform you work for. "Another app" adds one by name.
 3. Your vehicle: a name, a type and who owns it. Every shift needs a vehicle, so you cannot finish without one. See [Vehicles and the odometer](vehicles-and-odometer.md).
 4. Get the app, then Pair your phone: see below.

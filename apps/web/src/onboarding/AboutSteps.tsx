@@ -1,7 +1,4 @@
 import { useState } from 'react';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import type { Schemas } from '../api/client';
 import { levelWord } from '../countries';
 import { settingsPatch } from '../session';
 import { SelectField } from '../ui/form';
@@ -35,46 +32,6 @@ export function RegionStep({ ctx, next }: StepProps) {
           ...country.regions.map((r) => ({ value: r.code, label: r.name })),
         ]}
       />
-    </StepForm>
-  );
-}
-
-type WorkKind = Schemas['WorkKind'];
-export const WORK_LABELS: Record<WorkKind, string> = {
-  delivery: 'Delivery: food, groceries or parcels',
-  ride_hailing: 'Ride-hailing: driving passengers',
-  moto_taxi: 'Motorcycle taxi',
-  courier: 'Courier: documents and packages',
-};
-
-/** The kinds of work the country's data covers; shown only when there is more than one. */
-export function WorkStep({ ctx, next }: StepProps) {
-  const offered = ctx.country!.work;
-  const [chosen, setChosen] = useState<WorkKind[]>(ctx.settings.work_kinds);
-  const toggle = (k: WorkKind, on: boolean) =>
-    setChosen((list) => offered.filter((o) => (o === k ? on : list.includes(o))));
-  const save: StepSave = async (run) => {
-    if (chosen.length) return !!(await run(...settingsPatch({ work_kinds: chosen })));
-  };
-  return (
-    <StepForm save={save} next={next}>
-      <fieldset className="grid">
-        <legend className="mb-2 text-body-medium text-on-surface-variant">
-          Choose all that apply.
-        </legend>
-        {offered.map((k) => (
-          <div key={k} className="flex min-h-12 items-center gap-4 pl-[11px]">
-            <Checkbox
-              id={`work-${k}`}
-              checked={chosen.includes(k)}
-              onCheckedChange={(v) => toggle(k, v === true)}
-            />
-            <Label htmlFor={`work-${k}`} className="py-3 text-body-large">
-              {WORK_LABELS[k]}
-            </Label>
-          </div>
-        ))}
-      </fieldset>
     </StepForm>
   );
 }
