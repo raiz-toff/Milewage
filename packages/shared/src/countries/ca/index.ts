@@ -35,11 +35,21 @@ const allowance: MileageRate = {
 const CRA_CPP =
   'https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/payroll/payroll-deductions-contributions/canada-pension-plan-cpp/cpp-contribution-rates-maximums-exemptions.html';
 /** CPP figures for 2025 and 2026 (years without figures get no contribution estimate). */
-const cpp = (label: string, unit: string, y2025: number, y2026: number): Dated<number> => ({
+const cpp = (
+  label: string,
+  unit: string,
+  y2025: number,
+  y2026: number,
+  y2027?: number,
+): Dated<number> => ({
   label,
   unit,
   reference: [CRA_CPP],
-  values: { '2025-01-01': y2025, '2026-01-01': y2026, '2027-01-01': null },
+  values: {
+    '2025-01-01': y2025,
+    '2026-01-01': y2026,
+    ...(y2027 === undefined ? { '2027-01-01': null } : { '2027-01-01': y2027, '2028-01-01': null }),
+  },
 });
 
 const hst = (rateBp: number) => ({ salesTax: [{ key: 'hst', label: 'HST', rateBp }] });
@@ -71,9 +81,9 @@ export const caCountry: CountryModule = {
       NB: { data: hst(1500) },
       NL: { data: hst(1500) },
       NS: {
-        data: hst(1500),
+        data: hst(1400),
         notes: [
-          'NS: the CRA GST/HST calculator page says the HST is 14 % from 2025-04-01; 15 % is kept until a person checks it.',
+          'NS: the HST is 14 % from 2025-04-01 (15 % before). The rate is not dated here, so a report for early 2025 shows 14 % too.',
         ],
         sources: [
           'https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/gst-hst-businesses/charge-collect-which-rate/calculator.html',
@@ -91,17 +101,24 @@ export const caCountry: CountryModule = {
     pension: {
       plan: 'CPP',
       params: {
-        ympe: cpp('Maximum pensionable earnings', 'cents', 7_130_000, 7_460_000),
-        yampe: cpp('Additional maximum pensionable earnings', 'cents', 8_120_000, 8_500_000),
+        ympe: cpp('Maximum pensionable earnings', 'cents', 7_130_000, 7_460_000, 7_670_000),
+        yampe: cpp(
+          'Additional maximum pensionable earnings',
+          'cents',
+          8_120_000,
+          8_500_000,
+          8_740_000,
+        ),
         exemption: cpp('Basic exemption', 'cents', 350_000, 350_000),
         selfBp: cpp('Self-employed rate, first band (both halves)', 'bp', 1190, 1190),
         self2Bp: cpp('Self-employed rate, second band (CPP2)', 'bp', 800, 800),
       },
     },
     logbook: {
-      readings: 'The CRA asks for the odometer reading at the start and end of each tax year.',
+      readings:
+        'The CRA asks for the odometer reading at the start and end of each fiscal period, which is the calendar year for most self-employed drivers.',
       notes: [
-        'A full 12-month logbook can serve as a base year; a 3-month sample can then be used while your use stays within 10% of the base year. MileWage stores the readings but has no base-year or sample mode. Check the rules with the CRA.',
+        'A full 12-month logbook can serve as a base year; a 3-month sample can then be used while the business use it shows stays within 10 percentage points of the base year (a 49% base year accepts 39% to 59%). MileWage stores the readings but has no base-year or sample mode. Check the rules with the CRA.',
       ],
     },
     platforms: offer(
@@ -123,14 +140,14 @@ export const caCountry: CountryModule = {
     // The driver chooses per vehicle and year (apps/server mileage-deduction.ts), in every country today.
     methods: ['per_distance', 'actual_costs'],
     rates: { car: allowance, van: allowance, motorcycle: allowance },
+    note: 'In Canada the per-km rate is the CRA limit on tax-exempt allowances an employer pays, not a deduction a self-employed driver can claim. Treat the mileage deduction as an estimate: the CRA asks the self-employed to claim their actual motor vehicle expenses, with receipts and a record of total and business kilometres.',
   },
   sources: [CRA_ALLOWANCE],
   verified: false,
   notes: [
-    'Provincial rates; the territories have a higher rate that is not used.',
-    'Rates fetched from the CRA page on 2026-11-05 and not yet compared by a person.',
-    'The allowance rate is not the same thing as a motor vehicle expense deduction; no claim is made about which method applies.',
-    'The odometer note (logbook) was written without a checked CRA page; a person must check it.',
-    'Sales tax and CPP figures were written from memory of the CRA publications and have not been compared with them by a person.',
+    'Provincial rates; the territories have a rate 4 cents higher that is not used.',
+    'Checked by the owner against the CRA pages on 2026-11-11: the per-km rates for 2024 to 2026, the CPP ceilings, exemption and self-employed rates for 2025 and 2026, the 2027 CPP ceilings (published 2026-10-28), GST and HST by province, and the odometer and logbook wording.',
+    'Still open: the 2027 CPP contribution rate (so 2027 has no contribution estimate), whether the per-km rates cover motorcycles (the CRA pages say "automobile or motor vehicle"), and the 2027 per-km rates, usually published in December or January.',
+    'The per-km rate is the limit for tax-exempt allowances an employer pays, not a deduction method for the self-employed; the mileage note says so to the driver.',
   ],
 };

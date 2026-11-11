@@ -37,7 +37,12 @@ describe('country packs (08 section 16.3)', () => {
     expect(d(usCountry, 10_000, '2026-07-01')).toBe(472);
     expect(d(usCountry, 10_000, '2023-12-31')).toBeNull(); // no rate registered
     expect(d(usCountry, 10_000, '2027-01-01')).toBeNull(); // nor carried into an unannounced year
-    expect(d(gbCountry, 10_000, '2027-04-06')).toBeNull();
+    // GB 2027-28 is announced (55p, then 35p after 10,000 miles); nothing is carried past it.
+    expect(d(gbCountry, 10_000, '2027-04-06')).toBe(342);
+    expect(d(gbCountry, 10_000, '2027-04-06', 10_000 * MILE)).toBe(
+      Math.round((10_000 / MILE) * 35),
+    );
+    expect(d(gbCountry, 10_000, '2028-04-06')).toBeNull();
     expect(d(usCountry, 10_000, '2026-07-01', 0, 'bicycle')).toBeNull();
     expect(periodStart(usCountry.mileage, '2026-08-09')).toBe('2026-01-01');
   });
@@ -62,8 +67,13 @@ describe('country packs (08 section 16.3)', () => {
     expect(gbCountry.notes.join(' ')).toContain('UNVERIFIED');
   });
 
-  test('no pack claims to have been checked by a person yet', () => {
-    for (const p of [caCountry, usCountry, gbCountry]) expect(p.verified).toBe(false);
+  test('Canada says its per-km rate is an allowance limit, not a self-employed deduction', () => {
+    expect(caCountry.mileage.note).toMatch(/not a deduction a self-employed driver can claim/);
+    expect([usCountry.mileage.note, gbCountry.mileage.note]).toEqual([undefined, undefined]);
+  });
+
+  test('only the US pack is marked as checked by a person (the owner, 2026-11-11)', () => {
+    expect([caCountry, usCountry, gbCountry].map((p) => p.verified)).toEqual([false, true, false]);
   });
 
   test('a new country registers without editing anything else; unknown codes have no pack', () => {

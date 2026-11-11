@@ -23,11 +23,11 @@ In Canada the province sets the sales tax name (GST or HST), and for Quebec the 
 
 ## How the mileage deduction is worked out
 
-Each ended shift gets a deduction: its business distance times the rate for the shift's date and vehicle type. That is the pack's rate, or [your mileage rate](#your-mileage-rate) if you chose it. The pack's rates and thresholds are unverified.
+Each ended shift gets a deduction: its business distance times the rate for the shift's date and vehicle type. That is the pack's rate, or [your mileage rate](#your-mileage-rate) if you chose it. The rates were checked against the tax offices' pages on 11 November 2026; check any figure yourself before you use it.
 
-- **Canada**: per km for cars, vans and motorcycles, with a higher rate for the first 5,000 km of the calendar year. It is the provinces' rate; the territories' higher rate is not used.
+- **Canada**: per km for cars, vans and motorcycles, with a higher rate for the first 5,000 km of the calendar year. It is the provinces' rate; the territories' higher rate is not used. This figure is the CRA's limit on the tax-free allowance an employer may pay, not a deduction a self-employed driver can claim: treat it as an estimate. The CRA asks the self-employed to claim actual motor vehicle expenses, with receipts and a record of total and business kilometres. The Tax page and the reports say so.
 - **United States**: one rate per mile for cars, vans and motorcycles, taken at the shift's date.
-- **United Kingdom**: per mile, with a higher rate for the first 10,000 miles of the tax year from 6 April for cars and vans, and one rate for motorcycles.
+- **United Kingdom**: per mile, with a higher rate for the first 10,000 miles of the tax year from 6 April for cars and vans, and one rate for motorcycles. The rate after 10,000 miles from 6 April 2027 (35p) was announced in the 2026 Budget and is not yet law.
 
 Bicycles, e-bikes, scooters and walking get none. A threshold counts all your vehicles of the same type together.
 

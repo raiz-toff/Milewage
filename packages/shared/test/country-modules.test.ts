@@ -22,7 +22,7 @@ const TOTALS = [0, 1, 6.85, 102.6, 102.7, 999.5, 10_000, 1_234_567, 20_000_000, 
 const PRIORS = [0, 4_000_000, 9_000_000, 16_000_000, 9_999 * MILE];
 
 // Every deduction and period start of the packs before plan 21, written out by them before they
-// were removed (J1c). Order: date, vehicle kind, distance, earlier distance; empty means null.
+// were removed (J1c), with GB's 2027-04-06 rewritten on 2026-11-11 for the announced 2027-28 rates. Order: date, vehicle kind, distance, earlier distance; empty means null.
 const FROZEN: Record<string, string> = grid;
 
 describe('CA, US and GB as country modules (plan 21)', () => {
@@ -47,8 +47,8 @@ describe('CA, US and GB as country modules (plan 21)', () => {
     expect(at(102.6)).toBe(7);
   });
 
-  test('CA sales tax and pension by region are the figures of the old tax pack', () => {
-    const old: Record<string, number> = { ON: 1300, NB: 1500, NL: 1500, NS: 1500, PE: 1500 };
+  test('CA sales tax and pension by region (NS is 14 % since 2025-04-01)', () => {
+    const old: Record<string, number> = { ON: 1300, NB: 1500, NL: 1500, NS: 1400, PE: 1500 };
     for (const p of caCountry.places) {
       const region = p.code.slice(3);
       const place = resolvePlace(caCountry, region);

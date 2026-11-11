@@ -24,6 +24,11 @@ export interface Mileage {
   methods: readonly MileageMethod[];
   /** Rates by vehicle class; a class without a rate gets no deduction. */
   rates: Partial<Record<VehicleKind, MileageRate>>;
+  /**
+   * What a driver must know before using the country's rate, when the rate is not plainly a
+   * deduction method for them. Reports that value mileage at the country's rate carry it as a notice.
+   */
+  note?: string;
 }
 
 export const UNIT_METRES = { km: 1000, mi: 1609.344 } as const;

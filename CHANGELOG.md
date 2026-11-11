@@ -32,6 +32,14 @@ you choose Your rate there; in a country without rates in MileWage it is used as
 
 ### Not yet verified
 
+- Country figures checked against the tax offices' pages (2026-11-11) and corrected: Nova Scotia's
+  HST is 14 % (it was shown as 15 %); the United Kingdom's 2027-28 rates are in (55p, then 35p
+  after 10,000 miles, announced and not yet law; motorcycles 24p); Canada's 2027 CPP ceilings are
+  in, though 2027 has no contribution estimate until its rate is confirmed; the odometer note says
+  "fiscal period" and the logbook sample rule says 10 percentage points. In Canada the Tax page,
+  the tax summary and the PDF report now say that the per-km rate is the CRA's limit on employer
+  allowances, not a deduction for the self-employed, so the mileage deduction is an estimate. The
+  United States rates are marked as checked.
 - The new Android app has never run on a real phone. Everything below was tested on a computer
   only (unit tests, the screens drawn by Robolectric, light and dark).
 - The engine's maths on a phone's processor (ART on arm64) and on an arm64 server (a Raspberry

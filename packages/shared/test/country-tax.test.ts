@@ -4,7 +4,7 @@ import { estimateTax, type TaxEstimate } from '../src/countries/tax';
 import frozen from './fixtures/ca-tax-grid.json';
 
 // Every estimate of the CA tax pack before plan 21, written out by it before it was replaced
-// (J3a): net|taxable|cpp|cpp2|note|income tax|total|instalment|sales tax; empty means null.
+// (J3a), with Nova Scotia's HST rewritten to 14 % on 2026-11-11: net|taxable|cpp|cpp2|note|income tax|total|instalment|sales tax; empty means null.
 const old = (e: TaxEstimate) => {
   const [cpp, cpp2, tax] = e.lines;
   const sales = e.sales_tax ? Object.values(e.sales_tax).join('/') : null;

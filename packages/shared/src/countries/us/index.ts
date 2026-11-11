@@ -93,9 +93,9 @@ export const usCountry: CountryModule = {
     rates: { car: standard, van: standard, motorcycle: standard },
   },
   sources: [IRS],
-  verified: false,
+  verified: true,
   notes: [
-    'Rates fetched from the IRS page on 2026-11-05 and not yet compared by a person.',
+    'Rates checked by the owner against the IRS page on 2026-11-11 (2024 to 2026, with the 1 July 2026 change). No 2027 rate is published yet.',
     'The 2026 rate changed on 1 July; a shift uses the rate of its local date.',
   ],
 };

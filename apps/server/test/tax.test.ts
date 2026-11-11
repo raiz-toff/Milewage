@@ -294,6 +294,6 @@ describe('the pack arithmetic (shared)', () => {
   test('other provinces use their own sales tax rate', () => {
     const r = (region: string) =>
       est({ ...base, region, salesTaxRegistered: true }).sales_tax?.rate_bp;
-    expect([r('NS'), r('AB'), r('ON')]).toEqual([1500, 500, 1300]);
+    expect([r('NS'), r('AB'), r('ON')]).toEqual([1400, 500, 1300]);
   });
 });

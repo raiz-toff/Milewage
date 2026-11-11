@@ -16,8 +16,8 @@ const perMile = (label: string, values: Dated<number>['values']): Dated<number> 
 const car: MileageRate = {
   kind: 'tiered',
   thresholdUnits: 10_000,
-  first: perMile('First 10,000 miles', { '2024-04-06': 45, '2026-04-06': 55, '2027-04-06': null }),
-  after: perMile('After 10,000 miles', { '2024-04-06': 25, '2027-04-06': null }),
+  first: perMile('First 10,000 miles', { '2024-04-06': 45, '2026-04-06': 55, '2028-04-06': null }),
+  after: perMile('After 10,000 miles', { '2024-04-06': 25, '2027-04-06': 35, '2028-04-06': null }),
 };
 
 export const gbCountry: CountryModule = {
@@ -43,15 +43,17 @@ export const gbCountry: CountryModule = {
       van: car,
       motorcycle: {
         kind: 'flat',
-        perUnit: perMile('Motorcycles', { '2024-04-06': 24, '2027-04-06': null }),
+        perUnit: perMile('Motorcycles', { '2024-04-06': 24, '2028-04-06': null }),
       },
     },
   },
   sources: [HMRC],
   verified: false,
   notes: [
-    'UNVERIFIED: HMRC required log fields and rates stay unverified until a person checks them (17 M9.2).',
-    'Fetched 2026-11-05: cars and goods vehicles 55p to 10,000 miles then 25p from 6 April 2026 (45p before), motorcycles 24p. Only the 2026-27 page was read, so earlier years are the 45p/25p of that statement, not independently seen.',
+    'UNVERIFIED: the HMRC required log fields have not been checked by a person.',
+    'Rates checked by the owner against gov.uk on 2026-11-11: 45p then 25p up to 2025-26, 55p then 25p for 2026-27, motorcycles 24p throughout.',
+    '2027-28 (from 6 April 2027): 55p then 35p was announced at Budget 2026 and is not yet law; no change was announced for motorcycles, so 24p is carried on. Check again when HMRC publishes the 2027-28 page.',
+    'Not confirmed: that the 10,000-mile count totals all of a self-employed driver’s vehicles (HMRC says so for employees).',
     'Bicycles: no rate is registered, so no deduction.',
   ],
 };

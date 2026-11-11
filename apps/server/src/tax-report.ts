@@ -157,6 +157,7 @@ export function taxReport(o: TaxReportOptions, userId: number, year: number, col
             `Unverified rates: these figures have not been checked against ${pack.checkedAgainst}.`,
           ]),
       'Estimates to bring to an accountant, not tax advice. Nothing here is filed.',
+      ...(driver.pack?.mileage.note && period.rate !== 'yours' ? [driver.pack.mileage.note] : []),
       ...(period.rate === 'yours' || period.rate === 'mixed'
         ? [
             period.rate === 'yours'

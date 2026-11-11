@@ -238,6 +238,7 @@ export function reportModel(c: ExportContext): ReportModel {
     ...(rate === 'yours' || rate === 'mixed'
       ? ['Your mileage rate is a figure you entered. It is not an official rate.']
       : []),
+    ...(pack?.mileage.note && rate !== 'yours' ? [pack.mileage.note] : []),
     NOT_ADVICE,
   ];
   const sumEarned = (f: (r: EffectiveRow) => number) => earned.reduce((a, r) => a + f(r), 0);

@@ -15,7 +15,7 @@ export const caTax: TaxPack = {
     'https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/line-10100-employment-income/employment-income-slips/t4a.html',
   ],
   notes: [
-    'UNVERIFIED: every figure was written from memory of the CRA publications and has not been compared with them by a person.',
+    'Checked by the owner against the CRA pages on 2026-11-11: the CPP figures for 2025 and 2026, the instalment threshold and dates, the balance and filing dates and the T4A threshold. Not handled: a due date on a weekend or holiday moves to the next business day; the T4A wording is "more than $500".',
     'CPP2 and the second ceiling exist only for 2024 onward; years not listed have no contribution estimate.',
     'Quebec (QPP) is not in the pack: the estimate leaves the pension contribution out for region QC.',
     'Income tax is the driver’s own set-aside rate, a planning figure, not tax brackets.',

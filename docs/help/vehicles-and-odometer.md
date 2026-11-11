@@ -47,7 +47,7 @@ The readings of a Reviewed shift cannot be changed.
 
 What MileWage shows here comes from the project's plans. It has not been checked against the tax offices' own pages.
 
-- **Canada.** The Odometer page says the CRA asks for the reading at the start and end of each tax year. It also says when this year's start reading is missing. The CRA allows a base year and a shorter sample year; MileWage stores the readings but has no mode for that.
+- **Canada.** The Odometer page says the CRA asks for the reading at the start and end of each fiscal period, which is the calendar year for most self-employed drivers. It also says when this year's start reading is missing. The CRA allows a base year and a shorter sample year; MileWage stores the readings but has no mode for that.
 - **United States.** IRS Publication 463 does not require odometer readings. They are extra evidence.
 - **Great Britain and elsewhere.** The page says "Readings are optional. Enter them if your tax office asks."
 
