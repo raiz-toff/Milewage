@@ -11,27 +11,15 @@ import { shownTax } from './tax-report';
 import type { DriverContexts } from './driver-context';
 
 export type NotificationKind =
-  | 'goal_met'
-  | 'tax_deadline'
-  | 'shift_reminder'
-  | 'backup_overdue'
-  | 'backup_failed'
-  | 'recurring_expense_due';
+  'goal_met' | 'tax_deadline' | 'backup_overdue' | 'backup_failed' | 'recurring_expense_due';
 
-export const PREFS = [
-  'shift_reminders',
-  'goals',
-  'tax_deadlines',
-  'backup',
-  'sync_reminder',
-] as const;
+export const PREFS = ['goals', 'tax_deadlines', 'backup', 'sync_reminder'] as const;
 export type PrefName = (typeof PREFS)[number];
 
 /** Which toggle silences which kind. Recurring-expense reminders have no toggle: they are the driver's own template. */
 const GATE: Record<NotificationKind, PrefName | null> = {
   goal_met: 'goals',
   tax_deadline: 'tax_deadlines',
-  shift_reminder: 'shift_reminders',
   backup_overdue: 'backup',
   backup_failed: 'backup',
   recurring_expense_due: null,

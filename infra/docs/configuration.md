@@ -68,15 +68,15 @@ The first four, and `MILEWAGE_TRUSTED_PROXIES`, are compose settings in `infra/d
 
 | Setting                           | What it does                                                                                                                                       | Default                                                                   | Where it is set                                                  |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `MILEWAGE_MODULE_<NAME>`          | Switch: turns a module on or off. `<NAME>` is the module name in capitals, for example `MILEWAGE_MODULE_SCHEDULE=1`.                               | see below                                                                 | `settings.json` `modules.<name>`, or the environment             |
+| `MILEWAGE_MODULE_<NAME>`          | Switch: turns a module on or off. `<NAME>` is the module name in capitals, for example `MILEWAGE_MODULE_TAX=0`.                                    | see below                                                                 | `settings.json` `modules.<name>`, or the environment             |
 | `MILEWAGE_MODULE_MCP`             | The same switch for the AI assistant endpoint and its sign-in (`install.md` section 7). The only module switch the compose file passes to the API. | on; off on a server set up before 0.2.0 that never made an assistant code | `.env`; the compose file passes it on (empty leaves the default) |
 | `MILEWAGE_MODULE_EXPORT_<FORMAT>` | Switch: offers one export format or hides it. Formats: `CSV`, `GPX`, `GEOJSON`, `EXPENSES`, `TAX_SUMMARY`.                                         | all on                                                                    | `settings.json` `modules.export_<format>`, or the environment    |
 
 Modules on by default: `devices`, `tracking`, `stops`, `replay`, `sync`, `exporters`, `diagnostics`, `platforms`, `earnings`, `expenses`, `receipts`, `goals`, `analytics`, `maintenance`, `import`, `notifications`, `tax`, `mcp` (but see its row above).
-Off by default: `capture`, `schedule`.
+Off by default: `capture`.
 `core` and `backup` cannot be turned off. A module whose dependency is off stops the server at start with a message that names both (for example `receipts` needs `expenses`).
 
-Apart from `MILEWAGE_MODULE_MCP`, a module switch in `.env` does not reach the API. Use `settings.json`, for example `{ "modules": { "schedule": true } }`.
+Apart from `MILEWAGE_MODULE_MCP`, a module switch in `.env` does not reach the API. Use `settings.json`, for example `{ "modules": { "tax": false } }`.
 
 ## 6. Tax and country options
 

@@ -94,7 +94,6 @@ export function NotificationsPage() {
 }
 
 const LABELS: [keyof Prefs, string][] = [
-  ['shift_reminders', 'Shift reminders (on the phone)'],
   ['goals', 'Goals'],
   ['tax_deadlines', 'Tax dates'],
   ['backup', 'Backup problems'],

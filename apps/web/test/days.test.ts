@@ -6,7 +6,6 @@ import {
   dayOf,
   formatDay,
   isoToDate,
-  monthGrid,
   parseDay,
   period,
   periodOffset,
@@ -98,21 +97,6 @@ describe('periods', () => {
     expect(rangeOf('month', '2026-02-28', 1)).toEqual({ from: '2026-02-01', to: '2026-02-28' });
     expect(rangeOf('year', '2026-02-28', 1)).toEqual({ from: '2026-01-01', to: '2026-02-28' });
     expect(rangeOf('30d', '2026-03-01', 1)).toEqual({ from: '2026-01-31', to: '2026-03-01' });
-  });
-
-  it('a month grid pads to whole weeks and starts on the chosen day', () => {
-    const mon = monthGrid(2027, 2, 1); // 1 Feb 2027 is a Monday
-    expect(mon[0]![0]).toBe('2027-02-01');
-    expect(mon).toHaveLength(4); // 28 days from a Monday: exactly four weeks
-    expect(mon.at(-1)!.at(-1)).toBe('2027-02-28');
-    const sun = monthGrid(2027, 2, 0);
-    expect(sun[0]!.slice(0, 2)).toEqual([null, '2027-02-01']);
-    expect(sun.at(-1)!.at(-1)).toBeNull();
-    expect(sun.flat().filter(Boolean)).toHaveLength(28);
-    // November 2026 starts on a Sunday: six rows with Monday weeks, five with Sunday weeks.
-    expect(monthGrid(2026, 11, 1)).toHaveLength(6);
-    expect(monthGrid(2026, 11, 0)).toHaveLength(5);
-    expect(monthGrid(2026, 11, 0).flat().filter(Boolean).at(-1)).toBe('2026-11-30');
   });
 
   it('writes a short range in the local order', () => {

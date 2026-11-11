@@ -43,7 +43,6 @@ import { platformKnown, platformsRoutes } from './routes/platforms';
 import { receiptsRoutes } from './routes/receipts';
 import { replayRoutes } from './routes/replay';
 import { restoreRoutes } from './routes/restore';
-import { scheduleRoutes } from './routes/schedule';
 import { stopsRoutes } from './routes/stops';
 import { createSync } from './routes/sync';
 import { taxRoutes } from './routes/tax';
@@ -227,13 +226,6 @@ export const serverModules = [
         },
       },
     }),
-  }),
-  /** Planned shifts, repeating templates and off days; **off by default** (18 section 9, 16 item 1). */
-  serverModule({
-    name: 'schedule',
-    dependsOn: ['core'],
-    defaultEnabled: false,
-    wire: (h) => ({ routes: scheduleRoutes(h) }),
   }),
   /** Generic CSV import of the driver's own expenses and shifts, in two steps (18 section 12). */
   serverModule({

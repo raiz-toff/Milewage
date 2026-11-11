@@ -163,7 +163,6 @@ export const ALL_ON: Modules = {
   maintenance: true,
   import: true,
   notifications: true,
-  schedule: true,
   backup_download: false,
   exporters: ['csv', 'gpx', 'geojson'],
   countries: ['US', 'CA', 'GB'],
@@ -284,7 +283,6 @@ export const signedIn = (settings: Settings = settingsFixture()): Record<string,
   'GET /notifications': () => ({ body: { items: [], next_cursor: null, unread_count: 0 } }),
   'GET /notifications/prefs': () => ({
     body: {
-      shift_reminders: true,
       goals: true,
       tax_deadlines: true,
       backup: true,

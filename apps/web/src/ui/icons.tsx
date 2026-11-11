@@ -16,8 +16,6 @@ import backup from '@iconify-icons/material-symbols/backup-outline-rounded';
 import backupFill from '@iconify-icons/material-symbols/backup-rounded';
 import block from '@iconify-icons/material-symbols/block-rounded';
 import build from '@iconify-icons/material-symbols/build-outline-rounded';
-import calendarClock from '@iconify-icons/material-symbols/calendar-clock-outline-rounded';
-import calendarClockFill from '@iconify-icons/material-symbols/calendar-clock-rounded';
 import calendarMonth from '@iconify-icons/material-symbols/calendar-month-outline-rounded';
 import calendarMonthFill from '@iconify-icons/material-symbols/calendar-month-rounded';
 import calendarToday from '@iconify-icons/material-symbols/calendar-today-outline-rounded';
@@ -181,7 +179,6 @@ export const SystemModeIcon = symbol(computer);
 // Navigation destinations (with a filled form for the selected one).
 export const DashboardIcon = symbol(dashboard, dashboardFill);
 export const ShiftsIcon = symbol(calendarMonth, calendarMonthFill);
-export const ScheduleIcon = symbol(calendarClock, calendarClockFill);
 export const AnalyticsIcon = symbol(monitoring);
 export const ExpensesIcon = symbol(receiptLong, receiptLongFill);
 export const GoalsIcon = symbol(target);

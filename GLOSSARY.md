@@ -336,10 +336,6 @@ _Avoid_: tax account, tax fund
 A target the driver sets for earnings, hours, shifts or active miles over a day, week, month or year.
 _Avoid_: quota, objective
 
-**Schedule**:
-The shifts the driver plans to work, one-off or repeating, and their days off.
-_Avoid_: roster, rota, calendar
-
 **Analytics**:
 Charts of the driver's own shifts, earnings and expenses by period.
 _Avoid_: stats, insights, diagnostics
@@ -387,7 +383,7 @@ _Avoid_: external backup, cloud backup
 ### Modules and diagnostics
 
 **Module**:
-A part of MileWage the owner can switch off, such as expenses, receipts, tax, goals or the schedule. Shifts, trips and backups are never switched off.
+A part of MileWage the owner can switch off, such as expenses, receipts, tax, goals or analytics. Shifts, trips and backups are never switched off.
 _Avoid_: plugin, add-on, feature flag
 
 **Diagnostics**:

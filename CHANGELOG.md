@@ -216,6 +216,12 @@ has the AI assistant endpoint off again, as it was in 0.1.0. Set `MILEWAGE_MODUL
   Settings > Alerts and the badge, level, challenge and streak messages in the inbox. Upgrading
   deletes its tables (`badge_unlocks`, `progress_state`), those messages and the Streak switch's
   setting; a `modules.progress` or `challenge_target_cents` left in `settings.json` is ignored.
+- The schedule module (planned shifts, repeating templates and off days), which was off by
+  default: the Schedule page, the `/schedule` operations, the `modules.schedule` flag, the Shift
+  reminders switch in Settings > Alerts and the `shift_reminder` inbox kind. Upgrading deletes its
+  tables (`schedule_entries`, `schedule_templates`, `schedule_off_days`), any shift reminder
+  messages and the switch's setting; a `modules.schedule` left in `settings.json` or
+  `MILEWAGE_MODULE_SCHEDULE` in the environment is ignored.
 
 ### Fixed
 

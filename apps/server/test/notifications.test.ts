@@ -100,7 +100,6 @@ describe('triggers', () => {
 describe('the toggles and the inbox', () => {
   test('a switched-off kind makes no row; defaults are all on; bad bodies are 422; a phone reads but cannot change', async () => {
     expect((await send('GET', '/notifications/prefs')).json()).toEqual({
-      shift_reminders: true,
       goals: true,
       tax_deadlines: true,
       backup: true,

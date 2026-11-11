@@ -116,18 +116,6 @@ export const PERIODS: {
   },
 ];
 
-/** The weeks of a month as rows of days (`null` pads before and after), starting on `weekStart`. */
-export function monthGrid(year: number, month: number, weekStart: number): (string | null)[][] {
-  const { from, to } = period('month', `${year}-${pad(month)}-01`, weekStart);
-  const lead = (new Date(utcOf(from)).getUTCDay() - weekStart + 7) % 7;
-  const cells: (string | null)[] = [
-    ...Array<null>(lead).fill(null),
-    ...Array.from({ length: Number(to.slice(8)) }, (_, i) => addDays(from, i)),
-  ];
-  while (cells.length % 7 !== 0) cells.push(null);
-  return Array.from({ length: cells.length / 7 }, (_, w) => cells.slice(w * 7, w * 7 + 7));
-}
-
 /** English with the driver's country, so the day, month and year come in that country's order. */
 export function dateLocale(country: string): string {
   try {

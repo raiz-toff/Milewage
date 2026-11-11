@@ -22,7 +22,6 @@ export type BooleanModule = {
 
 // Every boolean module, once: the compiler fails when the contract gains or loses one.
 const MODULES: Record<BooleanModule, true> = {
-  schedule: true,
   notifications: true,
   import: true,
   maintenance: true,

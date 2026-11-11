@@ -145,8 +145,8 @@ shadcn defaults and lucide imports, so restyle it to the roles and swap its icon
    rows, numbers right-aligned with `tabular-nums`), in `SortTable` for sortable data, or in a card
    list with `RowMenu` per row.
 4. An empty list says what it is and what to do next, in `EmptyState`. Never show an empty table.
-5. Forms sit inline on the page: `Field`, `SelectField`, `DateField`, `TimeField`, `CheckField`,
-   `FilterChip`, `SegmentedButtons`, with `FormError` under the form. A `Dialog` is only for a
+5. Forms sit inline on the page: `Field`, `SelectField`, `DateField`, `CheckField`, `FilterChip`,
+   `SegmentedButtons`, with `FormError` under the form. A `Dialog` is only for a
    confirmation or a short, dangerous step.
 6. Lists longer than one page end with `ShowMore` (`usePagedList`, `apps/web/src/api/paged.ts`).
 7. Data comes through TanStack Query (`apps/web/src/api/query.ts`). Read with `useApiQuery` and

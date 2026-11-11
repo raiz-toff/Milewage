@@ -16,7 +16,6 @@ const item = (over: object = {}) => ({
   ...over,
 });
 const prefs = {
-  shift_reminders: true,
   goals: true,
   tax_deadlines: true,
   backup: true,
@@ -129,7 +128,6 @@ describe('notifications (module notifications)', () => {
       'goal_met',
       'backup_failed',
       'backup_overdue',
-      'shift_reminder',
     ]) {
       expect(messageOf({ kind, body_key: kind, ref: 'x' } as never).length).toBeGreaterThan(5);
     }

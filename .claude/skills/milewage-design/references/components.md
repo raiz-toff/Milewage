@@ -54,7 +54,6 @@ primitive another screen needs lives in `ui/`. The shift page reads one record t
 | `SelectField`         | A labelled dropdown in the same outlined field. `name` gives a fuller accessible name that starts with the label.                                                           |
 | `Picker`              | The bare dropdown (`PickOption[]`, with an optional `icon`). `""` (none, any, all) is a normal choice. Use it inside table rows or other fields.                            |
 | `DateField`           | A button in an outlined field opening a `Calendar` (month and year dropdowns) on surface-container-high. Value `YYYY-MM-DD` or `''`. The week starts from Settings.         |
-| `TimeField`           | One outlined field holding hour, minute (and AM/PM) dropdowns. Stored as `HH:MM`, shown in Settings > Time format.                                                          |
 | `CheckField`          | A labelled checkbox as a 48 px list row. The label toggles it too.                                                                                                          |
 | `denseField`          | A class string for an unlabelled 40 px outlined input in a table row (name it with `aria-label`).                                                                           |
 | `FilterChip`          | A toggle (`aria-pressed`). 32 px. Selected, it fills secondary-container and leads with a check. A filter over a list, or a quick pick (the category chips in Add expense). |

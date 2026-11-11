@@ -25,13 +25,6 @@ export function formatTime(ms: number, timeZone: string, timeFormat: TimeFormat 
   }).format(new Date(ms));
 }
 
-/** A stored "HH:MM" as the driver reads it: "17:05", or "5:05 PM" with the 12h setting. */
-export function formatClock(hhmm: string, timeFormat: TimeFormat): string {
-  if (timeFormat === '24h') return hhmm;
-  const [h = 0, m = 0] = hhmm.split(':').map(Number);
-  return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
-}
-
 /**
  * The driver's distance unit (Settings > Distance unit). The server stores every distance in whole
  * metres (fields end in `_m`); these helpers are the only place that converts.

@@ -169,7 +169,51 @@ describe('migration runner', () => {
     expect(db.prepare('SELECT kind FROM notifications').pluck().all()).toEqual(['goal_met']);
     expect(db.prepare('SELECT * FROM notification_prefs').get()).toEqual({
       user_id: userId,
-      shift_reminders: 1,
+      goals: 0,
+      tax_deadlines: 1,
+      backup: 1,
+      sync_reminder: 1,
+    });
+  });
+
+  test('a 0.2.0 database loses the schedule tables, shift reminders and their switch on upgrade', () => {
+    const db = open();
+    const drop = 'schedule/0002_drop_schedule';
+    migrate(
+      db,
+      real.filter((m) => `${m.module}/${m.id}` !== drop),
+    );
+    const planned = ['schedule_entries', 'schedule_off_days', 'schedule_templates'];
+    expect(tables(db)).toEqual(expect.arrayContaining(planned));
+    const userId = createUserRepository(db).create({
+      username: 'sam',
+      passwordHash: 'x',
+      createdAt: 1,
+    }).id;
+    const templateId = db
+      .prepare(
+        "INSERT INTO schedule_templates (user_id, label, weekdays, start_time, end_time) VALUES (?, 'Evenings', 31, '17:00', '22:00')",
+      )
+      .run(userId).lastInsertRowid;
+    db.prepare(
+      "INSERT INTO schedule_entries (user_id, planned_on, start_time, end_time, template_id) VALUES (?, '2027-01-11', '17:00', '22:00', ?)",
+    ).run(userId, templateId);
+    db.prepare("INSERT INTO schedule_off_days (user_id, off_on) VALUES (?, '2027-01-12')").run(
+      userId,
+    );
+    const add = db.prepare(
+      'INSERT INTO notifications (user_id, kind, dedupe_key, body_key, created_at) VALUES (?, ?, ?, ?, 0)',
+    );
+    add.run(userId, 'shift_reminder', 'shift_reminder:1', 'shift_reminder');
+    add.run(userId, 'goal_met', 'goal_met:1:2027-01-11', 'goal_met');
+    db.prepare(
+      'INSERT INTO notification_prefs (user_id, shift_reminders, goals) VALUES (?, 0, 0)',
+    ).run(userId);
+    expect(migrate(db, real)).toEqual([drop]);
+    for (const t of planned) expect(tables(db)).not.toContain(t);
+    expect(db.prepare('SELECT kind FROM notifications').pluck().all()).toEqual(['goal_met']);
+    expect(db.prepare('SELECT * FROM notification_prefs').get()).toEqual({
+      user_id: userId,
       goals: 0,
       tax_deadlines: 1,
       backup: 1,

@@ -9,7 +9,6 @@ import {
   GoalsIcon,
   OdometerIcon,
   PlacesIcon,
-  ScheduleIcon,
   SettingsIcon,
   ShiftsIcon,
   TaxIcon,
@@ -25,7 +24,6 @@ import { Dashboard } from './pages/Dashboard';
 import { ExpensesPage } from './pages/Expenses';
 import { ExportsPage } from './pages/Exports';
 import { Devices } from './pages/Devices';
-import { SchedulePage } from './pages/Schedule';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotificationsPage } from './pages/Notifications';
 import { OdometerPage } from './pages/Odometer';
@@ -92,13 +90,6 @@ export const screens: Screen[] = [
     visible: (m) => m.stops,
     element: <PlacesPage />,
     nav: { icon: PlacesIcon, group: 'overview' },
-  },
-  {
-    path: '/schedule',
-    label: 'Schedule',
-    visible: (m) => m.schedule,
-    element: <SchedulePage />,
-    nav: { icon: ScheduleIcon, group: 'overview' },
   },
   {
     path: '/analytics',
