@@ -261,7 +261,6 @@
         "sync",
         "diagnostics",
         "capture",
-        "mcp",
         "backup_download",
         "exporters",
         "countries"
@@ -334,10 +333,6 @@
         "capture": {
           "type": "boolean",
           "description": "Capture module registered (16 section 8); false by default."
-        },
-        "mcp": {
-          "type": "boolean",
-          "description": "MCP module registered (plan 26): the AI assistant endpoint, its tokens and sign-in connections; on by default."
         },
         "backup_download": {
           "type": "boolean"
@@ -841,63 +836,6 @@
             "null"
           ],
           "description": "Last observed phone-minus-server clock difference; in memory only."
-        }
-      }
-    },
-    "McpToken": {
-      "type": "object",
-      "required": [
-        "id",
-        "name",
-        "scope",
-        "kind",
-        "created_at",
-        "expires_at",
-        "last_used_at",
-        "revoked_at"
-      ],
-      "properties": {
-        "id": {
-          "type": "integer"
-        },
-        "name": {
-          "type": "string"
-        },
-        "scope": {
-          "enum": [
-            "read",
-            "write"
-          ]
-        },
-        "kind": {
-          "enum": [
-            "code",
-            "sign_in"
-          ],
-          "description": "sign_in: the assistant connected through the browser (its name is the one it registered). code: made by hand on the page."
-        },
-        "created_at": {
-          "$ref": "#/$defs/EpochMs"
-        },
-        "expires_at": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "description": "For sign_in, when the connection ends unless the assistant renews it (90 days after its last renewal)."
-        },
-        "last_used_at": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "description": "Updated at most once a minute."
-        },
-        "revoked_at": {
-          "type": [
-            "integer",
-            "null"
-          ]
         }
       }
     },

@@ -23,7 +23,7 @@ object ContractFixtures {
          "modules":{"notifications":true,"import":true,"maintenance":true,
            "analytics":true,"goals":true,"tax":true,"receipts":true,"expenses":true,"earnings":true,
            "platforms":true,"devices":true,"tracking":true,"replay":true,"stops":true,"sync":true,
-           "diagnostics":true,"capture":true,"mcp":true,"backup_download":true,"local_export":false,
+           "diagnostics":true,"capture":true,"backup_download":true,"local_export":false,
            "exporters":["csv","pdf","gpx"],"countries":["CA","US"]}}
     """.trimIndent()
 

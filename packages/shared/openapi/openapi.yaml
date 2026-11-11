@@ -39,7 +39,6 @@ tags:
   - { name: maintenance }
   - { name: import }
   - { name: notifications }
-  - { name: mcp }
   - { name: system }
 
 x-modules:
@@ -143,11 +142,6 @@ x-modules:
     default: true
     dependsOn: [core]
     operations: [listNotifications, markNotificationRead, dismissNotification, getNotificationPrefs, updateNotificationPrefs]
-  mcp:
-    toggle: modules.mcp
-    default: true
-    dependsOn: [core]
-    operations: [listMcpTokens, createMcpToken, revokeMcpToken, replaceMcpToken, listMcpAudit, checkMcpConnection, getOAuthAuthorization, decideOAuthAuthorization]
 
 paths:
   /healthz:
@@ -664,212 +658,6 @@ paths:
       responses:
         '204': { description: Revoked (idempotent). }
         '404': { $ref: '#/components/responses/NotFound' }
-
-  /mcp/tokens:
-    get:
-      tags: [mcp]
-      operationId: listMcpTokens
-      summary: The assistant access tokens, newest first (plan 26). The token itself is never listed.
-      security: [{ sessionCookie: [] }]
-      responses:
-        '200':
-          description: Tokens, revoked and expired ones included.
-          content:
-            application/json:
-              schema: { type: array, items: { $ref: '#/components/schemas/McpToken' } }
-    post:
-      tags: [mcp]
-      operationId: createMcpToken
-      summary: Make an assistant access token. The token is in this response only; the server keeps its SHA-256 hash.
-      security: [{ sessionCookie: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [name, scope]
-              additionalProperties: false
-              properties:
-                name: { type: string, minLength: 1, maxLength: 64 }
-                scope: { enum: [read, write], description: 'write includes read.' }
-                expires_in_days: { enum: [30, 90, 365, null], description: 'Default 90; null never expires.' }
-      responses:
-        '201':
-          description: Made. Show `token` once.
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - { $ref: '#/components/schemas/McpToken' }
-                  - type: object
-                    required: [token]
-                    properties: { token: { type: string, pattern: '^mwa_[A-Za-z0-9_-]{43}$' } }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-  /mcp/audit:
-    get:
-      tags: [mcp]
-      operationId: listMcpAudit
-      summary: The last 50 changes made by assistants, newest first (plan 26 section 3.7). Arguments are kept on the server only.
-      security: [{ sessionCookie: [] }]
-      responses:
-        '200':
-          description: Audit rows.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  required: [id, at, tool, outcome, target, token_id, token_name]
-                  properties:
-                    id: { type: integer }
-                    at: { $ref: '#/components/schemas/EpochMs' }
-                    tool: { type: string, description: 'The MCP tool, e.g. add_expense.' }
-                    outcome: { type: string, description: '`ok`, or `error: ` and the problem title.' }
-                    target: { type: [string, 'null'], description: 'The record touched, e.g. `expense:42` or `shift:17`.' }
-                    token_id: { type: integer }
-                    token_name: { type: string }
-  /mcp/connection:
-    get:
-      tags: [mcp]
-      operationId: checkMcpConnection
-      summary: Test connection (Settings › AI assistants). Compares the address the browser is on with what reached the server through every proxy, and names the causes in plain words.
-      security: [{ sessionCookie: [] }]
-      parameters:
-        - { name: address, in: query, required: true, schema: { type: string }, description: 'The address the browser is on, for example https://milewage.lan.' }
-      responses:
-        '200':
-          description: The check.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [ok, address, mcp_url, seen, public_url, home_url, findings]
-                properties:
-                  ok: { type: boolean, description: 'Assistants are told the same address the browser is on.' }
-                  address: { type: string, description: The browser's address (origin only). }
-                  mcp_url: { type: string, description: 'What the sign-in documents and the 401 give assistants. MILEWAGE_PUBLIC_URL or MILEWAGE_HOME_URL when the request came for its host, else the request''s own address.' }
-                  seen:
-                    type: object
-                    required: [protocol, host, via]
-                    properties:
-                      protocol: { type: string, description: 'http or https, as it reached the API.' }
-                      host: { type: string }
-                      via: { type: [string, 'null'], description: 'The first address in X-Forwarded-For. Caddy replaces the list with the sender''s address when it does not trust the sender.' }
-                  public_url: { type: [string, 'null'] }
-                  home_url: { type: [string, 'null'] }
-                  findings:
-                    type: array
-                    items:
-                      type: object
-                      required: [code, message]
-                      properties:
-                        code: { enum: [wrong_address, host_changed, proxy_not_trusted, forwarded_proto_missing, own_certificate] }
-                        message: { type: string }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-  /mcp/tokens/{id}:
-    parameters:
-      - { name: id, in: path, required: true, schema: { type: integer } }
-    delete:
-      tags: [mcp]
-      operationId: revokeMcpToken
-      summary: Revoke a token at once (idempotent).
-      security: [{ sessionCookie: [] }]
-      responses:
-        '204': { description: Revoked. }
-        '404': { $ref: '#/components/responses/NotFound' }
-
-  /mcp/tokens/{id}/replace:
-    parameters:
-      - { name: id, in: path, required: true, schema: { type: integer } }
-    post:
-      tags: [mcp]
-      operationId: replaceMcpToken
-      summary: A new secret for a live token made by hand; the old one stops working at once. Name, access, expiry and change history stay. The token is in this response only.
-      security: [{ sessionCookie: [] }]
-      responses:
-        '200':
-          description: Replaced. Show `token` once.
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - { $ref: '#/components/schemas/McpToken' }
-                  - type: object
-                    required: [token]
-                    properties: { token: { type: string, pattern: '^mwa_[A-Za-z0-9_-]{43}$' } }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-
-  # Connecting an assistant by signing in (OAuth 2.1 with PKCE). The client's own endpoints follow
-  # their RFCs, not this API's problem model, and are not listed here: `POST /oauth/register`
-  # (RFC 7591), `POST /oauth/token` (RFC 6749, form body), and at the origin
-  # `/.well-known/oauth-authorization-server` (RFC 8414) and
-  # `/.well-known/oauth-protected-resource/api/v1/mcp` (RFC 9728). The two below serve the web page
-  # `/oauth/authorize` where the driver says yes or no.
-  /oauth/authorize:
-    get:
-      tags: [mcp]
-      operationId: getOAuthAuthorization
-      summary: Checks an assistant's sign-in request and says who is asking. 422 when the client, its return address or PKCE is wrong; nothing is sent to the assistant then.
-      parameters:
-        - { name: client_id, in: query, required: true, schema: { type: string } }
-        - { name: redirect_uri, in: query, required: true, schema: { type: string } }
-        - { name: response_type, in: query, required: true, schema: { const: code } }
-        - { name: code_challenge, in: query, required: true, schema: { type: string } }
-        - { name: code_challenge_method, in: query, required: true, schema: { const: S256 } }
-        - { name: state, in: query, schema: { type: string } }
-        - { name: scope, in: query, schema: { type: string }, description: 'Space-separated; `write` asks for read and change.' }
-        - { name: resource, in: query, schema: { type: string }, description: "RFC 8707; must be this server's MCP address." }
-      security: [{ sessionCookie: [] }]
-      responses:
-        '200':
-          description: The request is good; ask the driver.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [client_name, redirect_uri, scope]
-                properties:
-                  client_name: { type: string, description: 'As the assistant registered itself.' }
-                  redirect_uri: { type: string }
-                  scope: { enum: [read, write], description: 'What the assistant asked for.' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-    post:
-      tags: [mcp]
-      operationId: decideOAuthAuthorization
-      summary: The driver's answer. Allow makes a one-minute code; either way the answer is the address to send the browser back to the assistant.
-      security: [{ sessionCookie: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [client_id, redirect_uri, response_type, code_challenge, code_challenge_method, decision]
-              properties:
-                client_id: { type: string }
-                redirect_uri: { type: string }
-                response_type: { const: code }
-                code_challenge: { type: string }
-                code_challenge_method: { const: S256 }
-                state: { type: string }
-                scope: { type: string }
-                resource: { type: string }
-                decision: { enum: [allow, deny] }
-                access: { enum: [read, write], description: 'What the driver allows; default read.' }
-      responses:
-        '200':
-          description: Where to send the browser.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [redirect_to]
-                properties:
-                  redirect_to: { type: string, description: 'The redirect URI with `code` or `error=access_denied`, `state` and `iss`.' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
 
   /settings:
     get:
@@ -2950,7 +2738,7 @@ components:
     Modules:
       type: object
       description: Read-only module flags so clients can hide screens and buttons of absent modules.
-      required: [notifications, import, maintenance, analytics, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, stops, sync, diagnostics, capture, mcp, backup_download, exporters, countries]
+      required: [notifications, import, maintenance, analytics, goals, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, stops, sync, diagnostics, capture, backup_download, exporters, countries]
       properties:
         platforms: { type: boolean, description: 'Platforms module registered (18 section 4.2).' }
         earnings: { type: boolean, description: 'Earnings module registered (18 section 4.3): the driver can type a total per shift and platform.' }
@@ -2970,7 +2758,6 @@ components:
         stops: { type: boolean, description: 'Effective flag: the stops module is registered AND settings.stops_enabled is true. When false the phone and the web hide every stop and estimated-split element.' }
         diagnostics: { type: boolean, description: 'Diagnostics module registered (16). When false the phone behaves as level off and the web hides the Diagnostics screens.' }
         capture: { type: boolean, description: 'Capture module registered (16 section 8); false by default.' }
-        mcp: { type: boolean, description: 'MCP module registered (plan 26): the AI assistant endpoint, its tokens and sign-in connections; on by default.' }
         backup_download: { type: boolean }
         exporters: { type: array, items: { enum: [csv, pdf, gpx, geojson, expenses, tax_summary] } }
         countries: { type: array, items: { type: string, minLength: 2, maxLength: 2 } }
@@ -3083,19 +2870,6 @@ components:
         revoked_at: { type: [integer, 'null'] }
         online: { type: boolean }
         clock_skew_ms: { type: [integer, 'null'], description: Last observed phone-minus-server clock difference; in memory only. }
-
-    McpToken:
-      type: object
-      required: [id, name, scope, kind, created_at, expires_at, last_used_at, revoked_at]
-      properties:
-        id: { type: integer }
-        name: { type: string }
-        scope: { enum: [read, write] }
-        kind: { enum: [code, sign_in], description: 'sign_in: the assistant connected through the browser (its name is the one it registered). code: made by hand on the page.' }
-        created_at: { $ref: '#/components/schemas/EpochMs' }
-        expires_at: { type: [integer, 'null'], description: 'For sign_in, when the connection ends unless the assistant renews it (90 days after its last renewal).' }
-        last_used_at: { type: [integer, 'null'], description: Updated at most once a minute. }
-        revoked_at: { type: [integer, 'null'] }
 
     VehicleKind: { enum: [car, motorcycle, van, bicycle, ebike, scooter, walking], description: 'bicycle, ebike, scooter and walking are not automobiles: no mileage allowance rate applies (18 section 4.1).' }
     VehiclePower: { enum: [gas, hybrid, ev, other] }

@@ -80,10 +80,8 @@ export function installHooks(fastify: FastifyInstance, o: HookOptions) {
     // the old schema disagree, so reads are refused too; only the status route stays open.
     const schemaOld = ['blocked', 'failed'].includes(o.state?.migration.status ?? '');
     const statusRoute = path === `${o.apiPrefix}/system/status`;
-    const config = request.routeOptions.config as { rateLimit?: RateClass; innerChecked?: boolean };
-    // A route whose work is made of in-process API calls (the MCP endpoint, plan 26 section 3.1)
-    // is let through: each of those calls meets these rules itself, so its reads still work.
-    const writes = !SAFE.has(request.method) && !config.innerChecked;
+    const config = request.routeOptions.config as { rateLimit?: RateClass };
+    const writes = !SAFE.has(request.method);
     if (o.state?.mode === 'read_only' && !statusRoute && (schemaOld || writes)) {
       const headers = { 'Retry-After': '30' };
       const detail = o.state.reason ?? 'The server is in read-only mode.';

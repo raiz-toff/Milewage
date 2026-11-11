@@ -138,7 +138,7 @@ describe('module flags hide screens (05 section 5, 17 section 8 item 5)', () => 
     const core = screens.filter((s) => !s.visible).map((s) => s.label);
     expect(core).toEqual(['Dashboard', 'Shifts', 'Vehicles', 'Odometer', 'Backups', 'Settings']);
     // Every screen with a rule disappears when all optional modules and switches are off.
-    const on: ScreenFlags = { ...ALL_ON, mcp: true, help: true };
+    const on: ScreenFlags = { ...ALL_ON, help: true };
     const off: ScreenFlags = { ...ALL_OFF, help: false };
     for (const s of screens.filter((x) => x.visible)) {
       expect(s.visible!(on), `${s.label} visible with module on`).toBe(true);

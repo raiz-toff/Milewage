@@ -153,10 +153,9 @@ No restart is needed. Without the files, the download is simply not offered.
 Add to `infra/docker/.env`, then
 `docker compose -f infra/docker/docker-compose.yml --env-file infra/docker/.env up -d --wait api`:
 
-| Setting                            | When                                                            |
-| ---------------------------------- | --------------------------------------------------------------- |
-| `MILEWAGE_MODULE_MCP=1`            | the owner wants AI assistants (then see `install.md` section 7) |
-| `MILEWAGE_APP_STORE_URL=https://…` | once the app is on Google Play (must be https)                  |
+| Setting                            | When                                           |
+| ---------------------------------- | ---------------------------------------------- |
+| `MILEWAGE_APP_STORE_URL=https://…` | once the app is on Google Play (must be https) |
 
 ## 8. Moving existing data (optional)
 

@@ -123,54 +123,12 @@ Never copy `milewage.db` by hand while the API runs. Logs rotate (3 files of 10 
 
 `infra/docker/smoke.sh` builds a throwaway stack on port 18080 and checks health, the web client, loopback-only publishing and log rotation (needs Docker; exits 2 when Docker is missing). The numbers in `infra/vm-tests/README.md` are for the real VM acceptance runs.
 
-## 7. Connect an AI assistant (optional)
+## 7. Behind your own reverse proxy
 
-MileWage can let an AI assistant such as Claude read your records and add to them, over the Model Context Protocol (plan 26). On a new server the endpoint is on, but nothing reaches your data until you connect an assistant in **Settings › AI assistants**. A server set up before 0.2.0 (when the endpoint was off by default) that never made an assistant code keeps it off. To decide yourself, add `MILEWAGE_MODULE_MCP=1` (on) or `MILEWAGE_MODULE_MCP=0` (off) to `infra/docker/.env` and run `docker compose -f infra/docker/docker-compose.yml up -d --wait api`.
+If MileWage sits behind a reverse proxy of your own (Nginx Proxy Manager, Traefik, a second Caddy) with its own name such as `https://milewage.lan`:
 
-**By signing in (recommended).** The assistant finds MileWage's sign-in page by itself (OAuth 2.1 with PKCE, the way MCP clients connect), so there is no code to copy:
-
-1. On a computer in your tailnet, add the address: `claude mcp add --transport http milewage https://<your address>/api/v1/mcp`. Cursor, VS Code and other MCP clients take the same address.
-2. In Claude Code type `/mcp`, choose **milewage** and sign in. Your browser opens MileWage: sign in, choose **Read only** or **Read and change**, and press **Allow**.
-3. The assistant appears in Settings › AI assistants with "Signed in". It renews its access by itself; one that is unused for 90 days is disconnected.
-
-**With a token**, for an assistant that cannot sign in:
-
-1. In MileWage open **Settings › AI assistants**, give the token a name, choose **Read only** or **Read and change**, and press **Make a token**. Copy it at once: it is shown only this time. The page also shows the commands below with your address filled in. They never hold the token, so a copied command cannot leak it into a shell history, a chat or a ticket. Do not paste the token into a chat or a ticket either.
-2. Connect from a computer in your tailnet (the endpoint is `https://<your address>/api/v1/mcp`):
-   - **Claude Code:** first keep the token in the shell without showing or saving it: `read -rs MILEWAGE_TOKEN && export MILEWAGE_TOKEN`, then paste the token and press Enter. Then add MileWage with the token's name, not its value (the single quotes matter): `claude mcp add --transport http milewage https://<your address>/api/v1/mcp --header 'Authorization: Bearer ${MILEWAGE_TOKEN}'`. Claude Code reads `MILEWAGE_TOKEN` each time it connects, so set it wherever you start Claude Code, for example from your password manager's command line.
-   - **Claude Desktop:** Settings › Developer › Edit config, and add to `claude_desktop_config.json`:
-     ```json
-     {
-       "mcpServers": {
-         "milewage": {
-           "command": "npx",
-           "args": [
-             "-y",
-             "mcp-remote@0.15.2",
-             "https://<your address>/api/v1/mcp",
-             "--header",
-             "Authorization:${MILEWAGE_AUTH}"
-           ],
-           "env": { "MILEWAGE_AUTH": "Bearer <paste the token here>" }
-         }
-       }
-     }
-     ```
-     (needs Node.js on that computer; restart Claude Desktop afterwards).
-
-Then ask, for example, "How much did I make per hour last week?" or "Add a $54.20 fuel expense from Esso today". Your assistant asks before each change unless you allowed it.
-
-Revoke an assistant on the same page as soon as you stop using it; changes made by assistants are listed there too. Forgot your password? See [Troubleshooting](../../docs/help/troubleshooting.md#you-forgot-your-password). claude.ai's own connectors reach servers from the internet, not from your tailnet, so they cannot connect to a Tailscale-only MileWage; do not open the endpoint with `tailscale funnel` for them.
-
-### 7a. Behind your own reverse proxy, or with a private certificate authority
-
-If MileWage sits behind a reverse proxy of your own (Nginx Proxy Manager, Traefik, a second Caddy) with its own name such as `https://milewage.lan`, an assistant can fail with "Failed to connect" for several different reasons. **Settings › AI assistants › Test connection** names the one you have. Open it from the address the assistant will use.
-
-1. **Tell MileWage its address.** Set `MILEWAGE_PUBLIC_URL=https://milewage.lan` in `infra/docker/.env`. For a request that comes for that host name, the sign-in documents and the endpoint's address use it as written, https included. Requests for other names (the home network's IP address, the Tailscale name) keep their own address, so those ways in keep working. Without this, a client stops with `Protected resource http://milewage.lan does not match expected https://milewage.lan`.
-2. **Trust the proxy.** Caddy keeps `X-Forwarded-Proto`, `X-Forwarded-Host` and `X-Forwarded-For` only from proxies it trusts; from anyone else it replaces them, so MileWage sees `http`. Put the proxy's address in `infra/docker/.env`, separated by spaces when there are several: `MILEWAGE_TRUSTED_PROXIES="192.168.1.10"` (an address or a range such as `192.168.1.0/24`). The compose file passes it to Caddy and to the API, so the Caddyfile and the compose file stay as shipped and `git pull` keeps working. Restart with `docker compose -f infra/docker/docker-compose.yml up -d --wait`. Trust only the proxy itself: anything you trust can claim any client address.
-3. **What the proxy must send.** All paths, including `/.well-known/`, to MileWage's port, with the original `Host` header and `X-Forwarded-Proto` (in Nginx: `proxy_set_header Host $host;` and `proxy_set_header X-Forwarded-Proto $scheme;`, which Nginx Proxy Manager sets by default) and `X-Forwarded-For`.
-4. **A private certificate authority.** Claude Code, `mcp-remote` and other assistants that run on Node.js do not use the operating system's trusted certificates. They fail with `SELF_SIGNED_CERT_IN_CHAIN` until you start them with `NODE_EXTRA_CA_CERTS=/path/to/your-ca.pem` (the authority's certificate, PEM format) in their environment.
-5. **The certificate must name the host.** Node.js refuses a wildcard with only one dot: `*.lan` does not cover `milewage.lan` (`ERR_TLS_CERT_ALTNAME_INVALID`), although browsers may accept it. List `milewage.lan` itself in the certificate, or use a name one level deeper such as `milewage.home.lan` with `*.home.lan`.
+1. **Trust the proxy.** Caddy keeps `X-Forwarded-Proto`, `X-Forwarded-Host` and `X-Forwarded-For` only from proxies it trusts; from anyone else it replaces them, so MileWage sees `http`. Put the proxy's address in `infra/docker/.env`, separated by spaces when there are several: `MILEWAGE_TRUSTED_PROXIES="192.168.1.10"` (an address or a range such as `192.168.1.0/24`). The compose file passes it to Caddy and to the API, so the Caddyfile and the compose file stay as shipped and `git pull` keeps working. Restart with `docker compose -f infra/docker/docker-compose.yml up -d --wait`. Trust only the proxy itself: anything you trust can claim any client address.
+2. **What the proxy must send.** All paths to MileWage's port, with the original `Host` header and `X-Forwarded-Proto` (in Nginx: `proxy_set_header Host $host;` and `proxy_set_header X-Forwarded-Proto $scheme;`, which Nginx Proxy Manager sets by default) and `X-Forwarded-For`.
 
 ## 8. Security headers and another map service
 

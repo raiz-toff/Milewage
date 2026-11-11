@@ -11,8 +11,8 @@ const newPassword = () => randomBytes(12).toString('base64url');
 /**
  * `milewage-cli reset-password [--username <name>]`, run with the API stopped, like `restore`.
  * Gives the account a new random password, prints it once and signs out every browser. Paired
- * phones and assistant connections keep working: they have their own codes. The username is only
- * needed when the server has more than one account. Returns 0, 1 (failed) or 2 (usage).
+ * phones keep working: they have their own codes. The username is only needed when the server has
+ * more than one account. Returns 0, 1 (failed) or 2 (usage).
  */
 export async function resetPasswordCommand(
   args: readonly string[],
@@ -76,7 +76,7 @@ export async function resetPasswordCommand(
     io.out(
       'Start the api service, sign in with it, then change it in Settings > Account and security.',
     );
-    io.out('Every browser was signed out. Paired phones and AI assistants keep working.');
+    io.out('Every browser was signed out. Paired phones keep working.');
     return 0;
   } catch (e) {
     io.err(e instanceof Refused ? e.message : `reset-password failed: ${(e as Error).message}`);

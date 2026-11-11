@@ -394,14 +394,6 @@ _Avoid_: telemetry, analytics, crash reports
 A time-limited, dense recording on one phone, for testing the track engine against real driving. It is off by default.
 _Avoid_: debug recording, trace
 
-**Assistant**:
-An AI assistant the owner connects to their own server. Nothing is connected until the owner allows it, and it can read or change data only as far as its assistant token allows.
-_Avoid_: MCP, bot, agent
-
-**Assistant token**:
-The code the owner makes for one assistant, with read or read-and-change access and an optional expiry. It can be revoked at any time.
-_Avoid_: MCP token, API key
-
 ### Help
 
 **Help**:

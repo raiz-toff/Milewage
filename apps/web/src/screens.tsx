@@ -18,7 +18,6 @@ import type { IconComponent } from '@/ui/icons';
 import type { Modules, Settings as SettingsRecord } from './api/client';
 import { helpScreen } from './help';
 import { AnalyticsPage } from './pages/Analytics';
-import { ConnectAssistant } from './pages/ConnectAssistant';
 import { Backups } from './pages/Backups';
 import { Dashboard } from './pages/Dashboard';
 import { ExpensesPage } from './pages/Expenses';
@@ -164,13 +163,6 @@ export const screens: Screen[] = [
     nav: { icon: SettingsIcon, group: 'system' },
   },
   helpScreen,
-  {
-    // An assistant's sign-in request lands here (OAuth `authorization_endpoint`); not in the sidebar.
-    path: '/oauth/authorize',
-    label: 'Connect an assistant',
-    visible: (m) => m.mcp,
-    element: <ConnectAssistant />,
-  },
 ];
 
 /**

@@ -248,19 +248,9 @@ describe('log rotation and pinned images in the compose file (10 sections 11.2, 
   ) as {
     services: Record<
       string,
-      {
-        image: string;
-        logging?: { driver: string; options: Record<string, string> };
-        environment?: string[];
-      }
+      { image: string; logging?: { driver: string; options: Record<string, string> } }
     >;
   };
-
-  test('the api takes MILEWAGE_MODULE_MCP from .env, empty (module off) by default (plan 26)', () => {
-    expect(compose.services.api!.environment).toContain(
-      'MILEWAGE_MODULE_MCP=${MILEWAGE_MODULE_MCP:-}',
-    );
-  });
 
   test('LAN access (plan 28): loopback by default; the announcer only in the lan profile', () => {
     const c = compose as unknown as {

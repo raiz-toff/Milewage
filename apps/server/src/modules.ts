@@ -21,10 +21,6 @@ import { createLateRecompute } from './processing/late-recompute';
 import { receiptsDirOf } from './receipts/store';
 import { taxReport } from './tax-report';
 import { SERVER_VERSION } from './version';
-import { createAuditPrune } from './mcp/audit';
-import { mcpEndpoint } from './mcp/endpoint';
-import { mcpOAuthRoutes } from './mcp/oauth';
-import { mcpTokenRoutes } from './mcp/tokens';
 import { analyticsRoutes } from './routes/analytics';
 import { backupRoutes } from './routes/backup';
 import { captureModuleParts } from './routes/capture';
@@ -379,23 +375,6 @@ export const serverModules = [
       });
       return { routes: capture.routes, jobs: [capture.job] };
     },
-  }),
-  /**
-   * The MCP endpoint for the driver's AI assistant, its access codes and sign-in connections
-   * (plan 26). On by default: nothing reaches the data until the driver makes a code or approves
-   * an assistant in the browser. `MILEWAGE_MODULE_MCP=0` turns it off.
-   */
-  serverModule({
-    name: 'mcp',
-    dependsOn: ['core'],
-    wire: (h) => ({
-      routes: (host) => {
-        mcpTokenRoutes(h)(host);
-        mcpOAuthRoutes(h)(host);
-        mcpEndpoint(h)(host);
-      },
-      jobs: [createAuditPrune(h.db, h.now, h.tuning.mcpHousekeepingMs, h.log).job],
-    }),
   }),
   /** The backup engine is never toggled off: the server holds the only copy of the data (10 section 3.1). */
   serverModule({

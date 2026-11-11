@@ -56,8 +56,6 @@ Three parts in one repository: the server and the web app in TypeScript, the pho
 - Phones pair with a QR code, or with a link code on the home Wi-Fi, and hold a device token you
   can revoke at any time.
 - Diagnostics that stay on your server and never carry coordinates.
-- An optional AI assistant endpoint (MCP): nothing reaches your data until you connect an
-  assistant, and the server owner can switch it off.
 
 **Status.** Version 0.2.0 is a complete build that has not yet been tried in the real
 world: no real shift on a real phone, no run over a real Tailscale network, and every mileage
@@ -174,7 +172,7 @@ project's workflow: the owner tests on a real device. Details in
 
 | Folder                  | Holds                                                                                                |
 | ----------------------- | ---------------------------------------------------------------------------------------------------- |
-| `apps/server`           | The API, database migrations, backups, exporters, the MCP endpoint, `milewage-cli`.                  |
+| `apps/server`           | The API, database migrations, backups, exporters, `milewage-cli`.                                    |
 | `apps/web`              | The web app. Its restyled components live in `src/components/ui`, the repo's primitives in `src/ui`. |
 | `apps/android`          | The Android app: Gradle modules `:engine` and `:core` (plain Kotlin), `:data`, `:tracking`, `:app`.  |
 | `packages/track-engine` | The pure mileage engine the server runs and the Android app ports. No dependencies, no I/O.          |

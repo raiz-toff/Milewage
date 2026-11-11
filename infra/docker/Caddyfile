@@ -6,7 +6,7 @@
 	# X-Forwarded-Host and X-Forwarded-For; any other sender's are replaced as before. Caddy is
 	# published on loopback only, so nothing outside the host can reach it to forge them.
 	# MILEWAGE_TRUSTED_PROXIES adds the owner's own reverse proxy (addresses or CIDRs separated by
-	# spaces, set in .env), so its https survives without editing this file (install.md section 7a).
+	# spaces, set in .env), so its https survives without editing this file (install.md section 7).
 	servers {
 		trusted_proxies static {$MILEWAGE_PROXY_GATEWAY:172.29.88.1}/32 {$MILEWAGE_TRUSTED_PROXIES}
 	}
@@ -49,8 +49,7 @@
 		reverse_proxy api:3000
 	}
 
-	# The OAuth discovery documents for AI assistants (RFC 8414, RFC 9728) live at the origin.
-	@api path /api/* /healthz /.well-known/oauth-authorization-server /.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/*
+	@api path /api/* /healthz
 	handle @api {
 		request_body {
 			max_size 2MB
@@ -82,7 +81,7 @@
 	# The web client (apps/web, built into /srv/web by the caddy image target). Only its own
 	# screens fall back to index.html, so any other unknown path is still a 404.
 	# Keep this list in step with apps/web/src/screens.tsx.
-	@spa path / /pair /app /privacy /onboarding /onboarding/* /dashboard /shifts /shifts/* /places /expenses /notifications /analytics /goals /tax /vehicles /odometer /exports /devices /backups /settings /settings/* /help /help/* /oauth/authorize
+	@spa path / /pair /app /privacy /onboarding /onboarding/* /dashboard /shifts /shifts/* /places /expenses /notifications /analytics /goals /tax /vehicles /odometer /exports /devices /backups /settings /settings/* /help /help/*
 	handle @spa {
 		root * /srv/web
 		rewrite * /index.html

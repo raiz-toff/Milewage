@@ -22,7 +22,6 @@ Only you, on your own server. There is no MileWage cloud. A few things do leave 
 
 - **Map tiles.** When a map is shown, your browser loads tiles from OpenFreeMap. OpenFreeMap can see which area you looked at. It does not get your shifts.
 - **Tailscale.** It carries the traffic between your phone and your server, except on your home Wi-Fi when LAN access is on.
-- **An AI assistant, if you connect one.** Nothing is connected until you allow it in Settings > AI assistants. The assistant you connect can read what you allow it to read.
 
 Your server also serves a Privacy page at `/privacy`. Open it from the account menu at the foot of the web app's sidebar.
 

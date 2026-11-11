@@ -124,7 +124,7 @@ describe('Caddy keeps the forwarded headers of the host proxy (plan 19 section 3
     expect(trusted![1]!.trim()).toBe(
       'static {$MILEWAGE_PROXY_GATEWAY:172.29.88.1}/32 {$MILEWAGE_TRUSTED_PROXIES}',
     );
-    // Empty unless the owner names a proxy in .env (install.md section 7a); no edit of this file.
+    // Empty unless the owner names a proxy in .env (install.md section 7); no edit of this file.
     expect(compose).toContain('- MILEWAGE_TRUSTED_PROXIES=${MILEWAGE_TRUSTED_PROXIES:-}');
     expect(compose).toContain(
       '- MILEWAGE_TRUST_PROXY=${MILEWAGE_PROXY_SUBNET:-172.29.88.0/24},${MILEWAGE_TRUSTED_PROXIES:-}',

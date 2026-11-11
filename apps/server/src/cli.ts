@@ -23,8 +23,8 @@ Commands:
 
   reset-password [--username <name>]
       Run with the api service stopped. Gives the account a new random password, prints it once
-      and signs out every browser. Paired phones and AI assistants keep working. --username is
-      needed only when the server has more than one account.
+      and signs out every browser. Paired phones keep working. --username is needed only
+      when the server has more than one account.
 
 Environment: MILEWAGE_DATA_DIR (default /app/data) holds milewage.db; MILEWAGE_CONFIG_DIR
 (default /app/config) holds secrets.json.

@@ -22,7 +22,7 @@ services:
       # Caddy keeps the forwarded headers only from this address (plan 19 section 3.1).
       - MILEWAGE_PROXY_GATEWAY=${MILEWAGE_PROXY_GATEWAY:-172.29.88.1}
       # A reverse proxy of your own in front of Caddy (addresses or CIDRs, separated by spaces):
-      # Caddy keeps its X-Forwarded-Proto, -Host and -For too (install.md section 7a).
+      # Caddy keeps its X-Forwarded-Proto, -Host and -For too (install.md section 7).
       - MILEWAGE_TRUSTED_PROXIES=${MILEWAGE_TRUSTED_PROXIES:-}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
@@ -52,9 +52,6 @@ services:
       - MILEWAGE_HOME_URL=${MILEWAGE_HOME_URL:-}
       # The app's store page once it is published (https); the download page then offers it first.
       - MILEWAGE_APP_STORE_URL=${MILEWAGE_APP_STORE_URL:-}
-      # 0 turns off the MCP endpoint for AI assistants (plan 26); 1 turns it on. Empty: on, except
-      # on a server set up before 0.2.0 that never connected an assistant (it stays off).
-      - MILEWAGE_MODULE_MCP=${MILEWAGE_MODULE_MCP:-}
     volumes:
       - data:/app/data
       - backups:/app/backups

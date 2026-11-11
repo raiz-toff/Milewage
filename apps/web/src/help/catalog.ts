@@ -39,7 +39,6 @@ const MODULES: Record<BooleanModule, true> = {
   sync: true,
   diagnostics: true,
   capture: true,
-  mcp: true,
   backup_download: true,
 };
 

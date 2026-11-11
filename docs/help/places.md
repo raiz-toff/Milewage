@@ -62,4 +62,4 @@ Places work on stops, so they need Settings > Tracking and privacy > "Detect sto
 
 ## Your privacy
 
-Places are location data. They stay in your server's database and in its encrypted backups. They are never written to diagnostics or logs, and the assistant connection cannot read them. The GeoJSON export names the place of each stop, as it already lists the stops.
+Places are location data. They stay in your server's database and in its encrypted backups. They are never written to diagnostics or logs. The GeoJSON export names the place of each stop, as it already lists the stops.

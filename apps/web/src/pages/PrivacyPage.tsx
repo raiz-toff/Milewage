@@ -155,18 +155,6 @@ export function PrivacyPage({
             machine name and network name in a public certificate log, where anyone can read them.
           </li>
           <li>
-            <strong>An AI assistant</strong>, only if the owner turns on the assistant connection
-            (it is off unless the owner switches it on) and makes a token for it. A read-only token
-            can read what the web pages show: your profile, shifts and their trips (with where each
-            trip started and ended), earnings, expenses, goals, odometer readings, analytics and the
-            tax estimate. A read-and-change token can also add expenses, earnings, odometer readings
-            and trips, change an expense, and change a shift's notes or vehicle. No token can read
-            GPS positions or route lines, backups or the recovery key, delete anything, or change
-            the password, devices or tokens. What the assistant reads goes to the company that runs
-            it (for example Anthropic for Claude), under that company's terms. Settings, AI
-            assistants lists every change an assistant made.
-          </li>
-          <li>
             <strong>Google Play</strong>, if you installed the app from there. Google knows you
             installed it and delivers updates, under Google's terms. The app itself contains no ads,
             no analytics and no crash-reporting service.

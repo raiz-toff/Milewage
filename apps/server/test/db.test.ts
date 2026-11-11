@@ -220,6 +220,41 @@ describe('migration runner', () => {
       sync_reminder: 1,
     });
   });
+
+  test('a 0.2.0 database loses the assistant tokens, sign-in clients and audit log on upgrade', () => {
+    const db = open();
+    const drop = 'mcp/0005_drop_mcp';
+    migrate(
+      db,
+      real.filter((m) => `${m.module}/${m.id}` !== drop),
+    );
+    const assistant = ['mcp_audit', 'mcp_clients', 'mcp_kept_off', 'mcp_tokens'];
+    expect(tables(db)).toEqual(expect.arrayContaining(assistant));
+    const userId = createUserRepository(db).create({
+      username: 'sam',
+      passwordHash: 'x',
+      createdAt: 1,
+    }).id;
+    db.prepare(
+      'INSERT INTO mcp_clients (id, name, redirect_uris, created_at) VALUES (?, ?, ?, 0)',
+    ).run('client-1', 'Claude Code', '["http://localhost:33418/callback"]');
+    const tokenId = db
+      .prepare(
+        "INSERT INTO mcp_tokens (user_id, name, scope, token_hash, created_at, client_id, refresh_hash) VALUES (?, 'Claude Code', 'write', 'a', 0, 'client-1', 'b')",
+      )
+      .run(userId).lastInsertRowid;
+    db.prepare(
+      "INSERT INTO mcp_audit (user_id, token_id, at, tool, outcome, args) VALUES (?, ?, 0, 'add_expense', 'ok', '{}')",
+    ).run(userId, tokenId);
+    db.prepare('INSERT INTO mcp_kept_off (id, since) VALUES (1, 0)').run();
+    expect(migrate(db, real)).toEqual([drop]);
+    for (const t of assistant) expect(tables(db)).not.toContain(t);
+    const indexes = db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE 'mcp_%'")
+      .all();
+    expect(indexes).toEqual([]);
+    expect(createUserRepository(db).findByUsername('sam')?.id).toBe(userId);
+  });
 });
 
 describe('user repository', () => {

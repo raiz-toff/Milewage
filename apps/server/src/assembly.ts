@@ -7,7 +7,6 @@ import {
   resolveModuleConfig,
   type EventBus,
   type ModuleRegistry,
-  type ModuleSettings,
 } from '@milewage/shared';
 import { buildHttpApp } from './app';
 import { Authenticator } from './auth/authenticator';
@@ -49,8 +48,6 @@ export interface ServerTuning {
   diagnosticsHousekeepingMs?: number;
   /** Interval of the 30 day capture purge (a day). */
   captureHousekeepingMs?: number;
-  /** Interval of the one-year `mcp_audit` retention job (a day). */
-  mcpHousekeepingMs?: number;
   /** Passed to the restore service (forces a revert). */
   restoreVerify?: (db: Db) => void;
   /** Exporters in place of csv, gpx, geojson, expenses, tax_summary and pdf. */
@@ -140,7 +137,7 @@ export function assembleServer(input: ServerInput): App {
   const env = input.env ?? {};
   const registry = buildRegistry(
     serverModules,
-    resolveModuleConfig(serverModules, upgradeDefaults(input.db, input.config.settings), env),
+    resolveModuleConfig(serverModules, input.config.settings, env),
   );
   const bus = createEventBus();
   const host = shareServices(input, registry, bus);
@@ -161,8 +158,8 @@ export function assembleServer(input: ServerInput): App {
       identity: () => (state.mode === 'normal' ? identity() : undefined),
       isHealthy: () => db.prepare('SELECT 1').pluck().get() === 1,
     },
-    (api, root) => {
-      const routeHost = { app: api, root, registry, bus };
+    (api) => {
+      const routeHost = { app: api, registry, bus };
       for (const p of parts) p.routes?.(routeHost);
     },
   );
@@ -174,20 +171,6 @@ export function assembleServer(input: ServerInput): App {
   const stops = parts.flatMap((p) => (p.jobs ?? []).map((j) => j.start()));
   fastify.addHook('onClose', () => stops.forEach((stop) => stop()));
   return { fastify, registry, bus };
-}
-
-/**
- * Module defaults that depend on the server's history: a server set up before 0.2.0 that never
- * connected an assistant keeps the MCP endpoint off, as it was then (mcp migration 0004). The
- * settings file and `MILEWAGE_MODULE_MCP` still decide when they say something.
- */
-export function upgradeDefaults(db: Db, settings: ModuleSettings): ModuleSettings {
-  if (settings.modules?.mcp !== undefined) return settings;
-  const marked =
-    db
-      .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'mcp_kept_off'")
-      .get() && db.prepare('SELECT 1 FROM mcp_kept_off').get();
-  return marked ? { ...settings, modules: { ...settings.modules, mcp: false } } : settings;
 }
 
 /** The default exporters (08 sections 11 and 16.3); a new format registers here without other edits. */

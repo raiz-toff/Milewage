@@ -58,7 +58,7 @@ The phone app always draws routes on a plain background, so it needs no tiles.
 
 ## You forgot your password
 
-Use your recovery key. On the sign-in page choose "Forgot your password?", paste the recovery key you saved at setup (it starts with `AGE-SECRET-KEY-1`) and type a new password. You are signed in at once. Every other browser is signed out. Paired phones and AI assistants keep working, and your data and recovery key do not change. After 5 wrong keys, wait 15 minutes.
+Use your recovery key. On the sign-in page choose "Forgot your password?", paste the recovery key you saved at setup (it starts with `AGE-SECRET-KEY-1`) and type a new password. You are signed in at once. Every other browser is signed out. Paired phones keep working, and your data and recovery key do not change. After 5 wrong keys, wait 15 minutes.
 
 There is no "forgot password" email: there is no MileWage cloud to send one.
 
@@ -70,7 +70,7 @@ docker compose -f infra/docker/docker-compose.yml run --rm --no-deps api milewag
 docker compose -f infra/docker/docker-compose.yml up -d --wait api
 ```
 
-It prints a new random password once. Sign in with it, then choose your own in Settings > Account and security. Every browser is signed out. Paired phones and AI assistants keep working, and your data and recovery key do not change.
+It prints a new random password once. Sign in with it, then choose your own in Settings > Account and security. Every browser is signed out. Paired phones keep working, and your data and recovery key do not change.
 
 ## "A new version of MileWage is ready"
 

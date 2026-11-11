@@ -10,7 +10,7 @@ order: 110
 
 Settings has one page per section, listed in three groups: Preferences, Work and tracking, and Data and account. On a narrow screen it is a "Section:" menu at the top.
 
-Each section says how it saves. Profile and region, Units and format, Tracking and privacy and Help pages share one Save bar. It names the sections with unsaved changes; Save keeps them all, Discard drops them. Mileage rate, Alerts and Platforms save each change at once. Account and security and AI assistants have their own buttons.
+Each section says how it saves. Profile and region, Units and format, Tracking and privacy and Help pages share one Save bar. It names the sections with unsaved changes; Save keeps them all, Discard drops them. Mileage rate, Alerts and Platforms save each change at once. Account and security has its own buttons.
 
 Some sections appear only when their module runs on your server. They are marked below.
 
@@ -95,10 +95,6 @@ Below are links to the Backups and Exports pages.
 "Change password" needs your current password and a new one of at least 10 characters, typed twice. Other signed-in browsers are signed out; this one stays.
 
 A link leads to the Devices page. See [Phones and devices](phones-and-devices.md).
-
-## AI assistants
-
-Lets an AI assistant such as Claude read your records and add to them. "Connect by signing in" is the easy way: give your assistant the address shown there. It opens MileWage in your browser, you sign in, choose "Read only" or "Read and change" and press Allow. Nothing to copy. For an assistant that cannot sign in, "Make a token" makes a code for it instead, with an access and an expiry. That code is shown once, and the commands beside it never hold it: do not paste it into a chat or a ticket. If you lose it, choose "Replace token" in its row's menu: the old code stops working and a new one is shown once. The page lists every connected assistant and the changes assistants made, and you can revoke one at any time. A signed-in assistant that is not used for 90 days is disconnected. An assistant cannot delete anything or see your password, backups or GPS points. If an assistant only says "Failed to connect", press "Test connection" on this page, from the address the assistant uses: it says what is wrong, for example a proxy in front of MileWage that it does not trust. See [Connect an AI assistant](../../infra/docs/install.md#7-connect-an-ai-assistant-optional) in the install guide.
 
 ## Server modules
 
