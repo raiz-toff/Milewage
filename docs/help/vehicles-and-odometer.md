@@ -1,5 +1,5 @@
 ---
-summary: Adding a vehicle, the default vehicle, odometer readings, the service log and this year's deduction.
+summary: Adding a vehicle, the default vehicle, odometer readings and this year's deduction.
 group: using
 order: 40
 ---
@@ -52,19 +52,6 @@ What MileWage shows here comes from the project's plans. It has not been checked
 - **Great Britain and elsewhere.** The page says "Readings are optional. Enter them if your tax office asks."
 
 The mileage log export carries your readings and compares them with the GPS total. See [For your accountant](for-your-accountant.md). Ask your accountant which readings they need.
-
-## The service log
-
-Each vehicle card has a Service log button when the maintenance module is on.
-
-1. Choose Service log.
-2. Choose the service: Oil change, Tires, Brakes or Other.
-3. Set the service date. Add the cost and the odometer if you have them.
-4. Choose Add service.
-
-When the expenses module is on, a cost is also saved as an expense, linked to the service. Deleting a service entry keeps that expense. To remove the cost too, delete the expense on the Expenses page.
-
-For a vehicle deducted by the mileage rate, an entry may say "covered by the mileage rate". The rate already pays for upkeep, so the cost is kept but not deducted again.
 
 ## This year's deduction
 

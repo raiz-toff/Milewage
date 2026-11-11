@@ -18,8 +18,6 @@ import {
   CarIcon,
   EbikeIcon,
   EditIcon,
-  ExpandMoreIcon,
-  MaintenanceIcon,
   MotorcycleIcon,
   ScooterIcon,
   StarIcon,
@@ -28,7 +26,6 @@ import {
   WalkingIcon,
 } from '@/ui/icons';
 import type { IconComponent } from '@/ui/icons';
-import { VehicleMaintenance } from './VehicleMaintenance';
 import { VehicleTaxYear } from './VehicleTaxYear';
 import { KINDS, OWNERSHIP, kindLabel, ownershipNote } from '../vehicles';
 
@@ -64,20 +61,18 @@ type Draft = {
 
 /**
  * One vehicle as a card (a GOV.UK summary card): its type icon, name and quiet details, the
- * card's actions in the "..." menu, and below a rule this year's deduction and the service log.
+ * card's actions in the "..." menu, and below a rule this year's deduction.
  */
 function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
   const saved = useSettings();
   const [edit, setEdit] = useState<Draft | null>(null);
   const change = useChange();
   const { error } = change;
-  const [service, setService] = useState(false);
   const titleId = useId();
   const archived = vehicle.archived_at !== null;
   const isDefault = saved.default_vehicle_id === vehicle.id;
   const Icon = ICONS[vehicle.kind] ?? CarIcon;
   const showTax = saved.modules.tax && !archived;
-  const showService = saved.modules.maintenance && !archived;
 
   const makeDefault = () => change.run(...settingsPatch({ default_vehicle_id: vehicle.id }));
   async function act(body: Schemas['VehicleCreate'] | { archived: boolean }) {
@@ -229,32 +224,9 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
               </UiButton>
             </div>
           </form>
-        ) : showTax || showService ? (
+        ) : showTax ? (
           <div className="flex flex-wrap items-start justify-between gap-3 border-t px-(--card-spacing) pt-(--card-spacing)">
-            {showTax ? (
-              <VehicleTaxYear vehicleId={vehicle.id} name={vehicle.name} kind={vehicle.kind} />
-            ) : null}
-            {showService ? (
-              <UiButton
-                type="button"
-                variant="outline"
-                size="sm"
-                aria-expanded={service}
-                onClick={() => setService(!service)}
-              >
-                <MaintenanceIcon data-icon="inline-start" />
-                Service log
-                <ExpandMoreIcon
-                  data-icon="inline-end"
-                  className={cn('transition-transform', service && 'rotate-180')}
-                />
-              </UiButton>
-            ) : null}
-          </div>
-        ) : null}
-        {showService && service && edit === null ? (
-          <div className="px-(--card-spacing)">
-            <VehicleMaintenance vehicleId={vehicle.id} name={vehicle.name} />
+            <VehicleTaxYear vehicleId={vehicle.id} name={vehicle.name} kind={vehicle.kind} />
           </div>
         ) : null}
         {error ? (

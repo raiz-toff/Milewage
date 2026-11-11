@@ -28,7 +28,6 @@ import { diagnosticsRoutes } from './routes/diagnostics';
 import { earningsRoutes } from './routes/earnings';
 import { expensesRoutes } from './routes/expenses';
 import { exportsRoutes } from './routes/exports';
-import { maintenanceRoutes } from './routes/maintenance';
 import { platformKnown, platformsRoutes } from './routes/platforms';
 import { receiptsRoutes } from './routes/receipts';
 import { replayRoutes } from './routes/replay';
@@ -161,12 +160,6 @@ export const serverModules = [
     name: 'expenses',
     dependsOn: ['core'],
     wire: (h) => ({ routes: expensesRoutes(h) }),
-  }),
-  /** Per-vehicle service record; a cost becomes a linked expense (18 section 6). */
-  serverModule({
-    name: 'maintenance',
-    dependsOn: ['core'],
-    wire: (h) => ({ routes: maintenanceRoutes(h) }),
   }),
   /** One receipt photo or PDF per expense, kept on the volume and in every backup (18 section 5.4). */
   serverModule({

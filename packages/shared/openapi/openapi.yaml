@@ -34,7 +34,6 @@ tags:
   - { name: expenses }
   - { name: receipts }
   - { name: tax }
-  - { name: maintenance }
   - { name: system }
 
 x-modules:
@@ -113,11 +112,6 @@ x-modules:
     default: true
     dependsOn: [core]
     operations: [getTaxYear, updateTaxYear, getTaxJar, addTaxJarEntry, deleteTaxJarEntry, getVehicleTaxYear, putVehicleTaxYear, deleteVehicleTaxYear]
-  maintenance:
-    toggle: modules.maintenance
-    default: true
-    dependsOn: [core]
-    operations: [listMaintenance, createMaintenance, updateMaintenance, deleteMaintenance]
 paths:
   /healthz:
     servers: [{ url: / }]
@@ -1839,68 +1833,6 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
 
 
-  /vehicles/{id}/maintenance:
-    parameters:
-      - { name: id, in: path, required: true, schema: { type: integer } }
-    get:
-      tags: [maintenance]
-      operationId: listMaintenance
-      summary: Service entries of a vehicle, newest first. The cost of a linked entry is read from its expense.
-      security: [{ sessionCookie: [] }]
-      responses:
-        '200':
-          description: OK.
-          content:
-            application/json:
-              schema: { type: array, items: { $ref: '#/components/schemas/MaintenanceLog' } }
-        '404': { $ref: '#/components/responses/NotFound' }
-    post:
-      tags: [maintenance]
-      operationId: createMaintenance
-      summary: Add a service entry. With the expenses module on and a cost, record_expense (default true) creates a maintenance expense for the vehicle and links it.
-      security: [{ sessionCookie: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/MaintenanceCreate' }
-      responses:
-        '201':
-          description: Created.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/MaintenanceLog' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-  /maintenance/{id}:
-    parameters:
-      - { name: id, in: path, required: true, schema: { type: integer } }
-    patch:
-      tags: [maintenance]
-      operationId: updateMaintenance
-      security: [{ sessionCookie: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/MaintenancePatch' }
-      responses:
-        '200':
-          description: OK.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/MaintenanceLog' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-    delete:
-      tags: [maintenance]
-      operationId: deleteMaintenance
-      summary: Delete the entry. A linked expense is kept; it is a tax record.
-      security: [{ sessionCookie: [] }]
-      responses:
-        '204': { description: Deleted. }
-        '404': { $ref: '#/components/responses/NotFound' }
-
   /exports/{format}:
     get:
       tags: [exports]
@@ -2389,14 +2321,13 @@ components:
     Modules:
       type: object
       description: Read-only module flags so clients can hide screens and buttons of absent modules.
-      required: [maintenance, tax, receipts, expenses, earnings, platforms, devices, tracking, replay, stops, sync, diagnostics, capture, backup_download, exporters, countries]
+      required: [tax, receipts, expenses, earnings, platforms, devices, tracking, replay, stops, sync, diagnostics, capture, backup_download, exporters, countries]
       properties:
         platforms: { type: boolean, description: 'Platforms module registered (18 section 4.2).' }
         earnings: { type: boolean, description: 'Earnings module registered (18 section 4.3): the driver can type a total per shift and platform.' }
         expenses: { type: boolean, description: 'Expenses module registered (18 section 5).' }
         receipts: { type: boolean, description: 'Receipts module registered (18 section 5.4); needs expenses.' }
         tax: { type: boolean, description: 'Tax module registered (18 section 7). The estimate itself exists only for countries whose pack is verified or switched on.' }
-        maintenance: { type: boolean, description: 'Maintenance module registered (18 section 6).' }
         sync: { type: boolean }
         local_export: { type: boolean, description: Reserved for v1.1; false in v1. }
         devices: { type: boolean }
@@ -2881,42 +2812,6 @@ components:
           properties:
             balance_cents: { type: integer }
             target_cents: { type: [integer, 'null'] }
-
-    MaintenanceCreate:
-      type: object
-      required: [kind, serviced_on]
-      additionalProperties: false
-      properties:
-        kind: { enum: [oil_change, tires, brakes, other] }
-        serviced_on: { type: string, format: date }
-        odometer_m: { type: [integer, 'null'], minimum: 0 }
-        cost_cents: { type: [integer, 'null'], minimum: 0 }
-        notes: { type: [string, 'null'], maxLength: 2000 }
-        record_expense: { type: boolean }
-    MaintenancePatch:
-      type: object
-      additionalProperties: false
-      minProperties: 1
-      properties:
-        kind: { enum: [oil_change, tires, brakes, other] }
-        serviced_on: { type: string, format: date }
-        odometer_m: { type: [integer, 'null'], minimum: 0 }
-        cost_cents: { type: [integer, 'null'], minimum: 0 }
-        notes: { type: [string, 'null'], maxLength: 2000 }
-    MaintenanceLog:
-      type: object
-      required: [id, vehicle_id, kind, serviced_on, odometer_m, cost_cents, expense_id, double_counts, notes, created_at]
-      properties:
-        id: { type: integer }
-        vehicle_id: { type: integer }
-        kind: { enum: [oil_change, tires, brakes, other] }
-        serviced_on: { type: string, format: date }
-        odometer_m: { type: [integer, 'null'] }
-        cost_cents: { type: [integer, 'null'] }
-        expense_id: { type: [integer, 'null'] }
-        double_counts: { type: boolean, description: The linked expense is covered by the vehicle's standard mileage rate. }
-        notes: { type: [string, 'null'] }
-        created_at: { $ref: '#/components/schemas/EpochMs' }
 
     ShiftStatus: { enum: [active, ended, finalized] }
     ShiftStart:

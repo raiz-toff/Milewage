@@ -41,7 +41,7 @@ Three parts in one repository: the server and the web app in TypeScript, the pho
   shift?" question when you seem to be driving, and a "Still on shift?" reminder after a long stop.
 - Active and deadhead miles split by detected stops, with labels you add on the web. The split is
   an estimate and says so. Total miles never depend on it.
-- Expenses with receipt photos, earnings, vehicles and their service log, and odometer readings.
+- Expenses with receipt photos, earnings, vehicles and odometer readings.
   Each module can be switched off.
 - Country packs for Canada, the United States and Great Britain: a mileage deduction, and for
   Canada a tax estimate. Your own mileage rate (an employer's or your accountant's) can replace the

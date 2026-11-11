@@ -234,6 +234,14 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   mileage log, expenses and tax summary files stay. An `export_gpx` or `export_geojson` left in
   `settings.json`, or `MILEWAGE_MODULE_EXPORT_GPX` or `MILEWAGE_MODULE_EXPORT_GEOJSON` in the
   environment, is ignored.
+- The maintenance module (the service log on each vehicle card), on by default: the Service log
+  button and its entries, the `/vehicles/{id}/maintenance` and `/maintenance/{id}` operations and
+  the `modules.maintenance` flag. Upgrading deletes its table (`maintenance_logs`) with the service
+  details (kind, odometer, notes) and any cost that was not saved as an expense. A cost that was
+  saved as an expense stays as that Maintenance and repairs expense, unchanged, in the expense
+  totals, the tax figures and the exports. Vehicles and odometer readings stay. A
+  `modules.maintenance` left in `settings.json` or `MILEWAGE_MODULE_MAINTENANCE` in the
+  environment is ignored.
 
 ### Fixed
 

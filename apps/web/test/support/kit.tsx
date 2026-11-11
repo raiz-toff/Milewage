@@ -157,7 +157,6 @@ export const ALL_ON: Modules = {
   expenses: true,
   receipts: true,
   tax: true,
-  maintenance: true,
   backup_download: false,
   exporters: ['csv'],
   countries: ['US', 'CA', 'GB'],

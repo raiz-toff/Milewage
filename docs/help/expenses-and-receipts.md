@@ -21,7 +21,7 @@ More details opens the rest: merchant, deductible share, vehicle, shift, repeats
 
 To change an expense, open its row menu and choose Edit. Delete removes the expense and its receipt.
 
-A service you log on the Vehicles page with a cost is saved as a Maintenance and repairs expense too. Parking and tolls added on a shift's page are expenses linked to that shift; see [Parking and tolls](shifts-and-trips.md#parking-and-tolls).
+Parking and tolls added on a shift's page are expenses linked to that shift; see [Parking and tolls](shifts-and-trips.md#parking-and-tolls).
 
 ## Categories and the deductible share
 

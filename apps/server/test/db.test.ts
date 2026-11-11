@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import {
+  createExpenseRepository,
   createUserRepository,
   loadMigrations,
   MIGRATIONS_DIR,
@@ -431,6 +432,78 @@ describe('migration runner', () => {
     expect(indexes).toEqual([]);
     const done = db.prepare('SELECT setup_done FROM settings ORDER BY user_id').pluck().all();
     expect(done).toEqual(['["vehicle","backup"]', '["phone"]', null]);
+  });
+
+  test('a 0.2.0 database loses the service log on upgrade; its linked expense and the totals stay', () => {
+    const db = open();
+    const drop = 'maintenance/0002_drop_maintenance';
+    migrate(
+      db,
+      real.filter((m) => `${m.module}/${m.id}` !== drop),
+    );
+    expect(tables(db)).toContain('maintenance_logs');
+    const userId = createUserRepository(db).create({
+      username: 'sam',
+      passwordHash: 'x',
+      createdAt: 1,
+    }).id;
+    const vehicleId = db
+      .prepare(
+        "INSERT INTO vehicles (user_id, name, kind, created_at) VALUES (?, 'Corolla', 'car', 0)",
+      )
+      .run(userId).lastInsertRowid;
+    const expenses = createExpenseRepository(db);
+    const expense = (category: string, amountCents: number, notes: string | null) =>
+      expenses.create(
+        {
+          userId,
+          spentOn: '2027-01-11',
+          category,
+          amountCents,
+          merchant: '',
+          deductible: 1,
+          businessPct: 100,
+          taxCreditCents: 0,
+          vehicleId: Number(vehicleId),
+          shiftId: null,
+          notes,
+          recurrence: null,
+          nextDue: null,
+          snoozedUntil: null,
+          templateId: null,
+        },
+        5,
+      );
+    // What the service log wrote for an oil change with a cost, and an unrelated fuel expense.
+    const linked = expense('maintenance', 8_950, 'Service: oil change');
+    expense('fuel', 4_000, null);
+    const log = db.prepare(
+      "INSERT INTO maintenance_logs (user_id, vehicle_id, kind, serviced_on, odometer_m, cost_cents, expense_id, created_at) VALUES (?, ?, ?, '2027-01-11', 120000000, ?, ?, 0)",
+    );
+    log.run(userId, vehicleId, 'oil_change', null, linked.id);
+    log.run(userId, vehicleId, 'tires', 30_000, null);
+    const rows = () => db.prepare('SELECT * FROM expenses ORDER BY id').all();
+    const totals = () =>
+      db
+        .prepare(
+          'SELECT category, SUM(amount_cents) AS cents FROM expenses GROUP BY category ORDER BY category',
+        )
+        .all();
+    const [before, totalsBefore] = [rows(), totals()];
+    expect(totalsBefore).toEqual([
+      { category: 'fuel', cents: 4_000 },
+      { category: 'maintenance', cents: 8_950 },
+    ]);
+    expect(migrate(db, real)).toEqual([drop]);
+    expect(tables(db)).not.toContain('maintenance_logs');
+    const indexes = db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_maint_vehicle'")
+      .all();
+    expect(indexes).toEqual([]);
+    expect(rows()).toEqual(before);
+    expect(totals()).toEqual(totalsBefore);
+    expect(expenses.between(userId, '2027-01-01', '2027-12-31')).toHaveLength(2);
+    expect(expenses.find(userId, linked.id)).toEqual(linked);
   });
 });
 

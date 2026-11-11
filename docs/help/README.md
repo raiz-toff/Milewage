@@ -11,7 +11,7 @@ These pages explain MileWage in plain words. They are also in the web app, under
 - [Shifts and trips](shifts-and-trips.md): What a shift page shows, adding a trip by hand, changing a trip, and what the checks mean.
 - [How miles are counted](how-miles-are-counted.md): What the phone records and how often, what is filtered out, and why the phone and the server agree.
 - [Active and deadhead miles](active-and-deadhead.md): How stops are found, and why the split between active and deadhead miles is an estimate.
-- [Vehicles and the odometer](vehicles-and-odometer.md): Adding a vehicle, the default vehicle, odometer readings, the service log and this year's deduction.
+- [Vehicles and the odometer](vehicles-and-odometer.md): Adding a vehicle, the default vehicle, odometer readings and this year's deduction.
 - [Expenses and receipts](expenses-and-receipts.md): Adding an expense, categories and the deductible share, receipts, and repeating expenses.
 - [Earnings and platforms](earnings-and-platforms.md): Entering what each platform paid for a shift, fees, cash and payouts, your own platforms, and how per hour is worked out.
 - [Mileage rates and tax](mileage-rates-and-tax.md): Country packs and regions, how the mileage deduction is worked out, what the Tax page estimates, and why every figure is unverified.

@@ -264,10 +264,6 @@ _Avoid_: title, finance type
 A vehicle's odometer value typed by the driver, at a shift's start or end or at the start or end of the year. It is evidence beside the GPS distance, never a replacement for it.
 _Avoid_: mileage reading, odo
 
-**Maintenance**:
-A service done to a vehicle (oil change, tyres, brakes or other) with its date, odometer and cost. A cost can become a linked expense.
-_Avoid_: service log, repair log
-
 ### Tax
 
 **Country pack**:

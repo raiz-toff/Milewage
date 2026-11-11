@@ -215,24 +215,16 @@ describe('vehicles page', () => {
     expect(bodies).toEqual([{ archived: true }, { archived: false }]);
   });
 
-  it('marks the default vehicle and opens the service log from a button on its card', async () => {
+  it('marks the default vehicle', async () => {
     renderApp(
       {
-        ...signedIn(
-          settingsFixture({ default_vehicle_id: 1, modules: { tax: false, maintenance: true } }),
-        ),
+        ...signedIn(settingsFixture({ default_vehicle_id: 1, modules: { tax: false } })),
         'GET /vehicles': () => ({ body: [car()] }),
-        'GET /vehicles/1/maintenance': () => ({ body: [] }),
       } as never,
       '/vehicles',
     );
     const corolla = await screen.findByRole('listitem', { name: 'Corolla' });
     expect(within(corolla).getByText('Default')).toBeTruthy();
-    const log = within(corolla).getByRole('button', { name: 'Service log' });
-    expect(log.getAttribute('aria-expanded')).toBe('false');
-    fireEvent.click(log);
-    expect(log.getAttribute('aria-expanded')).toBe('true');
-    expect(await within(corolla).findByText('No service entries yet.')).toBeTruthy();
   });
 
   it("labels this year's deduction on each card and says what it means for the type", async () => {
