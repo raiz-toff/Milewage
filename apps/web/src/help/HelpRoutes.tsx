@@ -55,7 +55,7 @@ function PageView({ pages, slugs }: { pages: HelpPage[]; slugs: readonly string[
       <VersionNote version={catalog.version} />
       {/* Sized by its own width, as Settings is: the side list needs room beside the page. */}
       <div className="@container">
-        <div className="grid gap-6 @2xl:grid-cols-[200px_minmax(0,1fr)] @2xl:gap-8">
+        <div className="grid gap-6 @2xl:grid-cols-[220px_minmax(0,1fr)] @2xl:gap-8">
           <SectionNav label="Help pages" noun="Page" groups={groups} />
           <HelpArticle page={page} slugs={slugs} version={catalog.version} />
         </div>

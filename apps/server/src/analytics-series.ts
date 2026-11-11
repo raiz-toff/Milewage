@@ -145,7 +145,10 @@ export function clockHours(start: number, end: number, timeZone: string) {
 export interface BreakdownExpense {
   category: string;
   vehicleId: number | null;
+  /** The deductible part; 0 when the mileage rate already covers the expense. */
   cents: number;
+  /** What was paid, in full. */
+  spentCents: number;
 }
 
 /**
@@ -259,17 +262,23 @@ export function breakdown(i: {
     }))
     .sort((a, b) => b.earnings_cents - a.earnings_cents || a.platform.localeCompare(b.platform));
 
-  const byCategory = new Map<string, { cents: number; count: number }>();
+  const byCategory = new Map<string, { cents: number; spent: number; count: number }>();
   for (const e of i.expenses ?? []) {
-    const c = byCategory.get(e.category) ?? { cents: 0, count: 0 };
+    const c = byCategory.get(e.category) ?? { cents: 0, spent: 0, count: 0 };
     c.cents += e.cents;
+    c.spent += e.spentCents;
     c.count += 1;
     byCategory.set(e.category, c);
   }
   const expense_categories = [...byCategory]
-    .map(([category, c]) => ({ category, cents: c.cents, count: c.count }))
-    .filter((c) => c.cents > 0)
-    .sort((a, b) => b.cents - a.cents || a.category.localeCompare(b.category));
+    .map(([category, c]) => ({
+      category,
+      cents: c.cents,
+      spent_cents: c.spent,
+      count: c.count,
+    }))
+    .filter((c) => c.spent_cents > 0)
+    .sort((a, b) => b.spent_cents - a.spent_cents || a.category.localeCompare(b.category));
 
   return {
     from: i.from,

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useQueries } from '@tanstack/react-query';
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from '@/ui/icons';
 import { Button as UiButton } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -20,10 +19,10 @@ import type { PeriodKind } from '../days';
 import { SegmentedButtons } from '../ui/chips';
 import { moneyText, PageHeader, Section } from '../ui/layout';
 import type { MoneyTone } from '../ui/layout';
-import { describe, unwrap } from '../api/client';
-import { apiKey, useApiQuery } from '../api/query';
+import { describe } from '../api/client';
+import { useApiQuery } from '../api/query';
 import { deductionWord, formatDistance, formatMoney, fromMetres } from '../format';
-import { useSession, useSettings } from '../session';
+import { useSettings } from '../session';
 import { FormError } from '../ui/form';
 import { usePlatformOf } from '../platforms/usePlatforms';
 import { businessOf, comparedWith, usePlatformColors, useSeries } from '../series';
@@ -46,7 +45,6 @@ type Mode = PeriodKind;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Data = Record<string, any>;
-const GROUPS = ['cards', 'rhythm', 'outlook', 'efficiency', 'order_economics'] as const;
 
 /**
  * Analytics (module `analytics`, 18 section 10.1): a period navigator, the period's figures, then
@@ -55,7 +53,6 @@ const GROUPS = ['cards', 'rhythm', 'outlook', 'efficiency', 'order_economics'] a
  * vehicles side by side. Every chart has its table.
  */
 export function AnalyticsPage() {
-  const { api } = useSession();
   const settings = useSettings();
   const {
     timezone,
@@ -79,20 +76,11 @@ export function AnalyticsPage() {
     c == null ? 'not available' : formatMoney(c, currency);
   const bucket = mode === 'year' ? ('month' as const) : ('day' as const);
 
-  // One request per group, all for the period shown; the page waits for every one.
-  const groups = useQueries({
-    queries: GROUPS.map((group) => {
-      const params = { query: { from: range.from, to: range.to, group } };
-      return {
-        queryKey: apiKey('/analytics', params),
-        queryFn: ({ signal }: { signal: AbortSignal }) =>
-          unwrap(api.GET('/analytics', { params, signal })).then((r) => r.data as unknown),
-      };
-    }),
+  // Every group of the period shown, in one request.
+  const groups = useApiQuery('/analytics', {
+    params: { query: { from: range.from, to: range.to, group: 'all' } },
   });
-  const data: Data | null = groups.every((q) => q.isSuccess)
-    ? Object.fromEntries(GROUPS.map((group, i) => [group, groups[i]!.data]))
-    : null;
+  const data = (groups.data?.data as Data | undefined) ?? null;
   const series = useSeries(range, bucket);
   const previous = useSeries(before, bucket);
   const breakdown = useApiQuery('/analytics/breakdown', {
@@ -106,7 +94,7 @@ export function AnalyticsPage() {
   const vehicles = useApiQuery('/vehicles').data ?? [];
   const categories =
     useApiQuery('/expenses/categories', undefined, { enabled: modules.expenses }).data ?? [];
-  const failed = [...groups, series, previous, breakdown].find((q) => q.error)?.error;
+  const failed = [groups, series, previous, breakdown].find((q) => q.error)?.error;
   const error = failed ? describe(failed) : null;
 
   const cards = data?.cards as Data | undefined;
@@ -125,7 +113,11 @@ export function AnalyticsPage() {
         ...(cards.expenses_cents === undefined
           ? []
           : ([
-              ['Expenses', money(cards.expenses_cents), inOut(cards.expenses_cents, 'spent')],
+              [
+                'Deductible expenses',
+                money(cards.expenses_cents),
+                inOut(cards.expenses_cents, 'spent'),
+              ],
               [
                 'Burn ratio',
                 cards.burn_ratio == null
@@ -367,12 +359,12 @@ export function AnalyticsPage() {
               {modules.expenses && cards?.expenses_cents !== undefined ? (
                 <ChartSection
                   title="Money in and out"
-                  description="Earnings against expenses, and where the expenses went."
+                  description="Earnings against what you paid out, and where it went."
                 >
                   <MoneyInOut
                     ctx={ctx}
                     earnedCents={cards?.gross_cents ?? null}
-                    expensesCents={cards?.expenses_cents ?? 0}
+                    deductibleCents={cards?.expenses_cents ?? 0}
                     categories={breakdown.data.expense_categories ?? []}
                     categoryName={categoryName}
                     deduction={deduction}

@@ -6,6 +6,7 @@ import {
   createProcessingRepository,
   createTaxRepository,
   type Db,
+  totalOf,
   type ShiftRow,
 } from '../db';
 import { ProblemError } from '../errors';
@@ -28,11 +29,12 @@ const GROUPS = [
   'order_economics',
   'cards',
 ] as const;
+type Group = (typeof GROUPS)[number] | 'all';
 const query = strictObject(
   {
     from: date,
     to: date,
-    group: { enum: GROUPS },
+    group: { enum: [...GROUPS, 'all'] },
     bucket: { enum: ['day', 'week', 'month'] },
     platform: { type: 'string', pattern: '^[a-z0-9_]{1,32}$' },
   },
@@ -78,7 +80,7 @@ export function analyticsRoutes({
       const q = req.query as {
         from?: string;
         to?: string;
-        group?: (typeof GROUPS)[number];
+        group?: Group;
         bucket?: 'day' | 'week' | 'month';
         platform?: string;
       };
@@ -118,9 +120,7 @@ export function analyticsRoutes({
         shifts: processing.shiftsInPeriod(userId, from, to).map(ashift),
         earnings: eff(from, to),
         previousEarningsCents:
-          prevRows.length === 0
-            ? null
-            : prevRows.reduce((a, r) => a + r.grossCents + r.tipsCents + r.bonusCents, 0),
+          prevRows.length === 0 ? null : prevRows.reduce((a, r) => a + totalOf(r), 0),
         previousShifts: processing.shiftsInPeriod(userId, prevFrom, prevTo).map(ashift),
         expensesCents,
         setAsideBp: registry.isEnabled('tax')
@@ -133,14 +133,16 @@ export function analyticsRoutes({
         to,
         group,
         ...(q.platform ? { platform_filter: 'earnings_only' } : {}),
-        data: result[group],
+        // `all` is every group in one answer, keyed by its name.
+        data: group === 'all' ? result : result[group],
       };
     });
 
     /**
      * `GET /analytics/breakdown`: the range by weekday and clock hour (shift time and earnings, a
      * shift's earnings spread over its hours), per vehicle, per platform and, with expenses on,
-     * per expense category (the same rule as the cards' expenses). At most two years.
+     * per expense category: what was paid, and the deductible part by the same rule as the cards'
+     * expenses. At most two years.
      */
     app.get('/analytics/breakdown', { schema: { querystring: rangeQuery } }, async (req) => {
       const { userId } = authn.authenticate(req, 'S');
@@ -158,11 +160,11 @@ export function analyticsRoutes({
       const expenses = registry.isEnabled('expenses')
         ? createExpenseRepository(db)
             .between(userId, from, to)
-            .filter((e) => !deduction.doubleCounts(userId, e))
             .map((e) => ({
               category: e.category,
               vehicleId: e.vehicleId,
-              cents: deductibleCents(e),
+              cents: deduction.doubleCounts(userId, e) ? 0 : deductibleCents(e),
+              spentCents: e.amountCents,
             }))
         : null;
       return breakdown({

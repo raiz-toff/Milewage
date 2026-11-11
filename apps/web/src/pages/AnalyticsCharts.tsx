@@ -583,19 +583,22 @@ function PairBars({
 export function MoneyInOut({
   ctx,
   earnedCents,
-  expensesCents,
+  deductibleCents,
   categories,
   categoryName,
   deduction,
 }: {
   ctx: Ctx;
   earnedCents: number | null;
-  expensesCents: number;
+  /** The deductible part of the expenses, as the figures above count it. */
+  deductibleCents: number;
   categories: NonNullable<Breakdown['expense_categories']>;
   categoryName: (slug: string) => string;
   deduction: ReactNode;
 }) {
   const earned = earnedCents ?? 0;
+  // Money out is what was paid, in full; the deductible part is said in words under it.
+  const expensesCents = sum(categories.map((c) => c.spent_cents));
   const net = earned - expensesCents;
   const m = (c: number) => formatMoney(c, ctx.currency);
   return (
@@ -610,7 +613,7 @@ export function MoneyInOut({
               color: chartColor.earned,
             },
             {
-              label: 'Expenses',
+              label: 'Spent',
               value: expensesCents,
               figure: m(expensesCents),
               color: chartColor.spent,
@@ -624,6 +627,14 @@ export function MoneyInOut({
             ? `, expenses were ${Math.round((expensesCents / earned) * 100)}% of earnings.`
             : '.'}
         </p>
+        {expensesCents > 0 && deductibleCents !== expensesCents ? (
+          <p className="text-body-medium text-on-surface-variant">
+            Of what you spent,{' '}
+            <span className="font-medium text-on-surface tabular-nums">{m(deductibleCents)}</span>{' '}
+            counts as deductible. The rest is a personal share, not deductible, or already covered
+            by your mileage rate.
+          </p>
+        ) : null}
         {deduction}
       </div>
       <div className="space-y-2">
@@ -637,8 +648,8 @@ export function MoneyInOut({
               key: c.category,
               text: categoryName(c.category),
               name: categoryName(c.category),
-              value: c.cents,
-              figure: m(c.cents),
+              value: c.spent_cents,
+              figure: m(c.spent_cents),
               color: chartColor.spent,
             }))}
           />

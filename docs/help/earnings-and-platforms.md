@@ -80,7 +80,7 @@ Under the dashboard's earned figure, a line compares it with the period before, 
 
 The chart under it shows the period day by day (month by month for Year). Earned, Distance and Time switch what it shows. Today is drawn against the six days before it. Beside it, "Where the money came from" splits the earnings by platform when two or more earned; otherwise "Where the miles went" splits the distance into active, deadhead and personal.
 
-Analytics adds the earnings by platform, the pace against the period before, pay per hour and per mile for each day worked, the distance by kind, money in and out, and the platforms and vehicles side by side. "When it pays" colours each weekday and time of day by the pay per hour of the shifts you worked then. A shift's earnings are spread evenly over its hours, so a busy hour inside a long shift is not singled out.
+Analytics adds the earnings by platform, the pace against the period before, pay per hour and per mile for each day worked, the distance by kind, money in and out (what you earned against what you paid, with the deductible part named), and the platforms and vehicles side by side. "When it pays" colours each weekday and time of day by the pay per hour of the shifts you worked then. A shift's earnings are spread evenly over its hours, so a busy hour inside a long shift is not singled out.
 
 Every chart has "Show as a table" for the same figures as words. With a keyboard, move to a chart with Tab and read it with the arrow keys.
 

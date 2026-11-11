@@ -53,6 +53,16 @@ const get = async (group: string, extra = '') =>
   (await send('GET', `/analytics${q}&group=${group}${extra}`)).json();
 
 describe('groups', () => {
+  test('all: every group in one answer, the same as asked one by one', async () => {
+    await setup();
+    const all = await get('all');
+    expect(all.group).toBe('all');
+    for (const group of ['trends', 'rhythm', 'sources', 'outlook', 'efficiency', 'cards']) {
+      expect(all.data[group], group).toEqual((await get(group)).data);
+    }
+    expect(all.data.order_economics).toEqual((await get('order_economics')).data);
+  });
+
   test('cards: gross, expenses and burn, set-aside, net take-home, hourly figures, total time', async () => {
     await setup();
     const c = (await get('cards')).data;
@@ -104,6 +114,19 @@ describe('groups', () => {
     ]);
     const months = (await get('trends', '&bucket=month')).data.buckets;
     expect(months[0].start).toBe('2027-01');
+    // The period before counts earnings as every other figure does: after fees and adjustments.
+    await send('POST', '/shifts/1/earnings/doordash/entries', {
+      type: 'platform_fee',
+      amount_cents: -1_500,
+    });
+    await send('POST', '/shifts/1/earnings/doordash/entries', {
+      type: 'adjustment',
+      amount_cents: 200,
+    });
+    const later = (
+      await send('GET', '/analytics?from=2027-01-12&to=2027-01-14&group=trends')
+    ).json();
+    expect(later.data.previous.earnings_cents).toBe(8_700);
   });
 
   test('rhythm, sources, outlook, efficiency, order economics', async () => {

@@ -5090,12 +5090,13 @@
         },
         "expense_categories": {
           "type": "array",
-          "description": "Present only with the expenses module on. The same rule as the cards' expenses (the deductible part, nothing counted twice).",
+          "description": "Present only with the expenses module on. Every category with something paid in the range, largest first.",
           "items": {
             "type": "object",
             "required": [
               "category",
               "cents",
+              "spent_cents",
               "count"
             ],
             "properties": {
@@ -5103,7 +5104,14 @@
                 "type": "string"
               },
               "cents": {
-                "type": "integer"
+                "type": "integer",
+                "description": "The deductible part",
+                "by the same rule as the cards' expenses (nothing counted twice).": null
+              },
+              "spent_cents": {
+                "type": "integer",
+                "description": "What was paid",
+                "in full.": null
               },
               "count": {
                 "type": "integer"

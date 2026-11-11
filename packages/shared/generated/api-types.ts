@@ -1361,7 +1361,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** One group of period figures. Unknown is null, never 0. The platform filter applies to earnings only. */
+        /** One group of period figures, or every group with `all`. Unknown is null, never 0. The platform filter applies to earnings only. */
         get: operations["getAnalytics"];
         put?: never;
         post?: never;
@@ -3304,10 +3304,13 @@ export interface components {
                 online_minutes: number | null;
                 shifts: number;
             }[];
-            /** @description Present only with the expenses module on. The same rule as the cards' expenses (the deductible part, nothing counted twice). */
+            /** @description Present only with the expenses module on. Every category with something paid in the range, largest first. */
             expense_categories?: {
                 category: string;
+                /** @description The deductible part */
                 cents: number;
+                /** @description What was paid */
+                spent_cents: number;
                 count: number;
             }[];
         };
@@ -6696,7 +6699,7 @@ export interface operations {
                 /** @description Local date YYYY-MM-DD in the instance timezone, inclusive. */
                 from?: components["parameters"]["From"];
                 to?: components["parameters"]["To"];
-                group?: "trends" | "rhythm" | "sources" | "outlook" | "efficiency" | "order_economics" | "cards";
+                group?: "trends" | "rhythm" | "sources" | "outlook" | "efficiency" | "order_economics" | "cards" | "all";
                 /** @description trends only. */
                 bucket?: "day" | "week" | "month";
                 platform?: string;
@@ -6707,7 +6710,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The group. The shape of data depends on the group (see 18 section 10.1). */
+            /** @description The group. The shape of data depends on the group (see 18 section 10.1); with `all` it is an object of every group by name. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -6719,7 +6722,7 @@ export interface operations {
                         /** Format: date */
                         to: string;
                         /** @enum {unknown} */
-                        group: "trends" | "rhythm" | "sources" | "outlook" | "efficiency" | "order_economics" | "cards";
+                        group: "trends" | "rhythm" | "sources" | "outlook" | "efficiency" | "order_economics" | "cards" | "all";
                         /** @constant */
                         platform_filter?: "earnings_only";
                         data: Record<string, never> | unknown[] | null;

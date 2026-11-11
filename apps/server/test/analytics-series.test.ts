@@ -162,9 +162,11 @@ describe('breakdown', () => {
         }),
       ],
       expenses: [
-        { category: 'fuel', vehicleId: 1, cents: 4_000 },
-        { category: 'phone', vehicleId: null, cents: 1_500 },
-        { category: 'fuel', vehicleId: 2, cents: 1_000 },
+        { category: 'fuel', vehicleId: 1, cents: 4_000, spentCents: 4_000 },
+        { category: 'phone', vehicleId: null, cents: 1_500, spentCents: 3_000 },
+        { category: 'fuel', vehicleId: 2, cents: 1_000, spentCents: 1_000 },
+        // Covered by the mileage rate: paid, but nothing deductible.
+        { category: 'parking', vehicleId: null, cents: 0, spentCents: 700 },
       ],
     });
     expect(b.week_hours).toEqual([
@@ -211,8 +213,9 @@ describe('breakdown', () => {
       },
     ]);
     expect(b.expense_categories).toEqual([
-      { category: 'fuel', cents: 5_000, count: 2 },
-      { category: 'phone', cents: 1_500, count: 1 },
+      { category: 'fuel', cents: 5_000, spent_cents: 5_000, count: 2 },
+      { category: 'phone', cents: 1_500, spent_cents: 3_000, count: 1 },
+      { category: 'parking', cents: 0, spent_cents: 700, count: 1 },
     ]);
   });
 
@@ -349,8 +352,10 @@ describe('GET /analytics/breakdown', () => {
         shifts: 1,
       },
     ]);
-    // The phone expense is half deductible, as the cards count it.
-    expect(body.expense_categories).toEqual([{ category: 'phone', cents: 500, count: 1 }]);
+    // The phone expense is half deductible, as the cards count it; all of it was paid.
+    expect(body.expense_categories).toEqual([
+      { category: 'phone', cents: 500, spent_cents: 1000, count: 1 },
+    ]);
     expect(
       (await send('GET', '/analytics/breakdown?from=2020-01-01&to=2027-01-01')).statusCode,
     ).toBe(422);

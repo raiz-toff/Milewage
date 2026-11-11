@@ -115,7 +115,15 @@ function NavItem({ screen, pathname }: { screen: Screen; pathname: string }) {
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={active} tooltip={screen.label}>
-        <NavLink to={routeOf(screen)}>
+        {/* A destination picked with the mouse or a finger gives its focus up, so no focus ring
+            comes back on it when the window is left and returned to. The keyboard (detail 0)
+            keeps its focus and its ring. */}
+        <NavLink
+          to={routeOf(screen)}
+          onClick={(e) => {
+            if (e.detail > 0) e.currentTarget.blur();
+          }}
+        >
           {/* Material: the selected destination's icon is the filled form. */}
           <Icon filled={active} />
           <span>{screen.label}</span>

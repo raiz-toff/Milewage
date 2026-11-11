@@ -156,7 +156,7 @@ const breakdownFixture = {
       shifts: 1,
     },
   ],
-  expense_categories: [{ category: 'phone', cents: 500, count: 1 }],
+  expense_categories: [{ category: 'phone', cents: 500, spent_cents: 800, count: 1 }],
 };
 const summaryFixture = {
   shift_count: 2,
@@ -243,7 +243,7 @@ function open(
           from: url.searchParams.get('from'),
           to: url.searchParams.get('to'),
           group: url.searchParams.get('group'),
-          data: g[url.searchParams.get('group') ?? 'cards'],
+          data: url.searchParams.get('group') === 'all' ? g : g[url.searchParams.get('group')!],
         },
       }),
     },
@@ -409,8 +409,10 @@ describe('analytics screen (module analytics)', () => {
       },
     });
     const money = await screen.findByRole('region', { name: 'Money in and out' });
-    expect(money.textContent).toMatch(/Left after expenses: \$295\.00/);
-    expect(money.textContent).toMatch(/Phone\$5\.00100%/);
+    // Money out is what was paid (8.00), with the deductible part (5.00) said in words.
+    expect(money.textContent).toMatch(/Left after expenses: \$292\.00/);
+    expect(money.textContent).toMatch(/Of what you spent, \$5\.00 counts as deductible/);
+    expect(money.textContent).toMatch(/Phone\$8\.00100%/);
     expect(money.textContent).toMatch(/Estimated deduction value: \$14\.00 on 20\.0 km/);
     const platforms = screen.getByRole('region', { name: 'Platforms' });
     const rows = within(within(platforms).getByRole('table')).getAllByRole('row');

@@ -680,7 +680,7 @@ export function SettingsPage() {
       />
       {/* Sized by its own width, not the window's: the side list needs room beside the form. */}
       <div className="@container">
-        <div className="grid gap-6 @2xl:grid-cols-[200px_minmax(0,1fr)] @2xl:gap-8">
+        <div className="grid gap-6 @2xl:grid-cols-[220px_minmax(0,1fr)] @2xl:gap-8">
           <SectionNav
             label="Settings sections"
             noun="Section"

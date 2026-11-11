@@ -26,7 +26,7 @@ const isUnder = (pathname: string, to: string) => pathname === to || pathname.st
  * The list of a page's sections (Settings) or pages (Help). Where there is room it is a grouped
  * list beside the content that stays in view; where there is not, one menu button that names the
  * open one ("Section: Units and format"). Neither ever scrolls sideways. Place it in a
- * `@container` grid with `@2xl:grid-cols-[200px_minmax(0,1fr)]`.
+ * `@container` grid with `@2xl:grid-cols-[220px_minmax(0,1fr)]`.
  *
  * `label` names the navigation for screen readers; `noun` starts the narrow button's text. The
  * current item is the one whose `to` the address is at or under, else the first.
@@ -81,10 +81,11 @@ export function SectionNav({
       <div className="hidden space-y-2 @2xl:block">
         {groups.map((g, i) => (
           <div key={g.label} className="space-y-1">
-            <p id={`${id}-${i}`} className="px-4 py-2 text-title-small text-on-surface-variant">
+            <p id={`${id}-${i}`} className="px-4 py-2 text-title-small text-on-surface">
               {g.label}
             </p>
-            <ul aria-labelledby={`${id}-${i}`} className="flex flex-col">
+            {/* The links sit indented under their group's heading. */}
+            <ul aria-labelledby={`${id}-${i}`} className="ml-3 flex flex-col">
               {g.items.map((s) => (
                 <li key={s.to}>
                   <NavLink

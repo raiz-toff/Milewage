@@ -65,13 +65,18 @@ has the AI assistant endpoint off again, as it was in 0.1.0. Set `MILEWAGE_MODUL
   the money came from by platform, or where the miles went. Analytics draws earnings by platform
   (or pay and tips), the pace against the period before, pay per hour and per mile for each day
   worked, the distance by kind with the estimate marked, when it pays (pay per hour by weekday and
-  time of day), money in and out with expenses by category and the deduction's value, and the
+  time of day), money in and out (what was paid, by category, with the deductible part named) and the
+  deduction's value, and the
   platforms and vehicles side by side. Every chart has a table ("Show as a table") and is read with
   the keyboard. The shift start times chart and the trends table are replaced by these.
 
 - `GET /summary/series` (per day or month, every slot of a range included, with each platform's
   earnings) and `GET /analytics/breakdown` (by weekday and clock hour, per vehicle, per platform,
-  per expense category). Read-only; nothing existing changed.
+  per expense category: what was paid and its deductible part). `GET /analytics` takes
+  `group=all` for every group in one answer. Read-only.
+
+- Fixed: the previous period's earnings in `GET /analytics` (group `trends`) left out fees and
+  adjustments.
 
 - The native Android app (`apps/android`): first run with pairing (the server found on the home
   Wi-Fi with a 6-digit link code, the QR scanner, a pasted code or address, Tailscale), one
