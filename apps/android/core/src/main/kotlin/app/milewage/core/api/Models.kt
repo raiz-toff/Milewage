@@ -212,6 +212,7 @@ data class Modules(
     val sync: Boolean? = null,
     val diagnostics: Boolean? = null,
     val devices: Boolean? = null,
+    val replay: Boolean? = null,
 )
 
 @Serializable

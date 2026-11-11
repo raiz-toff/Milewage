@@ -186,7 +186,7 @@ describe('GET /summary/series', () => {
   });
 
   test('without earnings or stops, earnings are null and the hours stay', async () => {
-    await setup({ earnings: false, stops: false, tracking: false });
+    await setup({ earnings: false, stops: false, tracking: false, replay: false });
     const body = (await send('GET', '/summary/series?from=2027-01-15&to=2027-01-15')).json();
     expect(body.buckets[0]).toMatchObject({ shift_count: 1, hours: 2, earnings_cents: null });
   });

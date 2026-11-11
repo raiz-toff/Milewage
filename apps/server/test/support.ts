@@ -168,4 +168,4 @@ export function harness(
 export type Harness = ReturnType<typeof harness>;
 
 /** Modules that depend on `tracking`; switch them off together with it. */
-export const TRACKING_OFF = { tracking: false, stops: false };
+export const TRACKING_OFF = { tracking: false, stops: false, replay: false };

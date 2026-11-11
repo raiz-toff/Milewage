@@ -159,7 +159,7 @@ describe('shiftView: the shift page from its record', () => {
   });
 
   it('with the map off, an empty shift is decided by trips and stops alone, and the list stands in', () => {
-    const noMap = settingsFixture({ modules: { tracking: false, stops: false } });
+    const noMap = settingsFixture({ modules: { replay: false } });
     expect(shiftView(parts({ route: { points: null } }), noMap)).toMatchObject({
       main: 'list',
       sideBySide: false,

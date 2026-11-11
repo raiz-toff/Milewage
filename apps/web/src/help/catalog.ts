@@ -29,6 +29,7 @@ const MODULES: Record<BooleanModule, true> = {
   platforms: true,
   devices: true,
   tracking: true,
+  replay: true,
   stops: true,
   sync: true,
   diagnostics: true,

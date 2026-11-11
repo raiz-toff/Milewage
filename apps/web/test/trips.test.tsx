@@ -111,8 +111,8 @@ describe('timeline in shift detail', () => {
     expect(await screen.findByText(/Trips could not be loaded/)).toBeTruthy();
   });
 
-  it('says in one line why there is no map when tracking is off', async () => {
-    open(settingsFixture({ modules: { tracking: false, stops: false } }));
+  it('says in one line why there is no map when the route module is off', async () => {
+    open(settingsFixture({ modules: { replay: false } }));
     await timeline();
     expect(screen.getByText(/route map is off on this server/)).toBeTruthy();
   });

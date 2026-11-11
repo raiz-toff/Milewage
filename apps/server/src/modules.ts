@@ -29,11 +29,11 @@ import { expensesRoutes } from './routes/expenses';
 import { exportsRoutes } from './routes/exports';
 import { platformKnown, platformsRoutes } from './routes/platforms';
 import { receiptsRoutes } from './routes/receipts';
+import { replayRoutes } from './routes/replay';
 import { restoreRoutes } from './routes/restore';
 import { stopsRoutes } from './routes/stops';
 import { createSync } from './routes/sync';
 import { taxRoutes } from './routes/tax';
-import { shiftRouteRoutes } from './routes/shift-route';
 import { trackingRoutes } from './routes/tracking';
 
 /** What a module gives the server once it is wired. None of it exists while the module is off. */
@@ -128,14 +128,8 @@ export const serverModules = [
         everyMs: h.tuning.archiveEveryMs,
         log: h.log,
       });
-      const tracking = trackingRoutes(h);
-      // The route a shift's map draws (08 section 3).
-      const route = shiftRouteRoutes(h);
       return {
-        routes: (host) => {
-          tracking(host);
-          route(host);
-        },
+        routes: trackingRoutes(h),
         subscriptions: late.subscriptions,
         jobs: [late.job, archiver.job],
       };
@@ -188,6 +182,12 @@ export const serverModules = [
     name: 'earnings',
     dependsOn: ['core'],
     wire: (h) => ({ routes: earningsRoutes({ ...h, policy: h.earningsPolicy }) }),
+  }),
+  /** The route for the map and the replay scrubber (08 section 3). */
+  serverModule({
+    name: 'replay',
+    dependsOn: ['tracking'],
+    wire: (h) => ({ routes: replayRoutes(h) }),
   }),
   /** The pull path for the phone (15 section 6.5): `change_log`, `overwrite_log`, `GET /sync/changes`. */
   serverModule({

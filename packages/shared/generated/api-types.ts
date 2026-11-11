@@ -589,7 +589,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Compact columnar route for the shift's map (raw points, or the archive after retention). */
+        /** Compact columnar route for the map and replay scrubber (raw points, or the archive after retention). */
         get: operations["getShiftRoute"];
         put?: never;
         post?: never;
@@ -1418,6 +1418,7 @@ export interface components {
             local_export?: boolean;
             devices: boolean;
             tracking: boolean;
+            replay: boolean;
             /** @description Effective flag: the stops module is registered AND settings.stops_enabled is true. When false the phone and the web hide every stop and estimated-split element. */
             stops: boolean;
             /** @description Diagnostics module registered (16). When false the phone behaves as level off and the web hides the Diagnostics screens. */

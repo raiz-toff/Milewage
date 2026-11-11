@@ -1,14 +1,18 @@
-import { lazy, Suspense, useMemo } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { ElasticSlider } from '@/components/elastic-slider';
 import { Section } from '../ui/layout';
 import { ApiError } from '../api/client';
 import { useApiQuery } from '../api/query';
 import type { Schemas } from '../api/client';
-import { toPoints } from './route';
+import { formatTime } from '../format';
+import { useSettings } from '../session';
+import { positionAt, speedIn, timeAt, toPoints } from './route';
 import type { RoutePoint } from './route';
 import type { MapPick, MapStop } from './MapView';
 import type { Picked } from '../shift/view';
 
 const MapView = lazy(() => import('./MapView'));
+const STEPS = 1000;
 
 const NONE: never[] = [];
 const NOTE =
@@ -21,7 +25,7 @@ export interface ShiftRoute {
   note: string | null;
 }
 
-/** Reads the route once per shift; asks nothing while `on` is false (tracking off, still running). */
+/** Reads the route once per shift; asks nothing while `on` is false (module off, still running). */
 export function useShiftRoute(shiftId: number, on: boolean): ShiftRoute {
   const { data, error } = useApiQuery(
     '/shifts/{ref}/route',
@@ -31,7 +35,7 @@ export function useShiftRoute(shiftId: number, on: boolean): ShiftRoute {
   return useMemo<ShiftRoute>(() => {
     if (data) return { points: toPoints(data), source: data.source, note: null };
     if (!error) return { points: null, source: 'raw', note: null };
-    // 404 is the normal "no route" answer: tracking off on the server, or nothing recorded.
+    // 404 is the normal "no route" answer: replay off on the server, or nothing recorded.
     return {
       points: [],
       source: 'raw',
@@ -44,7 +48,8 @@ export function useShiftRoute(shiftId: number, on: boolean): ShiftRoute {
 }
 
 /**
- * Route map for one shift (module `tracking`), with the shift's stops numbered as in the timeline. `picked` (from the timeline) is shown on the map; a stop clicked on the map
+ * Route map and replay scrubber for one shift (module `replay`), with the shift's stops numbered
+ * as in the timeline. `picked` (from the timeline) is shown on the map; a stop clicked on the map
  * is picked through `onPick`.
  */
 export function RouteView({
@@ -60,7 +65,15 @@ export function RouteView({
   picked?: Picked;
   onPick?: (p: Picked) => void;
 }) {
+  const settings = useSettings();
   const { points, source, note } = route;
+  const [step, setStep] = useState(0);
+  useEffect(() => setStep(0), [points]);
+
+  const cursor = useMemo(
+    () => (points && points.length ? positionAt(points, timeAt(points, step, STEPS)) : null),
+    [points, step],
+  );
 
   const mapStops = useMemo(
     (): MapStop[] =>
@@ -90,6 +103,8 @@ export function RouteView({
       </p>
     );
 
+  const tz = settings.timezone;
+  const tf = settings.time_format;
   return (
     <Section
       label="Route"
@@ -99,14 +114,36 @@ export function RouteView({
       <Suspense fallback={<p className="text-muted-foreground">Loading map</p>}>
         <MapView
           points={points}
+          cursor={step > 0 ? cursor : null}
           stops={mapStops}
           pick={pick}
           onPickStop={(key) => onPick?.({ kind: 'stop', key })}
         />
       </Suspense>
+      {/* chanhdai's Elastic Slider (owner's pick, 2026-11-08): the label and the time sit inside
+          the track; it stretches when dragged past an end. */}
+      <ElasticSlider
+        label="Replay"
+        aria-label="Replay position"
+        min={0}
+        max={STEPS}
+        step={1}
+        value={step}
+        onValueChange={setStep}
+        formatValue={() =>
+          cursor
+            ? `${formatTime(cursor.t, tz, tf)} · ${speedIn(cursor.speed, settings.distance_unit)}`
+            : ''
+        }
+      />
+      {cursor ? (
+        <p className="tabular-nums text-body-small text-muted-foreground">
+          {cursor.lat.toFixed(5)}, {cursor.lon.toFixed(5)}
+        </p>
+      ) : null}
       {source === 'archive' ? (
         <p className="text-body-medium text-muted-foreground">
-          Simplified route: raw points were archived.
+          Simplified route: raw points were archived (speed unavailable).
         </p>
       ) : null}
     </Section>

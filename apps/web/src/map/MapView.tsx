@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Map as MapLibreMap } from 'maplibre-gl';
+import type { Map as MapLibreMap, Marker } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { boundsOf, lineOf, segmentOf } from './route';
 import type { RoutePoint } from './route';
@@ -45,12 +45,14 @@ const fitTo = (m: MapLibreMap, points: RoutePoint[], duration: number) => {
  */
 export default function MapView({
   points,
+  cursor,
   stops = [],
   pick = null,
   onPickStop,
   styleUrl = import.meta.env.VITE_MAP_STYLE_URL as string | undefined,
 }: {
   points: RoutePoint[];
+  cursor: RoutePoint | null;
   stops?: MapStop[];
   pick?: MapPick;
   onPickStop?: (key: string) => void;
@@ -58,6 +60,9 @@ export default function MapView({
 }) {
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
+  const marker = useRef<Marker | null>(null);
+  const cursorRef = useRef(cursor);
+  cursorRef.current = cursor;
   const pickRef = useRef(pick);
   pickRef.current = pick;
   const onPickRef = useRef(onPickStop);
@@ -88,6 +93,12 @@ export default function MapView({
     const color = routeColor(isDark);
     const style = chooseStyle(styleUrl, isDark);
     const remote = typeof style === 'string';
+    const place = () => {
+      const c = cursorRef.current;
+      if (c && map.current && marker.current) {
+        marker.current.setLngLat([c.lon, c.lat]).addTo(map.current);
+      }
+    };
     void (async () => {
       try {
         const ml = await import('maplibre-gl');
@@ -138,6 +149,8 @@ export default function MapView({
               .setLngLat([p.lon, p.lat])
               .addTo(m);
         }
+        marker.current = new ml.Marker({ color });
+        place();
         setLib(ml);
       } catch {
         if (!cancelled) setFailed(true); // no WebGL, or the library did not load
@@ -147,6 +160,7 @@ export default function MapView({
       cancelled = true;
       map.current?.remove();
       map.current = null;
+      marker.current = null;
       shown.current = '';
       setLib(null);
     };
@@ -194,6 +208,12 @@ export default function MapView({
       if (s) m.easeTo({ center: [s.lon, s.lat], zoom: Math.max(m.getZoom(), 15), duration });
     } else if (was) fitTo(m, points, duration);
   }, [lib, pickKey, stops, points]);
+
+  useEffect(() => {
+    if (cursor && map.current && marker.current) {
+      marker.current.setLngLat([cursor.lon, cursor.lat]).addTo(map.current);
+    } else marker.current?.remove();
+  }, [cursor]);
 
   if (failed) {
     return (

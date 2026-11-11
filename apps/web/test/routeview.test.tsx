@@ -146,16 +146,24 @@ function open(settings = settingsFixture(), routeAnswer: object = { body: route 
 }
 
 describe('route view', () => {
-  it('draws on the OpenFreeMap basemap when no style URL is configured, with no replay', async () => {
+  it('draws on the OpenFreeMap basemap when no style URL is configured, and scrubs', async () => {
     open();
     // The first test pays for the lazy import of the map module (waits up to test/support/setup.ts).
     await waitFor(() => expect(ml.state.maps).toHaveLength(1));
     expect(ml.state.maps[0]!.options.style).toMatch(/tiles\.openfreemap\.org/);
-    expect(screen.getByRole('region', { name: 'Route' })).toBeTruthy();
-    // No scrubber and no moving position marker: only the Start and End marks and the stops.
-    await waitFor(() => expect(ml.state.markers.filter((m) => m.on)).toHaveLength(4));
-    expect(screen.queryByRole('slider')).toBeNull();
-    expect(ml.state.markers.some((m) => m.color)).toBe(false);
+    // The Elastic Slider: role="slider", moved with the keyboard (Shift+arrow = 10 steps).
+    const slider = screen.getByRole('slider', { name: 'Replay position' });
+    expect(slider.getAttribute('aria-valuetext')).toMatch(/0 km\/h/);
+    const pin = () => ml.state.markers.find((m) => m.color);
+    await waitFor(() => expect(pin()).toBeTruthy());
+    expect(pin()!.on).toBe(false); // at the start the Start marker is enough
+    for (let i = 0; i < 50; i++) fireEvent.keyDown(slider, { key: 'ArrowRight', shiftKey: true });
+    expect(slider.getAttribute('aria-valuenow')).toBe('500');
+    // halfway in time is the middle fix: 36 km/h and the middle coordinate
+    await waitFor(() => expect(screen.getByText(/36 km\/h/)).toBeTruthy());
+    expect(screen.getByText('45.01000, -75.00000')).toBeTruthy();
+    await waitFor(() => expect(pin()?.lngLat).toEqual([-75, 45.01]));
+    expect(pin()!.on).toBe(true);
   });
 
   it('adds the route layer once the style has loaded', async () => {
@@ -218,15 +226,16 @@ describe('route view', () => {
     expect(ml.state.maps).toHaveLength(0);
   });
 
-  it('an archived route says it is simplified', async () => {
+  it('an archived route says it is simplified and has no speed', async () => {
     open(settingsFixture(), {
       body: { ...route, source: 'archive', speed_dmps: [null, null, null] },
     });
     expect(await screen.findByText(/Simplified route/)).toBeTruthy();
+    expect(screen.getByText(/—/)).toBeTruthy();
   });
 
-  it('is absent when the tracking module is off', async () => {
-    const { calls } = open(settingsFixture({ modules: { tracking: false, stops: false } }));
+  it('is absent when the replay module is off', async () => {
+    const { calls } = open(settingsFixture({ modules: { replay: false } }));
     await screen.findByRole('heading', { name: /Nov 14, 2023/ });
     expect(screen.queryByRole('region', { name: 'Route' })).toBeNull();
     expect(calls.some((c) => c.path.endsWith('/route'))).toBe(false);
@@ -236,7 +245,7 @@ describe('route view', () => {
     ml.state.failConstructor = true;
     open();
     expect(await screen.findByText(/map could not start/)).toBeTruthy();
-    expect(screen.getByRole('region', { name: 'Route' })).toBeTruthy();
+    expect(screen.getByLabelText('Replay position')).toBeTruthy();
   });
 });
 
@@ -244,7 +253,7 @@ describe('map fallback', () => {
   it('uses OpenFreeMap by default and credits OpenStreetMap', async () => {
     const { default: MapView } = await import('../src/map/MapView');
     const { render } = await import('@testing-library/react');
-    render(<MapView points={[]} styleUrl={undefined} />);
+    render(<MapView points={[]} cursor={null} styleUrl={undefined} />);
     await waitFor(() => expect(ml.state.maps).toHaveLength(1));
     const options = ml.state.maps[0]!.options as { style: unknown; attributionControl: unknown };
     expect(options.style).toMatch(/^https:\/\/tiles\.openfreemap\.org\/styles\//);
@@ -254,7 +263,7 @@ describe('map fallback', () => {
   it('switches once to the blank style when the configured style cannot load', async () => {
     const { default: MapView } = await import('../src/map/MapView');
     const { render } = await import('@testing-library/react');
-    render(<MapView points={[]} styleUrl="/tiles/style.json" />);
+    render(<MapView points={[]} cursor={null} styleUrl="/tiles/style.json" />);
     await waitFor(() => expect(ml.state.maps).toHaveLength(1));
     const map = ml.state.maps[0]!;
     expect(map.options.style).toBe('/tiles/style.json');

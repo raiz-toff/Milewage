@@ -55,9 +55,7 @@ function ShiftRow({
   const earnings = useApiQuery('/shifts/{ref}/earnings', path, {
     enabled: seen && modules.earnings,
   }).data;
-  const route = useApiQuery('/shifts/{ref}/route', path, {
-    enabled: seen && modules.tracking,
-  }).data;
+  const route = useApiQuery('/shifts/{ref}/route', path, { enabled: seen && modules.replay }).data;
   /** Effective earnings after app fees (null when nothing was entered) and the platform slugs. */
   const extra = earnings
     ? { cents: earnedOf(earnings), platforms: earnings.effective.map((r) => r.platform) }
@@ -126,7 +124,7 @@ function ShiftRow({
           </div>
         </div>
       ) : null}
-      {modules.tracking ? (
+      {modules.replay ? (
         <div className="hidden h-12 w-16 shrink-0 overflow-hidden rounded-small bg-muted text-on-surface-variant min-[360px]:block">
           {route ? <RouteSketch route={route} /> : null}
         </div>

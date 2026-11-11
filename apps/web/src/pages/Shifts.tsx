@@ -688,7 +688,7 @@ export function ShiftDetail() {
             <div id="checks" className="scroll-mt-20">
               <NoRouteCard
                 shift={shift}
-                tracking={settings.modules.tracking}
+                replay={settings.modules.replay}
                 onAdd={() => setAdding(true)}
               />
             </div>
