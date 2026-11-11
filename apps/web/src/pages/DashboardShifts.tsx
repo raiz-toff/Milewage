@@ -19,7 +19,7 @@ import { dateWords } from '../days';
 type Shift = Schemas['Shift'];
 
 /** True once the element has come near the screen (always, where IntersectionObserver is missing). */
-function useSeen<T extends Element>() {
+export function useSeen<T extends Element>() {
   const ref = useRef<T>(null);
   const [seen, setSeen] = useState(typeof IntersectionObserver === 'undefined');
   useEffect(() => {

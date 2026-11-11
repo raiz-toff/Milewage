@@ -27,7 +27,9 @@ describe('page layout and scrolling', () => {
     open('/dashboard');
     await screen.findByRole('navigation', { name: 'Main' });
     const classes = document.querySelector('[data-slot="sidebar-content"]')!.className.split(' ');
-    expect(classes).toContain('overflow-auto');
+    expect(classes).toContain('overflow-y-auto');
+    // The menu never scrolls sideways.
+    expect(classes).toContain('overflow-x-hidden');
     expect(classes).not.toContain('no-scrollbar');
     expect(classes).not.toContain('group-data-[collapsible=icon]:overflow-hidden');
   });

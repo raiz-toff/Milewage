@@ -59,7 +59,7 @@ const bucket = (start: string, cents: number | null) => ({
 const cards = () =>
   within(screen.getByRole('list', { name: 'Shifts' }))
     .getAllByRole('link')
-    .map((a) => a.querySelector('span')?.textContent);
+    .map((a) => a.querySelector('time')?.textContent);
 
 function server(
   items: object[],
@@ -100,7 +100,7 @@ describe('shifts week view', () => {
     });
     await screen.findByText('$215.50');
     expect(asked).toEqual(['2023-11-13..2023-11-19']);
-    expect(cards()).toEqual(['Thursday, Nov 16', 'Wednesday, Nov 15']);
+    expect(cards()).toEqual(['Thu, Nov 16', 'Wed, Nov 15']);
     expect(screen.getByText('20.0 km')).toBeTruthy();
     expect(screen.getByText(/^14\.0 km active/).textContent).toContain('*');
     expect(screen.getByText('* estimated from detected stops')).toBeTruthy();
@@ -111,11 +111,45 @@ describe('shifts week view', () => {
     server([shift(1), shift(2)]);
     await screen.findByText('$215.50');
     fireEvent.click(screen.getByRole('button', { name: 'Wednesday: $90.00' }));
-    expect(cards()).toEqual(['Wednesday, Nov 15']);
+    expect(cards()).toEqual(['Wed, Nov 15']);
     expect(screen.getByText('$90.00')).toBeTruthy();
     expect(screen.getByText('Shifts on Wednesday')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Wednesday: $90.00' }));
-    expect(cards()).toEqual(['Thursday, Nov 16', 'Wednesday, Nov 15']);
+    expect(cards()).toEqual(['Thu, Nov 16', 'Wed, Nov 15']);
+  });
+
+  it('a row says what the shift earned, its tips and its platforms (the Comma phone row)', async () => {
+    server([shift(1)], {
+      'GET /platforms': () => ({ body: [{ slug: 'doordash', label: 'DoorDash' }] }),
+      'GET /shifts/1/earnings': () => ({
+        body: {
+          entries: [],
+          labels: [],
+          effective: [{ platform: 'doordash', total_cents: 5350, tips_cents: 800 }],
+        },
+      }),
+    });
+    const row = within(await screen.findByRole('list', { name: 'Shifts' })).getByRole('link');
+    await waitFor(() => expect(row.textContent).toContain('$53.50'));
+    expect(row.textContent).toContain('$8.00 tips');
+    expect(row.textContent).toContain('DoorDash');
+    expect(row.textContent).toMatch(/Time: 4h 12m/);
+    expect(row.textContent).toMatch(/Distance: 10\.0 km/);
+  });
+
+  it('the period opens a calendar; a day picked there opens its week with that day chosen', async () => {
+    server([shift(1), shift(2)]);
+    await screen.findByText('$215.50');
+    fireEvent.click(screen.getByRole('button', { name: /^Pick a date: / }));
+    const dialog = await screen.findByRole('dialog', { name: 'Pick a date' });
+    const wed = [...dialog.querySelectorAll<HTMLButtonElement>('button[aria-label]')].find((b) =>
+      /November 15(th)?, 2023/.test(b.getAttribute('aria-label')!),
+    );
+    expect(wed).toBeTruthy();
+    fireEvent.click(wed!);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByText('Shifts on Wednesday')).toBeTruthy();
+    expect(cards()).toEqual(['Wed, Nov 15']);
   });
 
   it('moves between weeks, and cannot go past the current week', async () => {

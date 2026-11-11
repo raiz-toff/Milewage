@@ -78,6 +78,10 @@ has the AI assistant endpoint off again, as it was in 0.1.0. Set `MILEWAGE_MODUL
 - Fixed: the previous period's earnings in `GET /analytics` (group `trends`) left out fees and
   adjustments.
 
+- Shifts: the dates above the week's figure open a calendar, and a day picked there opens its week
+  with that day chosen. The list's rows follow the Comma phone app's: platforms, day and times,
+  time and distance, then what the shift earned, its tips and its deduction.
+
 - Changed: Analytics' burn ratio and net take-home count what was paid for expenses, in full, no
   longer only the deductible part. A "Spent" tile shows it beside "Deductible expenses"; the
   `cards` group carries it as `spent_cents`.

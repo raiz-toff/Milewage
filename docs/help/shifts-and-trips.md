@@ -10,7 +10,7 @@ A shift runs from Start shift to End shift on the phone. Its trips are the stret
 
 ## The Shifts page
 
-Shifts opens on this week; the arrows move a week at a time. The large figure is what you earned, or the distance when no earnings are entered. Choose a day's bar to list that day only. Under the bars are the week's hours, distance, deduction and hourly earnings. A badge on a shift says "Reviewed", or how many checks are "to review".
+Shifts opens on this week; the arrows move a week at a time. The large figure is what you earned, or the distance when no earnings are entered. Choose a day's bar to list that day only. To go straight to a date, choose the dates above the large figure and pick a day in the calendar: its week opens with that day chosen. Under the bars are the week's hours, distance, deduction and hourly earnings. Each shift in the list shows its day and times, its time and distance, and on the right what it earned, its tips and its deduction. A badge on a shift says "Reviewed", or how many checks are "to review".
 
 ## What a shift page shows
 

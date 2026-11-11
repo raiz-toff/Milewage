@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { EmptyState, PageHeader, Section, StatCard } from '../ui/layout';
 import { Link, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
-import { ChevronLeftIcon, ChevronRightIcon } from '@/ui/icons';
+import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from '@/ui/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent } from '@/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { describe, unwrap } from '../api/client';
@@ -13,15 +15,17 @@ import type { Schemas, Settings } from '../api/client';
 import { useApiQuery } from '../api/query';
 import { deductionWord, formatDistance, formatDuration, formatMoney, formatTime } from '../format';
 import { RouteView } from '../map/RouteView';
-import { PlatformName } from '../platforms/PlatformBadge';
-import { addDays, dateWords, todayIn, weekOf, weekWords } from '../days';
+import { PlatformBadge, PlatformName } from '../platforms/PlatformBadge';
+import { usePlatformOf } from '../platforms/usePlatforms';
+import { addDays, dateToIso, dateWords, isoToDate, todayIn, weekOf, weekWords } from '../days';
 import { useSession, useSettings } from '../session';
 import { useShiftRecord } from '../shift/record';
-import { reviewCount, showsSplit } from '../shift/view';
+import { earnedOf, reviewCount, showsSplit } from '../shift/view';
 import type { Picked } from '../shift/view';
 import { FormError } from '../ui/form';
 import { ExportButtons } from './Exports';
 import { AddTrip, DeleteTripDialog } from './AddTrip';
+import { useSeen } from './DashboardShifts';
 import { ShiftCosts, useShiftCosts } from './ShiftCosts';
 import { ShiftEarnings } from './ShiftEarnings';
 import { ShiftChecks, ShiftFigures } from './ShiftFacts';
@@ -107,61 +111,110 @@ function StatusBadge({ shift }: { shift: Shift }) {
   return null;
 }
 
+/**
+ * One shift in the list, as the Comma phone app's row: the platforms and the day with its times,
+ * then hours and distance in words, the note; on the right what it earned, its tips and the
+ * deduction. Earnings are read when the row comes into view, only with the module on.
+ */
 export function ShiftCard({ shift, settings }: { shift: Shift; settings: Settings }) {
   const unit = settings.distance_unit;
   const tz = settings.timezone;
   const tf = settings.time_format;
   const split = showsSplit(shift, settings);
   const review = reviewCount(shift);
+  const platformOf = usePlatformOf();
+  const [ref, seen] = useSeen<HTMLAnchorElement>();
+  const earnings = useApiQuery(
+    '/shifts/{ref}/earnings',
+    { params: { path: { ref: String(shift.id) } } },
+    { enabled: seen && settings.modules.earnings },
+  ).data;
+  const platforms = earnings?.effective.map((r) => r.platform) ?? [];
+  const cents = earnings ? earnedOf(earnings) : null;
+  const tips = earnings?.effective.reduce((t, r) => t + r.tips_cents, 0) ?? 0;
+  const fact = 'font-medium text-on-surface';
   return (
     <Link
+      ref={ref}
       to={`/shifts/${shift.id}`}
-      className="relative block rounded-medium bg-card p-4 state-layer focus-ring"
+      className="relative flex items-center justify-between gap-4 rounded-medium bg-card p-4 state-layer focus-ring"
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-title-medium">
-              {dateWords(shift.local_date, { weekday: 'long', month: 'short', day: 'numeric' })}
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="flex flex-wrap items-center gap-2">
+          {platforms.length > 0 ? (
+            <span className="flex shrink-0 -space-x-1">
+              {platforms.map((slug) => (
+                <PlatformBadge
+                  key={slug}
+                  platform={platformOf(slug)}
+                  className="ring-2 ring-card"
+                />
+              ))}
             </span>
-            <StatusBadge shift={shift} />
-            {review > 0 ? (
-              <Badge variant="outline" className="border-primary/60">
-                {review} to review
-              </Badge>
-            ) : null}
-          </div>
-          <p className="text-body-medium text-muted-foreground tabular-nums">
+          ) : null}
+          <time dateTime={shift.local_date} className="text-title-medium">
+            {dateWords(shift.local_date, { weekday: 'short', month: 'short', day: 'numeric' })}
+          </time>
+          <span className="text-body-medium text-muted-foreground tabular-nums">
             {formatTime(shift.started_at, tz, tf)} –{' '}
-            {shift.ended_at ? formatTime(shift.ended_at, tz, tf) : 'now'} ·{' '}
-            {formatDuration(shift.started_at, shift.ended_at)}
-          </p>
-          {shift.notes ? (
-            <p className="truncate text-body-medium text-muted-foreground italic">
-              “{shift.notes}”
-            </p>
+            {shift.ended_at ? formatTime(shift.ended_at, tz, tf) : 'now'}
+          </span>
+          <StatusBadge shift={shift} />
+          {review > 0 ? (
+            <Badge variant="outline" className="border-primary/60">
+              {review} to review
+            </Badge>
           ) : null}
         </div>
-        <div className="shrink-0 text-right">
-          <div className="text-title-large font-medium tabular-nums">
-            {formatDistance(shift.total_m, unit)}
-          </div>
+        <p className="flex flex-wrap gap-x-4 gap-y-0.5 text-body-medium text-muted-foreground tabular-nums">
+          <span>
+            Time: <span className={fact}>{formatDuration(shift.started_at, shift.ended_at)}</span>
+          </span>
+          <span>
+            Distance: <span className={fact}>{formatDistance(shift.total_m, unit)}</span>
+          </span>
           {split ? (
-            <div className="text-body-small text-muted-foreground tabular-nums">
+            <span>
               {formatDistance(shift.active_m, unit)} active
               <Est />
-            </div>
+            </span>
           ) : null}
-          {shift.deduction_cents !== null ? (
-            <div className="text-body-small text-muted-foreground tabular-nums">
-              {formatMoney(shift.deduction_cents, settings.currency)}{' '}
-              {deductionWord({
-                mileage_rate: settings.mileage_rate,
-                deduction_rate: shift.deduction_rate,
-              })}
-            </div>
-          ) : null}
-        </div>
+        </p>
+        {platforms.length > 0 ? (
+          <p className="truncate text-body-small text-muted-foreground">
+            {platforms.map((slug) => platformOf(slug).label).join(', ')}
+          </p>
+        ) : null}
+        {shift.notes ? (
+          <p className="truncate text-body-medium text-muted-foreground italic">“{shift.notes}”</p>
+        ) : null}
+      </div>
+      <div className="shrink-0 space-y-0.5 text-right tabular-nums">
+        {earnings ? (
+          <div className="text-title-large font-medium">
+            {cents === null ? (
+              <span className="text-body-medium font-normal text-muted-foreground">
+                Earnings not entered
+              </span>
+            ) : (
+              formatMoney(cents, settings.currency)
+            )}
+          </div>
+        ) : null}
+        {tips > 0 ? (
+          <div className="text-body-small text-muted-foreground">
+            {formatMoney(tips, settings.currency)} tips
+          </div>
+        ) : null}
+        {shift.deduction_cents !== null ? (
+          <div className="text-body-small text-muted-foreground">
+            {formatMoney(shift.deduction_cents, settings.currency)}{' '}
+            {deductionWord({
+              mileage_rate: settings.mileage_rate,
+              deduction_rate: shift.deduction_rate,
+            })}
+          </div>
+        ) : null}
       </div>
     </Link>
   );
@@ -179,10 +232,14 @@ export function ShiftList() {
   const from = weekOf(isDate(asked) ? asked : today, settings.week_start);
   const to = addDays(from, 6);
   const { data, error } = useWeek(from, to);
+  // The day picked, by its bar or in the calendar; a day outside the week shown picks nothing.
   const [day, setDay] = useState<string | null>(null);
-  useEffect(() => setDay(null), [from]);
+  const [picking, setPicking] = useState(false);
 
-  const go = (week: string) => setParams(week === thisWeek ? {} : { week });
+  const go = (week: string, pick: string | null = null) => {
+    setDay(pick);
+    setParams(week === thisWeek ? {} : { week });
+  };
 
   const shifts = [...(data?.shifts ?? [])].sort((a, b) => b.started_at - a.started_at);
   const earnedWeek = data?.summary.earnings_cents ?? null;
@@ -237,7 +294,48 @@ export function ShiftList() {
           <ChevronLeftIcon />
         </UiButton>
         <div className="min-w-0 text-center">
-          <div className="text-title-small text-muted-foreground">{heroLabel}</div>
+          {/* The period opens a calendar: a day picked there opens its week with that day chosen. */}
+          <Popover open={picking} onOpenChange={setPicking}>
+            <PopoverTrigger asChild>
+              <UiButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={`Pick a date: ${heroLabel}`}
+                className="font-normal text-muted-foreground tabular-nums"
+              >
+                <CalendarIcon />
+                {heroLabel}
+              </UiButton>
+            </PopoverTrigger>
+            <PopoverContent aria-label="Pick a date" align="center" className="w-auto p-0">
+              <Calendar
+                mode="single"
+                captionLayout="dropdown"
+                autoFocus
+                selected={picked ? isoToDate(picked.date) : undefined}
+                defaultMonth={isoToDate(picked?.date ?? from)}
+                startMonth={isoToDate(`${Number(today.slice(0, 4)) - 10}-01-01`)}
+                endMonth={isoToDate(today)}
+                today={isoToDate(today)}
+                weekStartsOn={settings.week_start as 0 | 1}
+                disabled={{ after: isoToDate(today)! }}
+                modifiers={
+                  picked
+                    ? undefined
+                    : {
+                        range_start: isoToDate(from)!,
+                        range_middle: { after: isoToDate(from)!, before: isoToDate(to)! },
+                        range_end: isoToDate(to)!,
+                      }
+                }
+                onSelect={(d) => {
+                  if (d) go(weekOf(dateToIso(d), settings.week_start), dateToIso(d));
+                  setPicking(false);
+                }}
+              />
+            </PopoverContent>
+          </Popover>
           <div
             aria-live="polite"
             className="truncate text-display-small font-medium tabular-nums sm:text-display-medium"
