@@ -100,6 +100,7 @@ const patchSchema = strictObject(
     },
     use_own_mileage_rate: { type: 'boolean' },
     work_kinds: { type: 'array', items: { enum: [...WORK_KINDS] }, uniqueItems: true },
+    onboarded: { type: 'boolean' },
     setup_done: { type: 'array', items: { enum: [...SETUP_STEPS] }, uniqueItems: true },
   },
   [],
@@ -159,6 +160,7 @@ export function settingsReader(ctx: ReaderContext) {
       time_format: row.timeFormat,
       default_vehicle_id: row.defaultVehicleId,
       work_kinds: d.workKinds,
+      onboarded_at: row.onboardedAt,
       setup_done: row.setupDone ?? [],
       diagnostics: {
         level: expired ? 'basic' : row.diagnosticsLevel,
@@ -243,9 +245,15 @@ export function settingsRoutes(
       const kept = (sent ?? prefs?.workKinds ?? []).filter((k) => offered(country).includes(k));
       patch.workKinds = kept.length ? kept : null;
     }
+    if (b.onboarded !== undefined) {
+      // Finishing keeps the first time; "Run setup again" clears it so the wizard opens.
+      patch.onboardedAt = b.onboarded ? (prefs?.onboardedAt ?? now) : null;
+      // Running setup again starts the dashboard checklist over too.
+      if (!b.onboarded) patch.setupDone = null;
+    }
     if (b.setup_done !== undefined) {
       // Added to what is stored, never taken away: two tabs cannot undo each other's steps.
-      const stored = prefs?.setupDone ?? [];
+      const stored = b.onboarded === false ? [] : (prefs?.setupDone ?? []);
       const added = (b.setup_done as string[]).filter((s) => !stored.includes(s));
       patch.setupDone = [...stored, ...added];
     }

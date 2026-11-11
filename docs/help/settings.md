@@ -22,6 +22,8 @@ Some sections appear only when their module runs on your server. They are marked
 
 There is no tax section: the Tax page works from these answers.
 
+"Run setup again" asks the first-run questions again. Your answers stay until you change them.
+
 ## Mileage rate
 
 The rate your mileage deduction uses. The first line says which is in use today.

@@ -196,14 +196,15 @@ describe('dashboard checklist and notices (18 section 13)', () => {
     expect(links).toEqual([
       ['Pair your phoneNextThe phone records your shifts.', '/devices'],
       ['Run a backupA copy of your data you can restore.', '/backups'],
+      ['Continue setup', '/onboarding'],
     ]);
-    expect(within(card).queryByText(/Add your vehicle/)).toBeNull();
+    expect(within(card).queryByText(/Add your real vehicle/)).toBeNull();
     expect(card.textContent).not.toMatch(/other apps/);
     const fold = within(card).getByRole('button', { name: '1 done' });
     expect(fold.getAttribute('aria-expanded')).toBe('false');
     fireEvent.click(fold);
     expect(fold.getAttribute('aria-expanded')).toBe('true');
-    expect(card.textContent).toMatch(/Add your vehicle \(done\)/);
+    expect(card.textContent).toMatch(/Add your real vehicle \(done\)/);
   });
 
   it('keeps a step done once seen done, so unpairing the phone later does not reopen it (W8)', async () => {
@@ -257,25 +258,16 @@ describe('dashboard checklist and notices (18 section 13)', () => {
     }
   });
 
-  it('a new owner is asked for the vehicle first, with no Skip: a shift needs one', async () => {
-    open({});
-    const card = await screen.findByRole('group', { name: 'Finish setting up' });
-    expect(within(card).getByText('0 of 3 done')).toBeTruthy();
-    const first = within(card).getAllByRole('link')[0]!;
-    expect(first.textContent).toBe(
-      'Add your vehicleNextA shift needs one, and your logbook and deduction use it.',
-    );
-    expect(first.getAttribute('href')).toBe('/vehicles');
-    expect(within(card).queryByRole('button', { name: /Skip: Add your vehicle/ })).toBeNull();
-    expect(within(card).queryByRole('link', { name: 'Continue setup' })).toBeNull();
-  });
-
-  it('the province prompt (Q4)', async () => {
+  it('Continue setup opens the wizard at the first step not done; the province prompt (Q4)', async () => {
     open({ vehicles: [vehicle] });
     expect(await screen.findByText(/Set your province to include its own rules/)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Set your province' }).getAttribute('href')).toBe(
       '/settings/general',
     );
+    fireEvent.click(await screen.findByRole('link', { name: 'Continue setup' }));
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /Where you drive — Step 1 of/ }),
+    ).toBeTruthy();
     cleanup();
     renderApp({ ...signedIn(settingsFixture({ region: 'ON' })) }, '/dashboard');
     await screen.findByRole('heading', { name: DASHBOARD });

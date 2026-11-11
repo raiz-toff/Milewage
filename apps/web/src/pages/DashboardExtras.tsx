@@ -65,9 +65,8 @@ function storeHidden(hidden: boolean) {
  * for the modules that are on, gone when everything visible is done. Onboarding-checklist
  * practice: progress shown, the next step first and marked, every step a link to where it is
  * done with why it matters, finished steps folded away, and "Hide for now" that can be undone.
- * If any answer cannot be read the card stays hidden rather than guess. Every listed app starts
- * switched on and Settings > Platforms changes that, so platforms are not a step here (W4c). The
- * vehicle comes first and cannot be skipped: a shift needs one. A step seen done, or skipped,
+ * If any answer cannot be read the card stays hidden rather than guess. Apps are chosen in the
+ * setup wizard, so turning platforms on is not a step here (W4c). A step seen done, or skipped,
  * is kept on the server (`setup_done`) and stays done: unpairing the phone later does not bring
  * the card back (W8).
  */
@@ -81,8 +80,8 @@ export function SetupChecklist() {
   const items: Item[] = [
     {
       id: 'vehicle',
-      text: 'Add your vehicle',
-      why: 'A shift needs one, and your logbook and deduction use it.',
+      text: 'Add your real vehicle',
+      why: 'So your logbook and deduction use the right vehicle.',
       to: '/vehicles',
       visible: true,
       done: vehicles && vehicles.length > 0,
@@ -244,6 +243,9 @@ export function SetupChecklist() {
             ) : null}
           </div>
         ) : null}
+        <Button asChild size="sm">
+          <Link to="/onboarding">Continue setup</Link>
+        </Button>
       </CardContent>
     </Card>
   );

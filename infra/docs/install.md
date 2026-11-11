@@ -88,7 +88,7 @@ Without `MILEWAGE_IMAGE_REPO` the file refuses to start ("set to your registry p
 
 ### 3a. The phone app from your own server
 
-The download page is `https://<your address>/app`: open it on the phone. **Get the app**, under the pairing code on the Devices page and on the page the pairing QR opens, leads there too. It needs no sign-in (the phone has no account yet) and offers:
+The setup wizard's **Get the app** step and the Devices page show a QR code for the download page, `https://<your address>/app`. It needs no sign-in (the phone has no account yet) and offers:
 
 - **Get it on Google Play**, once the app is published and `MILEWAGE_APP_STORE_URL` is set (in `infra/docker/.env`, for example `MILEWAGE_APP_STORE_URL=https://play.google.com/store/apps/details?id=app.milewage.phone`; it must be an https link);
 - **Download the app** (or "or download it directly" under the store link): the Android app file from your own server (`GET /api/v1/app/android.apk`), with its size, version and date.

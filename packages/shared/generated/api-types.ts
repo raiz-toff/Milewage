@@ -1370,7 +1370,7 @@ export interface components {
             };
             /** @description False until a person has checked the figures against the primary sources. */
             verified: boolean;
-            /** @description Kinds of platform work the country's data covers (plan 21 section 3.6a). With one kind, that is the driver's work without asking (plan 23). */
+            /** @description Kinds of platform work the country's data covers (plan 21 section 3.6a). With one kind, onboarding does not ask (plan 23). */
             work: components["schemas"]["WorkKind"][];
             /** @description Some region or city has its own rules, so setting the region can change results. */
             regional_rules: boolean;
@@ -1470,6 +1470,8 @@ export interface components {
             default_vehicle_id: number | null;
             /** @description The work the driver does, among what the country offers. When none is chosen and the country offers one kind, that kind (plan 23 rule 1). */
             work_kinds: components["schemas"]["WorkKind"][];
+            /** @description When the driver finished the web onboarding (plan 23); null while it is not finished, so the web opens it. */
+            onboarded_at: components["schemas"]["EpochMs"] | null;
             /** @description Dashboard "Finish setting up" steps the driver finished or skipped. A listed step stays done even if, say, the phone is unpaired later. */
             setup_done: components["schemas"]["SetupStep"][];
             diagnostics: components["schemas"]["DiagnosticsSettings"];
@@ -1502,6 +1504,8 @@ export interface components {
             use_own_mileage_rate?: boolean;
             /** @description Only kinds the country offers (422 otherwise); a new country drops the kinds it does not offer. */
             work_kinds?: components["schemas"]["WorkKind"][];
+            /** @description true: onboarding finished (sets onboarded_at, keeping an earlier time); false: run it again (clears onboarded_at and setup_done). */
+            onboarded?: boolean;
             /** @description Steps to add to setup_done; steps already listed are kept (it never removes one). */
             setup_done?: components["schemas"]["SetupStep"][];
         };

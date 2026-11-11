@@ -5,8 +5,8 @@ import { createApi } from '../api/client';
 import { APK_URL, apkFacts, storeLabel, useAppInfo } from '../pairing/GetTheApp';
 
 /**
- * `/app`: the download page that Get the app (Devices, /pair) opens on the phone (no sign-in;
- * the phone has no account yet). The store first when the app is published, then the server's own app file
+ * `/app`: the download page the setup wizard's QR opens on the phone (no sign-in; the phone has
+ * no account yet). The store first when the app is published, then the server's own app file
  * with its size and date and how Android asks to allow the install.
  */
 export function AppPage() {

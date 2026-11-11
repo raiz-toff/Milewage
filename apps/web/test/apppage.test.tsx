@@ -12,7 +12,7 @@ afterEach(() => {
 const PLAY = 'https://play.google.com/store/apps/details?id=app.milewage.phone';
 const APK = { size_bytes: 108_296_623, updated_at: Date.UTC(2026, 10, 7, 18), version: '0.1.0' };
 
-/** The download page Get the app opens on the phone (no sign-in). */
+/** The download page the setup wizard's QR opens on the phone (no sign-in). */
 function open(apk: object | null, store_url: string | null) {
   const body = {
     apk,

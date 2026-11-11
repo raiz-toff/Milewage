@@ -118,17 +118,17 @@ curl -fsS https://$name:8443/healthz && echo
 on the machine itself) and say:
 
 > Open it, create the owner account, and write down the recovery key on paper or in a password
-> manager. Type its last 6 characters to finish. Then follow "Finish setting up" on the
-> Dashboard; "Get the app" on the Devices page needs step 6 done first.
+> manager. Type its last 6 characters to finish. Then follow the setup steps; "Get the app" needs
+> step 6 done first.
 
 Wait until they confirm. Then check `curl -fsS http://127.0.0.1:$port/api/v1/setup/status`
 (`{"state":"ready"}`).
 
 ## 6. The phone app download
 
-The download page (`/app`, opened by **Get the app** on the Devices page) offers the Android app
-from this server. The server hands out `milewage.apk` and `milewage.apk.json` from the `config`
-volume. Get both files one of these ways:
+The setup wizard's **Get the app** step offers the Android app from this server. The server hands
+out `milewage.apk` and `milewage.apk.json` from the `config` volume. Get both files one of these
+ways:
 
 - **Build here** (only if this host has JDK 17 and the Android SDK):
   `scripts/phone-release-build.sh --publish /tmp/mw/milewage.apk`.

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import type { FormEvent, ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
@@ -534,6 +534,26 @@ function HelpSection({ prefs }: { prefs: Prefs }) {
   );
 }
 
+/**
+ * Opens the onboarding wizard again at its first step (plan 23 section 4.4). The driver stays
+ * onboarded, so leaving half-way returns to the app; Finish keeps the first time.
+ */
+function RunSetupAgain() {
+  return (
+    <SettingsCard>
+      <section aria-label="Setup" className="space-y-3">
+        <h3 className="text-title-medium">Setup</h3>
+        <p className="text-body-medium text-muted-foreground">
+          Go through the first-run questions again. Your answers stay until you change them.
+        </p>
+        <UiButton variant="outline" asChild>
+          <Link to="/onboarding/start">Run setup again</Link>
+        </UiButton>
+      </section>
+    </SettingsCard>
+  );
+}
+
 /** Settings, one page per section under /settings/<section>; /settings opens the first. */
 export function SettingsPage() {
   const prefs = usePrefs();
@@ -543,9 +563,12 @@ export function SettingsPage() {
 
   const pages: Record<SectionId, ReactNode> = {
     profile: (
-      <PrefsForm prefs={prefs}>
-        <ProfileSection prefs={prefs} />
-      </PrefsForm>
+      <>
+        <PrefsForm prefs={prefs}>
+          <ProfileSection prefs={prefs} />
+        </PrefsForm>
+        <RunSetupAgain />
+      </>
     ),
     rate: <MileageRateSection />,
     units: (
