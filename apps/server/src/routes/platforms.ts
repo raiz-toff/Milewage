@@ -4,7 +4,6 @@ import type { Authenticator } from '../auth/authenticator';
 import { createPlatformRepository, type Db } from '../db';
 import type { DriverContexts } from '../driver-context';
 import { ProblemError } from '../errors';
-import { deleteLogo, logoVersion, platformLogoRoutes } from './platform-logos';
 import { strictObject } from './util';
 
 const slugParams = strictObject({ slug: { type: 'string', pattern: '^[a-z0-9_]{1,32}$' } }, [
@@ -36,12 +35,10 @@ export function platformsRoutes({
   db,
   drivers,
   authn,
-  now,
 }: {
   db: Db;
   drivers: DriverContexts;
   authn: Authenticator;
-  now: () => number;
 }) {
   return ({ app }: ServerRouteHost) => {
     const repo = createPlatformRepository(db);
@@ -59,16 +56,8 @@ export function platformsRoutes({
         active: (row?.active ?? 1) === 1,
         sort: row?.sort ?? order * 10,
         hourly_target_cents: row?.hourlyTargetCents ?? null,
-        logo_version: logoVersion(db, userId, slug),
       };
     };
-
-    platformLogoRoutes(app, {
-      db,
-      authn,
-      now,
-      known: (userId, slug) => platformKnown(db, userId, slug),
-    });
 
     app.get('/platforms', { schema: { querystring: query } }, async (req) => {
       const { userId } = authn.authenticate(req, 'SD');
@@ -143,7 +132,6 @@ export function platformsRoutes({
         );
       }
       repo.delete(userId, slug); // a built-in override is reset to its defaults
-      deleteLogo(db, userId, slug);
       return reply.status(204).send();
     });
   };

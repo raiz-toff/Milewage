@@ -32,7 +32,6 @@ const app = (slug: string, label: string): Platform => ({
   active: true,
   sort: 0,
   hourly_target_cents: null,
-  logo_version: null,
 });
 
 function wizard(

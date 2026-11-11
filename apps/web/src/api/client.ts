@@ -17,8 +17,8 @@ export function createApi(fetchImpl?: typeof fetch) {
 }
 
 /**
- * The request options that send a file as the raw body with its own content type (a receipt, a
- * platform logo), instead of as JSON. The routes declare a binary body, which the generated types
+ * The request options that send a file as the raw body with its own content type (a receipt),
+ * instead of as JSON. The routes declare a binary body, which the generated types
  * cannot express for a `File`, hence the casts.
  */
 export const fileBody = (file: File) =>

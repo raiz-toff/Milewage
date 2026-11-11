@@ -1,10 +1,9 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { fileBody } from '../api/client';
 import { errorText, useApiQuery, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
 import { builtinPlatform } from '@milewage/shared';
-import { AddPhotoIcon, DeleteIcon, HidePhotoIcon, PaletteIcon } from '@/ui/icons';
+import { DeleteIcon, PaletteIcon } from '@/ui/icons';
 import { Button as UiButton } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Button, Field, FormError } from '../ui/form';
@@ -14,10 +13,6 @@ import type { RowAction } from '../ui/RowMenu';
 import { slugOf } from '../platforms/usePlatforms';
 
 type Platform = Schemas['Platform'];
-
-/** What the server takes for a platform's logo (plan 25 section 7). */
-const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
-const LOGO_MAX_BYTES = 256 * 1024;
 
 /**
  * The badge colour picker (TODO PL4b): the platform's default, the colour it has now when that is
@@ -60,7 +55,7 @@ function ColourPicker({
               onChange={() => onPick(o.color)}
             />
             <PlatformBadge
-              platform={{ ...p, color: o.color, logo_version: null }}
+              platform={{ ...p, color: o.color }}
               size="md"
               className="peer-checked:ring-2 peer-checked:ring-on-secondary-container peer-checked:ring-offset-2 peer-checked:ring-offset-secondary-container"
             />
@@ -82,8 +77,6 @@ export function PlatformsCard() {
   const error = errorText(change, asked);
   const [name, setName] = useState('');
   const [colouring, setColouring] = useState<string | null>(null);
-  const picker = useRef<HTMLInputElement>(null);
-  const logoFor = useRef<string | null>(null);
 
   const put = (slug: string, body: Schemas['PlatformPut']) =>
     change.run((api) => api.PUT('/platforms/{slug}', { params: { path: { slug } }, body }));
@@ -99,44 +92,12 @@ export function PlatformsCard() {
   const remove = (slug: string) =>
     change.run((api) => api.DELETE('/platforms/{slug}', { params: { path: { slug } } }));
 
-  /** The driver's own logo: the raw file with its type, as receipts are sent. */
-  async function upload(file: File) {
-    const slug = logoFor.current;
-    if (!slug) return;
-    if (!LOGO_TYPES.includes(file.type) || file.size > LOGO_MAX_BYTES) {
-      return change.setError('Use a PNG, JPEG or WebP under 256 KB.');
-    }
-    await change.run((api) =>
-      api.PUT('/platforms/{slug}/logo', { params: { path: { slug } }, ...fileBody(file) }),
-    );
-  }
-  const pickLogo = (slug: string) => {
-    logoFor.current = slug;
-    picker.current?.click();
-  };
   const actions = (p: Platform): RowAction[] => [
     {
       label: 'Change colour',
       icon: PaletteIcon,
       onSelect: () => setColouring(p.slug),
     },
-    {
-      label: p.logo_version ? 'Change logo' : 'Add logo',
-      icon: AddPhotoIcon,
-      onSelect: () => pickLogo(p.slug),
-    },
-    ...(p.logo_version
-      ? [
-          {
-            label: 'Remove logo',
-            icon: HidePhotoIcon,
-            onSelect: () =>
-              void change.run((api) =>
-                api.DELETE('/platforms/{slug}/logo', { params: { path: { slug: p.slug } } }),
-              ),
-          },
-        ]
-      : []),
     ...(p.custom
       ? [
           {
@@ -198,24 +159,11 @@ export function PlatformsCard() {
           Add
         </Button>
       </form>
-      <input
-        ref={picker}
-        type="file"
-        accept={LOGO_TYPES.join(',')}
-        aria-label="Logo image"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          e.target.value = '';
-          if (file) void upload(file);
-        }}
-      />
       <p className="text-body-small text-muted-foreground">
         An inactive platform drops out of the pickers; its past labels and earnings stay.
       </p>
       <p className="text-body-small text-muted-foreground">
-        A logo you add (PNG, JPEG or WebP, up to 256 KB) stays on your server and in its backups.
-        Platform names and logos belong to their owners. MileWage is not affiliated with them.
+        Platform names belong to their owners. MileWage is not affiliated with them.
       </p>
     </section>
   );

@@ -14,7 +14,6 @@ interface P {
   active: boolean;
   sort: number;
   hourly_target_cents: null;
-  logo_version: string | null;
 }
 const p = (slug: string, label: string, over: Partial<P> = {}): P => ({
   slug,
@@ -25,7 +24,6 @@ const p = (slug: string, label: string, over: Partial<P> = {}): P => ({
   active: true,
   sort: 0,
   hourly_target_cents: null,
-  logo_version: null,
   ...over,
 });
 
@@ -47,14 +45,6 @@ function server(modules: { platforms: boolean } = { platforms: true }) {
         rows = rows.filter((r) => r.slug !== 'mine');
         return { status: 204 };
       },
-      'PUT /platforms/doordash/logo': () => {
-        rows = rows.map((r) => (r.slug === 'doordash' ? { ...r, logo_version: 'abc123' } : r));
-        return { status: 201, body: { slug: 'doordash', logo_version: 'abc123' } };
-      },
-      'DELETE /platforms/doordash/logo': () => {
-        rows = rows.map((r) => (r.slug === 'doordash' ? { ...r, logo_version: null } : r));
-        return { status: 204 };
-      },
     },
     '/settings/platforms',
   );
@@ -64,7 +54,7 @@ describe('platforms card (module platforms)', () => {
   it('lists platforms, switches one off, adds a custom one and deletes it', async () => {
     const s = server();
     const doordash = await screen.findByLabelText('DoorDash');
-    // Each row has the platform's badge (plan 25): initials, no bundled logo.
+    // Each row has the platform's badge (plan 25): initials, no logo.
     const region = screen.getByRole('region', { name: 'Platforms' });
     const badge = (slug: string) => region.querySelector(`[data-platform="${slug}"]`);
     expect(badge('doordash')?.textContent).toBe('DD');
@@ -84,39 +74,6 @@ describe('platforms card (module platforms)', () => {
     });
     menu('Mine', 'Delete');
     await waitFor(() => expect(screen.queryByText('Mine')).toBeNull());
-  });
-
-  it("adds the driver's own logo as the raw image, shows it in the badge, and removes it", async () => {
-    const s = server();
-    await screen.findByLabelText('DoorDash');
-    const region = screen.getByRole('region', { name: 'Platforms' });
-    const badge = () => region.querySelector('[data-platform="doordash"]')!;
-    expect(region.textContent).toMatch(/stays on your server and in its backups/);
-    menu('DoorDash', 'Add logo');
-    const input = screen.getByLabelText('Logo image') as HTMLInputElement;
-    // Wrong type or too large: a plain message, nothing sent.
-    const svg = new File(['<svg/>'], 'x.svg', { type: 'image/svg+xml' });
-    fireEvent.change(input, { target: { files: [svg] } });
-    expect((await screen.findByRole('alert')).textContent).toBe(
-      'Use a PNG, JPEG or WebP under 256 KB.',
-    );
-    const big = new File([new Uint8Array(256 * 1024 + 1)], 'big.png', { type: 'image/png' });
-    fireEvent.change(input, { target: { files: [big] } });
-    expect(s.calls.some((c) => c.path === '/platforms/doordash/logo')).toBe(false);
-    const png = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'dd.png', {
-      type: 'image/png',
-    });
-    fireEvent.change(input, { target: { files: [png] } });
-    await waitFor(() => expect(badge().querySelector('img')).not.toBeNull());
-    expect(
-      s.calls.find((c) => c.method === 'PUT' && c.path === '/platforms/doordash/logo')?.contentType,
-    ).toBe('image/png');
-    expect(badge().querySelector('img')!.getAttribute('src')).toBe(
-      '/api/v1/platforms/doordash/logo?v=abc123',
-    );
-    menu('DoorDash', 'Remove logo');
-    await waitFor(() => expect(badge().textContent).toBe('DD'));
-    expect(badge().querySelector('img')).toBeNull();
   });
 
   it('picks a badge colour from named presets, and goes back to the brand colour', async () => {

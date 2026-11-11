@@ -58,7 +58,6 @@ Your platforms are in Settings > Platforms. The list starts with the platforms o
 
 - **Switch one off** to drop it from the pickers. Its past labels and earnings stay.
 - **Add your own**: type its name, up to 40 characters, and choose Add. The name needs letters or digits.
-- **Add a logo** from the row menu: PNG, JPEG or WebP, up to 256 KB. It stays on your server and in its backups.
 
 There is no colour choice on the web. A platform you add gets a colour picked from its name and a badge with its initials.
 

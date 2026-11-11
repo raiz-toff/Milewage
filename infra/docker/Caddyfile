@@ -29,7 +29,7 @@
 		# A build with VITE_MAP_STYLE_URL pointing at another host must add that host (and every
 		# host its style names for tiles, sprites and glyphs) to img-src and connect-src, or the
 		# map shows the plain background; infra/docs/install.md section 8.
-		# "?" keeps a policy the API sets itself (platform logos: default-src 'none'; sandbox).
+		# "?" keeps a policy the API sets itself.
 		?Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tiles.openfreemap.org; font-src 'self'; connect-src 'self' https://tiles.openfreemap.org; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 	}
 	# HSTS only when the request reached the host over https (tailscale serve sets

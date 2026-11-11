@@ -242,6 +242,11 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   totals, the tax figures and the exports. Vehicles and odometer readings stay. A
   `modules.maintenance` left in `settings.json` or `MILEWAGE_MODULE_MAINTENANCE` in the
   environment is ignored.
+- Platform logos: Add, Change and Remove logo in Settings > Platforms, the `/platforms/{slug}/logo`
+  operations and `logo_version` on each platform. Every badge shows the platform's emoji or
+  initials on its colour, as a platform without a logo did. Upgrading deletes the uploaded images
+  (table `platform_logos`; they were never files, so nothing is left on the volume). Platforms,
+  their names, colours and emoji stay.
 
 ### Fixed
 

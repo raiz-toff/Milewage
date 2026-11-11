@@ -828,27 +828,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/platforms/{slug}/logo": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                slug: string;
-            };
-            cookie?: never;
-        };
-        /** The uploaded logo with its stored type, `nosniff` and a sandboxing CSP (no-store, as every API answer). `?v=<logo_version>` only marks a new image after a change. */
-        get: operations["getPlatformLogo"];
-        /** Upload or replace the driver's own logo for a platform, built-in or custom (plan 25 section 7). PNG, JPEG or WebP, 256 KB at most, checked against its first bytes; no SVG. JPEG location data is removed. Stored in the database, so backups carry it. */
-        put: operations["putPlatformLogo"];
-        post?: never;
-        /** Remove the platform's logo (idempotent); its badge shows the initials again. */
-        delete: operations["deletePlatformLogo"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/shifts/{ref}/earnings": {
         parameters: {
             query?: never;
@@ -1740,15 +1719,6 @@ export interface components {
             sort: number;
             /** @description Used by analytics only. */
             hourly_target_cents: number | null;
-            /** @description Changes when the driver's uploaded logo changes; null: no logo (plan 25 section 7). The image is GET /platforms/{slug}/logo?v=<logo_version>. */
-            logo_version: string | null;
-        };
-        PlatformLogo: {
-            slug: string;
-            /** @enum {unknown} */
-            mime: "image/png" | "image/jpeg" | "image/webp";
-            bytes: number;
-            logo_version: string;
         };
         PlatformPut: {
             label?: string;
@@ -4470,104 +4440,6 @@ export interface operations {
             };
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
-        };
-    };
-    getPlatformLogo: {
-        parameters: {
-            query?: {
-                /** @description The platform's `logo_version`. */
-                v?: string;
-            };
-            header?: never;
-            path: {
-                slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The image. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "image/png": string;
-                    "image/jpeg": string;
-                    "image/webp": string;
-                };
-            };
-            404: components["responses"]["NotFound"];
-        };
-    };
-    putPlatformLogo: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "image/png": string;
-                "image/jpeg": string;
-                "image/webp": string;
-            };
-        };
-        responses: {
-            /** @description Replaced. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlatformLogo"];
-                };
-            };
-            /** @description Stored. */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlatformLogo"];
-                };
-            };
-            404: components["responses"]["NotFound"];
-            413: components["responses"]["TooLarge"];
-            /** @description Not a PNG */
-            415: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            422: components["responses"]["Unprocessable"];
-        };
-    };
-    deletePlatformLogo: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Removed. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            404: components["responses"]["NotFound"];
         };
     };
     listShiftEarnings: {

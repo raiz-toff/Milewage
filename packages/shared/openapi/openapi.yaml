@@ -91,7 +91,7 @@ x-modules:
     toggle: modules.platforms
     default: true
     dependsOn: [core]
-    operations: [listPlatforms, putPlatform, deletePlatform, putPlatformLogo, getPlatformLogo, deletePlatformLogo]
+    operations: [listPlatforms, putPlatform, deletePlatform]
   earnings:
     toggle: modules.earnings
     default: true
@@ -1317,57 +1317,6 @@ paths:
         '204': { description: Deleted or reset. }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
-  /platforms/{slug}/logo:
-    parameters:
-      - { name: slug, in: path, required: true, schema: { type: string, pattern: '^[a-z0-9_]{1,32}$' } }
-    put:
-      tags: [platforms]
-      operationId: putPlatformLogo
-      summary: Upload or replace the driver's own logo for a platform, built-in or custom (plan 25 section 7). PNG, JPEG or WebP, 256 KB at most, checked against its first bytes; no SVG. JPEG location data is removed. Stored in the database, so backups carry it.
-      security: [{ sessionCookie: [] }]
-      requestBody:
-        required: true
-        content:
-          image/png: { schema: { type: string, format: binary } }
-          image/jpeg: { schema: { type: string, format: binary } }
-          image/webp: { schema: { type: string, format: binary } }
-      responses:
-        '200':
-          description: Replaced.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/PlatformLogo' }
-        '201':
-          description: Stored.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/PlatformLogo' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '413': { $ref: '#/components/responses/TooLarge' }
-        '415': { description: Not a PNG, JPEG or WebP., content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-    get:
-      tags: [platforms]
-      operationId: getPlatformLogo
-      summary: The uploaded logo with its stored type, `nosniff` and a sandboxing CSP (no-store, as every API answer). `?v=<logo_version>` only marks a new image after a change.
-      parameters:
-        - { name: v, in: query, schema: { type: string }, description: The platform's `logo_version`. }
-      responses:
-        '200':
-          description: The image.
-          content:
-            image/png: { schema: { type: string, format: binary } }
-            image/jpeg: { schema: { type: string, format: binary } }
-            image/webp: { schema: { type: string, format: binary } }
-        '404': { $ref: '#/components/responses/NotFound' }
-    delete:
-      tags: [platforms]
-      operationId: deletePlatformLogo
-      summary: Remove the platform's logo (idempotent); its badge shows the initials again.
-      security: [{ sessionCookie: [] }]
-      responses:
-        '204': { description: Removed. }
-        '404': { $ref: '#/components/responses/NotFound' }
 
   /shifts/{ref}/earnings:
     parameters:
@@ -2497,7 +2446,7 @@ components:
 
     Platform:
       type: object
-      required: [slug, label, custom, color, emoji, active, sort, hourly_target_cents, logo_version]
+      required: [slug, label, custom, color, emoji, active, sort, hourly_target_cents]
       properties:
         slug: { type: string }
         label: { type: string }
@@ -2507,15 +2456,6 @@ components:
         active: { type: boolean }
         sort: { type: integer }
         hourly_target_cents: { type: [integer, 'null'], description: Used by analytics only. }
-        logo_version: { type: [string, 'null'], description: 'Changes when the driver''s uploaded logo changes; null: no logo (plan 25 section 7). The image is GET /platforms/{slug}/logo?v=<logo_version>.' }
-    PlatformLogo:
-      type: object
-      required: [slug, mime, bytes, logo_version]
-      properties:
-        slug: { type: string }
-        mime: { enum: [image/png, image/jpeg, image/webp] }
-        bytes: { type: integer }
-        logo_version: { type: string }
     PlatformPut:
       type: object
       additionalProperties: false

@@ -505,6 +505,37 @@ describe('migration runner', () => {
     expect(expenses.between(userId, '2027-01-01', '2027-12-31')).toHaveLength(2);
     expect(expenses.find(userId, linked.id)).toEqual(linked);
   });
+
+  test('a 0.2.0 database loses the platform logos on upgrade; the platforms and their colours stay', () => {
+    const db = open();
+    const drop = 'platforms/0003_drop_platform_logos';
+    migrate(
+      db,
+      real.filter((m) => `${m.module}/${m.id}` !== drop),
+    );
+    expect(tables(db)).toContain('platform_logos');
+    const userId = createUserRepository(db).create({
+      username: 'sam',
+      passwordHash: 'x',
+      createdAt: 1,
+    }).id;
+    const setting = db.prepare(
+      'INSERT INTO platform_settings (user_id, slug, label, custom, color, emoji) VALUES (?, ?, ?, ?, ?, ?)',
+    );
+    setting.run(userId, 'doordash', 'DoorDash', 0, '#dc2626', null);
+    setting.run(userId, 'cityeats', 'City Eats', 1, null, null);
+    const logo = db.prepare(
+      "INSERT INTO platform_logos (user_id, slug, mime, bytes, sha256, updated_at) VALUES (?, ?, 'image/png', ?, 'abc', 0)",
+    );
+    logo.run(userId, 'doordash', Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+    logo.run(userId, 'cityeats', Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+    const settings = () => db.prepare('SELECT * FROM platform_settings ORDER BY slug').all();
+    const before = settings();
+    expect(migrate(db, real)).toEqual([drop]);
+    expect(tables(db)).not.toContain('platform_logos');
+    expect(settings()).toEqual(before);
+    expect(before).toHaveLength(2);
+  });
 });
 
 describe('user repository', () => {

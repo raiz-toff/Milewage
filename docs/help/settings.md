@@ -52,7 +52,7 @@ Help pages: show or hide the Help screen and its links. The switch "Show help pa
 
 ## Platforms
 
-Shown when the platforms module runs. The apps you work for, each with an active switch. An inactive platform drops out of the pickers, and its past labels and earnings stay. "Add a platform" adds your own. The row menu adds, changes or removes a logo, and deletes a platform you added.
+Shown when the platforms module runs. The apps you work for, each with an active switch. An inactive platform drops out of the pickers, and its past labels and earnings stay. "Add a platform" adds your own. The row menu changes the badge colour and deletes a platform you added.
 
 ## Tracking and privacy
 
