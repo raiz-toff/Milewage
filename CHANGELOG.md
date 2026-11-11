@@ -247,6 +247,15 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   initials on its colour, as a platform without a logo did. Upgrading deletes the uploaded images
   (table `platform_logos`; they were never files, so nothing is left on the volume). Platforms,
   their names, colours and emoji stay.
+- Capture sessions (module `capture`), which were off by default: a time-boxed, dense recording on
+  one phone for tuning trip and stop detection, with its notes, its anonymized replay download, the
+  `/diagnostics/capture-sessions` operations, `include_capture` on the debug bundle,
+  `diagnostics.capture` in the settings and the `modules.capture` flag. No phone app ever recorded
+  one. Upgrading deletes its tables in `diagnostics.db` (`capture_sessions`, `capture_fixes`,
+  `capture_annotations`) with any positions and notes in them, and the unused capture id of stored
+  diagnostics events; capture data was never a file on the volume and never in a backup.
+  Diagnostics, the health view and the debug bundle stay. A `modules.capture` left in
+  `settings.json` or `MILEWAGE_MODULE_CAPTURE` in the environment is ignored.
 
 ### Fixed
 

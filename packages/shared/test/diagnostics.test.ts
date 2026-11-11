@@ -17,7 +17,7 @@ const samples: Record<DiagKind, { src: string; data: Record<string, unknown> }> 
   'track.window': { src: 'phone_native', data: { fixes: 580, acc_hist: [400, 120, 50, 10], interval_p50_ms: 1000, interval_max_ms: 9000, still_gated_s: 0, battery_pct: 81, charging: false, temp_dc: 310, thermal: 1 } },
   'app.start': { src: 'phone_js', data: { app_v: '0.1.0', native_v: '1', engine_v: '1', api_v: '1', device: { make: 'samsung', model: 'SM-A556B', android: '14', sdk: 34, oneui: '6.1' }, prev_exit: { reason: 'low_memory', importance: 125, age_s: 3600 } } },
   'upload.window': { src: 'phone_js', data: { attempts: 4, ok: 3, fail_net: 1, fail_4xx: 0, fail_5xx: 0, fail_429: 0, fail_507: 0, bytes_gz: 20480, dur_p95_ms: 800, pending_points: 0, oldest_pending_s: 0 } },
-  'shift.summary': { src: 'phone_js', data: { duration_s: 14400, battery_start: 95, battery_end: 60, charging_seen: true, fixes: 12000, gap_count: 1, service_restarts: 0, engine_ms: 240, capture: false } },
+  'shift.summary': { src: 'phone_js', data: { duration_s: 14400, battery_start: 95, battery_end: 60, charging_seen: true, fixes: 12000, gap_count: 1, service_restarts: 0, engine_ms: 240 } },
   'engine.run': { src: 'server', data: { host: 'server', reason: 'shift_end', calc_version: 1, segmenter: 'stops', input_digest: 'a1b2c3d4e5f60718', ms: 12, stats: { fixes_in: 100, fixes_used: 90, gap_m: 0 }, flags: ['no_stops_detected'], trips: 3, stops: 4, total_m: 45210, active_m: 30000, deadhead_m: 15210 } },
   'activity.transition': { src: 'phone_native', data: { type: 'IN_VEHICLE', edge: 'enter', gating_acted: true } },
   'perm.state': { src: 'phone_js', data: { fine: true, background: 'all_time', activity_recognition: true, notifications: true, battery_opt_ignored: false, standby_bucket: 'active', power_save: false } },
@@ -25,11 +25,11 @@ const samples: Record<DiagKind, { src: string; data: Record<string, unknown> }> 
   'upload.failure': { src: 'phone_js', data: { class: 'http_5xx', status: 503, bytes: 20480, dur_ms: 1200, attempt: 2 } },
   'sync.state': { src: 'phone_js', data: { state: 'unreachable', since_s: 30 } },
   'sync.pull': { src: 'phone_js', data: { applied: 4, conflicts_logged: 1, full_window: false } },
-  'settings.applied': { src: 'phone_js', data: { level: 'basic', stops_enabled: true, modules: { tracking: true, stops: true, capture: false }, engine_version: '3' } },
+  'settings.applied': { src: 'phone_js', data: { level: 'basic', stops_enabled: true, modules: { tracking: true, stops: true }, engine_version: '3' } },
   'storage.state': { src: 'phone_js', data: { free_mb_bucket: 'lt1000', state: 'normal', tracker_db_mb: 12, app_db_mb: 4, unsynced_shifts: 0, pending_points: 0, quarantine_rows: 0 } },
   'stops.stats': { src: 'server', data: { detected: 5, by_conf: [1, 2, 2], dwell_hist: [0, 1, 2, 1, 1], merged: 0, wake_used: 1, fallback: false } },
   'stop.detected': { src: 'server', data: { stop_key: `${ID}:1767000000000:stop`, dwell_s: 240, conf: 'medium', role_est: 'pickup', radius_max_dm: 90 } },
-  'server.start': { src: 'server', data: { app_v: '0.1.0', schema_v: '12', sqlite_v: '3.51.3', node_v: '22.22.0', arch: 'x64', mem_limit_mb: 1024, modules: { tracking: true, capture: false }, unclean_shutdown: false } },
+  'server.start': { src: 'server', data: { app_v: '0.1.0', schema_v: '12', sqlite_v: '3.51.3', node_v: '22.22.0', arch: 'x64', mem_limit_mb: 1024, modules: { tracking: true }, unclean_shutdown: false } },
   'server.sample': { src: 'server', data: { rss_mb: 98, heap_mb: 40, lag_p95_ms: 4, lag_max_ms: 30, cpu_pct: 3, db_bytes: 5000000, wal_bytes: 100000, diag_db_bytes: 800000, disk_free_mb: 40000, disk_state: 'ok' } },
   'api.window': { src: 'server', data: { group: 'telemetry', n: 90, s2xx: 88, s4xx: 2, s5xx: 0, p50_ms: 4, p95_ms: 12, p99_ms: 30, codes: [{ code: 'shift_finalized', n: 2 }], ingest: { points_in: 900, inserted: 880, duplicates: 15, rejected: { invalid_coordinate: 0, future_timestamp: 5, outside_shift_window: 0 } } } },
   'recon.result': { src: 'server', data: { status: 'differs', reasons: ['late_points'], diff_m: -120, digest_equal: false, phone_calc_v: 3, server_calc_v: 3 } },
@@ -37,7 +37,6 @@ const samples: Record<DiagKind, { src: string; data: Record<string, unknown> }> 
   'migration.run': { src: 'server', data: { from_v: 11, to_v: 12, ms: 90, pre_backup_ok: true, ok: true } },
   'restore.run': { src: 'server', data: { from_v: 12, to_v: 12, ms: 9700, pre_backup_ok: true, ok: true, counts_match: true } },
   'disk.state': { src: 'server', data: { from: 'ok', to: 'warning' } },
-  'capture.state': { src: 'server', data: { event: 'created', profile: 'dense', shifts_done: 0 } },
   crash: { src: 'server', data: { runtime: 'server', class: 'SQLITE_BUSY', frames: ['db/open.ts:42'], fatal: true, msg: 'database is locked' } },
   'diag.self': { src: 'phone_js', data: { dropped: { ring_full: 0, schema_reject: 2, level_off: 0, disk_low: 0 }, pending: 3, ring_kb: 40, cpu_ms_per_h: 120, writes_per_h: 6 } },
 };
@@ -79,6 +78,14 @@ describe('diagnostics event schemas', () => {
     for (const kind of diagKindNames) {
       expect(validateEvent(event(kind)), kind).toMatchObject({ ok: true });
     }
+  });
+
+  test('capture sessions are gone; a shift summary from an older phone app still passes', () => {
+    // Phone apps from before the removal send `capture: false` (none ever recorded a session).
+    const summary = { ...samples['shift.summary'].data, capture: false };
+    expect(validateEvent(event('shift.summary', summary)).ok).toBe(true);
+    expect(validateEvent({ ...event('disk.state'), kind: 'capture.state' }).ok).toBe(false);
+    expect(validateEvent(event('diag.self', undefined, { cap: ID })).ok).toBe(false);
   });
 
   test('canaries in any string field are rejected, so none reaches a stored event', () => {

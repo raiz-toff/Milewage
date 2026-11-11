@@ -82,11 +82,6 @@ x-modules:
     default: true
     dependsOn: [core]
     operations: [ingestDiagnosticEvents, listDiagnosticEvents, getDiagnosticsHealth, downloadDebugBundle]
-  capture:
-    toggle: modules.capture
-    default: false
-    dependsOn: [diagnostics, tracking, devices]
-    operations: [createCaptureSession, listCaptureSessions, updateCaptureSession, deleteCaptureSession, downloadCaptureReplay, uploadCaptureFixes, putCaptureAnnotation, deleteCaptureAnnotation]
   platforms:
     toggle: modules.platforms
     default: true
@@ -1996,13 +1991,12 @@ paths:
     get:
       tags: [diagnostics]
       operationId: downloadDebugBundle
-      summary: Redacted debug bundle (16 section 10.2) - versions, health, per-shift summaries and re-validated events with relative times and pseudonymous ids. Capture data only when include_capture is given, and then anonymized.
+      summary: Redacted debug bundle (16 section 10.2) - versions, health, per-shift summaries and re-validated events with relative times and pseudonymous ids.
       security: [{ sessionCookie: [] }]
       parameters:
         - { $ref: '#/components/parameters/From' }
         - { $ref: '#/components/parameters/To' }
         - { name: shift, in: query, description: Shift client_id., schema: { type: string, format: uuid } }
-        - { name: include_capture, in: query, description: Capture session id to include (anonymized)., schema: { type: integer } }
       responses:
         '200':
           description: The gzipped JSON bundle.
@@ -2010,143 +2004,6 @@ paths:
             application/gzip: { schema: { type: string, contentMediaType: application/gzip } }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/Unprocessable' }
-  /diagnostics/capture-sessions:
-    post:
-      tags: [diagnostics]
-      operationId: createCaptureSession
-      summary: Start a time-boxed capture session for one device (16 section 8). Web only; refused when disk is low or the capture cap is reached.
-      security: [{ sessionCookie: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/CaptureSessionCreate' }
-      responses:
-        '201':
-          description: Session created; the device learns it from GET /settings.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/CaptureSession' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '507': { $ref: '#/components/responses/InsufficientStorage' }
-    get:
-      tags: [diagnostics]
-      operationId: listCaptureSessions
-      summary: List capture sessions with their sizes and states.
-      security: [{ sessionCookie: [] }]
-      responses:
-        '200':
-          description: Sessions, newest first.
-          content:
-            application/json:
-              schema: { type: array, items: { $ref: '#/components/schemas/CaptureSession' } }
-        '404': { $ref: '#/components/responses/NotFound' }
-  /diagnostics/capture-sessions/{id}:
-    parameters:
-      - { name: id, in: path, required: true, schema: { type: integer } }
-    patch:
-      tags: [diagnostics]
-      operationId: updateCaptureSession
-      summary: End a session now. The recorded data is kept until it is deleted or purged.
-      security: [{ sessionCookie: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/CaptureSessionPatch' }
-      responses:
-        '200':
-          description: Session ended.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/CaptureSession' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-    delete:
-      tags: [diagnostics]
-      operationId: deleteCaptureSession
-      summary: Delete a session with its fixes and annotations.
-      security: [{ sessionCookie: [] }]
-      responses:
-        '204': { description: Deleted. }
-        '404': { $ref: '#/components/responses/NotFound' }
-  /diagnostics/capture-sessions/{id}/replay:
-    parameters:
-      - { name: id, in: path, required: true, schema: { type: integer } }
-    get:
-      tags: [diagnostics]
-      operationId: downloadCaptureReplay
-      summary: NDJSON replay for the test harness (16 section 8.4). anonymized (default) converts to metres from the first fix at latitude 0, longitude 0 with relative times; exact returns real coordinates for the owner's own harness.
-      security: [{ sessionCookie: [] }]
-      parameters:
-        - { name: mode, in: query, schema: { enum: [anonymized, exact], default: anonymized } }
-      responses:
-        '200':
-          description: One JSON object per line - meta, fix, annotation and shift lines.
-          content:
-            application/x-ndjson: { schema: { type: string } }
-        '404': { $ref: '#/components/responses/NotFound' }
-  /diagnostics/capture-sessions/{id}/fixes:
-    parameters:
-      - { name: id, in: path, required: true, schema: { type: integer } }
-    post:
-      tags: [diagnostics]
-      operationId: uploadCaptureFixes
-      summary: Upload dense capture fixes for the device's own active session. Idempotent on (capture, seq).
-      security: [{ deviceBearer: [] }]
-      parameters:
-        - { name: Content-Encoding, in: header, schema: { enum: [gzip, identity] } }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/CaptureFixBatch' }
-      responses:
-        '200':
-          description: Every fix is stored or was already stored.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/CaptureFixResult' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '413': { $ref: '#/components/responses/TooLarge' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-        '429': { $ref: '#/components/responses/RateLimited' }
-        '503': { $ref: '#/components/responses/Unavailable' }
-        '507': { $ref: '#/components/responses/InsufficientStorage' }
-  /diagnostics/capture-sessions/{id}/annotations/{client_id}:
-    parameters:
-      - { name: id, in: path, required: true, schema: { type: integer } }
-      - { name: client_id, in: path, required: true, schema: { type: string, format: uuid } }
-    put:
-      tags: [diagnostics]
-      operationId: putCaptureAnnotation
-      summary: Web only. Mark a detected stop real, false or missed, or add a note, for tuning (E9 to E12). Idempotent.
-      security: [{ sessionCookie: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/CaptureAnnotationPut' }
-      responses:
-        '200':
-          description: Stored.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/CaptureAnnotation' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '422': { $ref: '#/components/responses/Unprocessable' }
-    delete:
-      tags: [diagnostics]
-      operationId: deleteCaptureAnnotation
-      summary: Delete an annotation.
-      security: [{ sessionCookie: [] }]
-      responses:
-        '204': { description: Deleted. }
-        '404': { $ref: '#/components/responses/NotFound' }
 
 components:
   securitySchemes:
@@ -2270,7 +2127,7 @@ components:
     Modules:
       type: object
       description: Read-only module flags so clients can hide screens and buttons of absent modules.
-      required: [tax, receipts, expenses, earnings, platforms, devices, tracking, replay, stops, sync, diagnostics, capture, backup_download, exporters, countries]
+      required: [tax, receipts, expenses, earnings, platforms, devices, tracking, replay, stops, sync, diagnostics, backup_download, exporters, countries]
       properties:
         platforms: { type: boolean, description: 'Platforms module registered (18 section 4.2).' }
         earnings: { type: boolean, description: 'Earnings module registered (18 section 4.3): the driver can type a total per shift and platform.' }
@@ -2284,7 +2141,6 @@ components:
         replay: { type: boolean }
         stops: { type: boolean, description: 'Effective flag: the stops module is registered AND settings.stops_enabled is true. When false the phone and the web hide every stop and estimated-split element.' }
         diagnostics: { type: boolean, description: 'Diagnostics module registered (16). When false the phone behaves as level off and the web hides the Diagnostics screens.' }
-        capture: { type: boolean, description: 'Capture module registered (16 section 8); false by default.' }
         backup_download: { type: boolean }
         exporters: { type: array, items: { enum: [csv, pdf, expenses, tax_summary] } }
         countries: { type: array, items: { type: string, minLength: 2, maxLength: 2 } }
@@ -3147,24 +3003,10 @@ components:
             event_count: { type: integer }
     DiagnosticsSettings:
       type: object
-      required: [level, verbose_until, capture]
+      required: [level, verbose_until]
       properties:
         level: { enum: [off, basic, verbose] }
         verbose_until: { type: [integer, 'null'], description: Epoch ms; verbose reverts to basic then. }
-        capture:
-          oneOf:
-            - { $ref: '#/components/schemas/CaptureAssignment' }
-            - { type: 'null' }
-          description: For a device, its own active capture session; always null for a web session.
-    CaptureAssignment:
-      type: object
-      required: [id, profile, expires_at, max_shifts, shifts_done]
-      properties:
-        id: { type: integer }
-        profile: { enum: [dense] }
-        expires_at: { $ref: '#/components/schemas/EpochMs' }
-        max_shifts: { type: integer }
-        shifts_done: { type: integer }
     DiagEventIn:
       type: object
       required: [kind, at, level, src, v, data]
@@ -3176,7 +3018,6 @@ components:
         src: { enum: [phone_native, phone_js, server, web] }
         seq: { type: integer, minimum: 1, description: Required for phone sources; strictly increasing per (device, src). }
         shift: { type: string, format: uuid, description: Shift client_id. }
-        cap: { type: integer, description: Capture session id. }
         v: { type: string, maxLength: 40, pattern: '^[0-9A-Za-z._+-]{1,40}$' }
         data: { type: object, description: 'Typed fields defined per kind in the shared package registry (16 section 3.2). Unknown fields are rejected. Never a coordinate, address, payout, label or free text (16 section 4).' }
     DiagIngestRequest:
@@ -3213,7 +3054,6 @@ components:
         level: { enum: [basic, verbose] }
         kind: { type: string }
         shift: { type: [string, 'null'] }
-        cap: { type: [integer, 'null'] }
         v: { type: [string, 'null'] }
         data: { type: object }
     DiagEventPage:
@@ -3255,79 +3095,3 @@ components:
         generated_at: { $ref: '#/components/schemas/EpochMs' }
         devices: { type: array, items: { $ref: '#/components/schemas/DeviceHealth' } }
         server: { $ref: '#/components/schemas/ServerHealth' }
-    CaptureSessionCreate:
-      type: object
-      required: [device_id]
-      additionalProperties: false
-      properties:
-        device_id: { type: integer }
-        profile: { enum: [dense], default: dense }
-        hours: { type: integer, minimum: 1, maximum: 168, default: 48 }
-        max_shifts: { type: integer, minimum: 1, maximum: 5, default: 3 }
-    CaptureSessionPatch:
-      type: object
-      required: [state]
-      additionalProperties: false
-      properties:
-        state: { const: ended }
-    CaptureSession:
-      type: object
-      required: [id, device_id, profile, created_at, expires_at, ended_at, max_shifts, shifts_done, fix_count, bytes, state]
-      properties:
-        id: { type: integer }
-        device_id: { type: integer }
-        profile: { enum: [dense] }
-        created_at: { $ref: '#/components/schemas/EpochMs' }
-        expires_at: { $ref: '#/components/schemas/EpochMs' }
-        ended_at: { type: [integer, 'null'] }
-        max_shifts: { type: integer }
-        shifts_done: { type: integer }
-        fix_count: { type: integer }
-        bytes: { type: integer }
-        state: { enum: [active, ended, expired] }
-    CaptureFix:
-      type: object
-      required: [seq, recorded_at, lat_e7, lon_e7, accuracy_m]
-      additionalProperties: false
-      properties:
-        seq: { type: integer, minimum: 1 }
-        recorded_at: { $ref: '#/components/schemas/EpochMs' }
-        lat_e7: { type: integer, minimum: -900000000, maximum: 900000000 }
-        lon_e7: { type: integer, minimum: -1800000000, maximum: 1800000000 }
-        accuracy_m: { type: integer, minimum: 0 }
-        speed_dmps: { type: [integer, 'null'] }
-        bearing_deg: { type: [integer, 'null'] }
-        altitude_m: { type: [integer, 'null'] }
-    CaptureFixBatch:
-      type: object
-      required: [shift, fixes]
-      additionalProperties: false
-      properties:
-        shift: { type: string, format: uuid, description: Shift client_id the fixes belong to. }
-        fixes: { type: array, minItems: 1, maxItems: 500, items: { $ref: '#/components/schemas/CaptureFix' } }
-    CaptureFixResult:
-      type: object
-      required: [accepted, duplicates]
-      properties:
-        accepted: { type: integer }
-        duplicates: { type: integer }
-    CaptureAnnotationPut:
-      type: object
-      required: [at, kind]
-      additionalProperties: false
-      properties:
-        at: { $ref: '#/components/schemas/EpochMs' }
-        kind: { enum: [real_stop, false_stop, missed_stop, event, note] }
-        shift: { type: string, format: uuid }
-        stop_key: { type: string }
-        text: { type: string, maxLength: 500, description: Free text; capture data is not diagnostics and may contain it (16 section 8.2). }
-    CaptureAnnotation:
-      type: object
-      required: [client_id, at, kind]
-      properties:
-        client_id: { type: string, format: uuid }
-        at: { $ref: '#/components/schemas/EpochMs' }
-        kind: { enum: [real_stop, false_stop, missed_stop, event, note] }
-        shift: { type: [string, 'null'] }
-        stop_key: { type: [string, 'null'] }
-        text: { type: [string, 'null'] }

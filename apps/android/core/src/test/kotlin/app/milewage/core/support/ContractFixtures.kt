@@ -18,12 +18,11 @@ object ContractFixtures {
          "own_mileage_rate":{"cents_per_unit":30.5,"unit":"km"},"mileage_rate":"official","week_start":1,
          "time_format":"24h","default_vehicle_id":3,"work_kinds":["delivery","ride_hailing"],
          "onboarded_at":1700000000000,"setup_done":["vehicle","phone"],"engine_version":4,
-         "diagnostics":{"level":"verbose","verbose_until":1700086400000,
-           "capture":{"id":2,"profile":"dense","expires_at":1700600000000,"max_shifts":3,"shifts_done":1}},
+         "diagnostics":{"level":"verbose","verbose_until":1700086400000},
          "modules":{
            "tax":true,"receipts":true,"expenses":true,"earnings":true,
            "platforms":true,"devices":true,"tracking":true,"replay":true,"stops":true,"sync":true,
-           "diagnostics":true,"capture":true,"backup_download":true,"local_export":false,
+           "diagnostics":true,"backup_download":true,"local_export":false,
            "exporters":["csv","pdf"],"countries":["CA","US"]}}
     """.trimIndent()
 

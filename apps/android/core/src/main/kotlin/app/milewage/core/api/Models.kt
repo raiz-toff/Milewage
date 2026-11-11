@@ -212,7 +212,6 @@ data class Modules(
     val stops: Boolean? = null,
     val sync: Boolean? = null,
     val diagnostics: Boolean? = null,
-    val capture: Boolean? = null,
     val devices: Boolean? = null,
     val replay: Boolean? = null,
 )
@@ -221,16 +220,6 @@ data class Modules(
 data class DiagnosticsSettings(
     val level: DiagnosticsLevel,
     @SerialName("verbose_until") val verboseUntil: Long? = null,
-    val capture: CaptureAssignment? = null,
-)
-
-@Serializable
-data class CaptureAssignment(
-    val id: Long,
-    val profile: String,
-    @SerialName("expires_at") val expiresAt: Long,
-    @SerialName("max_shifts") val maxShifts: Int,
-    @SerialName("shifts_done") val shiftsDone: Int,
 )
 
 @Serializable
@@ -572,8 +561,6 @@ data class DiagEventIn(
     val seq: Long? = null,
     /** Shift client_id. */
     val shift: String? = null,
-    /** Capture session id. */
-    val cap: Long? = null,
     /** App version. */
     val v: String,
     /** Typed fields per kind (the shared diagnostics registry). */

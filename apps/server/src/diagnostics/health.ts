@@ -156,9 +156,7 @@ export function deviceHealth(
   const summaries = of(
     'shift.summary',
     events.filter((e) => e.shift),
-  )
-    .filter((e) => !e.data.capture)
-    .sort((a, b) => b.at - a.at);
+  ).sort((a, b) => b.at - a.at);
   const rate = (e: EventRow) =>
     ((num(e, 'battery_start') - num(e, 'battery_end')) / Math.max(num(e, 'duration_s'), 1)) * 3600;
   const hist10 = summaries
