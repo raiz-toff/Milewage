@@ -192,27 +192,36 @@ class Pairing(private val d: PairingDeps) {
 
     suspend fun load(): PairedState? {
         val credential = loadCredential() ?: return null
-        val settings = d.plain.get(KEY_SETTINGS)?.let {
-            try {
-                ApiJson.decodeFromString(Settings.serializer(), it)
-            } catch (_: SerializationException) {
-                null
-            } catch (_: IllegalArgumentException) {
-                null
-            }
-        }
+        val settings = d.plain.get(KEY_SETTINGS)?.let { raw -> settingsMemo.of(raw) { ApiJson.decodeFromString(Settings.serializer(), it) } }
         return PairedState(credential, settings)
     }
 
     /** The stored credential; null when there is none or it cannot be read (the phone pairs again). */
     private suspend fun loadCredential(): Credential? {
         val raw = d.secure.get(KEY_CREDENTIAL) ?: return null
-        return try {
-            ApiJson.decodeFromString(Credential.serializer(), raw)
-        } catch (_: SerializationException) {
-            null
-        } catch (_: IllegalArgumentException) {
-            null
+        return credentialMemo.of(raw) { ApiJson.decodeFromString(Credential.serializer(), it) }
+    }
+
+    // Every screen refresh and every request loads the state; the stored text rarely changes.
+    private val settingsMemo = Memo<Settings>()
+    private val credentialMemo = Memo<Credential>()
+
+    /** The last stored text decoded, reused while the text is the same; text that does not decode is null. */
+    private class Memo<T : Any> {
+        @Volatile
+        private var last: Pair<String, T?>? = null
+
+        fun of(raw: String, decode: (String) -> T): T? {
+            last?.let { (text, value) -> if (text == raw) return value }
+            val value = try {
+                decode(raw)
+            } catch (_: SerializationException) {
+                null
+            } catch (_: IllegalArgumentException) {
+                null
+            }
+            last = raw to value
+            return value
         }
     }
 

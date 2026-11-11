@@ -1,5 +1,6 @@
 package app.milewage.phone
 
+import android.os.StrictMode
 import android.app.Application
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -43,6 +44,11 @@ class MileWageApp : Application(), TrackingDependenciesProvider, MileWageDataPro
 
     override fun onCreate() {
         super.onCreate()
+        // Debug builds only: log any disk or network access on the main thread (it makes the app
+        // stutter), so one that slips in shows up in logcat as "StrictMode" before a driver feels it.
+        if (BuildConfig.DEBUG) {
+            StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.Builder().detectAll().penaltyLog().build())
+        }
         AppNotifications.createChannels(this)
         recordCrashes()
         graph.start()

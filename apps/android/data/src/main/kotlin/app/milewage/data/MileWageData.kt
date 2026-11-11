@@ -63,17 +63,19 @@ import app.milewage.engine.Engine
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 /** The running shift for the home screen and the shift notification's details. */
 data class RunningShiftView(
@@ -157,7 +159,7 @@ class MileWageData private constructor(
     private val databaseBytes: () -> Long,
     private val permissions: (suspend () -> PermSnapshot?)?,
     gzipSize: (ByteArray) -> Long?,
-    engine: CoroutineDispatcher,
+    private val engine: CoroutineDispatcher,
     newId: () -> String,
     rand: () -> Double,
 ) {
@@ -312,12 +314,23 @@ class MileWageData private constructor(
     // ------------------------------------------------------------------------------------------
     // What the screens read
 
-    @OptIn(ExperimentalCoroutinesApi::class)
+    /**
+     * What a screen shows, read again when one of [tables] or the sender's state changes. The read
+     * never runs on the caller's thread (a screen collects on the main thread, and a read opens the
+     * credential, decodes the settings and adds up shifts). While the phone sends, the tables change
+     * with every batch: changes that arrive during a read are folded into one, and reads keep
+     * [WATCH_GAP_MS] apart, so a round costs a few reads a second and the screen stays smooth.
+     */
     private fun <T> watch(vararg tables: String, read: suspend () -> T): Flow<T> =
         merge<Any>(db.invalidationTracker.createFlow(*tables), sender.changes)
             .onStart { emit(Unit) }
-            .mapLatest { read() }
+            .conflate()
+            .transform {
+                emit(read())
+                delay(WATCH_GAP_MS)
+            }
             .distinctUntilChanged()
+            .flowOn(engine)
 
     /** Day, week and month totals and deduction values, unsent shifts counted (15 section 4). */
     fun homeSummary(): Flow<HomeSummary> = watch("shifts", "vehicles") { summaryNow() }
@@ -378,7 +391,7 @@ class MileWageData private constructor(
      */
     fun otherServer(): Flow<OtherServerShifts> = watch("shifts", "fixes", "outbox", "bookkeeping") { otherServerNow() }
 
-    suspend fun otherServerNow(): OtherServerShifts = binding.elsewhere()
+    suspend fun otherServerNow(): OtherServerShifts = off { binding.elsewhere() }
 
     // ------------------------------------------------------------------------------------------
     // What the screens do
@@ -388,38 +401,37 @@ class MileWageData private constructor(
     suspend fun endShift(odometerEndM: Long? = null): EndResult = shifts.end(odometerEndM)
 
     /** "End it at its last fix" for a running shift the tracker lost. */
-    suspend fun closeUnfinished(): EndResult = shifts.closeUnfinished()
+    suspend fun closeUnfinished(): EndResult = off { shifts.closeUnfinished() }
 
-    suspend fun setOdometerStart(readingM: Long): EditResult = shifts.setOdometerStart(readingM)
+    suspend fun setOdometerStart(readingM: Long): EditResult = off { shifts.setOdometerStart(readingM) }
 
-    suspend fun editTrip(tripKey: String, kind: TripKind? = null, purpose: String? = null): EditResult = shifts.editTrip(tripKey, kind, purpose)
+    suspend fun editTrip(tripKey: String, kind: TripKind? = null, purpose: String? = null): EditResult = off { shifts.editTrip(tripKey, kind, purpose) }
 
     suspend fun addManualTrip(clientId: String, kind: TripKind, startedAt: Long, endedAt: Long, distanceM: Long, purpose: String? = null): EditResult =
-        shifts.addManualTrip(clientId, kind, startedAt, endedAt, distanceM, purpose)
+        off { shifts.addManualTrip(clientId, kind, startedAt, endedAt, distanceM, purpose) }
 
-    suspend fun setOdometer(clientId: String, kind: OdometerKind, readingM: Long): EditResult = shifts.setOdometer(clientId, kind, readingM)
+    suspend fun setOdometer(clientId: String, kind: OdometerKind, readingM: Long): EditResult = off { shifts.setOdometer(clientId, kind, readingM) }
 
-    suspend fun setNotes(clientId: String, notes: String): EditResult = shifts.setNotes(clientId, notes)
+    suspend fun setNotes(clientId: String, notes: String): EditResult = off { shifts.setNotes(clientId, notes) }
 
-    suspend fun markOverwriteSeen(id: Long) = store.markOverwriteSeen(id)
+    suspend fun markOverwriteSeen(id: Long) = off { store.markOverwriteSeen(id) }
 
     /** Whether to ask for the odometer after a shift of this vehicle ends (monthly, or 14 days). */
-    suspend fun odometerDue(vehicleId: Long): Boolean =
-        OdometerDue.due(clock.nowMs(), pairing.load()?.settings?.timezone ?: "UTC", OdometerDue.lastCheck(store, vehicleId))
+    suspend fun odometerDue(vehicleId: Long): Boolean = off { OdometerDue.due(clock.nowMs(), pairing.load()?.settings?.timezone ?: "UTC", OdometerDue.lastCheck(store, vehicleId)) }
 
     /** Answered or dismissed: the prompt stays away until the next one is due. */
-    suspend fun markOdometerChecked(vehicleId: Long) = OdometerDue.markChecked(store, vehicleId, clock.nowMs())
+    suspend fun markOdometerChecked(vehicleId: Long) = off { OdometerDue.markChecked(store, vehicleId, clock.nowMs()) }
 
     /** The last vehicle used, to preselect it. */
-    suspend fun lastVehicleId(): Long? = shifts.lastVehicleId()
+    suspend fun lastVehicleId(): Long? = off { shifts.lastVehicleId() }
 
     /**
      * The vehicles from the server (`GET /vehicles`), kept, so a shift can be started offline; the
      * kept copy when the server cannot be reached.
      */
-    suspend fun refreshVehicles(): VehicleList {
-        val s = pairing.session() ?: return VehicleList(store.vehicles(), offline = true)
-        return try {
+    suspend fun refreshVehicles(): VehicleList = off {
+        val s = pairing.session() ?: return@off VehicleList(store.vehicles(), offline = true)
+        try {
             val list = s.client.call(Api.vehicles).data
             store.transaction {
                 val keep = list.map { it.id }.toSet()
@@ -433,33 +445,43 @@ class MileWageData private constructor(
     }
 
     /** One round now (also lifts nothing). True when nothing is left on the phone only. */
-    suspend fun sendNow(): Boolean = sender.sendNow(force = true)
+    suspend fun sendNow(): Boolean = off { sender.sendNow(force = true) }
 
     /** "Send now" / "Check the address": lifts the halts and refusals, then a round. */
-    suspend fun retrySending(): Boolean = sender.retry()
+    suspend fun retrySending(): Boolean = off { sender.retry() }
 
     fun cancelSending() = sender.cancel()
 
     /** True while anything for the paired server is on the phone only (asks before unpairing, decision 1.5d). */
-    suspend fun hasUnsentData(): Boolean = sender.hasUnsentData()
+    suspend fun hasUnsentData(): Boolean = off { sender.hasUnsentData() }
 
     /**
      * Unpairs; refused (false) while the paired server's data waits, unless [confirmed] after the
      * driver read that it stays on this phone. Nothing is deleted either way: what was not sent stays
      * bound to this server and goes there when the phone is paired with it again.
      */
-    suspend fun unpair(confirmed: Boolean = false): Boolean = pairing.unpair { !confirmed && hasUnsentData() }
+    suspend fun unpair(confirmed: Boolean = false): Boolean = off { pairing.unpair { !confirmed && hasUnsentData() } }
 
     /**
      * Deletes the shifts [otherServer] lists (recorded for another server, never sent there) with
      * everything of them, after the driver confirmed. A running shift is kept. Returns how many.
      */
-    suspend fun deleteOtherServerShifts(): Int = binding.deleteElsewhere()
+    suspend fun deleteOtherServerShifts(): Int = off { binding.deleteElsewhere() }
+
+    /**
+     * Main-safe (Android's rule for a data layer): what a screen asks for is done on [engine], never
+     * on the thread that asked. A screen calls from the main thread, and a round of sending encodes,
+     * compresses and decodes there otherwise, which is what made the app stutter while it sent.
+     */
+    private suspend fun <T> off(block: suspend () -> T): T = withContext(engine) { block() }
 
     private suspend fun kinds(): Map<Long, String> = store.vehicles().associate { it.id to it.kind }
 
     companion object {
         const val DIAG_WINDOW_MS = 10 * 60_000L
+
+        /** The least time between two reads of one watched value (see `watch`). */
+        const val WATCH_GAP_MS = 150L
 
         /**
          * Free space for the app's files, counting cache Android can clear for it (15 section 3.4);

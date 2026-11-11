@@ -1,5 +1,8 @@
 package app.milewage.data.secure
 
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
@@ -31,18 +34,30 @@ class KeystoreSecretStore(context: Context) : SecretStore {
     private val file = context.applicationContext.secretsFile
     private val cipher = SecretCipher(::keystoreKey)
 
+    /**
+     * The last value opened or sealed under each name, with the sealed text it belongs to. Opening
+     * a value asks the Keystore service, which takes tens of milliseconds; the credential is read
+     * for every screen refresh and every request, so it is opened once and reused while the stored
+     * text is the same. It lives only in this process's memory, where the client's token is anyway.
+     */
+    private val opened = ConcurrentHashMap<String, Pair<String, String?>>()
+
     override suspend fun get(key: String): String? {
         val sealed = file.data.first()[stringPreferencesKey(key)] ?: return null
-        return cipher.open(key, sealed)
+        opened[key]?.let { (text, value) -> if (text == sealed) return value }
+        // Never on the caller's thread: a screen may ask from the main thread.
+        return withContext(Dispatchers.IO) { cipher.open(key, sealed) }.also { opened[key] = sealed to it }
     }
 
     override suspend fun put(key: String, value: String) {
-        val sealed = cipher.seal(key, value)
+        val sealed = withContext(Dispatchers.IO) { cipher.seal(key, value) }
         file.edit { it[stringPreferencesKey(key)] = sealed }
+        opened[key] = sealed to value
     }
 
     override suspend fun remove(key: String) {
         file.edit { it.remove(stringPreferencesKey(key)) }
+        opened.remove(key)
     }
 
     private companion object {

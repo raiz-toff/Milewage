@@ -32,6 +32,10 @@ you choose Your rate there; in a country without rates in MileWage it is used as
 
 ### Not yet verified
 
+- Phone: the app no longer stutters while it sends to or reads from the server. Sending, reading
+  the change log and every read behind a screen now run off the main thread; the many changes of a
+  round are folded into a few screen refreshes a second; and the stored credential is opened from
+  the Keystore once instead of for every refresh and request.
 - Country figures checked against the tax offices' pages (2026-11-11) and corrected: Nova Scotia's
   HST is 14 % (it was shown as 15 %); the United Kingdom's 2027-28 rates are in (55p, then 35p
   after 10,000 miles, announced and not yet law; motorcycles 24p); Canada's 2027 CPP ceilings are
