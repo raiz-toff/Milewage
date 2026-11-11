@@ -119,13 +119,13 @@ object DiagKinds {
         "still_gate_on", "still_gate_off",
     )
     val SERVICE_REASONS = setOf("user_stop", "shift_end", "task_removed", "os_kill_inferred", "start_not_allowed", "permission", "crash", "unknown")
-    private val MODULES = listOf("devices", "tracking", "stops", "replay", "sync", "exporters", "diagnostics")
+    private val MODULES = listOf("devices", "tracking", "stops", "replay", "sync", "exporters", "diagnostics", "capture")
     private val ENGINE_STATS = listOf("non_positive_dt", "speed_spike", "within_gate", "low_accuracy", "fixes_in", "fixes_used", "gap_m")
 
     val all: Map<String, KindSpec> = mapOf(
         "service.event" to KindSpec(
             "basic", setOf("phone_native"),
-            mapOf("event" to Field.OneOf(SERVICE_EVENTS), "reason" to Field.OneOf(SERVICE_REASONS), "profile" to oneOf("normal")),
+            mapOf("event" to Field.OneOf(SERVICE_EVENTS), "reason" to Field.OneOf(SERVICE_REASONS), "profile" to oneOf("normal", "capture")),
         ),
         "app.start" to KindSpec(
             "basic", setOf("phone_js"),
@@ -152,7 +152,7 @@ object DiagKinds {
             "basic", setOf("phone_js"),
             mapOf(
                 "duration_s" to COUNT, "battery_start" to Field.Int(0, 100), "battery_end" to Field.Int(0, 100), "charging_seen" to bool(),
-                "fixes" to COUNT, "gap_count" to COUNT, "service_restarts" to COUNT, "engine_ms" to MS,
+                "fixes" to COUNT, "gap_count" to COUNT, "service_restarts" to COUNT, "engine_ms" to MS, "capture" to bool(),
             ),
         ),
         "engine.run" to KindSpec(

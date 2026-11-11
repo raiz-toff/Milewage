@@ -128,6 +128,7 @@ export function diagnosticsRoutes({
           level: r.level,
           kind: r.kind,
           shift: r.shift,
+          cap: r.cap,
           v: r.v,
           data: r.data,
         })),
@@ -189,6 +190,7 @@ export function diagnosticsRoutes({
         from: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
         to: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
         shift: { type: 'string', format: 'uuid' },
+        include_capture: { type: 'integer', minimum: 1 },
       },
       [],
     );
@@ -202,7 +204,13 @@ export function diagnosticsRoutes({
             from?: string;
             to?: string;
             shift?: string;
+            include_capture?: number;
           };
+          if (q.include_capture !== undefined) {
+            throw new ProblemError('validation_failed', 'The request is not valid.', [
+              { path: '/include_capture', message: 'capture sessions are not available' },
+            ]);
+          }
           const shiftRepo = createShiftRepository(db);
           const rows = q.shift
             ? [shiftRepo.byRef(p.userId, q.shift.toLowerCase())].filter((r) => r !== undefined)

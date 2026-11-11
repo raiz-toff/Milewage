@@ -17,6 +17,7 @@ import { createInstanceReader, createSessionRepository, type Db } from './db';
 import type { DiskMonitor } from './disk';
 import { createDriverContexts, type DriverContexts } from './driver-context';
 import { createMileageDeduction, type MileageDeduction } from './mileage-deduction';
+import { createCaptureStore, stateOf } from './diagnostics/capture';
 import { openDiagnosticsStore, type DiagnosticsStore } from './diagnostics/store';
 import { csvExporter } from './exporters/csv';
 import { createExporterRegistry, type ExporterRegistry } from './exporters/registry';
@@ -44,6 +45,8 @@ export interface ServerTuning {
   diagnosticsSampleMs?: number;
   /** Interval of the diagnostics retention job (a day). */
   diagnosticsHousekeepingMs?: number;
+  /** Interval of the 30 day capture purge (a day). */
+  captureHousekeepingMs?: number;
   /** Passed to the restore service (forces a revert). */
   restoreVerify?: (db: Db) => void;
   /** Exporters in place of csv, expenses, tax_summary and pdf. */
@@ -102,10 +105,12 @@ export interface ServerHost {
   readonly present: ShiftPresenter;
   /** Records, recomputes and announces every shift; the device read window. */
   readonly book: ShiftBook;
-  /** diagnostics.db, opened on first use; only the diagnostics module and the status page read it. */
+  /** diagnostics.db, opened on first use; only the diagnostics and capture modules and the status page read it. */
   readonly diagnostics: { store: () => DiagnosticsStore; path: string; close(): void };
   /** The `Settings` response for a user (core, devices on pairing, sync). */
-  readonly readSettings: (userId: number) => object;
+  readonly readSettings: (userId: number, deviceId?: number) => object;
+  /** The active capture session of a device, for `diagnostics.capture` in the settings. */
+  readonly captureFor: (userId: number, deviceId: number) => object | null;
   readonly exporters: ExporterRegistry;
   /** Formats switched on in the configuration (`modules.export_<format>`). */
   readonly formatsOn: readonly string[];
@@ -226,6 +231,21 @@ function shareServices(
       (store ??= openDiagnosticsStore(diagnosticsPath, now, input.onDiagnosticsRecreated)),
     close: () => store?.close(),
   };
+  const captureFor = (_userId: number, deviceId: number) => {
+    if (!registry.isEnabled('capture')) return null;
+    const c = createCaptureStore(diagnostics.store().db);
+    const id = c.activeFor(deviceId, now())[0];
+    const s = id === undefined ? undefined : c.session(id);
+    return s && stateOf(s, now()) === 'active'
+      ? {
+          id: s.id,
+          profile: s.profile,
+          expires_at: s.expiresAt,
+          max_shifts: s.maxShifts,
+          shifts_done: c.shiftsDone(s.id),
+        }
+      : null;
+  };
 
   const drivers = createDriverContexts({
     db,
@@ -282,7 +302,9 @@ function shareServices(
       countries: countryModules.codes(),
       backupDownload: config.backup.download,
       exportFormats,
+      captureFor,
     }),
+    captureFor,
     exporters,
     formatsOn,
     exportFormats,

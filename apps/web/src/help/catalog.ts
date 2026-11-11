@@ -33,6 +33,7 @@ const MODULES: Record<BooleanModule, true> = {
   stops: true,
   sync: true,
   diagnostics: true,
+  capture: true,
   backup_download: true,
 };
 

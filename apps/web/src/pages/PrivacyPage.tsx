@@ -178,6 +178,12 @@ export function PrivacyPage({
             Settings, Tracking and privacy sets the level: Off, Basic (the default) or Verbose (back
             to Basic after 7 days).
           </li>
+          <li>
+            A capture session (off unless the owner turns it on) is a short, dense recording made to
+            tune trip and stop detection; it does contain positions. The phone app in this version
+            does not record capture sessions. The server deletes capture data 30 days after a
+            session ends.
+          </li>
         </List>
       </Section>
 

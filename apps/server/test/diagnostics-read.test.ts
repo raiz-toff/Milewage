@@ -80,11 +80,11 @@ describe('GET /diagnostics/events (16 section 10, 08)', () => {
       level: 'basic',
       kind: 'upload.window',
       shift: null,
+      cap: null,
       v: '0.1.0',
       received_at: T0,
       data: { attempts: 3, ok: 3 },
     });
-    expect(items[1]).not.toHaveProperty('cap');
     expect(items[0]).toMatchObject({ src: 'web', device_id: null, seq: null, kind: 'crash' });
     expect((await list('', {})).statusCode).toBe(401);
     expect((await list('', auth)).statusCode).toBe(403);

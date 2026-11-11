@@ -1314,11 +1314,108 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Redacted debug bundle (16 section 10.2) - versions, health, per-shift summaries and re-validated events with relative times and pseudonymous ids. */
+        /** Redacted debug bundle (16 section 10.2) - versions, health, per-shift summaries and re-validated events with relative times and pseudonymous ids. Capture data only when include_capture is given, and then anonymized. */
         get: operations["downloadDebugBundle"];
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/diagnostics/capture-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List capture sessions with their sizes and states. */
+        get: operations["listCaptureSessions"];
+        put?: never;
+        /** Start a time-boxed capture session for one device (16 section 8). Web only; refused when disk is low or the capture cap is reached. */
+        post: operations["createCaptureSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/diagnostics/capture-sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a session with its fixes and annotations. */
+        delete: operations["deleteCaptureSession"];
+        options?: never;
+        head?: never;
+        /** End a session now. The recorded data is kept until it is deleted or purged. */
+        patch: operations["updateCaptureSession"];
+        trace?: never;
+    };
+    "/diagnostics/capture-sessions/{id}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        /** NDJSON replay for the test harness (16 section 8.4). anonymized (default) converts to metres from the first fix at latitude 0, longitude 0 with relative times; exact returns real coordinates for the owner's own harness. */
+        get: operations["downloadCaptureReplay"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/diagnostics/capture-sessions/{id}/fixes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload dense capture fixes for the device's own active session. Idempotent on (capture, seq). */
+        post: operations["uploadCaptureFixes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/diagnostics/capture-sessions/{id}/annotations/{client_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                client_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Web only. Mark a detected stop real, false or missed, or add a note, for tuning (E9 to E12). Idempotent. */
+        put: operations["putCaptureAnnotation"];
+        post?: never;
+        /** Delete an annotation. */
+        delete: operations["deleteCaptureAnnotation"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1423,6 +1520,8 @@ export interface components {
             stops: boolean;
             /** @description Diagnostics module registered (16). When false the phone behaves as level off and the web hides the Diagnostics screens. */
             diagnostics: boolean;
+            /** @description Capture module registered (16 section 8); false by default. */
+            capture: boolean;
             backup_download: boolean;
             exporters: ("csv" | "pdf" | "expenses" | "tax_summary")[];
             countries: string[];
@@ -2305,6 +2404,16 @@ export interface components {
             level: "off" | "basic" | "verbose";
             /** @description Epoch ms; verbose reverts to basic then. */
             verbose_until: number | null;
+            /** @description For a device, its own active capture session; always null for a web session. */
+            capture: components["schemas"]["CaptureAssignment"] | null;
+        };
+        CaptureAssignment: {
+            id: number;
+            /** @enum {unknown} */
+            profile: "dense";
+            expires_at: components["schemas"]["EpochMs"];
+            max_shifts: number;
+            shifts_done: number;
         };
         DiagEventIn: {
             kind: string;
@@ -2320,6 +2429,8 @@ export interface components {
              * @description Shift client_id.
              */
             shift?: string;
+            /** @description Capture session id. */
+            cap?: number;
             v: string;
             /** @description Typed fields defined per kind in the shared package registry (16 section 3.2). Unknown fields are rejected. Never a coordinate, address, payout, label or free text (16 section 4). */
             data: Record<string, never>;
@@ -2350,6 +2461,7 @@ export interface components {
             level: "basic" | "verbose";
             kind: string;
             shift?: string | null;
+            cap?: number | null;
             v?: string | null;
             data: Record<string, never>;
         };
@@ -2386,6 +2498,79 @@ export interface components {
             generated_at: components["schemas"]["EpochMs"];
             devices: components["schemas"]["DeviceHealth"][];
             server: components["schemas"]["ServerHealth"];
+        };
+        CaptureSessionCreate: {
+            device_id: number;
+            /**
+             * @default dense
+             * @enum {unknown}
+             */
+            profile: "dense";
+            /** @default 48 */
+            hours: number;
+            /** @default 3 */
+            max_shifts: number;
+        };
+        CaptureSessionPatch: {
+            /** @constant */
+            state: "ended";
+        };
+        CaptureSession: {
+            id: number;
+            device_id: number;
+            /** @enum {unknown} */
+            profile: "dense";
+            created_at: components["schemas"]["EpochMs"];
+            expires_at: components["schemas"]["EpochMs"];
+            ended_at: number | null;
+            max_shifts: number;
+            shifts_done: number;
+            fix_count: number;
+            bytes: number;
+            /** @enum {unknown} */
+            state: "active" | "ended" | "expired";
+        };
+        CaptureFix: {
+            seq: number;
+            recorded_at: components["schemas"]["EpochMs"];
+            lat_e7: number;
+            lon_e7: number;
+            accuracy_m: number;
+            speed_dmps?: number | null;
+            bearing_deg?: number | null;
+            altitude_m?: number | null;
+        };
+        CaptureFixBatch: {
+            /**
+             * Format: uuid
+             * @description Shift client_id the fixes belong to.
+             */
+            shift: string;
+            fixes: components["schemas"]["CaptureFix"][];
+        };
+        CaptureFixResult: {
+            accepted: number;
+            duplicates: number;
+        };
+        CaptureAnnotationPut: {
+            at: components["schemas"]["EpochMs"];
+            /** @enum {unknown} */
+            kind: "real_stop" | "false_stop" | "missed_stop" | "event" | "note";
+            /** Format: uuid */
+            shift?: string;
+            stop_key?: string;
+            /** @description Free text; capture data is not diagnostics and may contain it (16 section 8.2). */
+            text?: string;
+        };
+        CaptureAnnotation: {
+            /** Format: uuid */
+            client_id: string;
+            at: components["schemas"]["EpochMs"];
+            /** @enum {unknown} */
+            kind: "real_stop" | "false_stop" | "missed_stop" | "event" | "note";
+            shift?: string | null;
+            stop_key?: string | null;
+            text?: string | null;
         };
     };
     responses: {
@@ -5279,6 +5464,8 @@ export interface operations {
                 to?: components["parameters"]["To"];
                 /** @description Shift client_id. */
                 shift?: string;
+                /** @description Capture session id to include (anonymized). */
+                include_capture?: number;
             };
             header?: never;
             path?: never;
@@ -5297,6 +5484,216 @@ export interface operations {
             };
             404: components["responses"]["NotFound"];
             422: components["responses"]["Unprocessable"];
+        };
+    };
+    listCaptureSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sessions, newest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptureSession"][];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createCaptureSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CaptureSessionCreate"];
+            };
+        };
+        responses: {
+            /** @description Session created; the device learns it from GET /settings. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptureSession"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+            507: components["responses"]["InsufficientStorage"];
+        };
+    };
+    deleteCaptureSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateCaptureSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CaptureSessionPatch"];
+            };
+        };
+        responses: {
+            /** @description Session ended. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptureSession"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    downloadCaptureReplay: {
+        parameters: {
+            query?: {
+                mode?: "anonymized" | "exact";
+            };
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One JSON object per line - meta, fix, annotation and shift lines. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/x-ndjson": string;
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    uploadCaptureFixes: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Content-Encoding"?: "gzip" | "identity";
+            };
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CaptureFixBatch"];
+            };
+        };
+        responses: {
+            /** @description Every fix is stored or was already stored. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptureFixResult"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            413: components["responses"]["TooLarge"];
+            422: components["responses"]["Unprocessable"];
+            429: components["responses"]["RateLimited"];
+            503: components["responses"]["Unavailable"];
+            507: components["responses"]["InsufficientStorage"];
+        };
+    };
+    putCaptureAnnotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                client_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CaptureAnnotationPut"];
+            };
+        };
+        responses: {
+            /** @description Stored. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptureAnnotation"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    deleteCaptureAnnotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                client_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
         };
     };
 }

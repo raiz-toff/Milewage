@@ -9,6 +9,8 @@ export interface DiagEvent {
   seq?: number;
   /** Shift client id. */
   shift?: string;
+  /** Capture session id. */
+  cap?: string;
   /** App version. */
   v: string;
   data: Record<string, unknown>;
@@ -30,7 +32,7 @@ export function crashMessage(errorClass: string, message: string): string | unde
     .join('');
 }
 
-const ENVELOPE_KEYS = ['kind', 'at', 'level', 'src', 'seq', 'shift', 'v', 'data'];
+const ENVELOPE_KEYS = ['kind', 'at', 'level', 'src', 'seq', 'shift', 'cap', 'v', 'data'];
 
 /**
  * The single check used by the producer, the ingest endpoint and the bundle exporter. The reason
@@ -62,8 +64,11 @@ export function validateEvent(input: unknown): DiagResult {
   if (e.seq !== undefined && (!Number.isInteger(e.seq) || (e.seq as number) < 0)) {
     return fail('event.seq: not a non-negative integer');
   }
-  if (e.shift !== undefined && !(typeof e.shift === 'string' && PATTERNS.clientId.test(e.shift))) {
-    return fail('event.shift: not an id');
+  for (const key of ['shift', 'cap'] as const) {
+    const value = e[key];
+    if (value !== undefined && !(typeof value === 'string' && PATTERNS.clientId.test(value))) {
+      return fail(`event.${key}: not an id`);
+    }
   }
   if (typeof e.v !== 'string' || !PATTERNS.version.test(e.v) || looksLikeCoordinate(e.v)) {
     return fail('event.v: not a version');

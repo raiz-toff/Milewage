@@ -374,6 +374,10 @@ _Avoid_: plugin, add-on, feature flag
 Records of how the phone and the server behave (battery, timing, errors), kept only on the owner's server and never carrying coordinates.
 _Avoid_: telemetry, analytics, crash reports
 
+**Capture**:
+A time-limited, dense recording on one phone, for testing the track engine against real driving. It is off by default.
+_Avoid_: debug recording, trace
+
 ### Help
 
 **Help**:

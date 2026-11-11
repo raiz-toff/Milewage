@@ -52,6 +52,12 @@ export interface EventMap {
     phoneCalcV: number;
     serverCalcV: number;
   };
+  /** A capture session changed state (16 section 3.2 `capture.state`). */
+  'capture.state': {
+    event: 'created' | 'started' | 'ended' | 'expired' | 'purged';
+    profile: 'dense';
+    shiftsDone: number;
+  };
   /** A backup run ended, verified or not (16 section 3.2 `backup.run`). */
   'backup.finished': {
     trigger: 'nightly' | 'shift_end' | 'manual' | 'pre_migration' | 'pre_restore';

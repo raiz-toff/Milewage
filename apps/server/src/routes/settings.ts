@@ -117,6 +117,8 @@ type ReaderContext = {
   backupDownload?: boolean;
   /** Export formats that exist right now (registered, switched on, requirements met). */
   exportFormats?: (reg: ModuleRegistry) => string[];
+  /** The active capture session of a device, for `diagnostics.capture` (module `capture`). */
+  captureFor?: (userId: number, deviceId: number) => object | null;
 };
 
 /** The odometer note of the driver's place (plan 21 `logbook` slot), or null. */
@@ -127,7 +129,7 @@ function logbookOf(d: DriverContext) {
 
 /** The `Settings` response for a user. Also returned to a phone when it pairs. */
 export function settingsReader(ctx: ReaderContext) {
-  return (userId: number) => {
+  return (userId: number, deviceId?: number) => {
     const d = ctx.drivers.of(userId);
     const row = d.settings;
     const verbose = row.diagnosticsLevel === 'verbose';
@@ -165,6 +167,7 @@ export function settingsReader(ctx: ReaderContext) {
       diagnostics: {
         level: expired ? 'basic' : row.diagnosticsLevel,
         verbose_until: verbose && !expired ? row.diagnosticsVerboseUntil : null,
+        capture: deviceId === undefined ? null : (ctx.captureFor?.(userId, deviceId) ?? null),
       },
     };
   };
@@ -178,8 +181,8 @@ export function settingsRoutes(
   const read = settingsReader(ctx);
 
   app.get('/settings', async (req) => {
-    const { userId } = ctx.auth(req, 'SD');
-    return read(userId);
+    const p = ctx.auth(req, 'SD');
+    return read(p.userId, p.kind === 'device' ? p.deviceId : undefined);
   });
 
   app.patch('/settings', { schema: { body: patchSchema } }, async (req) => {

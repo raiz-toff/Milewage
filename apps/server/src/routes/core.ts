@@ -49,6 +49,8 @@ export interface CoreContext {
   /** `backup.download` (10 section 3.1); reported to clients as `modules.backup_download`. */
   backupDownload?: boolean;
   exportFormats?: (reg: ModuleRegistry) => string[];
+  /** The active capture session of a device, for `diagnostics.capture` in `GET /settings`. */
+  captureFor?: (userId: number, deviceId: number) => object | null;
   /** The owner's answers to the open questions of 18 section 16 (defaults in `comma-options.ts`). */
   comma?: Partial<CommaOptions>;
   /** Records, recomputes and announces shifts. */
@@ -101,6 +103,7 @@ export function coreRoutes(
     book,
     backupDownload,
     exportFormats,
+    captureFor,
     comma,
   }: CoreContext,
   authn: Authenticator,
@@ -126,6 +129,7 @@ export function coreRoutes(
       emit,
       backupDownload: backupDownload !== false,
       exportFormats,
+      captureFor,
     });
     ownRateRoutes(app, { db, now, auth, emit });
     countriesRoute(app, {

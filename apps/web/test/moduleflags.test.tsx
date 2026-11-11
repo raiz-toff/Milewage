@@ -17,6 +17,7 @@ const ALL_OFF: Modules = {
   replay: false,
   stops: false,
   diagnostics: false,
+  capture: false,
   platforms: false,
   earnings: false,
   expenses: false,

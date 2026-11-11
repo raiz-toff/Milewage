@@ -46,6 +46,7 @@ export const DIAGNOSED_MODULES = [
   'sync',
   'exporters',
   'diagnostics',
+  'capture',
 ] as const;
 // Module flags as bools; a module that does not exist in a build is simply absent.
 const MODULE_FLAGS: Shape = Object.fromEntries(DIAGNOSED_MODULES.map((m) => [m, bool(true)]));
@@ -59,7 +60,7 @@ export const diagKinds = {
     data: {
       event: oneOf(SERVICE_EVENTS),
       reason: oneOf(SERVICE_REASONS),
-      profile: oneOf(['normal']),
+      profile: oneOf(['normal', 'capture']),
     },
   },
   'track.window': {
@@ -124,8 +125,7 @@ export const diagKinds = {
       gap_count: COUNT,
       service_restarts: COUNT,
       engine_ms: MS,
-      // Sent (always false) by phone apps from before capture sessions were removed; ignored.
-      capture: bool(true),
+      capture: bool(),
     },
   },
   'engine.run': {
@@ -371,6 +371,15 @@ export const diagKinds = {
     level: 'basic',
     src: ['server'],
     data: { from: oneOf(DISK_STATES), to: oneOf(DISK_STATES) },
+  },
+  'capture.state': {
+    level: 'basic',
+    src: ['server'],
+    data: {
+      event: oneOf(['created', 'started', 'ended', 'expired', 'purged']),
+      profile: oneOf(['dense']),
+      shifts_done: COUNT,
+    },
   },
   crash: {
     level: 'basic',

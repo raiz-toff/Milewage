@@ -1,7 +1,6 @@
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import {
   createExpenseRepository,
@@ -536,57 +535,6 @@ describe('migration runner', () => {
     expect(tables(db)).not.toContain('platform_logos');
     expect(settings()).toEqual(before);
     expect(before).toHaveLength(2);
-  });
-
-  test('a 0.2.0 diagnostics.db loses the capture tables and the capture traces in its events on upgrade', () => {
-    const diag = loadMigrations(
-      fileURLToPath(new URL('../src/diagnostics/diagnostics-migrations', import.meta.url)),
-    );
-    const drop = 'diagnostics/0004_drop_capture';
-    expect(diag.map((m) => `${m.module}/${m.id}`).at(-1)).toBe(drop);
-    const db = open(join(dir, 'diagnostics.db'));
-    migrate(
-      db,
-      diag.filter((m) => `${m.module}/${m.id}` !== drop),
-    );
-    const capture = ['capture_annotations', 'capture_fixes', 'capture_sessions'];
-    expect(tables(db)).toEqual(expect.arrayContaining(capture));
-    db.prepare(
-      "INSERT INTO capture_sessions (id, user_id, device_id, profile, created_at, expires_at, max_shifts) VALUES (1, 1, 1, 'dense', 0, 9, 3)",
-    ).run();
-    db.prepare(
-      "INSERT INTO capture_fixes (capture_id, seq, shift_client_id, recorded_at, lat_e7, lon_e7, accuracy_m) VALUES (1, 1, 's', 0, 1, 1, 5)",
-    ).run();
-    db.prepare(
-      "INSERT INTO capture_annotations (capture_id, client_id, at, kind, text) VALUES (1, 'a', 0, 'note', 'x')",
-    ).run();
-    const event = db.prepare(
-      "INSERT INTO diag_events (user_id, src, at, received_at, level, kind, capture_id, data, expires_at) VALUES (1, ?, 0, 0, 'basic', ?, ?, ?, 9)",
-    );
-    event.run(
-      'server',
-      'capture.state',
-      1,
-      '{"event":"created","profile":"dense","shifts_done":0}',
-    );
-    event.run(
-      'server',
-      'server.start',
-      null,
-      '{"modules":{"tracking":true,"capture":false},"arch":"x64"}',
-    );
-    event.run('phone_js', 'shift.summary', null, '{"fixes":3,"capture":false}');
-    expect(migrate(db, diag)).toEqual([drop]);
-    for (const t of capture) expect(tables(db)).not.toContain(t);
-    const columns = db.prepare('SELECT name FROM pragma_table_info(?)').pluck().all('diag_events');
-    expect(columns).not.toContain('capture_id');
-    expect(columns).toContain('shift_client_id');
-    expect(db.prepare('SELECT kind, data FROM diag_events ORDER BY id').all()).toEqual([
-      { kind: 'server.start', data: '{"modules":{"tracking":true},"arch":"x64"}' },
-      // Still what a phone from before the removal sends; the schema accepts it and ignores it.
-      { kind: 'shift.summary', data: '{"fixes":3,"capture":false}' },
-    ]);
-    expect(migrate(db, diag)).toEqual([]);
   });
 });
 

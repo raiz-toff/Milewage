@@ -255,6 +255,7 @@
         "stops",
         "sync",
         "diagnostics",
+        "capture",
         "backup_download",
         "exporters",
         "countries"
@@ -303,6 +304,10 @@
         "diagnostics": {
           "type": "boolean",
           "description": "Diagnostics module registered (16). When false the phone behaves as level off and the web hides the Diagnostics screens."
+        },
+        "capture": {
+          "type": "boolean",
+          "description": "Capture module registered (16 section 8); false by default."
         },
         "backup_download": {
           "type": "boolean"
@@ -3687,7 +3692,8 @@
       "type": "object",
       "required": [
         "level",
-        "verbose_until"
+        "verbose_until",
+        "capture"
       ],
       "properties": {
         "level": {
@@ -3703,6 +3709,46 @@
             "null"
           ],
           "description": "Epoch ms; verbose reverts to basic then."
+        },
+        "capture": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/CaptureAssignment"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "For a device, its own active capture session; always null for a web session."
+        }
+      }
+    },
+    "CaptureAssignment": {
+      "type": "object",
+      "required": [
+        "id",
+        "profile",
+        "expires_at",
+        "max_shifts",
+        "shifts_done"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "profile": {
+          "enum": [
+            "dense"
+          ]
+        },
+        "expires_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "max_shifts": {
+          "type": "integer"
+        },
+        "shifts_done": {
+          "type": "integer"
         }
       }
     },
@@ -3750,6 +3796,10 @@
           "type": "string",
           "format": "uuid",
           "description": "Shift client_id."
+        },
+        "cap": {
+          "type": "integer",
+          "description": "Capture session id."
         },
         "v": {
           "type": "string",
@@ -3878,6 +3928,12 @@
         "shift": {
           "type": [
             "string",
+            "null"
+          ]
+        },
+        "cap": {
+          "type": [
+            "integer",
             "null"
           ]
         },
@@ -4034,6 +4090,276 @@
         },
         "server": {
           "$ref": "#/$defs/ServerHealth"
+        }
+      }
+    },
+    "CaptureSessionCreate": {
+      "type": "object",
+      "required": [
+        "device_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "device_id": {
+          "type": "integer"
+        },
+        "profile": {
+          "enum": [
+            "dense"
+          ],
+          "default": "dense"
+        },
+        "hours": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 168,
+          "default": 48
+        },
+        "max_shifts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "default": 3
+        }
+      }
+    },
+    "CaptureSessionPatch": {
+      "type": "object",
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "const": "ended"
+        }
+      }
+    },
+    "CaptureSession": {
+      "type": "object",
+      "required": [
+        "id",
+        "device_id",
+        "profile",
+        "created_at",
+        "expires_at",
+        "ended_at",
+        "max_shifts",
+        "shifts_done",
+        "fix_count",
+        "bytes",
+        "state"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "device_id": {
+          "type": "integer"
+        },
+        "profile": {
+          "enum": [
+            "dense"
+          ]
+        },
+        "created_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "expires_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "ended_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "max_shifts": {
+          "type": "integer"
+        },
+        "shifts_done": {
+          "type": "integer"
+        },
+        "fix_count": {
+          "type": "integer"
+        },
+        "bytes": {
+          "type": "integer"
+        },
+        "state": {
+          "enum": [
+            "active",
+            "ended",
+            "expired"
+          ]
+        }
+      }
+    },
+    "CaptureFix": {
+      "type": "object",
+      "required": [
+        "seq",
+        "recorded_at",
+        "lat_e7",
+        "lon_e7",
+        "accuracy_m"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "recorded_at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "lat_e7": {
+          "type": "integer",
+          "minimum": -900000000,
+          "maximum": 900000000
+        },
+        "lon_e7": {
+          "type": "integer",
+          "minimum": -1800000000,
+          "maximum": 1800000000
+        },
+        "accuracy_m": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "speed_dmps": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "bearing_deg": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "altitude_m": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "CaptureFixBatch": {
+      "type": "object",
+      "required": [
+        "shift",
+        "fixes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "shift": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Shift client_id the fixes belong to."
+        },
+        "fixes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/$defs/CaptureFix"
+          }
+        }
+      }
+    },
+    "CaptureFixResult": {
+      "type": "object",
+      "required": [
+        "accepted",
+        "duplicates"
+      ],
+      "properties": {
+        "accepted": {
+          "type": "integer"
+        },
+        "duplicates": {
+          "type": "integer"
+        }
+      }
+    },
+    "CaptureAnnotationPut": {
+      "type": "object",
+      "required": [
+        "at",
+        "kind"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "kind": {
+          "enum": [
+            "real_stop",
+            "false_stop",
+            "missed_stop",
+            "event",
+            "note"
+          ]
+        },
+        "shift": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "stop_key": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Free text; capture data is not diagnostics and may contain it (16 section 8.2)."
+        }
+      }
+    },
+    "CaptureAnnotation": {
+      "type": "object",
+      "required": [
+        "client_id",
+        "at",
+        "kind"
+      ],
+      "properties": {
+        "client_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "at": {
+          "$ref": "#/$defs/EpochMs"
+        },
+        "kind": {
+          "enum": [
+            "real_stop",
+            "false_stop",
+            "missed_stop",
+            "event",
+            "note"
+          ]
+        },
+        "shift": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "stop_key": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "text": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       }
     }

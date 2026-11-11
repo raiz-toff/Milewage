@@ -263,6 +263,7 @@ class PhoneDiagnostics(
                     put("gap_count", run?.result?.flags?.count { it.code == FlagCode.GAP_COUNTED || it.code == FlagCode.GAP_DROPPED } ?: 0)
                     put("service_restarts", serviceRestarts)
                     put("engine_ms", ms)
+                    put("capture", false)
                 },
                 shift.clientId,
             )

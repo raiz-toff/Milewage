@@ -151,6 +151,7 @@ export const ALL_ON: Modules = {
   replay: true,
   stops: true,
   diagnostics: true,
+  capture: false,
   platforms: true,
   earnings: true,
   expenses: true,
@@ -185,7 +186,7 @@ export function settingsFixture(
     // Onboarded, so screens open as before the wizard (plan 23); wizard tests set null.
     onboarded_at: 1,
     engine_version: 3,
-    diagnostics: { level: 'basic', verbose_until: null },
+    diagnostics: { level: 'basic', verbose_until: null, capture: null },
     ...over,
     modules: { ...ALL_ON, ...over.modules },
   };
