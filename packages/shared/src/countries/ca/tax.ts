@@ -102,4 +102,6 @@ export const caTax: TaxPack = {
     { date: `${y + 1}-04-30`, kind: 'balance', label: 'Balance owing' },
     { date: `${y + 1}-06-15`, kind: 'filing', label: 'Self-employed filing' },
   ],
+  instalmentsNote:
+    'The CRA asks for instalments when your net tax owing is over $3,000 ($1,800 in Quebec) this year and in either of the two years before. It writes to you when it expects them.',
 };

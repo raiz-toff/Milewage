@@ -13,6 +13,7 @@ const yearBody = strictObject(
   {
     set_aside_bp: { type: 'integer', minimum: 0, maximum: 10000 },
     sales_tax_registered: { type: 'boolean' },
+    pays_instalments: { type: 'boolean' },
   },
   [],
   { minProperties: 1 },
@@ -122,7 +123,11 @@ export function taxRoutes({
     app.put('/tax/:year', { schema: { params: yearParams, body: yearBody } }, async (req) => {
       const { userId } = authn.authenticate(req, 'S');
       const year = (req.params as { year: number }).year;
-      const b = req.body as { set_aside_bp?: number; sales_tax_registered?: boolean };
+      const b = req.body as {
+        set_aside_bp?: number;
+        sales_tax_registered?: boolean;
+        pays_instalments?: boolean;
+      };
       const old = repo.year(userId, year);
       repo.putYear(userId, year, {
         setAsideBp: b.set_aside_bp ?? old.setAsideBp,
@@ -132,6 +137,8 @@ export function taxRoutes({
             : b.sales_tax_registered
               ? 1
               : 0,
+        paysInstalments:
+          b.pays_instalments === undefined ? old.paysInstalments : b.pays_instalments ? 1 : 0,
       });
       return report(userId, year);
     });

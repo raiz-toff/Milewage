@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { keepPreviousData } from '@tanstack/react-query';
-import { CalendarIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, InfoIcon } from '@/ui/icons';
+import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, InfoIcon } from '@/ui/icons';
 import { PageHeader, Section } from '../ui/layout';
 import { Button as UiButton } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -56,8 +56,11 @@ export function TaxPage() {
   const day = (iso: string | undefined) => formatDay(iso ?? '', dateLocale(country));
   const platformOf = usePlatformOf();
 
-  const putYear = (body: { set_aside_bp?: number; sales_tax_registered?: boolean }) =>
-    change.run((api) => api.PUT('/tax/{year}', { params: { path: { year } }, body }));
+  const putYear = (body: {
+    set_aside_bp?: number;
+    sales_tax_registered?: boolean;
+    pays_instalments?: boolean;
+  }) => change.run((api) => api.PUT('/tax/{year}', { params: { path: { year } }, body }));
   const addJar = (cents: number) =>
     change.run((api) =>
       api.POST('/tax/{year}/jar', { params: { path: { year } }, body: { amount_cents: cents } }),
@@ -117,7 +120,10 @@ export function TaxPage() {
             line(l.label, l.cents === null && l.note ? l.note : money(l.cents), !l.cents),
           ),
           line(TOTAL, money(est.total_set_aside_cents)),
-          line('Quarterly instalment (a quarter)', money(est.instalment_cents)),
+          // Only for a driver who pays by instalments (their choice under Deadlines).
+          ...(report.pays_instalments
+            ? [line('Quarterly instalment (a quarter)', money(est.instalment_cents))]
+            : []),
           ...(est.sales_tax
             ? [line('Sales tax owing (collected − credits)', money(est.sales_tax.owing_cents))]
             : []),
@@ -389,11 +395,7 @@ export function TaxPage() {
                           : 'bg-surface-container-high text-on-surface-variant',
                       )}
                     >
-                      {past ? (
-                        <CheckIcon className="size-5" />
-                      ) : (
-                        <CalendarIcon className="size-5" />
-                      )}
+                      <CalendarIcon className="size-5" />
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col-reverse">
                       <time
@@ -422,6 +424,22 @@ export function TaxPage() {
                 );
               })}
             </ul>
+            {/* Instalments are asked only of some people, so the driver says whether they pay
+                them; the dates above and the quarterly amount follow the answer. */}
+            <div className="space-y-1 border-t border-outline-variant pt-3">
+              <CheckField
+                label="I pay tax by instalments"
+                checked={report.pays_instalments}
+                onChange={(on) => void putYear({ pays_instalments: on })}
+              />
+              <p className="text-body-small text-on-surface-variant">
+                {report.instalments_note ??
+                  'A tax office asks for instalments only from some people.'}{' '}
+                {report.pays_instalments
+                  ? 'The instalment dates are listed above.'
+                  : 'Turn this on to list the instalment dates.'}
+              </p>
+            </div>
             {report.slip_alerts.map((a) => (
               <p key={a.platform} className="border-t border-outline-variant pt-3 text-body-medium">
                 {a.platform ? `${platformOf(a.platform).label}: ` : ''}

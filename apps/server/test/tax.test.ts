@@ -79,7 +79,13 @@ describe('the estimate', () => {
     expect(t.slip_alerts).toEqual([
       { platform: 'doordash', total_cents: 8_000_000, threshold_cents: 50_000, slip: 'T4A' },
     ]);
-    expect(t.deadlines.map((d: { date: string }) => d.date)).toEqual([
+    // Instalments are the driver's own choice: off, only the balance and the filing date.
+    expect(t.pays_instalments).toBe(false);
+    expect(t.instalments_note).toMatch(/CRA asks for instalments/);
+    expect(t.deadlines.map((d: { date: string }) => d.date)).toEqual(['2027-04-30', '2027-06-15']);
+    const paying = (await send('PUT', '/tax/2026', { pays_instalments: true })).json();
+    expect(paying.pays_instalments).toBe(true);
+    expect(paying.deadlines.map((d: { date: string }) => d.date)).toEqual([
       '2026-03-15',
       '2026-06-15',
       '2026-09-15',

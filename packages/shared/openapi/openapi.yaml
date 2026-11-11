@@ -1822,6 +1822,7 @@ paths:
               properties:
                 set_aside_bp: { type: integer, minimum: 0, maximum: 10000 }
                 sales_tax_registered: { type: boolean }
+                pays_instalments: { type: boolean }
       responses:
         '200':
           description: OK.
@@ -3168,7 +3169,7 @@ components:
               note: { type: [string, 'null'] }
     TaxYear:
       type: object
-      required: [year, country, region, supported, unverified, set_aside_bp, sales_tax_registered, sales_tax_name, notices, income, deductions, estimate, deadlines, slip_alerts, jar]
+      required: [year, country, region, supported, unverified, set_aside_bp, sales_tax_registered, pays_instalments, instalments_note, sales_tax_name, notices, income, deductions, estimate, deadlines, slip_alerts, jar]
       properties:
         year: { type: integer }
         country: { type: string }
@@ -3177,6 +3178,8 @@ components:
         unverified: { type: boolean, description: True while the pack's figures have not been compared with the primary publications; the screen shows an "unverified rates" notice. }
         set_aside_bp: { type: integer }
         sales_tax_registered: { type: boolean }
+        pays_instalments: { type: boolean, description: The driver's own choice for this tax year, off unless set. The instalment deadlines are listed only when it is on. }
+        instalments_note: { type: [string, 'null'], description: Who the tax office asks for instalments, from the country data; null when the pack says nothing. }
         sales_tax_name: { type: [string, 'null'], description: 'The sales tax of the driver''s place from the country data (GST, HST), for the "Registered for ..." choice; null when none is known.' }
         notices: { type: array, items: { type: string } }
         income:

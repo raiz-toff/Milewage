@@ -4,6 +4,8 @@ import type { Db } from './open';
 export interface TaxYearRow {
   setAsideBp: number;
   salesTaxRegistered: number;
+  /** 1 when the driver pays by instalments in this tax year. */
+  paysInstalments: number;
 }
 export interface JarRow {
   id: number;
@@ -29,18 +31,20 @@ export function createTaxRepository(db: Db) {
     year: (userId: number, year: number): TaxYearRow =>
       (db
         .prepare(
-          'SELECT set_aside_bp AS setAsideBp, sales_tax_registered AS salesTaxRegistered FROM tax_years WHERE user_id = ? AND tax_year = ?',
+          'SELECT set_aside_bp AS setAsideBp, sales_tax_registered AS salesTaxRegistered, pays_instalments AS paysInstalments FROM tax_years WHERE user_id = ? AND tax_year = ?',
         )
         .get(userId, year) as TaxYearRow | undefined) ?? {
         setAsideBp: DEFAULT_SET_ASIDE_BP,
         salesTaxRegistered: 0,
+        paysInstalments: 0,
       },
     putYear(userId: number, year: number, r: TaxYearRow) {
       db.prepare(
-        `INSERT INTO tax_years (user_id, tax_year, set_aside_bp, sales_tax_registered) VALUES (?, ?, ?, ?)
+        `INSERT INTO tax_years (user_id, tax_year, set_aside_bp, sales_tax_registered, pays_instalments) VALUES (?, ?, ?, ?, ?)
          ON CONFLICT (user_id, tax_year) DO UPDATE SET set_aside_bp = excluded.set_aside_bp,
-           sales_tax_registered = excluded.sales_tax_registered`,
-      ).run(userId, year, r.setAsideBp, r.salesTaxRegistered);
+           sales_tax_registered = excluded.sales_tax_registered,
+           pays_instalments = excluded.pays_instalments`,
+      ).run(userId, year, r.setAsideBp, r.salesTaxRegistered, r.paysInstalments);
     },
     jar: (userId: number, year: number): JarRow[] =>
       db

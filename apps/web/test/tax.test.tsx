@@ -16,6 +16,8 @@ const report = (over: object = {}) => ({
   unverified: true,
   set_aside_bp: 2500,
   sales_tax_registered: false,
+  pays_instalments: true,
+  instalments_note: null,
   sales_tax_name: 'HST',
   notices: [
     'Unverified rates: these figures have not been checked against the CRA publications.',

@@ -1997,6 +1997,8 @@
         "unverified",
         "set_aside_bp",
         "sales_tax_registered",
+        "pays_instalments",
+        "instalments_note",
         "sales_tax_name",
         "notices",
         "income",
@@ -2033,6 +2035,19 @@
         },
         "sales_tax_registered": {
           "type": "boolean"
+        },
+        "pays_instalments": {
+          "type": "boolean",
+          "description": "The driver's own choice for this tax year",
+          "off unless set. The instalment deadlines are listed only when it is on.": null
+        },
+        "instalments_note": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Who the tax office asks for instalments",
+          "from the country data; null when the pack says nothing.": null
         },
         "sales_tax_name": {
           "type": [

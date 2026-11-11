@@ -2279,6 +2279,10 @@ export interface components {
             unverified: boolean;
             set_aside_bp: number;
             sales_tax_registered: boolean;
+            /** @description The driver's own choice for this tax year */
+            pays_instalments: boolean;
+            /** @description Who the tax office asks for instalments */
+            instalments_note: string | null;
             /** @description The sales tax of the driver's place from the country data (GST, HST), for the "Registered for ..." choice; null when none is known. */
             sales_tax_name: string | null;
             notices: string[];
@@ -5802,6 +5806,7 @@ export interface operations {
                 "application/json": {
                     set_aside_bp?: number;
                     sales_tax_registered?: boolean;
+                    pays_instalments?: boolean;
                 };
             };
         };

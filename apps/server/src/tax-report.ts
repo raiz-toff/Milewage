@@ -56,6 +56,9 @@ export function taxReport(o: TaxReportOptions, userId: number, year: number, col
     unverified: pack ? !pack.verified : true,
     set_aside_bp: inputs.setAsideBp,
     sales_tax_registered: inputs.salesTaxRegistered === 1,
+    // Instalments are asked only of some people: the driver says whether they pay them.
+    pays_instalments: inputs.paysInstalments === 1,
+    instalments_note: pack?.instalmentsNote ?? null,
     // The names of the sales tax components at the driver's place (plan 21 `salesTax` slot).
     sales_tax_name: place?.data.salesTax?.map((t) => t.label).join(' + ') || null,
   };
@@ -177,7 +180,9 @@ export function taxReport(o: TaxReportOptions, userId: number, year: number, col
         .map((v) => ({ vehicle_id: v.vehicleId, method: v.method })),
     },
     estimate: est,
-    deadlines: pack.deadlines(year, place),
+    deadlines: pack
+      .deadlines(year, place)
+      .filter((d) => d.kind !== 'instalment' || inputs.paysInstalments === 1),
     slip_alerts: slipAlerts,
     jar: {
       balance_cents: balance,

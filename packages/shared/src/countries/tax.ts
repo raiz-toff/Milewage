@@ -66,6 +66,8 @@ export interface TaxPack {
   slip: { name: string; thresholdCents: number } | null;
   estimate(input: TaxInput, place: ResolvedPlace): TaxEstimate;
   deadlines(year: number, place: ResolvedPlace): Deadline[];
+  /** Who the tax office asks for instalments, in one sentence; shown beside the driver's choice. */
+  instalmentsNote?: string;
 }
 
 /** Rounds half up, as the packs have always done. */

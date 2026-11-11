@@ -74,9 +74,9 @@ The Tax page works on a calendar year.
 1. Earnings after app fees, minus the expenses you can deduct, minus the mileage deduction, which is not money paid to you.
 2. Taxable income, never below zero.
 3. The self-employed pension contribution in two bands, and income tax at your set-aside rate.
-4. Set aside in total, and a quarter of it for each instalment.
+4. Set aside in total, and, if you pay by instalments, a quarter of it for each one.
 
-The income tax line is a planning figure, not tax brackets. The set-aside rate starts at 25 percent; change it in Details > Tax settings. Deadlines lists the instalment, balance and filing dates, and notes a platform above the T4A amount. These are unverified too.
+The income tax line is a planning figure, not tax brackets. The set-aside rate starts at 25 percent; change it in Details > Tax settings. Deadlines lists the balance and filing dates, and notes a platform above the T4A amount. A tax office asks for instalments only from some people, so the instalment dates are listed only when you turn on "I pay tax by instalments" under Deadlines. That choice is kept for each tax year. These are unverified too.
 
 "No earnings are entered or labelled for this year" means there is nothing to estimate from. Enter earnings on your shifts; see [Earnings and platforms](earnings-and-platforms.md).
 

@@ -78,6 +78,11 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   with that day chosen. The list's rows follow the Comma phone app's: platforms, day and times,
   time and distance, then what the shift earned, its tips and its deduction.
 
+- Changed: instalments on the Tax page are the driver's own choice ("I pay tax by instalments",
+  kept for each tax year, off unless set). The instalment dates, the next-date chip and the
+  quarterly amount show only when it is on; `PUT /tax/{year}` takes `pays_instalments`, and the
+  report carries it with `instalments_note` from the country data.
+
 - Changed: Analytics' burn ratio and net take-home count what was paid for expenses, in full, no
   longer only the deductible part. A "Spent" tile shows it beside "Deductible expenses"; the
   `cards` group carries it as `spent_cents`.
