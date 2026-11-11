@@ -89,7 +89,7 @@ tests). The patterns:
 - Charts carry a table a screen reader always gets, and a visible toggle for it; the keyboard reads
   them slot by slot. A comparison says the direction in words ("less than by this point last
   week"), never by colour alone.
-- Codes meant to be read aloud (a 6-digit link code) are read digit by digit.
+- Codes meant to be read aloud are read to a screen reader character by character.
 - Focus rings are Material's: 3 px in `ring` (the scheme's secondary) on the web, the platform's own on Android. Never remove them.
 - Dialogs trap focus and return it; a dialog showing a secret does not close on an outside click.
 - Contrast: text 4.5:1 and meaningful marks 3:1, in light and dark (the scheme is held to it by

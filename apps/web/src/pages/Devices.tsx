@@ -11,7 +11,6 @@ import { formatDateTime } from '../format';
 import { useSettings } from '../session';
 import { Button, FormError, denseField } from '../ui/form';
 import { HelpLink } from '../help';
-import { LinkAPhone } from '../pairing/LinkAPhone';
 import { PairingCode } from '../pairing/PairingCode';
 import { usePairingSession } from '../pairing/session';
 
@@ -146,15 +145,12 @@ export function Devices() {
           </>
         }
       >
-        {/* The QR: for a phone that is not on the same Wi-Fi, or did not find the server. */}
+        {/* The QR, and the code to paste under it. */}
         <Button type="button" onClick={() => void pair()}>
           <DevicesIcon />
           Pair a phone
         </Button>
       </PageHeader>
-      <Section title="Link a phone on your Wi-Fi">
-        <LinkAPhone />
-      </Section>
       {pairing.state !== 'idle' || error ? (
         <Section title="Pair a phone with a code">
           {pairing.state !== 'idle' ? <PairingCode session={pairing} /> : null}

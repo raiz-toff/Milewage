@@ -22,7 +22,6 @@ import app.milewage.phone.ui.firstrun.CameraStandIn
 import app.milewage.phone.ui.firstrun.ConnectContent
 import app.milewage.phone.ui.firstrun.ConnectState
 import app.milewage.phone.ui.firstrun.ConnectedContent
-import app.milewage.phone.ui.firstrun.LinkContent
 import app.milewage.phone.ui.firstrun.ReadyContent
 import app.milewage.phone.ui.firstrun.ScanContent
 import app.milewage.phone.ui.firstrun.ServerSetupScreen
@@ -34,7 +33,6 @@ import app.milewage.phone.ui.settings.LicencesContent
 import app.milewage.phone.ui.settings.SettingsContent
 import app.milewage.phone.ui.shifts.ShiftsContent
 import app.milewage.phone.ui.shifts.ShiftsState
-import app.milewage.core.connect.FoundServer
 import app.milewage.core.connect.Where
 import app.milewage.data.prefs.AppTheme
 import app.milewage.phone.logic.ConnectFix
@@ -179,24 +177,18 @@ class ScreenshotTest(private val dark: Boolean) {
     private fun connect(state: ConnectState, name: String, tallDp: Int? = 1300, fontScale: Float = 1f) =
         shot(name, tallDp, fontScale) { ConnectContent(state, NoConnectActions) }
 
-    @Test fun connectLooking() = connect(FirstRunStates.connectLooking, "connect-looking")
+    @Test fun connect() = connect(FirstRunStates.connect, "connect")
 
-    @Test fun connectFound() = connect(FirstRunStates.connectFound, "connect-found")
-
-    @Test fun connectNone() = connect(FirstRunStates.connectNone, "connect-none-found")
-
-    @Test fun connectOffWifi() = connect(FirstRunStates.connectTailscaleOff, "connect-off-wifi-tailscale-off", tallDp = 1500)
+    @Test fun connectTailscaleOff() = connect(FirstRunStates.connectTailscaleOff, "connect-tailscale-off", tallDp = 1500)
 
     @Test fun connectHomeUnreachable() = connect(FirstRunStates.connectHomeUnreachable, "connect-home-unreachable", tallDp = 1500)
 
     @Test fun connectBusy() = connect(FirstRunStates.connectBusy, "connect-busy")
 
-    @Test fun connectPermission() = connect(FirstRunStates.connectPermission, "connect-local-network")
-
-    @Test fun connectLargeText() = connect(FirstRunStates.connectFound, "connect-text-200", tallDp = 2600, fontScale = 2f)
+    @Test fun connectLargeText() = connect(FirstRunStates.connect, "connect-text-200", tallDp = 2600, fontScale = 2f)
 
     @Test fun connectConfirmLink() = shot("connect-confirm-link", windows = true) {
-        ConnectContent(FirstRunStates.connectFound, NoConnectActions)
+        ConnectContent(FirstRunStates.connect, NoConnectActions)
         val confirm = rememberConfirmState()
         confirm.ask(ConfirmRequest("Connect to this server?", "box.tail1234.ts.net\n\nShifts you record on this phone will be sent there. Only connect to your own MileWage server.", "Yes, connect") {})
         ConfirmHost(confirm)
@@ -214,12 +206,6 @@ class ScreenshotTest(private val dark: Boolean) {
     @Test fun scanBlocked() = scan(CameraAccess.BLOCKED, "scan-camera-blocked")
 
     @Test fun scanFailed() = scan(CameraAccess.FAILED, "scan-camera-failed")
-
-    @Test fun linkAsking() = shot("link-asking") { LinkContent("MileWage (box)", "http://192.168.1.20:8080", FirstRunStates.linkAsking, {}, {}) }
-
-    @Test fun linkWaiting() = shot("link-waiting") { LinkContent("MileWage (box)", "http://192.168.1.20:8080", FirstRunStates.linkWaiting, {}, {}) }
-
-    @Test fun linkExpired() = shot("link-expired") { LinkContent("MileWage (box)", "http://192.168.1.20:8080", FirstRunStates.linkExpired, {}, {}) }
 
     @Test fun tailscaleMissing() = shot("tailscale-not-installed", tallDp = 1100) { TailscaleContent(FirstRunStates.tailscaleMissing, {}, {}, {}) }
 
@@ -317,13 +303,7 @@ object NoConnectActions : ConnectActions {
 
     override fun submit(text: String) = Unit
 
-    override fun pick(server: FoundServer) = Unit
-
-    override fun lookAgain() = Unit
-
     override fun tailscale() = Unit
-
-    override fun allowLocalNetwork() = Unit
 
     override fun fix(fix: ConnectFix) = Unit
 

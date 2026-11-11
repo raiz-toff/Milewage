@@ -273,7 +273,7 @@ describe('log rotation and pinned images in the compose file (10 sections 11.2, 
     >;
   };
 
-  test('LAN access (plan 28): loopback by default; the announcer only in the lan profile', () => {
+  test('LAN access (plan 28): loopback by default, and nothing announces the server', () => {
     const c = compose as unknown as {
       services: Record<string, Record<string, unknown> & { environment?: string[] }>;
     };
@@ -282,24 +282,10 @@ describe('log rotation and pinned images in the compose file (10 sections 11.2, 
     ]);
     expect(c.services.api!.environment).toContain('MILEWAGE_HOME_URL=${MILEWAGE_HOME_URL:-}');
     expect(c.services.api!.ports).toBeUndefined();
-    const lan = c.services['lan-discovery']!;
-    expect(lan).toMatchObject({
-      profiles: ['lan'],
-      network_mode: 'host',
-      command: ['node', 'advertise.mjs'],
-      image: c.services.api!.image,
-      healthcheck: { disable: true },
-    });
-    expect(lan.environment).toEqual(['MILEWAGE_ADVERTISE_PORT=${MILEWAGE_HOST_PORT:-8080}']);
-    expect(lan.ports).toBeUndefined();
-    const dockerfile = readFileSync(
-      fileURLToPath(new URL('../../../infra/docker/Dockerfile', import.meta.url)),
-      'utf8',
-    );
-    expect(dockerfile).toContain('COPY --from=build /src/dist/advertise.mjs ./advertise.mjs');
+    expect(Object.keys(c.services).sort()).toEqual(['api', 'caddy']);
   });
 
-  test.each(['caddy', 'api', 'lan-discovery'])('%s uses json-file with 10m x 3', (name) => {
+  test.each(['caddy', 'api'])('%s uses json-file with 10m x 3', (name) => {
     expect(compose.services[name]!.logging).toEqual({
       driver: 'json-file',
       options: { 'max-size': '10m', 'max-file': '3' },

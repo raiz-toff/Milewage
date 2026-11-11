@@ -29,7 +29,6 @@ import app.milewage.phone.logic.ConnectError
 import app.milewage.phone.logic.ConnectFix
 import app.milewage.phone.logic.Fix
 import app.milewage.phone.logic.FlagAdvice
-import app.milewage.phone.logic.LinkFailure
 import app.milewage.phone.logic.PermAction
 import app.milewage.phone.logic.PermState
 import app.milewage.phone.logic.PermStepId
@@ -230,7 +229,6 @@ class ScreenBehaviourTest {
         EditOutcome.entries.forEach { o -> Texts.edit(o)?.let(::ok) }
         FlagAdvice.entries.forEach { ok(Texts.advice(it)) }
         ReconReason.entries.forEach { ok(Texts.reason(it)) }
-        LinkFailure.entries.forEach { ok(Texts.linkFailure(it)) }
         ConnectFix.entries.forEach { ok(Texts.connectFix(it)) }
         AppTheme.entries.forEach { ok(Texts.theme(it)) }
         PermStepId.entries.forEach { id ->

@@ -13,7 +13,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import app.milewage.core.connect.FoundServer
 import app.milewage.phone.logic.ConnectFix
 import app.milewage.phone.logic.HelpLinks
 import app.milewage.phone.logic.PermStep
@@ -25,7 +24,6 @@ import app.milewage.phone.ui.firstrun.ConnectActions
 import app.milewage.phone.ui.firstrun.ConnectContent
 import app.milewage.phone.ui.firstrun.ConnectState
 import app.milewage.phone.ui.firstrun.ConnectedContent
-import app.milewage.phone.ui.firstrun.LinkContent
 import app.milewage.phone.ui.firstrun.ScanContent
 import app.milewage.phone.ui.firstrun.TailscaleContent
 import app.milewage.phone.ui.firstrun.WelcomeScreen
@@ -59,20 +57,8 @@ class FirstRunBehaviourTest {
             calls += "submit $text"
         }
 
-        override fun pick(server: FoundServer) {
-            calls += "pick ${server.url}"
-        }
-
-        override fun lookAgain() {
-            calls += "look"
-        }
-
         override fun tailscale() {
             calls += "tailscale"
-        }
-
-        override fun allowLocalNetwork() {
-            calls += "local"
         }
 
         override fun fix(fix: ConnectFix) {
@@ -104,22 +90,14 @@ class FirstRunBehaviourTest {
     }
 
     @Test
-    fun `Connect - the server on this Wi-Fi, the scanner, and a pasted code`() {
-        val r = connect(FirstRunStates.connectFound)
-        compose.onNodeWithText("On this Wi-Fi").assertIsDisplayed()
-        compose.onNodeWithText("MileWage (box)").performClick()
+    fun `Connect - the scanner, a pasted code, and Tailscale for away from home`() {
+        val r = connect(FirstRunStates.connect)
+        compose.onNodeWithText("On this Wi-Fi").assertDoesNotExist()
         compose.onNode(hasText("Scan the code") and hasClickAction()).performClick()
-        compose.onNodeWithText("Pairing code or server address").performTextInput("192.168.1.20:8080")
+        compose.onNodeWithText("Pairing code").performTextInput("milewage://pair?v=1")
         compose.onNodeWithText("Connect").performClick()
-        assertEquals(listOf("pick http://192.168.1.20:8080", "scan", "submit 192.168.1.20:8080"), r.calls)
-    }
-
-    @Test
-    fun `Connect - none found says so and looks again - off Wi-Fi offers Tailscale`() {
-        val r = connect(FirstRunStates.connectNone)
-        compose.onNodeWithText("No MileWage server found on this Wi-Fi", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("Look again").performClick()
-        assertEquals(listOf("look"), r.calls)
+        compose.onNodeWithText("Away from home? Set up Tailscale").performClick()
+        assertEquals(listOf("scan", "submit milewage://pair?v=1", "tailscale"), r.calls)
     }
 
     @Test
@@ -145,22 +123,6 @@ class FirstRunBehaviourTest {
         // The scanner's button and the field's both say so, and neither can be pressed twice.
         compose.onAllNodesWithText("Connecting…").assertCountEquals(2)
         compose.onAllNodes(hasText("Connecting…") and isNotEnabled()).assertCountEquals(2)
-    }
-
-    @Test
-    fun `Link - the code is read digit by digit while the phone waits`() {
-        compose.setContent { Framed { LinkContent("MileWage (box)", "http://192.168.1.20:8080", FirstRunStates.linkWaiting, {}, {}) } }
-        compose.onNodeWithContentDescription("Code 4 8 2 9 1 3").assertIsDisplayed()
-        compose.onNodeWithText("Waiting for your computer…").assertIsDisplayed()
-    }
-
-    @Test
-    fun `Link - expired says so, Get a new code asks again`() {
-        var retried = 0
-        compose.setContent { Framed { LinkContent("MileWage (box)", "http://192.168.1.20:8080", FirstRunStates.linkExpired, { retried++ }, {}) } }
-        compose.onNodeWithText("The code expired or was refused. Get a new code and try again.").assertIsDisplayed()
-        compose.onNodeWithText("Get a new code").performClick()
-        assertEquals(1, retried)
     }
 
     @Test

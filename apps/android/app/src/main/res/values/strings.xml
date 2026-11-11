@@ -71,23 +71,16 @@
 
     <!-- Connect -->
     <string name="connect_title">Connect to your server</string>
-    <string name="connect_body">On your home Wi-Fi the phone finds your server by itself. Or scan the code from MileWage on your computer (Devices, Pair a phone).</string>
-    <string name="nearby_title">On this Wi-Fi</string>
-    <string name="nearby_body">Tap your server, then type the code it shows on your computer.</string>
-    <string name="nearby_off_wifi">Connect this phone to your home Wi-Fi to find your server, or scan the code.</string>
-    <string name="nearby_permission">Android asks before MileWage looks for your server on this Wi-Fi.</string>
-    <string name="nearby_looking">Looking for your server…</string>
-    <string name="nearby_none">No MileWage server found on this Wi-Fi. Is home network access on for your server (install guide, section 2a)? Otherwise scan the code.</string>
-    <string name="nearby_look_again">Look again</string>
-    <string name="nearby_tailscale">Away from home? Set up Tailscale</string>
+    <string name="connect_body">Make a pairing code in MileWage on your computer (Devices, Pair a phone). Then scan it or paste it here.</string>
+    <string name="connect_tailscale">Away from home? Set up Tailscale</string>
     <string name="scan_card_title">Scan the code</string>
     <string name="scan_card_body">Point this phone at the code on your computer screen. MileWage asks to use the camera.</string>
     <string name="scan_button">Scan the code</string>
     <string name="open_link_title">Open the link</string>
     <string name="open_link_body">Using MileWage in this phone\'s browser? Make the code there and tap Open in the MileWage app.</string>
     <string name="paste_title">Paste the code</string>
-    <string name="paste_body">Copy the code text under the QR code and paste it here. Or type your server\'s address to link with a code.</string>
-    <string name="paste_label">Pairing code or server address</string>
+    <string name="paste_body">Copy the code text under the QR code and paste it here.</string>
+    <string name="paste_label">Pairing code</string>
     <string name="paste_placeholder" translatable="false">milewage://pair?…</string>
     <string name="connect_button">Connect</string>
     <string name="connecting">Connecting…</string>
@@ -127,19 +120,6 @@
     <string name="camera_failed_body">Another app may be using it, or this phone has no back camera. Paste the code instead.</string>
     <string name="camera_allow">Allow camera</string>
     <string name="paste_instead">Paste the code instead</string>
-
-    <!-- Linking with a code (plan 28 section 4.4) -->
-    <string name="link_title">Link this phone</string>
-    <string name="link_instructions">On your computer, open MileWage, then Devices (or the setup step Pair your phone), and type this code:</string>
-    <string name="link_code_desc">Code %1$s</string>
-    <string name="link_waiting">Waiting for your computer…</string>
-    <string name="link_asking">Asking your server…</string>
-    <string name="link_expired">The code expired or was refused. Get a new code and try again.</string>
-    <string name="link_rate_limited">Too many phones are waiting to link. Wait a minute and try again.</string>
-    <string name="link_unreachable">Can\'t reach your server. Check that this phone is on the same Wi-Fi as the server.</string>
-    <string name="link_not_supported">This server cannot link phones with a code yet. Update it, or scan the code.</string>
-    <string name="link_other">Linking failed. Try again.</string>
-    <string name="link_new_code">Get a new code</string>
 
     <!-- Tailscale -->
     <string name="tailscale_title">Get Tailscale on this phone</string>
@@ -212,7 +192,7 @@
     <string name="perm_battery_samsung">On this phone also: Settings, Battery, Background usage limits, then add MileWage to Never sleeping apps.</string>
     <string name="perm_battery_other">Some phones also stop apps to save power. dontkillmyapp.com lists the steps for each make.</string>
     <string name="perm_local_network">Local network</string>
-    <string name="perm_local_network_purpose">Lets MileWage find your server on your home Wi-Fi and send to it there.</string>
+    <string name="perm_local_network_purpose">Lets MileWage reach your server on your home Wi-Fi and send to it there.</string>
     <string name="perm_state_done">Allowed</string>
     <string name="perm_state_todo">Not allowed</string>
     <string name="perm_state_approximate">Approximate only. MileWage needs precise.</string>

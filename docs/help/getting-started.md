@@ -48,13 +48,11 @@ The first time, Android asks to let your browser install apps. Tap Settings, tur
 
 ## Pair the phone
 
-Open MileWage on the phone and tap "I have a server". The screen "Connect to your server" offers two ways to pair.
+Open MileWage on the phone and tap "I have a server". The screen "Connect to your server" pairs the phone with a code made on the web.
 
-**On your home Wi-Fi.** This needs home network access on the server ([install guide, section 2a](../../infra/docs/install.md#2a-home-network-access-optional-recommended-for-a-home-server)). The phone finds the server under "On this Wi-Fi". Tap it, and the phone shows a 6-digit code under "Link this phone". On the computer, the setup step Pair your phone, or the Devices page, lists the phone under "Link a phone on your Wi-Fi". Type the code and choose Link.
+The setup step shows a pairing code; on the Devices page, "Pair a phone" makes one. On the phone, tap "Scan the code" and allow the camera. A code works once, for 10 minutes. Without the camera, use "Paste the code" with the code text from under the QR code.
 
-**With the QR code.** The setup step shows a pairing code; on the Devices page, "Pair a phone" makes one. On the phone, tap "Scan the code" and allow the camera. A code works once, for 10 minutes. Without the camera, use "Paste the code" with the code text from under the QR code.
-
-Under the code, the page says where the phone will connect: the home address on your Wi-Fi, and the https address, normally Tailscale, everywhere else. Plain http is allowed only on the home address. With no away address, shifts wait on the phone until you are back home. If an address is wrong, choose Change address. More in [Phones and devices](phones-and-devices.md).
+Under the code, the page says where the phone will connect: the home address on your Wi-Fi, when the server has home network access on ([install guide, section 2a](../../infra/docs/install.md#2a-home-network-access-optional-recommended-for-a-home-server)), and the https address, normally Tailscale, everywhere else. Plain http is allowed only on the home address. With no away address, shifts wait on the phone until you are back home. If an address is wrong, choose Change address. More in [Phones and devices](phones-and-devices.md).
 
 The phone then shows "Connected", with your country, region and vehicles. If Vehicles says "None yet", add a vehicle on the web and tap Check again.
 

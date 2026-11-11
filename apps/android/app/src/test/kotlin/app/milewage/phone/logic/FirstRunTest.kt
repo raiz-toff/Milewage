@@ -19,7 +19,7 @@ private const val TOKEN = "mwp_abcdefghijklmnop"
 
 private fun code(base: String, home: String? = null) = PairingLinks.links(PairingLink(base, TOKEN, home)).first
 
-/** What the driver types, pastes or scans on Connect (the Expo app's connect and pairing.screen tests). */
+/** What the driver pastes or scans on Connect (the Expo app's connect and pairing.screen tests). */
 class ConnectInputTest {
     @Test
     fun `either form of a pairing code is a code to redeem`() {
@@ -44,18 +44,11 @@ class ConnectInputTest {
     }
 
     @Test
-    fun `a typed server address links with a code, http only at home`() {
-        assertEquals(ConnectInput.Address("http://192.168.1.20:8080"), ConnectInput.read("192.168.1.20:8080", release = true))
-        assertEquals(ConnectInput.Address("http://box.local:8080"), ConnectInput.read("box.local:8080/", release = true))
-        assertEquals(ConnectInput.Address("https://box.tail1234.ts.net"), ConnectInput.read("box.tail1234.ts.net", release = true))
-        assertEquals(ConnectInput.Address("https://box.tail1234.ts.net"), ConnectInput.read("https://box.tail1234.ts.net/", release = true))
-        assertEquals(ConnectInput.Refused(AddressProblem.INSECURE_OUTSIDE_HOME), ConnectInput.read("http://milewage.example.com", release = true))
-        assertEquals(ConnectInput.Refused(AddressProblem.THIS_COMPUTER), ConnectInput.read("localhost:3200", release = true))
-    }
-
-    @Test
-    fun `anything else is not a code`() {
-        listOf("", "hello", "milewage", "mwp_abcdefghijklmnop", "milewage://pair?v=2&u=x&t=y", "two words.com").forEach {
+    fun `anything else is not a code, a server address included`() {
+        listOf(
+            "", "hello", "milewage", "mwp_abcdefghijklmnop", "milewage://pair?v=2&u=x&t=y", "two words.com",
+            "192.168.1.20:8080", "https://box.tail1234.ts.net/", "localhost:3200",
+        ).forEach {
             assertEquals(ConnectInput.NotACode, ConnectInput.read(it, release = true), it)
         }
     }
@@ -117,16 +110,6 @@ class ConnectErrorTest {
         // A bad or used code: make a new one and scan it.
         assertEquals(ConnectFix.SCAN, ConnectError.Failed(ConnectFailure.InvalidCode).fix)
         assertEquals(ConnectFix.SCAN, ConnectError.NotACode.fix)
-    }
-
-    @Test
-    fun `linking failures in words, by the server's code`() {
-        assertEquals(LinkFailure.EXPIRED, LinkFailure.of(ApiException(410, ApiCodes.LINK_EXPIRED, false)))
-        assertEquals(LinkFailure.RATE_LIMITED, LinkFailure.of(ApiException(429, ApiCodes.RATE_LIMITED, true)))
-        assertEquals(LinkFailure.UNREACHABLE, LinkFailure.of(ApiException(0, ApiCodes.NETWORK, true)))
-        assertEquals(LinkFailure.NOT_SUPPORTED, LinkFailure.of(ApiException(404, "not_found", false)))
-        assertEquals(LinkFailure.APP_TOO_OLD, LinkFailure.of(ApiException(426, ApiCodes.UPGRADE_REQUIRED, false)))
-        assertEquals(LinkFailure.OTHER, LinkFailure.of(RuntimeException()))
     }
 }
 

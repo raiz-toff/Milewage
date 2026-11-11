@@ -7,6 +7,7 @@ import app.milewage.core.support.Recorded
 import app.milewage.core.support.SETTINGS
 import app.milewage.core.support.TestClock
 import app.milewage.core.support.json
+import app.milewage.core.support.paired
 import app.milewage.core.support.problem
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.jsonObject
@@ -52,7 +53,7 @@ class ApiClientTest {
     @Test
     fun sendsTheHeadersOfTheContract() = runTest {
         val server = settingsServer()
-        server.routes["POST /link-requests/poll"] = { json(202, """{"status":"pending"}""") }
+        server.routes["POST /pairing/redeem"] = { json(201, paired()) }
         client(server, token = "mwd_x").call(Api.settings)
         val get = server.calls.single()
         assertEquals("https://mw.example.net/api/v1/settings", get.url)
@@ -60,9 +61,8 @@ class ApiClientTest {
         assertEquals("1234", get.headers["X-Client-Time"])
         assertEquals("Bearer mwd_x", get.headers["Authorization"])
         assertNull(get.headers["Content-Type"])
-        val res = client(server).call(Api.pollLink, LinkPoll("mwl_x"))
-        assertEquals(202, res.status)
-        assertNull(res.body)
+        val res = client(server).call(Api.redeem, RedeemRequest("mwp_x", "Pixel 8", DevicePlatform.ANDROID))
+        assertEquals(201, res.status)
         val post = server.calls.last()
         assertEquals("application/json", post.headers["Content-Type"])
         assertNull(post.headers["Authorization"])
@@ -173,8 +173,7 @@ class ApiClientTest {
         assertEquals(ApiFailure.FORBIDDEN, f(403, "scope_forbidden"))
         assertEquals(ApiFailure.RESTORING, f(503, "restoring"))
         assertEquals(ApiFailure.SERVER_FULL, f(507, "insufficient_storage"))
-        assertEquals(ApiFailure.RATE_LIMITED, f(429, "slow_down"))
-        assertEquals(ApiFailure.LINK_EXPIRED, f(410, "link_expired"))
+        assertEquals(ApiFailure.RATE_LIMITED, f(429, "rate_limited"))
         assertEquals(ApiFailure.GONE, f(410, "cursor_expired"))
         assertEquals(ApiFailure.NOT_FOUND, f(404, "shift_not_found"))
         assertEquals(ApiFailure.TOO_LARGE, f(413, "payload_too_large"))

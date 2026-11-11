@@ -10,9 +10,8 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
   - [ ] Before installing, open the old Expo app, let it send everything and end any shift.
         Install the new APK over it: it installs (same id and key) and starts empty. Pair it again;
         revoke the old entry on the Devices page.
-  - [ ] First run on the home Wi-Fi: the server appears under "On this Wi-Fi", the 6-digit code
-        links it from the Devices page. Then unpair (Settings > "Connect to a different server")
-        and pair with the QR scanner (try the torch), and once with "Paste the code".
+  - [ ] First run: pair with the QR scanner (try the torch). Then unpair (Settings > "Connect to
+        a different server") and pair once with "Paste the code".
   - [ ] Scan the QR with the phone's camera app, open the page, "Open in the MileWage app":
         "Connect to this server?", and Settings shows both addresses.
   - [ ] The permissions screen: each row's button opens the right system page, "Allow all the

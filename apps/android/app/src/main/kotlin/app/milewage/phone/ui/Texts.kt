@@ -10,7 +10,6 @@ import app.milewage.data.prefs.AppTheme
 import app.milewage.phone.R
 import app.milewage.phone.logic.ConnectError
 import app.milewage.phone.logic.ConnectFix
-import app.milewage.phone.logic.LinkFailure
 import app.milewage.phone.logic.PermAction
 import app.milewage.phone.logic.PermState
 import app.milewage.phone.logic.PermStepId
@@ -198,16 +197,6 @@ object Texts {
         ConnectFix.TRY_AGAIN -> R.string.try_again
         ConnectFix.OPEN_TAILSCALE -> R.string.tailscale_open
         ConnectFix.SCAN -> R.string.fix_scan
-    }
-
-    @StringRes
-    fun linkFailure(f: LinkFailure): Int = when (f) {
-        LinkFailure.EXPIRED -> R.string.link_expired
-        LinkFailure.RATE_LIMITED -> R.string.link_rate_limited
-        LinkFailure.UNREACHABLE -> R.string.link_unreachable
-        LinkFailure.NOT_SUPPORTED -> R.string.link_not_supported
-        LinkFailure.APP_TOO_OLD -> R.string.err_app_too_old
-        LinkFailure.OTHER -> R.string.link_other
     }
 
     @StringRes

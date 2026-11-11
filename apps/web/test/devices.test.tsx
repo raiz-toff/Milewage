@@ -30,41 +30,11 @@ const code = (base = 'https://host', source = 'request', away: string | null = n
   };
 };
 
-const galaxy = {
-  id: 7,
-  device_name: 'Galaxy S24',
-  platform: 'android',
-  from: '192.168.1.42',
-  created_at: 1_700_000_000_000,
-  expires_at: 1_700_000_600_000,
-};
-
-function server(initial = [phone()], apk = false, base = 'https://host', waiting: object[] = []) {
+function server(initial = [phone()], apk = false, base = 'https://host') {
   let devices = initial;
-  let asking = waiting;
   const table = {
     ...signedIn(),
     'GET /devices': () => ({ body: devices }),
-    'GET /link-requests': () => ({ body: asking }),
-    'POST /link-requests/approve': ({ body }: { body: { user_code: string } }) => {
-      if (body.user_code.replace(/\s/g, '') !== '482913') {
-        return {
-          status: 422,
-          body: {
-            code: 'invalid_link_code',
-            detail:
-              'That code does not match a phone waiting to link. Check the code on the phone.',
-          },
-        };
-      }
-      asking = [];
-      devices = [...devices, phone({ id: 2, name: 'Galaxy S24' })];
-      return { body: { id: 7, device_name: 'Galaxy S24' } };
-    },
-    'DELETE /link-requests/7': () => {
-      asking = [];
-      return { status: 204 };
-    },
     'POST /pairing-tokens': ({ body }: { body?: { base_url?: string } }) =>
       body?.base_url === 'https://nope'
         ? {
@@ -96,6 +66,8 @@ describe('devices page', () => {
     server();
     expect(await screen.findByText('Pixel')).toBeTruthy();
     expect(screen.getByText('active')).toBeTruthy();
+    // Pairing is by the QR code or the code pasted on the phone; nothing links with a typed code.
+    expect(screen.queryByText(/Link a phone/)).toBeNull();
   });
 
   it('shows an empty state', async () => {
@@ -164,7 +136,6 @@ describe('devices page', () => {
       {
         ...signedIn(),
         'GET /devices': () => ({ body: shown }),
-        'GET /link-requests': () => ({ body: [] }),
         'POST /pairing-tokens': () => ({ status: 201, body: code() }),
       } as never,
       '/devices',
@@ -189,32 +160,6 @@ describe('devices page', () => {
     );
     expect(screen.queryByRole('note')).toBeNull();
     expect(screen.getByRole('img', { name: 'Pairing code' })).toBeTruthy();
-  });
-
-  it('links a phone found on the Wi-Fi: the driver types the code the phone shows', async () => {
-    const { calls } = server([phone()], false, 'https://host', [galaxy]);
-    const ask = await screen.findByRole('listitem', { name: 'Galaxy S24 wants to link' });
-    expect(ask.textContent).toContain('Galaxy S24 wants to link (from 192.168.1.42)');
-    const field = within(ask).getByLabelText('Code shown on the phone');
-    fireEvent.change(field, { target: { value: '111111' } });
-    fireEvent.click(within(ask).getByRole('button', { name: 'Link' }));
-    expect(
-      await screen.findByText(/That code does not match a phone waiting to link/),
-    ).toBeTruthy();
-    fireEvent.change(field, { target: { value: '482 913' } });
-    fireEvent.keyDown(field, { key: 'Enter' });
-    expect(await screen.findByText('Galaxy S24 is linked.')).toBeTruthy();
-    expect(await screen.findByText('Galaxy S24')).toBeTruthy(); // in the list of phones
-    const approvals = calls.filter((c) => c.path === '/link-requests/approve').map((c) => c.body);
-    expect(approvals).toEqual([{ user_code: '111111' }, { user_code: '482 913' }]);
-  });
-
-  it('Not my phone drops the request; with none waiting it says so', async () => {
-    const { calls } = server([phone()], false, 'https://host', [galaxy]);
-    const ask = await screen.findByRole('listitem', { name: 'Galaxy S24 wants to link' });
-    fireEvent.click(within(ask).getByRole('button', { name: 'Not my phone' }));
-    expect(await screen.findByText('No phone is waiting to link yet.')).toBeTruthy();
-    expect(calls.some((c) => c.method === 'DELETE' && c.path === '/link-requests/7')).toBe(true);
   });
 
   it.each([

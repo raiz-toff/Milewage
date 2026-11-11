@@ -17,8 +17,7 @@ issue #6).
 empty: nothing is carried over. Before installing it, open the old app on a connection to your
 server, let it send every shift (its banner says when everything is on the server) and end any
 running shift; anything the old app has not sent is lost with the update. Then install the new
-app, pair it again (QR code, or the link code on your home Wi-Fi), and revoke the old entry on the
-Devices page. It needs Android 8.0 or later: Android 7 is no longer supported.
+app, pair it again with the QR code, and revoke the old entry on the Devices page. It needs Android 8.0 or later: Android 7 is no longer supported.
 
 **After upgrading: the engine.** The track engine is now version 4 (ADR 0006). Install the phone
 app built from this release too, so the phone and the server count the same way; until then a
@@ -43,8 +42,7 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   tunnel, after the app is killed, after a force stop and after a reboot.
 - Battery over a long shift.
 - Phone makers' battery savers that stop background apps (Samsung, Xiaomi, Huawei and others).
-- The QR scanner (CameraX and ZXing) on real cameras, and finding the server on the Wi-Fi (NSD) on
-  real routers; a phone without Google services.
+- The QR scanner (CameraX and ZXing) on real cameras; a phone without Google services.
 - The tax treatment of parking and tolls (deducted in full, beside the mileage rate), and every
   mileage rate and tax figure, against the tax offices' own pages.
 - The PDF report in a real viewer and printer.
@@ -70,8 +68,8 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   quarterly amount show only when it is on; `PUT /tax/{year}` takes `pays_instalments`, and the
   report carries it with `instalments_note` from the country data.
 
-- The native Android app (`apps/android`): first run with pairing (the server found on the home
-  Wi-Fi with a 6-digit link code, the QR scanner, a pasted code or address, Tailscale), one
+- The native Android app (`apps/android`): first run with pairing (the QR scanner, a pasted code,
+  Tailscale), one
   permissions screen, Home with the summary, the sending banner, the setup checklist and Start
   shift, the running shift with time, distance and the deduction so far, Shifts by week, a shift's
   detail with the route sketch, trips (change a trip's kind and purpose, add a trip), stops,
@@ -262,6 +260,21 @@ you choose Your rate there; in a country without rates in MileWage it is used as
   driving. Start a shift?" question when no shift ran, its switch in Settings, the "Watching for
   drives" notification and the drive detection behind it. A shift starts only from Start shift.
   "Still on shift?", battery saving while stopped and resuming after a kill or a restart stay.
+- Finding the server on the home Wi-Fi and linking a phone with a 6-digit code, there since 0.1.0
+  when LAN access was on: "On this Wi-Fi" and Link this phone in the phone app, "Link a phone
+  on your Wi-Fi" on the Devices page and in the setup wizard's phone step, the `/link-requests`
+  operations and their error codes (`link_expired`, `invalid_link_code`, `slow_down`), the
+  `lan-discovery` service in the compose files with its `advertise.mjs`, its settings
+  (`MILEWAGE_ADVERTISE_PORT`, `MILEWAGE_HEALTH_URL`, `MILEWAGE_ADVERTISE_NAME`) and the `lan`
+  profile `install.sh --lan` wrote, the dev server's announcement and `MILEWAGE_LAN_DISCOVERY`,
+  and the phone's Wi-Fi multicast permission. A phone pairs with the QR code or the pasted code,
+  as before; the 0.2.0 phone app no longer finds the server on the Wi-Fi and pairs the same way.
+  LAN access and the home address stay: a pairing code still carries the home address, and a
+  paired phone still uses it on the home Wi-Fi. A phone whose server moves to a new home address
+  is paired again to learn it. Link requests lived in memory, so upgrading deletes nothing; a
+  `COMPOSE_PROFILES=lan` left in `.env` starts nothing. The old `lan-discovery` container keeps
+  running until `up -d --remove-orphans` (`infra/docs/upgrade.md`). The server no longer depends
+  on `@homebridge/ciao` (2 packages left the lockfile).
 
 ### Fixed
 

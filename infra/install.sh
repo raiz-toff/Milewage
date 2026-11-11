@@ -2,8 +2,7 @@
 # MileWage first-run script for a home-lab host (10 section 8, install guide: infra/docs/install.md).
 # Writes infra/docker/.env (never overwrites one), builds and starts the stack, waits until it is healthy.
 #
-# LAN access (plan 28): phones on the home Wi-Fi connect over plain http and find the server by
-# themselves. Then the Tailscale step (plan 19 section 3.4): asks, runs `tailscale serve`, writes
+# LAN access (plan 28): phones on the home Wi-Fi connect over plain http. Then the Tailscale step (plan 19 section 3.4): asks, runs `tailscale serve`, writes
 # MILEWAGE_PUBLIC_URL, so phones also connect away from home.
 #
 # Usage: infra/install.sh [--port N] [--subnet CIDR] [--env-file PATH] [--no-start]
@@ -91,7 +90,7 @@ lan_ip() {
   esac
 }
 
-# LAN access (plan 28 section 4.6). Asked only in a terminal; the answer is kept in the .env.
+# LAN access (plan 28). Asked only in a terminal; the answer is kept in the .env.
 if [ -z "$lan_answer" ] && [ -t 0 ] && ! grep -q '^MILEWAGE_BIND_ADDRESS=' "$env_file"; then
   printf 'Let phones on your home Wi-Fi connect without Tailscale (plain http, this network only)? [Y/n] '
   read -r lan_answer || lan_answer=n
@@ -106,14 +105,12 @@ if [ "$lan_answer" = y ]; then
     lan_port="$(sed -n 's/^MILEWAGE_HOST_PORT=//p' "$env_file")"
     set_env MILEWAGE_BIND_ADDRESS 0.0.0.0
     set_env MILEWAGE_HOME_URL "http://$addr:${lan_port:-8080}"
-    set_env COMPOSE_PROFILES lan
-    echo "LAN access on: phones on your Wi-Fi use http://$addr:${lan_port:-8080} and find it by themselves."
+    echo "LAN access on: phones on your Wi-Fi use http://$addr:${lan_port:-8080}."
     echo "Traffic on your home network is not encrypted; see infra/docs/install.md section 2a."
   fi
 elif [ "$lan_answer" = n ]; then
   set_env MILEWAGE_BIND_ADDRESS 127.0.0.1
   set_env MILEWAGE_HOME_URL ''
-  set_env COMPOSE_PROFILES ''
 fi
 
 if [ "$start" = 0 ]; then

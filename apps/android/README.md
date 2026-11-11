@@ -4,7 +4,7 @@ The native Android app: Kotlin, Jetpack Compose and Material 3. It replaced the 
 from the repository on 2026-11-10) and installs over it (same application id `app.milewage.phone`,
 same upload key). It starts empty: the driver pairs it again (see `data/README.md`).
 The engine port, storage, tracking, sending and every screen are in: first run with pairing (QR
-scanner, link code on the home Wi-Fi, a pasted code or address, Tailscale), the setup steps, the
+scanner, a pasted code, Tailscale), the setup steps, the
 permissions ladder, Home, the running shift, Shifts, a shift's detail, Settings and Diagnostics.
 
 ## Modules
@@ -113,10 +113,10 @@ formatters in the driver's unit, currency, zone and 12/24 h).
 run while not paired, the setup steps after a first connection (`pairing.setupPending()`), then the
 app. It moves between them by itself when the pairing changes; no screen navigates there.
 
-**Screens.** First run (`ui/firstrun`): Welcome, Set up your server, Connect (servers announced on
-this Wi-Fi, the scanner, a link that opened the app with "Connect to this server?", a pasted code or a
-typed server address), the scanner (CameraX `camera-compose` `CameraXViewfinder`, `:data`'s ZXing
-`QrFrameAnalyzer`), Link this phone (6-digit code), Tailscale; then Connected, the permissions and
+**Screens.** First run (`ui/firstrun`): Welcome, Set up your server, Connect (the scanner, a link
+that opened the app with "Connect to this server?", a pasted code, and Set up Tailscale for away from
+home), the scanner (CameraX `camera-compose` `CameraXViewfinder`, `:data`'s ZXing
+`QrFrameAnalyzer`), Tailscale; then Connected, the permissions and
 Ready. Permissions (`ui/permissions`, the ladder in `logic/Permissions.kt`): the Location switch,
 precise location, "Allow all the time" asked on its own after it, notifications, battery (the system's
 exemption list; `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` stays out of the manifest), local network on

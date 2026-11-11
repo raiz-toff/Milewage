@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { LinkAPhone } from '../pairing/LinkAPhone';
 import { PairingCode } from '../pairing/PairingCode';
 import { usePairingSession } from '../pairing/session';
 import { StepForm } from './StepForm';
@@ -7,7 +6,7 @@ import type { StepProps } from './steps';
 
 /**
  * Pair the phone (module `devices`): the pairing session the Devices page uses too. It shows the
- * code and waits for the phone (a scanned code or a link code on the Wi-Fi); once one appears, the
+ * code and waits for the phone (a scanned or pasted code); once one appears, the
  * wizard reads its data again and the step says which phone is paired.
  */
 export function PairStep({ ctx, next }: StepProps) {
@@ -31,8 +30,6 @@ export function PairStep({ ctx, next }: StepProps) {
           <p className="text-body-medium text-muted-foreground">
             Pair your phone with this server. The phone records your shifts and sends them here.
           </p>
-          <LinkAPhone />
-          <p className="text-title-small">Or scan a code</p>
           <PairingCode session={session} />
           <p role="status" className="text-body-medium text-muted-foreground">
             Waiting for your phone…

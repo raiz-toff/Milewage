@@ -76,7 +76,7 @@ The phone app is updated separately. After a server upgrade, install the matchin
 
 ## The server moved
 
-**A new address on your home network**, for example after the router gave the server machine a new one. On your Wi-Fi, when the old home address stops answering, the phone looks for your server, at most once every 10 minutes. If your server announces itself at a new address, the phone switches to it by itself. Then give the server a fixed address on your router and run `infra/install.sh --lan` again, so new pairing codes carry the right home address. See [Home network access](../../infra/docs/install.md#2a-home-network-access-optional-recommended-for-a-home-server).
+**A new address on your home network**, for example after the router gave the server machine a new one. On your Wi-Fi the phone no longer reaches the old home address, so it uses the away address, or keeps shifts on the phone when there is none. Give the server a fixed address on your router and run `infra/install.sh --lan` again, so new pairing codes carry the right home address. Then pair the phone again so it learns the new one. See [Home network access](../../infra/docs/install.md#2a-home-network-access-optional-recommended-for-a-home-server).
 
 **A new machine.** Restore your latest backup onto it, as [Backups and the recovery key](backups-and-recovery-key.md#restore-onto-a-new-server) says. A restored server is still the same server to your phones. If its Tailscale address changed, pair each phone again.
 

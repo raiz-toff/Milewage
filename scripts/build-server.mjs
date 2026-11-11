@@ -23,8 +23,6 @@ export async function buildServer(outDir = join(root, 'dist')) {
     entryPoints: {
       server: join(root, 'apps/server/src/main.ts'),
       cli: join(root, 'apps/server/src/cli-main.ts'),
-      // advertise.mjs announces the server on the home network (plan 28 section 4.6).
-      advertise: join(root, 'apps/server/src/advertise-main.ts'),
     },
     outdir: outDir,
     outExtension: { '.js': '.mjs' },

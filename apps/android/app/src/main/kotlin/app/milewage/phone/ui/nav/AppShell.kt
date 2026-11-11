@@ -2,8 +2,6 @@ package app.milewage.phone.ui.nav
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
@@ -38,20 +36,15 @@ import app.milewage.data.connect.AndroidNet
 import app.milewage.phone.R
 import app.milewage.phone.logic.ConnectFix
 import app.milewage.phone.logic.Gate
-import app.milewage.phone.logic.PermStepId
 import app.milewage.phone.model.Countries
-import app.milewage.phone.platform.ActivityPermissions
 import app.milewage.phone.ui.ViewModels
 import app.milewage.phone.ui.components.LocalSnackbars
 import app.milewage.phone.ui.components.MileWageSnackbarHost
 import app.milewage.phone.ui.components.Snackbars
 import app.milewage.phone.ui.firstrun.ConnectActions
 import app.milewage.phone.ui.firstrun.ConnectContent
-import app.milewage.phone.ui.firstrun.ConnectEvent
 import app.milewage.phone.ui.firstrun.ConnectViewModel
 import app.milewage.phone.ui.firstrun.ConnectedContent
-import app.milewage.phone.ui.firstrun.LinkContent
-import app.milewage.phone.ui.firstrun.LinkViewModel
 import app.milewage.phone.ui.firstrun.ReadyContent
 import app.milewage.phone.ui.firstrun.SERVER_STEPS
 import app.milewage.phone.ui.firstrun.ScanRoute as ScanScreenRoute
@@ -227,17 +220,6 @@ private fun androidx.navigation.NavGraphBuilder.firstRun(nav: NavHostController,
         composable<ConnectRoute> { backStack ->
             val vm = connectViewModel(nav, backStack)
             val state by vm.state.collectAsStateWithLifecycle()
-            LaunchedEffect(vm) {
-                vm.events.collect { e ->
-                    when (e) {
-                        is ConnectEvent.OpenLink -> nav.navigate(LinkRoute(e.url, e.name))
-                    }
-                }
-            }
-            LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { if (state.nearby !is app.milewage.phone.logic.Nearby.Found) vm.look() }
-            // Android 17 at targetSdk 37: local network access is asked before looking on the Wi-Fi.
-            val context = LocalContext.current
-            val localNetwork = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { vm.look() }
             val actions = remember(vm) {
                 object : ConnectActions {
                     override fun back() {
@@ -248,16 +230,7 @@ private fun androidx.navigation.NavGraphBuilder.firstRun(nav: NavHostController,
 
                     override fun submit(text: String) = vm.submit(text)
 
-                    override fun pick(server: app.milewage.core.connect.FoundServer) = nav.navigate(LinkRoute(server.url, server.name))
-
-                    override fun lookAgain() = vm.look()
-
                     override fun tailscale() = nav.navigate(TailscaleRoute)
-
-                    override fun allowLocalNetwork() {
-                        ActivityPermissions.markAsked(context, PermStepId.LOCAL_NETWORK)
-                        localNetwork.launch(AndroidNet.ACCESS_LOCAL_NETWORK)
-                    }
 
                     override fun fix(fix: ConnectFix) = when (fix) {
                         ConnectFix.TRY_AGAIN -> vm.retry()
@@ -287,16 +260,10 @@ private fun androidx.navigation.NavGraphBuilder.firstRun(nav: NavHostController,
                 onPasteInstead = { nav.popBackStack() },
             )
         }
-        composable<LinkRoute> { backStack ->
-            val route = backStack.toRoute<LinkRoute>()
-            val vm: LinkViewModel = viewModel(key = route.url, factory = ViewModels.link(route.url))
-            val state by vm.state.collectAsStateWithLifecycle()
-            LinkContent(route.name, route.url, state, onRetry = vm::start, onCancel = { nav.popBackStack() })
-        }
         composable<TailscaleRoute> {
             val vm: TailscaleViewModel = viewModel(factory = ViewModels.tailscale())
             val state by vm.state.collectAsStateWithLifecycle()
-            // Back from Tailscale or the app store: look again.
+            // Back from Tailscale or the app store: check again.
             LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.refresh() }
             TailscaleContent(state, onOpen = vm::open, onContinue = { nav.popBackStack() }, onBack = { nav.popBackStack() })
         }

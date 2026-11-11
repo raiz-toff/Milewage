@@ -3,7 +3,7 @@
 Storage, the server connection, secure storage, the shift model, sending and diagnostics. The logic
 that is not Android lives in `:core` so it runs on the JVM in tests and can become Kotlin
 Multiplatform code: `app.milewage.core.api` (models, encoder, client), `app.milewage.core.connect`
-(home or away, discovery, messages), `app.milewage.core.pairing` (codes, links, credential, device
+(home or away, messages), `app.milewage.core.pairing` (codes, links, credential, device
 session), `app.milewage.core.shift` (start, end, the engine run, recovery, edits, summary),
 `app.milewage.core.sync` (outbox, sending, change log, restore resend, status, reminders, retention)
 and `app.milewage.core.diagnostics` (allowlist, ring, upload). The app reaches all of it through one
@@ -22,7 +22,7 @@ and its tests carry the Expo tests' cases.
 - Failures are one type, `ApiException(status, code, retryable, retryAfterS, problem)`, with
   `failure: ApiFailure` for the screens and senders (unreachable, insecure address, wrong server,
   not MileWage, revoked, unauthorised, app too old (426), API version unsupported, read-only,
-  restoring, server full, rate limited, invalid code, link expired, ...). The phone's own codes are
+  restoring, server full, rate limited, invalid code, ...). The phone's own codes are
   in `ApiCodes` (`network`, `bad_response`, `insecure_address`, `wrong_server`, `not_milewage`,
   `api_unsupported`); the rest are the server's Problem codes.
 - Shift changes are built once by `ShiftRequests.encode(ShiftChange)` (the port of
@@ -73,9 +73,8 @@ allowed". The server validates its own merged object, so the check merges `allOf
   an away address (https, through Tailscale). `RoutePicker` uses home when the phone is on Wi-Fi or
   Ethernet and `GET <home>/healthz` answers within 1.5 s as a MileWage server with the paired
   instance id (`HealthProbe`); otherwise away. On mobile data it does not try home. The choice is kept
-  for a minute and dropped when a request gets no answer. On Wi-Fi with a silent home address it
-  looks (at most every 10 minutes, in the background) for the same instance on the Wi-Fi and keeps its
-  new address (`Pairing.updateHome`, home addresses only).
+  for a minute and dropped when a request gets no answer. A server that moved to a new home
+  address is paired again to learn it.
 - **Plain http only to a home address.** `ApiClient` refuses before building anything, and
   `HomeOnlyCleartext` in OkHttp refuses every hop, redirects included. The home address stored at
   pairing is always a home address (`HomeAddress`), so it passes the gate; a server's answer cannot
@@ -84,16 +83,11 @@ allowed". The server validates its own merged object, so the check merges `allOf
   halts the device session (`WRONG_SERVER`): nothing is sent until the driver re-pairs. An answer
   without the header (a captive portal) is not a wrong server. Every other answer goes to
   `PairingDeps.onAnswer` with its restore generation, for the sending task's restore check.
-- **Discovery.** `NsdDiscovery` browses `_milewage._tcp` with the platform NsdManager for 4 s and
-  resolves each service (`registerServiceInfoCallback` on Android 14+, `resolveService` before).
-  `Discovery.serversFrom` keeps record version 1 on home addresses only. Older phones (before
-  T extensions 7) need a Wi-Fi multicast lock to receive mDNS: `CHANGE_WIFI_MULTICAST_STATE`
-  (normal, no prompt) is in the manifest and the policy list; the lock is held only while browsing.
 - **Android 17.** At targetSdk 36 local network access comes with INTERNET and the platform docs
   say not to declare `ACCESS_LOCAL_NETWORK`. When targetSdk becomes 37 it is a runtime permission
-  (NEARBY_DEVICES group) for discovery and for any connection to the home address: add it to the
-  manifest and the policy list, and ask before discovery or a home request while
-  `AndroidNet.localNetworkPermissionNeeded()` is true.
+  (NEARBY_DEVICES group) for any connection to the home address: add it to the manifest and the
+  policy list, and ask before a home request while `AndroidNet.localNetworkPermissionNeeded()` is
+  true (the permissions screen has the step).
 - **Messages.** `Reach.addressProblem` (before connecting) and `Reach.explainFailure` (after) return
   types, not words; each case's KDoc has the Expo app's English for strings.xml.
 
@@ -105,9 +99,6 @@ allowed". The server validates its own merged object, so the check merges `allOf
   address. Check `Reach.addressProblem(link.baseUrl, release)` first. A link that opens the app goes
   through `IncomingLinks.accept` (once per link) and `IncomingLinks.decide` (already paired: say so,
   never switch servers silently).
-- **Link code on the home Wi-Fi**: `net.discover()`, then `pairing.startLink(server.url)` (show
-  `userCode`), then `pairing.awaitLink(url, start)` (polls at the interval, slows down on
-  `slow_down`, throws `link_expired`), or `pollLink` one at a time.
 - **Storage.** The credential (`Credential`, with the token) is JSON in the Keystore-backed
   `SecretStore` under `pairing.credential`; the cached settings, the setup flag and a stored revoke
   are in the `pairing` DataStore file. A credential the Keystore can no longer open reads as
@@ -329,9 +320,9 @@ class MileWageData {
 
     // Parts
     val store: RoomLocalStore
-    val pairing: Pairing                      // status, redeem, link, unpair, device halts
+    val pairing: Pairing                      // status, redeem, unpair, device halts
     val binding: ServerBinding                // which server each shift belongs to; `view` is sending's store
-    val connection: ServerConnection?         // net (Tailscale, discovery), route
+    val connection: ServerConnection?         // net (Tailscale), route
     val shifts: ShiftModel
     val sender: Sender
     val diagnostics: PhoneDiagnostics

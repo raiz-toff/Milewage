@@ -3,7 +3,7 @@
 // (kept across restarts, ignored by git), and the web dev server that proxies /api to it.
 // MILEWAGE_DEV_PORT moves the API to another port when 3000 is taken on this machine.
 // Ctrl-C stops both. With `npm run dev -- --host` (Vite on the LAN) the API is also given its home
-// address and the server is announced on the Wi-Fi (plan 28); MILEWAGE_LAN_DISCOVERY=0 turns it off.
+// address (plan 28), which pairing codes carry for phones.
 import { spawn } from 'node:child_process';
 import { networkInterfaces } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -16,7 +16,7 @@ const dev = join(root, '.dev');
 const apiPort = process.env.MILEWAGE_DEV_PORT ?? '3000';
 
 await buildServer();
-const lan = devLan(process.argv.slice(2), process.env, networkInterfaces());
+const lan = devLan(process.argv.slice(2), networkInterfaces());
 
 const children = [
   spawn(process.execPath, [join(root, 'dist/server.mjs')], {
@@ -39,20 +39,7 @@ const children = [
     env: { ...process.env, MILEWAGE_DEV_API: `http://127.0.0.1:${apiPort}` },
   }),
 ];
-if (lan) {
-  console.log(`Home address for phones: ${lan.homeUrl} (announced on the Wi-Fi as _milewage._tcp)`);
-  children.push(
-    spawn(process.execPath, [join(root, 'dist/advertise.mjs')], {
-      cwd: root,
-      stdio: 'inherit',
-      env: {
-        ...process.env,
-        MILEWAGE_ADVERTISE_PORT: String(lan.port),
-        MILEWAGE_HEALTH_URL: `http://127.0.0.1:${apiPort}/healthz`,
-      },
-    }),
-  );
-}
+if (lan) console.log(`Home address for phones: ${lan.homeUrl}`);
 
 const stop = () => children.forEach((c) => c.exitCode === null && c.kill('SIGTERM'));
 process.on('SIGINT', stop);

@@ -18,10 +18,6 @@ class Endpoint<Req, Res>(
     val response: KSerializer<Res>,
     /** Success statuses whose body is [response]. */
     val bodyStatuses: Set<Int>,
-    /** Success statuses whose body the phone does not read (the answer's `body` is null). */
-    val emptyStatuses: Set<Int> = emptySet(),
-    /** Other success bodies, for the drift check only (202 pending of the link poll). */
-    val otherBodies: Map<Int, KSerializer<*>> = emptyMap(),
     /** Sent with the device token. */
     val auth: Boolean = true,
     /** The body goes gzipped. */
@@ -50,19 +46,10 @@ object Api {
         "getHealth", HttpMethod.GET, "/healthz", null, Health.serializer(), setOf(200), auth = false, root = true,
     )
 
-    // Pairing and linking: no device token yet.
+    // Pairing: no device token yet.
     val redeem = Endpoint(
         "redeemPairingToken", HttpMethod.POST, "/pairing/redeem",
         RedeemRequest.serializer(), Paired.serializer(), setOf(201), auth = false,
-    )
-    val startLink = Endpoint(
-        "createLinkRequest", HttpMethod.POST, "/link-requests",
-        LinkRequestCreate.serializer(), LinkStarted.serializer(), setOf(201), auth = false,
-    )
-    val pollLink = Endpoint(
-        "pollLinkRequest", HttpMethod.POST, "/link-requests/poll",
-        LinkPoll.serializer(), Paired.serializer(), setOf(201),
-        emptyStatuses = setOf(202), otherBodies = mapOf(202 to LinkPending.serializer()), auth = false,
     )
 
     val settings = Endpoint<Unit, Settings>("getSettings", HttpMethod.GET, "/settings", null, Settings.serializer(), setOf(200))
@@ -108,7 +95,7 @@ object Api {
     )
 
     val all: List<Endpoint<*, *>> = listOf(
-        health, redeem, startLink, pollLink, settings, vehicles,
+        health, redeem, settings, vehicles,
         startShift, updateShift, setOdometer, putTripOverride, putManualTrip, endShift,
         uploadPoints, pullChanges, diagnostics,
     )

@@ -18,17 +18,13 @@ object WelcomeRoute
 @Serializable
 object ServerSetupRoute
 
-/** The ways to connect: this Wi-Fi, the QR code, a link, the code or address typed. */
+/** The ways to connect: the QR code, a link, the code pasted. */
 @Serializable
 object ConnectRoute
 
 /** The camera, reading the pairing QR. */
 @Serializable
 object ScanRoute
-
-/** Linking with a 6-digit code at a server found on the Wi-Fi (or typed). [name]: what to call it. */
-@Serializable
-data class LinkRoute(val url: String, val name: String)
 
 @Serializable
 object TailscaleRoute

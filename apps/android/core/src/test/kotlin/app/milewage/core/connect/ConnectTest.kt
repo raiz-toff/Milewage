@@ -16,32 +16,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** discover.test.ts, connect.test.ts (address checks), homeaway.test.ts and awayhints.test.tsx (the picker). */
+/** connect.test.ts (address checks), homeaway.test.ts and awayhints.test.tsx (the picker). */
 class ConnectTest {
-    // ---- servers found on the Wi-Fi (plan 28 section 4.5)
-
-    @Test
-    fun keepsHomeAddressesOnlyReadsTheRecordAndListsEachAddressOnce() {
-        fun a(host: String, txt: Map<String, String> = mapOf("v" to "1", "id" to "inst-1"), port: Int = 8080) =
-            Announcement("MileWage (box)", host, port, txt)
-        assertEquals(
-            listOf(
-                FoundServer("MileWage (box)", HOME, "inst-1"),
-                FoundServer("MileWage (box)", "http://[fd12::5]:8080", null),
-            ),
-            Discovery.serversFrom(
-                listOf(
-                    a("192.168.1.20"),
-                    a("192.168.1.20"), // announced on two interfaces
-                    a("fd12::5", mapOf("v" to "1")),
-                    a("8.8.8.8"), // an announcement cannot send the phone to the internet
-                    a("192.168.1.21", mapOf("v" to "2")), // a later record version
-                    a("192.168.1.22", emptyMap(), 0),
-                ),
-            ),
-        )
-    }
-
     // ---- network state (net-check's LocalNetworkTest and VpnStateTest)
 
     @Test
@@ -168,55 +144,6 @@ class ConnectTest {
         HealthProbe.over(HttpTransport { seen += it; HttpResponse(200, HttpHeaders(mw), ByteArray(0)) })("$HOME/", null)
         assertEquals("$HOME/healthz", seen.single().url)
         assertEquals(RouteTimes.PROBE_MS, seen.single().timeoutMs)
-    }
-
-    // ---- a server that moved on the Wi-Fi (plan 28 section 6, H8)
-
-    private val moved = "http://192.168.1.31:8080"
-
-    @Test
-    fun onWifiWithASilentHomeAddressItLooksForTheSameServerAtMostEvery10Minutes() = runTest {
-        val clock = TestClock(0)
-        val found = mutableListOf<String>()
-        val looked = mutableListOf<String>()
-        val r = RoutePicker(
-            localNetwork = { true },
-            probe = { url, _ -> url == moved },
-            clock = clock,
-            scope = this,
-            rediscover = { id -> looked += id; moved },
-            onHomeMoved = { found += it },
-        )
-        val homeBoth = Addresses(HOME, HOME, AWAY, "inst-1")
-        assertEquals(Where.AWAY, r.pick(homeBoth).where) // this request goes away meanwhile
-        testScheduler.advanceUntilIdle()
-        assertEquals(listOf(moved), found)
-        assertEquals(listOf("inst-1"), looked)
-        r.forget()
-        r.pick(homeBoth)
-        testScheduler.advanceUntilIdle()
-        assertEquals(1, looked.size)
-        clock.now = RouteTimes.REDISCOVER_MS
-        r.forget()
-        r.pick(homeBoth)
-        testScheduler.advanceUntilIdle()
-        assertEquals(2, looked.size)
-    }
-
-    @Test
-    fun neverLooksAroundOnMobileData() = runTest {
-        val looked = mutableListOf<String>()
-        val r = RoutePicker(
-            localNetwork = { false },
-            probe = { _, _ -> false },
-            clock = TestClock(0),
-            scope = this,
-            rediscover = { id -> looked += id; moved },
-            onHomeMoved = {},
-        )
-        r.pick(Addresses(HOME, HOME, AWAY, "inst-1"))
-        testScheduler.advanceUntilIdle()
-        assertEquals(emptyList(), looked)
     }
 
     // ---- identity on every answer (15 section 9.4)

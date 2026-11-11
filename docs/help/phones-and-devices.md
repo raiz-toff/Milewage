@@ -1,5 +1,5 @@
 ---
-summary: Pairing a phone by QR code or link code, the home and away addresses, what a paired phone can do, and revoking one.
+summary: Pairing a phone by QR code, the home and away addresses, what a paired phone can do, and revoking one.
 group: using
 order: 100
 module: devices
@@ -28,19 +28,6 @@ The setup wizard has the same step, "Pair your phone".
 
 If the phone says the code is not valid, has expired or was already used, choose "Pair a phone" again for a new code.
 
-## Link a phone on your home Wi-Fi
-
-When your server has home network access on, the phone finds it by itself. The install guide explains it in [Home network access](../../infra/docs/install.md#2a-home-network-access-optional-recommended-for-a-home-server).
-
-1. Put the phone on your home Wi-Fi, open MileWage and tap "I have a server".
-2. Under "On this Wi-Fi", tap your server. The phone shows a 6-digit link code under "Link this phone".
-3. On a computer, open the Devices page. Under "Link a phone on your Wi-Fi" the phone appears as "wants to link", with its name and address.
-4. Type the code in "Code shown on the phone" and choose Link.
-
-If the phone on the list is not yours, choose "Not my phone". A waiting phone is dropped after 10 minutes, or when the server restarts. Then tap "Get a new code" on the phone.
-
-If the phone finds nothing, tap "Look again". If it still finds nothing, pair with the QR code instead. On Android 17 the phone first asks to let MileWage look for devices on your local network: allow it.
-
 ## Home and away addresses
 
 A paired phone can know two addresses for your server:
@@ -52,7 +39,7 @@ A paired phone can know two addresses for your server:
 
 The pairing code carries both when the server knows both. Under the QR code the page shows them as "At home" and "Away".
 
-On Wi-Fi the phone first tries the home address. If your own server answers there within a second and a half, it uses it. Otherwise it uses the away address. It remembers the choice for a minute, and looks again as soon as a request gets no answer.
+On Wi-Fi the phone first tries the home address. If your own server answers there within a second and a half, it uses it. Otherwise it uses the away address. It remembers the choice for a minute, and looks again as soon as a request gets no answer. If your server's home address changes, pair the phone again so it learns the new one.
 
 Plain http is allowed only for a home address: a private network address, or a name ending in `.local`, `.lan` or `.home.arpa`. Everywhere else the phone uses https only. Plain http is not encrypted on your home network, so do not turn home access on for a shared or public Wi-Fi.
 
@@ -83,7 +70,7 @@ For a lost phone, read [If your phone is lost](if-your-phone-is-lost.md) as well
 
 ## Pair a phone again
 
-A revoked phone says "This phone was removed from your server. Re-pair to send your saved data." with a "Pair this phone" button. A phone after "Connect to a different server" in its own Settings shows the connect screens again. Pair it with a new QR code or link code.
+A revoked phone says "This phone was removed from your server. Re-pair to send your saved data." with a "Pair this phone" button. A phone after "Connect to a different server" in its own Settings shows the connect screens again. Pair it with a new QR code.
 
 A phone paired again with the same server sends the shifts it was still holding. The old entry stays on the Devices page. If it still says active, revoke it, so only the phone's new pairing works.
 

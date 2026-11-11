@@ -52,8 +52,7 @@ Three parts in one repository: the server and the web app in TypeScript, the pho
 - Nightly encrypted backups (age) and a recovery key shown once. Restore onto a fresh server. An
   upgrade takes a backup first. A failed migration is rolled back and the server stays up
   read-only on the old database version.
-- Phones pair with a QR code, or with a link code on the home Wi-Fi, and hold a device token you
-  can revoke at any time.
+- Phones pair with a QR code and hold a device token you can revoke at any time.
 - Diagnostics that stay on your server and never carry coordinates.
 
 **Status.** Version 0.2.0 is a complete build that has not yet been tried in the real
@@ -66,7 +65,7 @@ The next version replaces the phone app with a native Android app, which has nev
 phone. Its tests run on a computer only (unit tests, screens drawn by Robolectric, the engine
 checked against Node on millions of cases). Unverified until the field test in
 [`TODO.md`](TODO.md): GPS waking up after a stop, battery use, phones that stop background apps,
-the QR scanner, finding the server on the Wi-Fi, recording after a restart, and
+the QR scanner, recording after a restart, and
 the engine's maths on a phone's own processor.
 
 ## Install
@@ -104,9 +103,8 @@ the app uses the phone's own location service and needs nothing from Google.
    [latest release](https://github.com/raiz-toff/Milewage/releases/latest). Android asks once to
    allow installs from your browser. Your server can also hand the file out from its own
    download page.
-3. Open the app and tap "I have a server". On your home Wi-Fi it finds the server by itself: tap
-   it, and type the 6-digit code it shows on the web's Devices page. Or scan the QR code from
-   the Devices page, or paste the code text.
+3. Open the app and tap "I have a server". Scan the QR code from the web's Devices page, or paste
+   the code text.
 4. Allow what the permissions screen asks, so recording goes on with the screen off.
 
 Moving from the Expo app of 0.2.0 and earlier: send every shift from the old app first (its
@@ -157,7 +155,7 @@ for its Android half, and says so when either is missing. Gradle skips what has 
 run with no change under `apps/android` adds seconds; after a change there it adds minutes.
 `npm run verify:js` is the quick check while working on the server or the web.
 
-`npm run dev -- --host` puts the web app on the LAN and announces the server on the Wi-Fi, so a
+`npm run dev -- --host` puts the web app on the LAN and gives the server its home address, so a
 phone on the same network can pair with it.
 
 The phone app is built with Gradle in `apps/android` (JDK 17, Android SDK platform 37):

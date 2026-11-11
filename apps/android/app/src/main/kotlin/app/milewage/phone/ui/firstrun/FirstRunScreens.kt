@@ -20,9 +20,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,23 +37,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import app.milewage.core.connect.FoundServer
 import app.milewage.core.shift.VehicleRecord
 import app.milewage.phone.R
 import app.milewage.phone.ui.components.CardSurface
 import app.milewage.phone.logic.ConnectFix
-import app.milewage.phone.logic.Hosts
-import app.milewage.phone.logic.Nearby
 import app.milewage.phone.ui.Texts
 import app.milewage.phone.ui.components.BottomAction
 import app.milewage.phone.ui.components.BrandButton
@@ -65,14 +56,13 @@ import app.milewage.phone.ui.components.NoticeCard
 import app.milewage.phone.ui.components.RowDivider
 import app.milewage.phone.ui.components.Rows
 import app.milewage.phone.ui.components.Screen
-import app.milewage.phone.ui.components.ScreenPadding
 import app.milewage.phone.ui.components.Tone
 import app.milewage.phone.ui.components.tabular
 import app.milewage.phone.ui.icons.Icons
 import app.milewage.phone.ui.theme.surfaces
 
 /*
- * First run (24 section 4.2, plan 28): Welcome, Set up your server, Connect, Link, Tailscale, then
+ * First run (24 section 4.2, plan 28): Welcome, Set up your server, Connect, Tailscale, then
  * after connecting: Connected and Ready (the permissions screen is in ui/permissions). Each screen
  * renders a state and sends events back; the view models are in FirstRunViewModels.kt.
  */
@@ -194,13 +184,7 @@ interface ConnectActions {
 
     fun submit(text: String)
 
-    fun pick(server: FoundServer)
-
-    fun lookAgain()
-
     fun tailscale()
-
-    fun allowLocalNetwork()
 
     fun fix(fix: ConnectFix)
 
@@ -208,9 +192,9 @@ interface ConnectActions {
 }
 
 /**
- * Connect this phone to the driver's server: on the home Wi-Fi it finds the server (then a 6-digit
- * code), or the QR code from the web's Devices page, or a link opened on this phone, or the code
- * (or the server's address) pasted by hand. The scanner is the main action.
+ * Connect this phone to the driver's server: the QR code from the web's Devices page, a link opened
+ * on this phone, or the code pasted by hand. The scanner is the main action. Away from home the
+ * phone also needs Tailscale, a quiet link at the end.
  */
 @Composable
 fun ConnectContent(state: ConnectState, actions: ConnectActions) {
@@ -230,7 +214,6 @@ fun ConnectContent(state: ConnectState, actions: ConnectActions) {
                 )
             }
         }
-        item(key = "nearby") { NearbyCard(state.nearby, actions) }
         item(key = "scan") {
             Section(Icons.QrScanner, R.string.scan_card_title, R.string.scan_card_body) {
                 BrandButton(
@@ -265,6 +248,9 @@ fun ConnectContent(state: ConnectState, actions: ConnectActions) {
                 ) { Text(stringResource(if (state.busy) R.string.connecting else R.string.connect_button)) }
             }
         }
+        item(key = "tailscale") {
+            TextButton(onClick = actions::tailscale, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.connect_tailscale)) }
+        }
     }
 }
 
@@ -286,114 +272,6 @@ private fun Section(
                 }
             }
             content?.invoke()
-        }
-    }
-}
-
-/** "On this Wi-Fi": the servers found, each a row that starts linking with a code. */
-@Composable
-private fun NearbyCard(nearby: Nearby, actions: ConnectActions) {
-    val body = when (nearby) {
-        is Nearby.OffWifi -> R.string.nearby_off_wifi
-        Nearby.NeedsPermission -> R.string.nearby_permission
-        else -> R.string.nearby_body
-    }
-    Section(Icons.Wifi, R.string.nearby_title, body) {
-        when (nearby) {
-            Nearby.Looking -> Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-            ) {
-                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                Text(stringResource(R.string.nearby_looking), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            is Nearby.Found -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (nearby.servers.isEmpty()) {
-                    Text(stringResource(R.string.nearby_none), style = MaterialTheme.typography.bodyMedium)
-                } else {
-                    // A fill on the card (the surface model's fill level), not a card in a card.
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.surfaces.fill), shape = MaterialTheme.shapes.medium) {
-                        nearby.servers.forEachIndexed { i, s ->
-                            if (i > 0) RowDivider()
-                            ListRow(
-                                headline = s.name,
-                                supporting = Hosts.of(s.url) ?: s.url,
-                                leading = { Icon(Icons.Server, contentDescription = null) },
-                                trailing = { Icon(Icons.ChevronRight, contentDescription = null) },
-                                onClick = { actions.pick(s) },
-                                containerColor = MaterialTheme.surfaces.fill,
-                            )
-                        }
-                    }
-                }
-                TextButton(onClick = actions::lookAgain, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.nearby_look_again)) }
-            }
-            is Nearby.OffWifi -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (nearby.tailscaleOff) {
-                    OutlinedButton(onClick = actions::tailscale, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.nearby_tailscale)) }
-                }
-                TextButton(onClick = actions::lookAgain, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.nearby_look_again)) }
-            }
-            Nearby.NeedsPermission -> OutlinedButton(onClick = actions::allowLocalNetwork, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(stringResource(R.string.perm_allow_local))
-            }
-        }
-    }
-}
-
-/** Link this phone: the 6-digit code to type on the web while the phone waits, or what went wrong. */
-@Composable
-fun LinkContent(name: String, url: String, state: LinkState, onRetry: () -> Unit, onCancel: () -> Unit) {
-    Screen(
-        title = stringResource(R.string.link_title),
-        subtitle = "$name · ${Hosts.of(url) ?: url}",
-        onBack = onCancel,
-        bottomBar = {
-            BottomAction {
-                OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) { Text(stringResource(R.string.cancel)) }
-            }
-        },
-    ) {
-        when (state) {
-            is LinkState.Failed -> item {
-                NoticeCard(
-                    title = stringResource(Texts.linkFailure(state.failure)),
-                    icon = Icons.Error,
-                    tone = Tone.PROBLEM,
-                    actionLabel = stringResource(R.string.link_new_code),
-                    onAction = onRetry,
-                )
-            }
-            else -> item {
-                val code = (state as? LinkState.Waiting)?.code
-                CardSurface(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(ScreenPadding), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text(stringResource(R.string.link_instructions), style = MaterialTheme.typography.bodyLarge)
-                        if (code != null) {
-                            // Read out digit by digit (voice reference: codes meant to be read aloud).
-                            val spoken = stringResource(R.string.link_code_desc, code.toList().joinToString(" "))
-                            Text(
-                                "${code.take(3)} ${code.drop(3)}",
-                                style = MaterialTheme.typography.displayMedium.tabular().copy(fontFamily = FontFamily.Monospace),
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth().semantics { contentDescription = spoken },
-                            )
-                        }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-                            modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
-                        ) {
-                            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                            Text(
-                                stringResource(if (code != null) R.string.link_waiting else R.string.link_asking),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }

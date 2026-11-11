@@ -87,7 +87,7 @@ class AppGraph(context: Context, val scope: CoroutineScope) {
 
     val links = PairLinkInbox(status = { data.pairing.status() })
 
-    /** First run's and Settings' seams: pairing, the network (discovery, Tailscale), tracking settings, looks. */
+    /** First run's and Settings' seams: pairing, the network (Tailscale), tracking settings, looks. */
     val pairingPort: PairingPort = MileWagePairing(data)
 
     val netView: NetView by lazy { AndroidNetView(data.connection?.net) }

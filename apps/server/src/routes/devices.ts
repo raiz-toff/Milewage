@@ -7,7 +7,6 @@ import { FailureLimiter } from '../auth/limiter';
 import { createDeviceRepository, type Db, type DeviceRow } from '../db';
 import { ProblemError } from '../errors';
 import { checkPublicUrl, type BaseUrlSource } from '../public-url';
-import { linkRequestRoutes } from './link-requests';
 import { idParams, str, strictObject } from './util';
 
 const redeemSchema = strictObject(
@@ -244,8 +243,6 @@ export function devicesRoutes({
         return reply.status(201).send(redeemed(req, device, credential));
       },
     );
-
-    linkRequestRoutes({ app, now, repo, webUser: (req) => auth(req, 'S').userId, redeemed });
 
     app.get('/devices', async (req) =>
       repo.list(auth(req, 'S').userId).map((d) => view(d, skews.get(d.id))),

@@ -4,7 +4,6 @@ import app.milewage.core.api.ApiCodes
 import app.milewage.core.api.ApiException
 import app.milewage.core.connect.AddressProblem
 import app.milewage.core.connect.ConnectFailure
-import app.milewage.core.connect.FoundServer
 import app.milewage.core.connect.Where
 import app.milewage.core.pairing.LinkDecision
 import app.milewage.core.pairing.PairingLink
@@ -14,8 +13,6 @@ import app.milewage.core.sync.OtherServerShifts
 import app.milewage.data.prefs.AppTheme
 import app.milewage.phone.logic.ConnectError
 import app.milewage.phone.logic.ConnectionCheck
-import app.milewage.phone.logic.LinkFailure
-import app.milewage.phone.logic.Nearby
 import app.milewage.phone.support.CIVIC
 import app.milewage.phone.support.FakeAppearance
 import app.milewage.phone.support.FakeNet
@@ -24,10 +21,7 @@ import app.milewage.phone.support.FakeShiftData
 import app.milewage.phone.support.FakeTrackingSettings
 import app.milewage.phone.support.runningView
 import app.milewage.phone.support.sendStatus
-import app.milewage.phone.ui.firstrun.ConnectEvent
 import app.milewage.phone.ui.firstrun.ConnectViewModel
-import app.milewage.phone.ui.firstrun.LinkState
-import app.milewage.phone.ui.firstrun.LinkViewModel
 import app.milewage.phone.ui.firstrun.SetupViewModel
 import app.milewage.phone.ui.firstrun.TailscaleState
 import app.milewage.phone.ui.firstrun.TailscaleViewModel
@@ -53,34 +47,6 @@ class ConnectViewModelTest : VmTest() {
     private val links = MutableStateFlow<LinkDecision?>(null)
 
     private fun vm(release: Boolean = true) = ConnectViewModel(pairing, net, links, { links.value = null }, release)
-
-    @Test
-    fun `on the Wi-Fi it finds the server - none found says so and looks again`() = runTest {
-        val box = FoundServer("MileWage (box)", "http://192.168.1.20:8080", "inst-1")
-        val vm = vm()
-        assertEquals(Nearby.Found(emptyList()), vm.state.value.nearby)
-        net.servers = listOf(box)
-        vm.look()
-        assertEquals(Nearby.Found(listOf(box)), vm.state.value.nearby)
-        assertEquals(2, net.discovered)
-    }
-
-    @Test
-    fun `off Wi-Fi it says so and offers Tailscale only when Tailscale is off or missing`() = runTest {
-        net.local = false
-        assertEquals(Nearby.OffWifi(tailscaleOff = true), vm().state.value.nearby)
-        net.installed = true
-        net.vpn = true
-        assertEquals(Nearby.OffWifi(tailscaleOff = false), vm().state.value.nearby)
-        assertEquals(0, net.discovered)
-    }
-
-    @Test
-    fun `Android 17 asks for local network first`() = runTest {
-        net.permissionNeeded = true
-        assertEquals(Nearby.NeedsPermission, vm().state.value.nearby)
-        assertEquals(0, net.discovered)
-    }
 
     @Test
     fun `a pasted code connects, the pairing changes and nothing else is needed`() = runTest {
@@ -128,11 +94,10 @@ class ConnectViewModelTest : VmTest() {
     }
 
     @Test
-    fun `a typed server address opens linking with a code there`() = runTest {
+    fun `a typed server address is not a code - nothing is sent`() = runTest {
         val vm = vm()
-        val events = collect(vm.events)
         vm.submit("192.168.1.20:8080")
-        assertEquals(listOf<ConnectEvent>(ConnectEvent.OpenLink("http://192.168.1.20:8080", "192.168.1.20")), events)
+        assertEquals(ConnectError.NotACode, vm.state.value.error)
         assertTrue(pairing.calls.isEmpty())
     }
 
@@ -156,38 +121,6 @@ class ConnectViewModelTest : VmTest() {
         val vm = vm()
         vm.submit(CODE)
         assertEquals(ConnectError.AppTooOld, vm.state.value.error)
-    }
-}
-
-@OptIn(ExperimentalCoroutinesApi::class)
-class LinkViewModelTest : VmTest() {
-    @Test
-    fun `asks, shows the code while waiting, and connects once the driver types it`() = runTest {
-        val pairing = FakePairing()
-        val vm = LinkViewModel("http://192.168.1.20:8080", pairing)
-        assertEquals(LinkState.Waiting("123456"), vm.state.value)
-        assertEquals(listOf("startLink http://192.168.1.20:8080"), pairing.calls)
-        pairing.typed.complete(Unit)
-        assertEquals(PairingStatus.PAIRED, pairing.statusFlow.value)
-    }
-
-    @Test
-    fun `an expired or refused code says so, and Get a new code asks again`() = runTest {
-        val pairing = FakePairing()
-        pairing.awaitFailure = ApiException(410, ApiCodes.LINK_EXPIRED, false)
-        val vm = LinkViewModel("http://192.168.1.20:8080", pairing)
-        assertEquals(LinkState.Failed(LinkFailure.EXPIRED), vm.state.value)
-        pairing.awaitFailure = null
-        vm.start()
-        assertEquals(LinkState.Waiting("123456"), vm.state.value)
-        assertEquals(2, pairing.calls.count { it.startsWith("startLink") })
-    }
-
-    @Test
-    fun `an older server that cannot link says so`() = runTest {
-        val pairing = FakePairing()
-        pairing.startFailure = ApiException(404, "not_found", false)
-        assertEquals(LinkState.Failed(LinkFailure.NOT_SUPPORTED), LinkViewModel("http://192.168.1.20:8080", pairing).state.value)
     }
 }
 

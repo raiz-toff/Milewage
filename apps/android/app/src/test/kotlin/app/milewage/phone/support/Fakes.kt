@@ -337,11 +337,6 @@ class FakePairing(status: PairingStatus = PairingStatus.UNPAIRED) : app.milewage
     var whereNow: app.milewage.core.connect.Where? = null
     var checkFailure: app.milewage.core.api.ApiException? = null
     var redeemFailure: Exception? = null
-    var startFailure: Exception? = null
-    var awaitFailure: Exception? = null
-    var linkStart = app.milewage.core.pairing.LinkStart("device-code", "123456", NOW + 600_000, 2_000)
-    /** awaitLink returns once this completes (the driver typed the code). */
-    val typed = kotlinx.coroutines.CompletableDeferred<Unit>()
     var unsent = false
     val calls = mutableListOf<String>()
 
@@ -375,18 +370,6 @@ class FakePairing(status: PairingStatus = PairingStatus.UNPAIRED) : app.milewage
         becomePaired()
     }
 
-    override suspend fun startLink(baseUrl: String): app.milewage.core.pairing.LinkStart {
-        calls += "startLink $baseUrl"
-        startFailure?.let { throw it }
-        return linkStart
-    }
-
-    override suspend fun awaitLink(baseUrl: String, start: app.milewage.core.pairing.LinkStart) {
-        awaitFailure?.let { throw it }
-        typed.await()
-        becomePaired()
-    }
-
     override suspend fun hasUnsentData() = unsent
 
     override suspend fun unpair(confirmed: Boolean): Boolean {
@@ -400,29 +383,16 @@ class FakePairing(status: PairingStatus = PairingStatus.UNPAIRED) : app.milewage
 
 class FakeNet : app.milewage.phone.model.NetView {
     var vpn: Boolean? = null
-    var local: Boolean? = true
-    var servers: List<app.milewage.core.connect.FoundServer> = emptyList()
     var installed = false
-    var permissionNeeded = false
-    var discovered = 0
     var opened = 0
 
     override suspend fun vpnActive() = vpn
-
-    override suspend fun localNetwork() = local
-
-    override suspend fun discover(): List<app.milewage.core.connect.FoundServer> {
-        discovered++
-        return servers
-    }
 
     override suspend fun tailscaleInstalled() = installed
 
     override suspend fun openTailscale() {
         opened++
     }
-
-    override fun localNetworkPermissionNeeded() = permissionNeeded
 }
 
 class FakeTrackingSettings : app.milewage.phone.model.TrackingSettingsPort {

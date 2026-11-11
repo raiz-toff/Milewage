@@ -30,19 +30,16 @@ The web client is now at `http://127.0.0.1:8080` on the host. Without LAN access
 
 ### 2a. Home network access (optional, recommended for a home server)
 
-With LAN access on, the phone connects to the server directly on your home Wi-Fi, over plain `http://`, without Tailscale; away from home it uses the Tailscale address of section 3 (plan 28). The phone also **finds the server by itself** on the Wi-Fi: open the app, tap your server, and type the code it shows on the web's Devices page (or the setup step Pair your phone).
+With LAN access on, the phone connects to the server directly on your home Wi-Fi, over plain `http://`, without Tailscale; away from home it uses the Tailscale address of section 3 (plan 28). Pairing codes made on the web's Devices page carry the home address too, so a paired phone knows both.
 
-`install.sh --lan` writes three lines to `infra/docker/.env` (or set them by hand, then `docker compose --env-file infra/docker/.env -f infra/docker/docker-compose.yml up -d`):
+`install.sh --lan` writes two lines to `infra/docker/.env` (or set them by hand, then `docker compose --env-file infra/docker/.env -f infra/docker/docker-compose.yml up -d`):
 
 ```
 MILEWAGE_BIND_ADDRESS=0.0.0.0                  # Caddy on every interface of the host, not only loopback
 MILEWAGE_HOME_URL=http://192.168.1.20:8080     # this host's address on your network and the port
-COMPOSE_PROFILES=lan                           # starts the small lan-discovery service
 ```
 
-The `lan-discovery` service announces `_milewage._tcp` on the Wi-Fi (mDNS, UDP 5353). Multicast does not cross Docker's bridge network, so it uses the host's network (`network_mode: host`, Linux only); it opens no other port. Hosts that already run Avahi may instead leave the profile off and put a service file in `/etc/avahi/services/` (see `avahi.service(5)`): type `_milewage._tcp`, the port, and TXT `v=1`, `id=<instance id>` and `path=/`. The instance id is the `X-MileWage-Instance` header of `/healthz` (for example `curl -s -D - -o /dev/null http://127.0.0.1:8080/healthz`); the phone uses it to find its own server again if the address changes.
-
-Give the host a fixed address on your router (a DHCP reservation), so the home address stays right. If it changes, run `infra/install.sh --lan` again.
+Give the host a fixed address on your router (a DHCP reservation), so the home address stays right. If it changes, run `infra/install.sh --lan` again, then pair the phone again so it learns the new address.
 
 **What to know:**
 

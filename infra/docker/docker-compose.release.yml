@@ -60,24 +60,6 @@ services:
     cpus: 1.0
     # no published ports; only Caddy reaches the API
 
-  # Announces the server on the home Wi-Fi (plan 28), only with LAN access on (profile `lan`);
-  # same as docker-compose.yml, from the published server image.
-  lan-discovery:
-    image: ${MILEWAGE_IMAGE_REPO:?set to your registry path}/server:${MILEWAGE_VERSION:-latest}
-    profiles: [lan]
-    restart: unless-stopped
-    logging: *logging
-    network_mode: host
-    command: ['node', 'advertise.mjs']
-    environment:
-      - MILEWAGE_ADVERTISE_PORT=${MILEWAGE_HOST_PORT:-8080}
-    healthcheck:
-      disable: true
-    mem_limit: 64m
-    cpus: 0.25
-    depends_on:
-      - caddy
-
 networks:
   default:
     ipam:

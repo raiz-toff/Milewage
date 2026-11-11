@@ -40,7 +40,7 @@ class ContractDriftTest {
             if (id != e.operationId) problems += "$e: the contract calls it $id"
             if (e.request != null && Contract.requestSchema(e.method.name, e.path) == null) problems += "$e: the contract takes no JSON body"
             if (e.request == null && Contract.requestSchema(e.method.name, e.path) != null) problems += "$e: the contract wants a body"
-            for (status in e.bodyStatuses + e.emptyStatuses) {
+            for (status in e.bodyStatuses) {
                 if (op.path("responses").path(status.toString()).isMissingNode) problems += "$e: no $status answer in the contract"
             }
             val servers = op.path("servers").takeIf { !it.isMissingNode } ?: Contract.spec.path("paths").path(e.path).path("servers")
@@ -57,7 +57,7 @@ class ContractDriftTest {
                 val schema = Contract.requestSchema(e.method.name, e.path) ?: return@let
                 problems += DescriptorCheck(Direction.REQUEST).also { it.check(req.descriptor, schema, "${e.operationId} request") }.problems
             }
-            val answers = e.bodyStatuses.map { it to e.response } + e.otherBodies.toList()
+            val answers = e.bodyStatuses.map { it to e.response }
             for ((status, serializer) in answers) {
                 val schema = Contract.responseSchema(e.method.name, e.path, status)
                 if (schema == null) {
@@ -76,7 +76,7 @@ class ContractDriftTest {
         val problems = mutableListOf<String>()
         val covered = mutableSetOf<String>()
         for (e in Api.all) {
-            val answers: List<Pair<Int, KSerializer<*>>> = e.bodyStatuses.map { it to e.response } + e.otherBodies.toList()
+            val answers: List<Pair<Int, KSerializer<*>>> = e.bodyStatuses.map { it to e.response }
             for ((status, serializer) in answers) {
                 val key = "${e.operationId} $status"
                 val fixtures = ContractFixtures.answers[key]
@@ -129,8 +129,6 @@ class ContractDriftTest {
         val token = "mwp_" + "a".repeat(43)
         assertEquals(emptyList(), accepts(Api.redeem, RedeemRequest(token, "Pixel 8", DevicePlatform.ANDROID, "0.3.0")))
         assertEquals(emptyList(), accepts(Api.redeem, RedeemRequest(token, "Pixel 8", DevicePlatform.ANDROID)))
-        assertEquals(emptyList(), accepts(Api.startLink, LinkRequestCreate("Android phone", DevicePlatform.ANDROID)))
-        assertEquals(emptyList(), accepts(Api.pollLink, LinkPoll("mwl_" + "c".repeat(43))))
         val event = DiagEventIn(
             kind = "shift.summary", at = 1_700_000_000_000, level = DiagEventLevel.BASIC, src = DiagSource.PHONE_NATIVE,
             seq = 1, shift = "11111111-1111-4111-8111-111111111111", v = "0.3.0", data = buildJsonObject { put("fixes", 10) },
@@ -141,10 +139,12 @@ class ContractDriftTest {
         assertTrue(accepts(Api.diagnostics, DiagIngestRequest(listOf(event.copy(kind = "Bad Kind")))).isNotEmpty())
         assertTrue(accepts(Api.diagnostics, DiagIngestRequest(emptyList())).isNotEmpty())
         val extra: JsonElement = buildJsonObject {
-            put("device_code", "x")
+            put("token", token)
+            put("device_name", "Pixel 8")
+            put("platform", "android")
             put("extra", 1)
         }
-        assertTrue(Contract.validate(Contract.requestSchema("POST", "/link-requests/poll")!!, extra).isNotEmpty())
+        assertTrue(Contract.validate(Contract.requestSchema("POST", "/pairing/redeem")!!, extra).isNotEmpty())
     }
 
     @Test

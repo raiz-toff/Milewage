@@ -1,13 +1,10 @@
 package app.milewage.phone.screens
 
 import app.milewage.core.connect.ConnectFailure
-import app.milewage.core.connect.FoundServer
 import app.milewage.core.connect.Where
 import app.milewage.data.prefs.AppTheme
 import app.milewage.phone.logic.ConnectError
 import app.milewage.phone.logic.ConnectionCheck
-import app.milewage.phone.logic.LinkFailure
-import app.milewage.phone.logic.Nearby
 import app.milewage.phone.logic.PermissionFacts
 import app.milewage.phone.logic.PermissionLadder
 import app.milewage.phone.logic.Runtime
@@ -17,7 +14,6 @@ import app.milewage.phone.support.CREDENTIAL
 import app.milewage.phone.support.PAIRED_STATE
 import app.milewage.phone.support.VAN
 import app.milewage.phone.ui.firstrun.ConnectState
-import app.milewage.phone.ui.firstrun.LinkState
 import app.milewage.phone.ui.firstrun.SetupState
 import app.milewage.phone.ui.firstrun.TailscaleState
 import app.milewage.phone.ui.permissions.PermissionsState
@@ -27,20 +23,10 @@ import app.milewage.phone.ui.settings.SettingsState
 
 /** The first-run, permissions and Settings states the tests and the screenshots draw. */
 object FirstRunStates {
-    val box = FoundServer("MileWage (box)", "http://192.168.1.20:8080", "inst-1")
-
-    val connectLooking = ConnectState(nearby = Nearby.Looking)
-    val connectFound = ConnectState(nearby = Nearby.Found(listOf(box)))
-    val connectNone = ConnectState(nearby = Nearby.Found(emptyList()))
-    val connectOffWifi = ConnectState(nearby = Nearby.OffWifi(tailscaleOff = true))
-    val connectTailscaleOff = connectOffWifi.copy(error = ConnectError.Failed(ConnectFailure.TailscaleOff))
-    val connectHomeUnreachable = connectFound.copy(error = ConnectError.Failed(ConnectFailure.HomeUnreachable("http://192.168.1.20:8080")))
-    val connectBusy = connectFound.copy(busy = true)
-    val connectPermission = ConnectState(nearby = Nearby.NeedsPermission)
-
-    val linkAsking = LinkState.Asking
-    val linkWaiting = LinkState.Waiting("482913")
-    val linkExpired = LinkState.Failed(LinkFailure.EXPIRED)
+    val connect = ConnectState()
+    val connectTailscaleOff = connect.copy(error = ConnectError.Failed(ConnectFailure.TailscaleOff))
+    val connectHomeUnreachable = connect.copy(error = ConnectError.Failed(ConnectFailure.HomeUnreachable("http://192.168.1.20:8080")))
+    val connectBusy = connect.copy(busy = true)
 
     val tailscaleMissing = TailscaleState(installed = false, on = null)
     val tailscaleOff = TailscaleState(installed = true, on = false)

@@ -5,7 +5,6 @@ import app.milewage.core.api.ApiException
 import app.milewage.core.api.ApiFailure
 import app.milewage.core.connect.AddressProblem
 import app.milewage.core.connect.ConnectFailure
-import app.milewage.core.connect.FoundServer
 import app.milewage.core.connect.Reach
 import app.milewage.core.net.HomeAddress
 import app.milewage.core.pairing.PairedState
@@ -47,13 +46,10 @@ object Gates {
     }
 }
 
-/** What the driver typed or pasted on Connect. */
+/** What the driver pasted or scanned on Connect. */
 sealed interface ConnectInput {
     /** A pairing code (either link form): redeem it. */
     data class Code(val link: PairingLink) : ConnectInput
-
-    /** A server address: link this phone with a 6-digit code there. */
-    data class Address(val url: String) : ConnectInput
 
     /** An address this phone can never use; nothing is sent. */
     data class Refused(val problem: AddressProblem) : ConnectInput
@@ -61,36 +57,10 @@ sealed interface ConnectInput {
     data object NotACode : ConnectInput
 
     companion object {
-        private val SCHEME = Regex("^https?://", RegexOption.IGNORE_CASE)
-
         /** [release]: plain http only to a home address (a debug build allows any, as the API client does). */
         fun read(text: String, release: Boolean): ConnectInput {
-            val t = text.trim()
-            PairingLinks.parse(t)?.let { link ->
-                return Reach.addressProblem(link.baseUrl, release)?.let(::Refused) ?: Code(link)
-            }
-            val url = address(t) ?: return NotACode
-            return Reach.addressProblem(url, release)?.let(::Refused) ?: Address(url)
-        }
-
-        /**
-         * A typed server address as a base URL: `192.168.1.20:8080` and `box.local:8080` become http
-         * (home addresses), `box.tail1234.ts.net` becomes https; a scheme typed is kept. Null for
-         * anything that is not an address (a word, a stray code).
-         */
-        fun address(text: String): String? {
-            val t = text.trim().trimEnd('/')
-            if (t.isEmpty() || t.any(Char::isWhitespace) || t.startsWith("mwp_")) return null
-            val url = if (SCHEME.containsMatchIn(t)) {
-                t
-            } else {
-                val host = t.substringBefore('/').substringBefore(':').lowercase()
-                if (HomeAddress.isHomeHost(host)) "http://$t" else "https://$t"
-            }
-            val host = HomeAddress.parts(url)?.host ?: return null
-            // One label alone ("milewage") is not an address the phone can find; localhost is refused later.
-            if ('.' !in host && ':' !in host && host != "localhost") return null
-            return url.takeIf { PairingLinks.ADDRESS.matches(it) }
+            val link = PairingLinks.parse(text.trim()) ?: return NotACode
+            return Reach.addressProblem(link.baseUrl, release)?.let(::Refused) ?: Code(link)
         }
     }
 }
@@ -137,52 +107,6 @@ sealed interface ConnectError {
 
 /** The button under a connect error. */
 enum class ConnectFix { TRY_AGAIN, OPEN_TAILSCALE, SCAN }
-
-/** The servers announced on this Wi-Fi (plan 28 section 4.5). */
-sealed interface Nearby {
-    data object Looking : Nearby
-
-    data class Found(val servers: List<FoundServer>) : Nearby
-
-    /** On mobile data: discovery cannot work. [tailscaleOff]: offer the Tailscale screen. */
-    data class OffWifi(val tailscaleOff: Boolean) : Nearby
-
-    /** Android 17 at targetSdk 37: local network access must be allowed first. */
-    data object NeedsPermission : Nearby
-}
-
-/** Linking with a code failed (plan 28 section 4.4). */
-enum class LinkFailure {
-    /** "The code expired or was refused. Get a new code and try again." */
-    EXPIRED,
-
-    /** "Too many phones are waiting to link. Wait a minute and try again." */
-    RATE_LIMITED,
-
-    /** "Can't reach your server. Check that this phone is on the same Wi-Fi as the server." */
-    UNREACHABLE,
-
-    /** "This server cannot link phones with a code yet. Update it, or scan the code." */
-    NOT_SUPPORTED,
-
-    /** This app is older than the server. */
-    APP_TOO_OLD,
-
-    /** "Linking failed. Try again." */
-    OTHER,
-    ;
-
-    companion object {
-        fun of(e: Throwable): LinkFailure = when ((e as? ApiException)?.failure) {
-            ApiFailure.LINK_EXPIRED -> EXPIRED
-            ApiFailure.RATE_LIMITED -> RATE_LIMITED
-            ApiFailure.UNREACHABLE -> UNREACHABLE
-            ApiFailure.NOT_FOUND -> NOT_SUPPORTED
-            ApiFailure.APP_TOO_OLD -> APP_TOO_OLD
-            else -> OTHER
-        }
-    }
-}
 
 /** A scanned QR code: a pairing code to connect with, or something else to say no to. */
 sealed interface ScanResult {

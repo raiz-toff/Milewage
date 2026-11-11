@@ -10,7 +10,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
-/** A successful answer. [body] is null only for the endpoint's `emptyStatuses` (202 pending). */
+/** A successful answer. [body] is null only for an empty answer to [ApiClient.send]. */
 class ApiResponse<T>(
     val status: Int,
     val body: T?,
@@ -89,7 +89,6 @@ class ApiClient(
     ): HttpResponse = exchange(endpoint.method, path, query, body, endpoint.gzip, endpoint.root)
 
     private fun <Res> decode(endpoint: Endpoint<*, Res>, res: HttpResponse): ApiResponse<Res> {
-        if (res.status in endpoint.emptyStatuses) return ApiResponse(res.status, null, res.headers)
         val body = try {
             ApiJson.decodeFromString(endpoint.response, res.body.decodeToString())
         } catch (_: SerializationException) {

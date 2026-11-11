@@ -17,7 +17,7 @@ These pages explain MileWage in plain words. They are also in the web app, under
 - [Mileage rates and tax](mileage-rates-and-tax.md): Country packs and regions, how the mileage deduction is worked out, what the Tax page estimates, and why every figure is unverified.
 - [For your accountant](for-your-accountant.md): The exports, the PDF report, what a mileage log holds, and what the tax figure is and is not.
 - [Backups and the recovery key](backups-and-recovery-key.md): When your server makes backups, how to keep a copy elsewhere, how to restore one, and what the recovery key is for.
-- [Phones and devices](phones-and-devices.md): Pairing a phone by QR code or link code, the home and away addresses, what a paired phone can do, and revoking one.
+- [Phones and devices](phones-and-devices.md): Pairing a phone by QR code, the home and away addresses, what a paired phone can do, and revoking one.
 - [Settings](settings.md): Every section of the Settings page in plain words, in the order the page shows them, the account menu, and the phone app's own Settings.
 
 ## When something goes wrong

@@ -167,16 +167,12 @@ A phone paired with the owner's server. Each one has its own name and device tok
 _Avoid_: client, handset, installation
 
 **Pairing**:
-Giving a phone a device token for one server, by scanning a pairing code or by typing a link code.
-_Avoid_: registering, enrolling, linking (a phone paired with a link code is still paired)
+Giving a phone a device token for one server, by scanning or pasting a pairing code.
+_Avoid_: registering, enrolling, linking
 
 **Pairing code**:
 The one-time QR code the web app shows for a phone to scan.
 _Avoid_: pairing token, QR token, invite
-
-**Link code**:
-The 6-digit code a phone on the home Wi-Fi shows after finding the server by itself. The owner types it on the web to pair that phone.
-_Avoid_: PIN, confirmation code, device code
 
 **Device token**:
 The secret a paired phone holds. It lets the phone send shifts and read the last 14 days, and nothing more.

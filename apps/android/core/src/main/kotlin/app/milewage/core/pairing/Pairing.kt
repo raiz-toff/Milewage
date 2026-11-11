@@ -9,8 +9,6 @@ import app.milewage.core.api.ApiJson
 import app.milewage.core.api.DevicePlatform
 import app.milewage.core.api.HttpHeaders
 import app.milewage.core.api.HttpTransport
-import app.milewage.core.api.LinkPoll
-import app.milewage.core.api.LinkRequestCreate
 import app.milewage.core.api.MileWageHeaders
 import app.milewage.core.api.Paired
 import app.milewage.core.api.RedeemRequest
@@ -23,7 +21,6 @@ import app.milewage.core.net.HomeAddress
 import app.milewage.core.ports.Clock
 import app.milewage.core.ports.SecretStore
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.conflate
@@ -35,16 +32,6 @@ import kotlinx.serialization.SerializationException
  * (`device_revoked`); the credential is kept, but the phone must connect again.
  */
 enum class PairingStatus { PAIRED, UNPAIRED, REVOKED }
-
-/** A started link (plan 28 section 4.4): the phone shows [userCode]; [deviceCode] is its polling secret. */
-data class LinkStart(
-    val deviceCode: String,
-    /** Six digits, shown on the phone and typed on the web. */
-    val userCode: String,
-    val expiresAtMs: Long,
-    /** How long to wait between polls (RFC 8628 `interval`). */
-    val intervalMs: Long,
-)
 
 /** An authenticated client for the paired server and the flags from the cached settings. */
 class DeviceClient(
@@ -80,9 +67,8 @@ class PairingDeps(
 
 /**
  * Pairing this phone with a server and the device session that follows (a port of the Expo app's
- * `pairing/pairing.ts`): redeeming a pairing code (QR, `milewage://` link, https page link), linking
- * with a six-digit code on the home Wi-Fi, keeping the credential in the [SecretStore], re-pairing
- * after a revoke or to another server, and unpairing.
+ * `pairing/pairing.ts`): redeeming a pairing code (QR, `milewage://` link, https page link), keeping
+ * the credential in the [SecretStore], re-pairing after a revoke or to another server, and unpairing.
  */
 class Pairing(private val d: PairingDeps) {
     /** The device session: the halt every sender obeys. Pairing again lifts it. */
@@ -157,57 +143,7 @@ class Pairing(private val d: PairingDeps) {
     }
 
     /**
-     * Linking with a code (plan 28 section 4.4): asks the server found on the Wi-Fi; the phone shows
-     * `userCode` and the driver types it on the web. Throws [ApiException] (`bad_response` for an
-     * answer without a six-digit code).
-     */
-    suspend fun startLink(baseUrl: String): LinkStart {
-        val res = plainClient(baseUrl).call(Api.startLink, LinkRequestCreate(d.deviceName, DevicePlatform.ANDROID))
-        val s = res.data
-        if (s.deviceCode.isEmpty() || !SIX_DIGITS.matches(s.userCode)) throw ApiException(res.status, ApiCodes.BAD_RESPONSE, false)
-        fun seconds(v: Long?, fallback: Long) = if (v != null && v > 0 && v < 3600) v else fallback
-        return LinkStart(
-            deviceCode = s.deviceCode,
-            userCode = s.userCode,
-            expiresAtMs = d.clock.nowMs() + seconds(s.expiresIn, 600) * 1000,
-            intervalMs = maxOf(1000, seconds(s.interval, 5) * 1000),
-        )
-    }
-
-    /**
-     * One poll: null while the driver has not typed the code; the new connection once they have.
-     * Throws `link_expired` (expired, refused or used) and `slow_down` like any refusal.
-     */
-    suspend fun pollLink(baseUrl: String, deviceCode: String): PairedState? {
-        val first = status() != PairingStatus.PAIRED
-        val res = plainClient(baseUrl).call(Api.pollLink, LinkPoll(deviceCode))
-        val paired = res.body ?: return null
-        return keep(baseUrl, null, paired, res.status, res.headers, first)
-    }
-
-    /**
-     * Polls until the driver types the code (every `intervalMs`, 5 s more after each `slow_down`,
-     * RFC 8628 section 3.5) or the code expires (`link_expired`). Cancel the coroutine to stop.
-     */
-    suspend fun awaitLink(baseUrl: String, start: LinkStart): PairedState {
-        var interval = start.intervalMs
-        while (true) {
-            delay(interval)
-            if (d.clock.nowMs() >= start.expiresAtMs) throw ApiException(410, ApiCodes.LINK_EXPIRED, false)
-            try {
-                pollLink(baseUrl, start.deviceCode)?.let { return it }
-            } catch (e: ApiException) {
-                when {
-                    e.code == ApiCodes.SLOW_DOWN -> interval += 5_000
-                    e.retryable -> Unit // the Wi-Fi blinked: try again on the next tick
-                    else -> throw e
-                }
-            }
-        }
-    }
-
-    /**
-     * Stores what a redeem (or a link, plan 28) answered. Home: the address used when it is a home
+     * Stores what a redeem answered (plan 28). Home: the address used when it is a home
      * address, else the code's `h`, else the server's `home_url`. Away: the address used when it is not
      * a home address, else the server's `away_url`. The server's values are checked: home must be a
      * home address and away https outside it, so an answer cannot lower the rules.
@@ -246,13 +182,6 @@ class Pairing(private val d: PairingDeps) {
         // session's resume is this pairing change for the listeners.
         device.resume()
         return PairedState(credential, data.settings)
-    }
-
-    /** The server answered at a new home address on the Wi-Fi (same instance): keep it. */
-    suspend fun updateHome(url: String) {
-        val c = loadCredential() ?: return
-        if (!HomeAddress.isHomeAddress(url)) return
-        d.secure.put(KEY_CREDENTIAL, ApiJson.encodeToString(Credential.serializer(), c.copy(homeUrl = url.trimEnd('/'))))
     }
 
     /** Settings that arrived through the change feed replace the cached copy (and drive the flags). */
@@ -323,9 +252,6 @@ class Pairing(private val d: PairingDeps) {
         return true
     }
 
-    /** For the calls before pairing: no token, no route, no halts. */
-    private fun plainClient(baseUrl: String) = ApiClient(d.transport, { baseUrl }, d.clock, anyHttp = d.anyHttp)
-
     private fun clientFor(c: Credential): ApiClient {
         val route = d.route
         return ApiClient(
@@ -362,7 +288,6 @@ class Pairing(private val d: PairingDeps) {
         /** Set when a phone connects from the first-run screens: the setup steps (24 section 4.2) follow. */
         const val KEY_SETUP = "pairing.setup"
 
-        private val SIX_DIGITS = Regex("^[0-9]{6}$")
         private val DEVICE_TOKEN = Regex("^mwd_")
     }
 }

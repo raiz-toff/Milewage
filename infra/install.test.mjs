@@ -208,7 +208,7 @@ test('--yes-tailscale answers for the driver; a failing serve exits 1 with the c
   expect(envText()).not.toContain('MILEWAGE_PUBLIC_URL');
 });
 
-test('--lan: Caddy on the LAN, the home address, and the announcer; --no-lan turns it off', () => {
+test('--lan: Caddy on the LAN and the home address; --no-lan turns it off', () => {
   const lan = (...args) =>
     spawnSync('bash', [script, '--no-start', '--env-file', join(dir, 'sub', '.env'), ...args], {
       encoding: 'utf8',
@@ -219,12 +219,11 @@ test('--lan: Caddy on the LAN, the home address, and the announcer; --no-lan tur
   expect(r.stdout).toContain('http://192.168.1.20:18570');
   expect(envText()).toContain('MILEWAGE_BIND_ADDRESS=0.0.0.0\n');
   expect(envText()).toContain('MILEWAGE_HOME_URL=http://192.168.1.20:18570\n');
-  expect(envText()).toContain('COMPOSE_PROFILES=lan\n');
+  expect(envText()).not.toContain('COMPOSE_PROFILES');
   // Run again on the kept .env: the lines are replaced, not added twice.
   expect(lan('--no-lan').status).toBe(0);
   expect(envText()).toContain('MILEWAGE_BIND_ADDRESS=127.0.0.1\n');
   expect(envText()).toContain('MILEWAGE_HOME_URL=\n');
-  expect(envText()).toContain('COMPOSE_PROFILES=\n');
   expect(envText().match(/MILEWAGE_BIND_ADDRESS=/g)).toHaveLength(1);
 });
 
@@ -241,5 +240,5 @@ test('--lan without a private address of this host leaves LAN access off', () =>
 
 test('without --lan and without a terminal nothing about the LAN is written', () => {
   expect(run().status).toBe(0);
-  expect(envText()).not.toMatch(/MILEWAGE_BIND_ADDRESS|MILEWAGE_HOME_URL|COMPOSE_PROFILES/);
+  expect(envText()).not.toMatch(/MILEWAGE_BIND_ADDRESS|MILEWAGE_HOME_URL/);
 });

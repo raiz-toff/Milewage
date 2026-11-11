@@ -10,7 +10,6 @@ import app.milewage.phone.MileWageApp
 import app.milewage.phone.ui.detail.ShiftDetailViewModel
 import app.milewage.phone.ui.diagnostics.DiagnosticsViewModel
 import app.milewage.phone.ui.firstrun.ConnectViewModel
-import app.milewage.phone.ui.firstrun.LinkViewModel
 import app.milewage.phone.ui.firstrun.SetupViewModel
 import app.milewage.phone.ui.firstrun.TailscaleViewModel
 import app.milewage.phone.ui.settings.SettingsViewModel
@@ -32,10 +31,6 @@ object ViewModels {
 
     fun connect(): ViewModelProvider.Factory = viewModelFactory {
         initializer { graph.let { g -> ConnectViewModel(g.pairingPort, g.netView, g.links.pending, g.links::consume, g.release) } }
-    }
-
-    fun link(url: String): ViewModelProvider.Factory = viewModelFactory {
-        initializer { graph.let { g -> LinkViewModel(url, g.pairingPort) } }
     }
 
     fun tailscale(): ViewModelProvider.Factory = viewModelFactory {

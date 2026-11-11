@@ -44,9 +44,9 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * The Expo app's pairing.test.tsx, homeaway.test.ts ("a phone with both addresses"), discover.test.ts
- * (linking with a code), deviceSession.test.ts (the pairing side), repair.test.tsx (re-pairing lifts
- * every halt), secureStore.test.ts (the credential across restarts) and connect.test.tsx (not MileWage).
+ * The Expo app's pairing.test.tsx, homeaway.test.ts ("a phone with both addresses"),
+ * deviceSession.test.ts (the pairing side), repair.test.tsx (re-pairing lifts every halt),
+ * secureStore.test.ts (the credential across restarts) and connect.test.tsx (not MileWage).
  */
 class PairingTest {
     /** The Expo tests' `makeServices`: memory stores, the home/away picker over the same transport. */
@@ -301,86 +301,6 @@ class PairingTest {
         assertEquals(HOME to null, home.homeUrl to home.awayUrl)
         val away = Kit(evil).pairing.redeem(PairingLink(AWAY, TOKEN)).credential
         assertEquals(null to AWAY, away.homeUrl to away.awayUrl)
-    }
-
-    @Test
-    fun keepsTheNewHomeAddressAndOnlyAHomeAddress() = runTest {
-        val k = Kit(okServer())
-        k.secure.pairedWith(baseUrl = HOME, homeUrl = HOME)
-        val moved = "http://192.168.1.31:8080"
-        k.pairing.updateHome(moved)
-        assertEquals(moved, k.pairing.load()?.credential?.homeUrl)
-        k.pairing.updateHome("http://evil.example.com")
-        assertEquals(moved, k.pairing.load()?.credential?.homeUrl)
-    }
-
-    // ---- linking with a code (plan 28 section 4.4)
-
-    private fun linkServer(pollAnswers: MutableList<HttpResponse>) = FakeServer(
-        mutableMapOf(
-            "POST /link-requests" to { _: Recorded ->
-                json(201, """{"device_code":"mwl_x","user_code":"482913","expires_in":600,"interval":2}""")
-            },
-            "POST /link-requests/poll" to { _: Recorded -> pollAnswers.removeAt(0) },
-        ),
-    )
-
-    private fun linked() = json(201, paired(deviceId = 9, home = HOME, away = AWAY), mapOf("X-MileWage-Instance" to "inst-1"))
-
-    @Test
-    fun asksWaitsWhilePendingThenKeepsTheConnectionWithBothAddresses() = runTest {
-        val server = linkServer(mutableListOf(json(202, """{"status":"pending"}"""), linked()))
-        val k = Kit(server)
-        val link = k.pairing.startLink(HOME)
-        assertEquals("mwl_x", link.deviceCode)
-        assertEquals("482913", link.userCode)
-        assertEquals(2000, link.intervalMs)
-        assertEquals(k.clock.now + 600_000, link.expiresAtMs)
-        assertEquals("$HOME/api/v1/link-requests", server.calls[0].url)
-        assertEquals("""{"device_name":"Android phone","platform":"android"}""", server.calls[0].body.toString())
-        assertNull(k.pairing.pollLink(HOME, link.deviceCode))
-        val state = k.pairing.pollLink(HOME, link.deviceCode)
-        assertEquals(Triple(HOME, HOME, AWAY), Triple(state?.credential?.baseUrl, state?.credential?.homeUrl, state?.credential?.awayUrl))
-        assertEquals("$HOME/api/v1/link-requests/poll", server.calls[2].url)
-        assertEquals("""{"device_code":"mwl_x"}""", server.calls[2].body.toString())
-        assertEquals(PairingStatus.PAIRED, k.pairing.status())
-        assertEquals(9, k.pairing.load()?.credential?.deviceId)
-    }
-
-    @Test
-    fun refusalsAreErrorsTheScreenCanNameAStrangeAnswerIsBadResponse() = runTest {
-        val gone = Kit(FakeServer(mutableMapOf("POST /link-requests/poll" to { _: Recorded -> problem(410, "link_expired") })))
-        assertEquals("link_expired", assertFailsWith<ApiException> { gone.pairing.pollLink(HOME, "mwl_x") }.code)
-        val odd = Kit(FakeServer(mutableMapOf("POST /link-requests" to { _: Recorded -> json(201, """{"device_code":"x","user_code":"abc"}""") })))
-        assertEquals(ApiCodes.BAD_RESPONSE, assertFailsWith<ApiException> { odd.pairing.startLink(HOME) }.code)
-        val missing = Kit(FakeServer(mutableMapOf("POST /link-requests" to { _: Recorded -> json(201, """{"user_code":"123456"}""") })))
-        assertEquals(ApiCodes.BAD_RESPONSE, assertFailsWith<ApiException> { missing.pairing.startLink(HOME) }.code)
-        val sane = Kit(FakeServer(mutableMapOf("POST /link-requests" to { _: Recorded -> json(201, """{"device_code":"x","user_code":"123456","expires_in":99999,"interval":0}""") })))
-        val start = sane.pairing.startLink(HOME)
-        assertEquals(5000, start.intervalMs) // strange values fall back
-        assertEquals(sane.clock.now + 600_000, start.expiresAtMs)
-    }
-
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class) // the virtual time
-    @Test
-    fun awaitLinkPollsAtTheIntervalSlowsDownWhenToldAndStopsAtExpiry() = runTest {
-        val answers = mutableListOf(json(202, """{"status":"pending"}"""), problem(429, "slow_down", retryable = true), linked())
-        val server = linkServer(answers)
-        val k = Kit(server)
-        k.clock.now = 0
-        val start = LinkStart("mwl_x", "482913", expiresAtMs = 600_000, intervalMs = 2_000)
-        val clockFollows = backgroundScope.async { while (true) { k.clock.now = testScheduler.currentTime; kotlinx.coroutines.delay(100) } }
-        val state = k.pairing.awaitLink(HOME, start)
-        assertEquals(9, state.credential.deviceId)
-        assertEquals(2_000 + 2_000 + 7_000, testScheduler.currentTime) // the third poll waited 5 s more
-        clockFollows.cancel()
-
-        val never = Kit(linkServer(MutableList(1000) { json(202, """{"status":"pending"}""") }))
-        never.clock.now = 0
-        val expiring = backgroundScope.async { while (true) { never.clock.now = testScheduler.currentTime; kotlinx.coroutines.delay(100) } }
-        val e = assertFailsWith<ApiException> { never.pairing.awaitLink(HOME, LinkStart("mwl_x", "1", 10_000, 2_000)) }
-        assertEquals(ApiCodes.LINK_EXPIRED, e.code)
-        expiring.cancel()
     }
 
     // ---- the device session through pairing

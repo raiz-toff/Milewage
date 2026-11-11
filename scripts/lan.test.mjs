@@ -18,16 +18,14 @@ test('the first private IPv4 address, never loopback or a public one', () => {
   );
 });
 
-test('only with --host, on the Vite port, and not with MILEWAGE_LAN_DISCOVERY=0', () => {
-  expect(devLan([], {}, ifaces)).toBeNull();
-  expect(devLan(['--host'], {}, ifaces)).toEqual({
-    port: 5173,
-    homeUrl: 'http://192.168.1.20:5173',
-  });
-  expect(devLan(['--host', '0.0.0.0', '--port', '5180'], {}, ifaces)?.port).toBe(5180);
-  expect(devLan(['--host=0.0.0.0', '--port=5181'], {}, ifaces)?.homeUrl).toBe(
+test('only with --host, on the Vite port', () => {
+  expect(devLan([], ifaces)).toBeNull();
+  expect(devLan(['--host'], ifaces)).toEqual({ homeUrl: 'http://192.168.1.20:5173' });
+  expect(devLan(['--host', '0.0.0.0', '--port', '5180'], ifaces)?.homeUrl).toBe(
+    'http://192.168.1.20:5180',
+  );
+  expect(devLan(['--host=0.0.0.0', '--port=5181'], ifaces)?.homeUrl).toBe(
     'http://192.168.1.20:5181',
   );
-  expect(devLan(['--host'], { MILEWAGE_LAN_DISCOVERY: '0' }, ifaces)).toBeNull();
-  expect(devLan(['--host'], {}, { lo: ifaces.lo })).toBeNull();
+  expect(devLan(['--host'], { lo: ifaces.lo })).toBeNull();
 });

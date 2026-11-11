@@ -543,7 +543,7 @@ class MileWageData private constructor(
             val data = assemble(
                 db = MileWageDatabase.open(app),
                 connect = { onAnswer, onSettings ->
-                    ServerConnection(app, anyHttp, appVersion, scope, onSettings = onSettings, onAnswer = onAnswer).also { connection = it }.pairing
+                    ServerConnection(app, anyHttp, appVersion, onSettings = onSettings, onAnswer = onAnswer).also { connection = it }.pairing
                 },
                 recorder = recorder,
                 scheduler = WorkSendScheduler(app),
@@ -568,7 +568,7 @@ class MileWageData private constructor(
         }
     }
 
-    /** The server connection (home/away route, discovery, Tailscale) on the phone; null in tests. */
+    /** The server connection (home/away route, Tailscale) on the phone; null in tests. */
     var connection: ServerConnection? = null
         private set
 }

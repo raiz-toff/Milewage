@@ -123,8 +123,6 @@ val policyPermissions = setOf(
     "android.permission.CAMERA",
     "android.permission.INTERNET",
     "android.permission.ACCESS_NETWORK_STATE",
-    // :data NsdDiscovery: the Wi-Fi multicast lock older phones need to receive mDNS (normal, no prompt).
-    "android.permission.CHANGE_WIFI_MULTICAST_STATE",
     // WorkManager's own scheduling.
     "android.permission.WAKE_LOCK",
     // androidx.core: a signature permission that keeps the app's own runtime receivers private.

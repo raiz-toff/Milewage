@@ -48,7 +48,6 @@ const table = (
   'GET /shifts/1/trips': () => ({ body: [trip(1)] }),
   'GET /shifts/1/stops': () => ({ body: [stop(1)] }),
   'GET /devices': () => ({ body: [] }),
-  'GET /link-requests': () => ({ body: [] }),
   'GET /backups': () => ({ body: [] }),
   'GET /vehicles': () => ({ body: [] }),
   ...extra,

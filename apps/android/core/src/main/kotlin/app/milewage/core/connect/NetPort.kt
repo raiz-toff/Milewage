@@ -2,7 +2,7 @@ package app.milewage.core.connect
 
 /**
  * The phone side of the network: what the connect logic asks the platform. `AndroidNet` in :data
- * implements it with ConnectivityManager, NsdManager and the package manager; tests use a fake.
+ * implements it with ConnectivityManager and the package manager; tests use a fake.
  * A port of the Expo app's `NetPort` (connect/reach.ts) over `native/net-check`.
  */
 interface NetPort {
@@ -11,9 +11,6 @@ interface NetPort {
 
     /** True on Wi-Fi or Ethernet, false on mobile data alone, null when it cannot tell (plan 28). */
     suspend fun localNetwork(): Boolean?
-
-    /** MileWage servers announced on this Wi-Fi; empty when none or when discovery is not possible. */
-    suspend fun discover(): List<FoundServer>
 
     suspend fun tailscaleInstalled(): Boolean
 

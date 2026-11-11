@@ -41,8 +41,6 @@ object ApiCodes {
     // Server codes the phone acts on (apps/server/src/errors.ts).
     const val DEVICE_REVOKED = "device_revoked"
     const val INVALID_PAIRING_TOKEN = "invalid_pairing_token"
-    const val LINK_EXPIRED = "link_expired"
-    const val SLOW_DOWN = "slow_down"
     const val RATE_LIMITED = "rate_limited"
     const val UPGRADE_REQUIRED = "upgrade_required"
     const val READ_ONLY_MODE = "read_only_mode"
@@ -98,14 +96,11 @@ enum class ApiFailure {
     /** 507: the server's disk is almost full; keep and retry. */
     SERVER_FULL,
 
-    /** 429: too many requests (rate_limited, slow_down); wait Retry-After. */
+    /** 429: too many requests (rate_limited); wait Retry-After. */
     RATE_LIMITED,
 
     /** 401 invalid_pairing_token: the code is wrong, expired or used. */
     INVALID_CODE,
-
-    /** 410 link_expired: the link code expired, was refused or used. */
-    LINK_EXPIRED,
 
     /** 404. */
     NOT_FOUND,
@@ -113,7 +108,7 @@ enum class ApiFailure {
     /** 409. */
     CONFLICT,
 
-    /** 410 other than link_expired (cursor_expired). */
+    /** 410 (cursor_expired). */
     GONE,
 
     /** 413: too large (halve a point batch). */
@@ -146,7 +141,6 @@ enum class ApiFailure {
             code == ApiCodes.RESTORING -> RESTORING
             status == 507 || code == ApiCodes.INSUFFICIENT_STORAGE -> SERVER_FULL
             status == 429 -> RATE_LIMITED
-            status == 410 && code == ApiCodes.LINK_EXPIRED -> LINK_EXPIRED
             status == 410 -> GONE
             status == 404 -> NOT_FOUND
             status == 409 -> CONFLICT

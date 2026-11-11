@@ -62,12 +62,6 @@ object ContractFixtures {
             // An older server: no home or away address.
             """{"device_id":7,"device_token":"$deviceToken","settings":$SETTINGS}""",
         ),
-        "createLinkRequest 201" to listOf("""{"device_code":"mwl_${"c".repeat(43)}","user_code":"482913","expires_in":600,"interval":5}"""),
-        "pollLinkRequest 201" to listOf(
-            PAIRED,
-            """{"device_id":9,"device_token":"$deviceToken","settings":$SETTINGS,"home_url":null,"away_url":null}""",
-        ),
-        "pollLinkRequest 202" to listOf("""{"status":"pending"}"""),
         "getSettings 200" to listOf(
             SETTINGS,
             SETTINGS.replace(""""own_mileage_rate":{"cents_per_unit":30.5,"unit":"km"}""", """"own_mileage_rate":null""")

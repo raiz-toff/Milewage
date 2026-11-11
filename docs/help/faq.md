@@ -31,7 +31,7 @@ Canada, the United States and Great Britain have country packs, and they are the
 
 At home, yes, once LAN access is on ([`infra/docs/install.md`](../../infra/docs/install.md), section 2a). On your home Wi-Fi the phone can reach the server over plain http at its home address. Away from home it needs an https address, and the release app refuses plain http there. Tailscale gives your home server a safe https address without opening anything on your router.
 
-To pair the phone, scan the QR code from the web's Devices page. On the home Wi-Fi the app can also find the server by itself and ask for the link code shown there instead.
+To pair the phone, scan the QR code from the web's Devices page.
 
 ## Can I run it on a Raspberry Pi?
 

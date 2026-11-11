@@ -1,6 +1,6 @@
 # Home-lab stack (03 section 3, 10 sections 2 and 8). Caddy is published on loopback only, unless
-# LAN access is on (plan 28: MILEWAGE_BIND_ADDRESS=0.0.0.0 and COMPOSE_PROFILES=lan, written by
-# `install.sh --lan`); the host's Tailscale terminates HTTPS. Tags are pinned, never :latest (10 section 12).
+# LAN access is on (plan 28: MILEWAGE_BIND_ADDRESS=0.0.0.0, written by `install.sh --lan`); the
+# host's Tailscale terminates HTTPS. Tags are pinned, never :latest (10 section 12).
 name: milewage
 # Container logs rotate (10 section 11.2): 3 files of 10 MB per service.
 x-logging: &logging
@@ -63,30 +63,6 @@ services:
     mem_limit: 192m
     cpus: 1.0
     # no published ports; only Caddy reaches the API
-
-  # Announces the server on the home Wi-Fi as _milewage._tcp (plan 28 section 4.6), so the phone
-  # finds it. Only with LAN access on (profile `lan`). Multicast does not cross the bridge network,
-  # so this one small process uses the host's network; it opens no port of its own except mDNS
-  # (UDP 5353) and reads only Caddy's /healthz.
-  lan-discovery:
-    # The API's image (same build, served from the cache), so it is there before this starts.
-    build:
-      context: ../..
-      dockerfile: infra/docker/Dockerfile
-    image: milewage-server:0.1.0
-    profiles: [lan]
-    restart: unless-stopped
-    logging: *logging
-    network_mode: host
-    command: ['node', 'advertise.mjs']
-    environment:
-      - MILEWAGE_ADVERTISE_PORT=${MILEWAGE_HOST_PORT:-8080}
-    healthcheck:
-      disable: true
-    mem_limit: 64m
-    cpus: 0.25
-    depends_on:
-      - caddy
 
 networks:
   default:

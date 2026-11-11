@@ -123,7 +123,7 @@ data class Problem(
 data class FieldError(val path: String, val message: String)
 
 // ---------------------------------------------------------------------------------------------
-// Pairing and linking (devices module)
+// Pairing (devices module)
 
 /** `POST /pairing/redeem`. */
 @Serializable
@@ -135,8 +135,7 @@ data class RedeemRequest(
 )
 
 /**
- * The answer to `POST /pairing/redeem` (201) and `POST /link-requests/poll` (201): the device
- * credential, returned once. `home_url` and `away_url` (plan 28) are absent from older servers.
+ * The answer to `POST /pairing/redeem` (201): the device credential, returned once. `home_url` and `away_url` (plan 28) are absent from older servers.
  */
 @Serializable
 data class Paired(
@@ -146,31 +145,6 @@ data class Paired(
     @SerialName("home_url") val homeUrl: String? = null,
     @SerialName("away_url") val awayUrl: String? = null,
 )
-
-/** `POST /link-requests`: a phone that found the server on the Wi-Fi asks to link (RFC 8628 shape). */
-@Serializable
-data class LinkRequestCreate(
-    @SerialName("device_name") val deviceName: String,
-    val platform: DevicePlatform,
-)
-
-@Serializable
-data class LinkStarted(
-    @SerialName("device_code") val deviceCode: String,
-    @SerialName("user_code") val userCode: String,
-    /** Seconds. Checked by the caller (a strange value falls back to 600). */
-    @SerialName("expires_in") val expiresIn: Long? = null,
-    /** Seconds between polls (falls back to 5). */
-    val interval: Long? = null,
-)
-
-/** `POST /link-requests/poll`. */
-@Serializable
-data class LinkPoll(@SerialName("device_code") val deviceCode: String)
-
-/** 202 from `POST /link-requests/poll`: the driver has not typed the code yet. */
-@Serializable
-data class LinkPending(val status: String)
 
 // ---------------------------------------------------------------------------------------------
 // Settings

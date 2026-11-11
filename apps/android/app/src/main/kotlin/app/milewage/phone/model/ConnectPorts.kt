@@ -1,9 +1,7 @@
 package app.milewage.phone.model
 
 import app.milewage.core.api.ApiException
-import app.milewage.core.connect.FoundServer
 import app.milewage.core.connect.Where
-import app.milewage.core.pairing.LinkStart
 import app.milewage.core.pairing.PairedState
 import app.milewage.core.pairing.PairingLink
 import app.milewage.core.pairing.PairingStatus
@@ -41,11 +39,6 @@ interface PairingPort {
 
     suspend fun redeem(link: PairingLink)
 
-    suspend fun startLink(baseUrl: String): LinkStart
-
-    /** Polls until the driver types the code on the web (slows down on `slow_down`); throws `link_expired`. */
-    suspend fun awaitLink(baseUrl: String, start: LinkStart)
-
     suspend fun hasUnsentData(): Boolean
 
     /**
@@ -59,16 +52,9 @@ interface PairingPort {
 interface NetView {
     suspend fun vpnActive(): Boolean?
 
-    suspend fun localNetwork(): Boolean?
-
-    suspend fun discover(): List<FoundServer>
-
     suspend fun tailscaleInstalled(): Boolean
 
     suspend fun openTailscale()
-
-    /** Android 17 at targetSdk 37: local network access is a runtime permission (false before). */
-    fun localNetworkPermissionNeeded(): Boolean
 }
 
 /** The "Still on shift?" reminder (over `TrackingController`). */
@@ -113,25 +99,14 @@ class MileWagePairing(private val data: MileWageData) : PairingPort {
         data.kick()
     }
 
-    override suspend fun startLink(baseUrl: String): LinkStart = pairing.startLink(baseUrl)
-
-    override suspend fun awaitLink(baseUrl: String, start: LinkStart) {
-        pairing.awaitLink(baseUrl, start)
-        data.kick()
-    }
-
     override suspend fun hasUnsentData(): Boolean = data.hasUnsentData()
 
     override suspend fun unpair(confirmed: Boolean): Boolean = data.unpair(confirmed)
 }
 
-/** [NetView] on `AndroidNet`; without a connection (never on the phone) nothing is found. */
+/** [NetView] on `AndroidNet`; without a connection (never on the phone) nothing is installed. */
 class AndroidNetView(private val net: AndroidNet?) : NetView {
     override suspend fun vpnActive(): Boolean? = net?.vpnActive()
-
-    override suspend fun localNetwork(): Boolean? = net?.localNetwork()
-
-    override suspend fun discover(): List<FoundServer> = net?.discover() ?: emptyList()
 
     override suspend fun tailscaleInstalled(): Boolean = net?.tailscaleInstalled() ?: false
 
@@ -139,7 +114,6 @@ class AndroidNetView(private val net: AndroidNet?) : NetView {
         net?.openTailscale()
     }
 
-    override fun localNetworkPermissionNeeded(): Boolean = net?.localNetworkPermissionNeeded() ?: false
 }
 
 class ControllerTrackingSettings(private val c: TrackingController) : TrackingSettingsPort {
