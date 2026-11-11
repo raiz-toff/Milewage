@@ -238,13 +238,23 @@ function AppSidebar({ list, name }: { list: Screen[]; name: string | null }) {
                 </SidebarGroupContent>
               </SidebarGroup>
             ))}
+          {/* The system pages scroll with the rest, at the foot when there is room; only the
+              account stays pinned, so a short window keeps most of its height for the menu. */}
+          {system.length > 0 ? (
+            <SidebarGroup className="mt-auto">
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {system.map((s) => (
+                    <NavItem key={s.path} screen={s} pathname={pathname} />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ) : null}
         </SidebarContent>
         <SidebarFooter className="border-t border-sidebar-border">
           <InstallCard />
           <SidebarMenu>
-            {system.map((s) => (
-              <NavItem key={s.path} screen={s} pathname={pathname} />
-            ))}
             <AccountMenu name={name} />
           </SidebarMenu>
         </SidebarFooter>
