@@ -9,10 +9,14 @@ import app.milewage.core.api.MileageRate
 import app.milewage.core.api.Settings
 import app.milewage.core.api.TripKind
 import app.milewage.core.connect.ServerIdentity
+import app.milewage.core.demo.Demo
+import app.milewage.core.demo.DemoSamples
+import app.milewage.core.demo.DemoServer
 import app.milewage.core.diagnostics.PermSnapshot
 import app.milewage.core.diagnostics.PhoneDiagnostics
 import app.milewage.core.pairing.Flags
 import app.milewage.core.pairing.Pairing
+import app.milewage.core.pairing.PairingLink
 import app.milewage.core.ports.Clock
 import app.milewage.core.shift.BatteryPort
 import app.milewage.core.shift.EditResult
@@ -68,6 +72,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onStart
@@ -468,6 +473,72 @@ class MileWageData private constructor(
      */
     suspend fun deleteOtherServerShifts(): Int = off { binding.deleteElsewhere() }
 
+    // ------------------------------------------------------------------------------------------
+    // Demo mode ("Try it without a server", see `Demo` in :core)
+
+    /** True while the phone is paired with the demo server in this process. */
+    suspend fun isDemo(): Boolean = Demo.isDemo(pairing.load()?.credential)
+
+    /** [isDemo] now and after every pairing change. */
+    fun demo(): Flow<Boolean> = pairing.statusFlow().map { isDemo() }.distinctUntilChanged()
+
+    /**
+     * Pairs with the demo server and writes its sample vehicles and shifts. The setup steps follow
+     * as after any first connection. Nothing goes over the network: the demo server is in-process.
+     */
+    suspend fun enterDemo() = off {
+        store.put(Demo.KEY_SINCE, clock.nowMs().toString())
+        pairing.redeem(Demo.LINK)
+        DemoSamples.seed(store, clock.nowMs())
+        kick()
+    }
+
+    /**
+     * "Leave demo": ends a demo shift that is still running (the tracker stops), unpairs and deletes
+     * everything the demo added; the gate then shows first run. False when not in demo mode.
+     */
+    suspend fun leaveDemo(): Boolean = off {
+        if (!isDemo()) return@off false
+        shifts.running()?.let { shifts.end(null) }
+        pairing.unpair { false }
+        clearDemo()
+        true
+    }
+
+    /**
+     * Connects to a server with a pairing code. From demo mode the demo's data is deleted first, so
+     * nothing of the demo is ever sent to a real server.
+     */
+    suspend fun connect(link: PairingLink) {
+        if (isDemo()) leaveDemo()
+        pairing.redeem(link)
+        kick()
+    }
+
+    /**
+     * Deletes what is bound to the demo server: the sample shifts and those recorded in demo mode
+     * with all of theirs, the sample vehicles and the demo's bookkeeping. A shift the demo pairing
+     * claimed from before (recorded unbound) is given back unbound, never deleted.
+     */
+    private suspend fun clearDemo() {
+        val since = store.get(Demo.KEY_SINCE)?.toLongOrNull() ?: 0L
+        store.transaction {
+            for (s in store.shifts(Int.MAX_VALUE)) {
+                if (s.instanceId != Demo.INSTANCE) continue
+                if (s.clientId.startsWith(Demo.SAMPLE_PREFIX) || s.startedAt >= since) {
+                    store.dropChanges(s.clientId)
+                    store.deleteShift(s.clientId)
+                } else {
+                    store.upsertShift(s.copy(instanceId = null))
+                }
+            }
+            for (v in store.vehicles()) if (v.id in Demo.VEHICLE_IDS) store.deleteVehicle(v.id)
+            for (k in ServerBinding.PER_SERVER_KEYS) store.remove(ServerBinding.keyFor(k, Demo.INSTANCE))
+            store.remove(Demo.KEY_SINCE)
+        }
+        binding.invalidate()
+    }
+
     /**
      * Main-safe (Android's rule for a data layer): what a screen asks for is done on [engine], never
      * on the thread that asked. A screen calls from the main thread, and a round of sending encodes,
@@ -563,15 +634,20 @@ class MileWageData private constructor(
         ): MileWageData {
             val app = context.applicationContext
             var connection: ServerConnection? = null
+            var self: MileWageData? = null
+            val clock = Clock { System.currentTimeMillis() }
+            // The demo server answers from the phone's own records (it keeps nothing itself).
+            val demo = DemoServer(clock) { id -> self?.store?.shift(id) }
             val data = assemble(
                 db = MileWageDatabase.open(app),
                 connect = { onAnswer, onSettings ->
-                    ServerConnection(app, anyHttp, appVersion, onSettings = onSettings, onAnswer = onAnswer).also { connection = it }.pairing
+                    ServerConnection(app, anyHttp, appVersion, clock, onSettings = onSettings, onAnswer = onAnswer, demo = demo)
+                        .also { connection = it }.pairing
                 },
                 recorder = recorder,
                 scheduler = WorkSendScheduler(app),
                 scope = scope,
-                clock = Clock { System.currentTimeMillis() },
+                clock = clock,
                 appVersion = appVersion,
                 reminders = reminders,
                 battery = battery,
@@ -580,6 +656,7 @@ class MileWageData private constructor(
                 permissions = permissions,
             )
             data.connection = connection
+            self = data
             runCatching {
                 app.getSystemService(ConnectivityManager::class.java)?.registerDefaultNetworkCallback(
                     object : ConnectivityManager.NetworkCallback() {

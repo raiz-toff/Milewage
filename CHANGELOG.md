@@ -6,6 +6,14 @@ All notable changes to MileWage are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Phone: "Try it without a server" on the first screen. The app runs against a demo server inside
+  the app, with sample shifts in kilometres and Canadian dollars, so every screen can be tried.
+  Start and End shift record for real; nothing leaves the phone. A line on Home and in Settings
+  says it is the demo, and Settings > Leave demo deletes the demo's shifts. Connecting your own
+  server from the demo deletes them too.
+
 ## [0.3.1] - 2026-11-12
 
 A smoother, calmer phone app, and a colour of your own. Install `milewage-0.3.1.apk`

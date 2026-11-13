@@ -25,6 +25,10 @@ data class ConnectState(
     val error: ConnectError? = null,
     /** A pairing link that opened the app: "Connect to this server?" first (anyone can make such a link). */
     val confirm: PairingLink? = null,
+    /** "Try it without a server" is setting up the demo. */
+    val demoBusy: Boolean = false,
+    /** The demo could not be set up (the phone's storage): a message with Try again. */
+    val demoFailed: Boolean = false,
 )
 
 /**
@@ -86,6 +90,29 @@ class ConnectViewModel(
     fun openTailscale() {
         viewModelScope.launch { net.openTailscale() }
     }
+
+    /**
+     * "Try it without a server": pairs with the demo server in this process (no network) and adds
+     * its sample data. The gate then moves to the setup steps, as after any first connection.
+     */
+    fun tryDemo() {
+        if (_state.value.demoBusy || _state.value.busy) return
+        _state.update { it.copy(demoBusy = true, demoFailed = false) }
+        viewModelScope.launch {
+            val ok = try {
+                pairing.enterDemo()
+                true
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                false
+            }
+            _state.update { it.copy(demoBusy = false, demoFailed = !ok) }
+        }
+    }
+
+    /** The demo's failure message was shown. */
+    fun demoFailureShown() = _state.update { it.copy(demoFailed = false) }
 
     private fun fail(e: ConnectError) = _state.update { it.copy(error = e) }
 

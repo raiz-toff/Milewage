@@ -208,11 +208,23 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.peers(): Boolean =
 /** First run's screens; Connect's view model is shared with the scanner (scoped to this graph). */
 private fun androidx.navigation.NavGraphBuilder.firstRun(nav: NavHostController, shell: ShellState) {
     navigation<FirstRunGraph>(startDestination = WelcomeRoute) {
-        composable<WelcomeRoute> {
+        composable<WelcomeRoute> { backStack ->
+            val vm = connectViewModel(nav, backStack)
+            val state by vm.state.collectAsStateWithLifecycle()
+            val res = LocalResources.current
+            val snackbars = LocalSnackbars.current
+            LaunchedEffect(state.demoFailed) {
+                if (state.demoFailed) {
+                    vm.demoFailureShown()
+                    snackbars.show(res.getString(R.string.demo_failed), res.getString(R.string.try_again)) { vm.tryDemo() }
+                }
+            }
             WelcomeScreen(
                 revoked = shell.status == PairingStatus.REVOKED,
                 onHaveServer = { nav.navigate(ConnectRoute) },
                 onNoServer = { nav.navigate(ServerSetupRoute) },
+                onTryDemo = vm::tryDemo,
+                demoBusy = state.demoBusy,
             )
         }
         composable<ServerSetupRoute> {
