@@ -52,6 +52,8 @@ data class SettingsState(
     val helpBase: String? = null,
     /** Shifts recorded for another server, never sent there. */
     val otherServer: OtherServerShifts = OtherServerShifts.NONE,
+    /** Demo mode: the server is the demo in this process; "Leave demo" replaces "Connect to a different server". */
+    val demo: Boolean = false,
 )
 
 sealed interface SettingsEvent {
@@ -75,6 +77,11 @@ sealed interface SettingsEvent {
     data class OtherServerDeleted(val shifts: Int) : SettingsEvent
 
     data object DeleteFailed : SettingsEvent
+
+    /** "Leave demo?": the demo's data is deleted; [running]: the demo shift that runs ends first. */
+    data class AskLeaveDemo(val running: Boolean) : SettingsEvent
+
+    data object LeaveDemoFailed : SettingsEvent
 }
 
 /**
@@ -111,6 +118,7 @@ class SettingsViewModel(
             }
         }
         viewModelScope.launch { data.otherServer().collect { o -> _state.update { it.copy(otherServer = o) } } }
+        viewModelScope.launch { pairing.demo().collect { d -> _state.update { it.copy(demo = d) } } }
         viewModelScope.launch { appearance.theme.collect { t -> _state.update { it.copy(theme = t) } } }
         viewModelScope.launch { appearance.wallpaperColours.collect { w -> _state.update { it.copy(wallpaper = w) } } }
         viewModelScope.launch { appearance.accent.collect { a -> _state.update { it.copy(accent = a) } } }
@@ -187,6 +195,25 @@ class SettingsViewModel(
                 val s = _state.value
                 _events.trySend(SettingsEvent.AskLeaveUnsent(s.facts?.host ?: "", s.unsentShifts, s.unsentFixes))
             }
+        }
+    }
+
+    /** "Leave demo": asks first (the demo's shifts are deleted). */
+    fun leaveDemo() {
+        _events.trySend(SettingsEvent.AskLeaveDemo(_state.value.running))
+    }
+
+    /** The driver confirmed: a running demo shift ends, the demo's data goes, and first run follows. */
+    fun confirmLeaveDemo() {
+        viewModelScope.launch {
+            val ok = try {
+                pairing.leaveDemo()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                false
+            }
+            if (!ok) _events.trySend(SettingsEvent.LeaveDemoFailed)
         }
     }
 

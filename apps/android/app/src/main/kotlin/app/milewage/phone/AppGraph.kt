@@ -5,6 +5,7 @@ import android.os.Build
 import app.milewage.data.DeviceInfo
 import app.milewage.data.MileWageData
 import app.milewage.data.prefs.UiPreferences
+import app.milewage.core.pairing.PairingStatus
 import app.milewage.engine.Engine
 import app.milewage.phone.logic.DiagnosticsInfo
 import app.milewage.phone.logic.DiagnosticsReport
@@ -85,7 +86,8 @@ class AppGraph(context: Context, val scope: CoroutineScope) {
 
     val now: Now = Now.SYSTEM
 
-    val links = PairLinkInbox(status = { data.pairing.status() })
+    // A link that opens the app in demo mode may connect a real server (the demo's data goes first).
+    val links = PairLinkInbox(status = { if (data.isDemo()) PairingStatus.UNPAIRED else data.pairing.status() })
 
     /** First run's and Settings' seams: pairing, the network (Tailscale), tracking settings, looks. */
     val pairingPort: PairingPort = MileWagePairing(data)

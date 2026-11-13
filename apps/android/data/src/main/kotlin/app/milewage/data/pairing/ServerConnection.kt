@@ -6,6 +6,7 @@ import app.milewage.core.api.Settings
 import app.milewage.core.connect.HealthProbe
 import app.milewage.core.connect.RoutePicker
 import app.milewage.core.connect.ServerIdentity
+import app.milewage.core.demo.DemoServer
 import app.milewage.core.pairing.DeviceSession
 import app.milewage.core.pairing.Pairing
 import app.milewage.core.pairing.PairingDeps
@@ -18,7 +19,7 @@ import app.milewage.data.secure.KeystoreSecretStore
 /**
  * The phone's connection to its server, assembled once (one per process, held by the Application):
  * the OkHttp client with the home-only cleartext gate, the network port, the home/away picker, the
- * device session and [pairing].
+ * device session and [pairing]. Requests to the demo's address go to [DemoServer] in this process.
  * The screens use [pairing] (status, redeem, unpair) and [net] (Tailscale); the
  * sending task uses `pairing.session()` for an authenticated client.
  */
@@ -33,8 +34,10 @@ class ServerConnection(
     onSettings: suspend (Settings) -> Unit = {},
     /** Every answer of the paired server after the wrong-server check (the restore-generation check). */
     onAnswer: suspend (ServerIdentity, String?) -> Unit = { _, _ -> },
+    /** The demo's in-process server ("Try it without a server"): its address never reaches OkHttp. */
+    demo: HttpTransport = DemoServer(clock),
 ) {
-    val transport: HttpTransport = OkHttpTransport(HttpClients.create(anyHttp))
+    val transport: HttpTransport = DemoServer.routing(demo, OkHttpTransport(HttpClients.create(anyHttp)))
     val net = AndroidNet(context)
     private val plain = DataStoreKeyValueStore.pairing(context)
     val device = DeviceSession(plain)
