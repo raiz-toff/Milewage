@@ -2,7 +2,8 @@
 # Release APK of the native Android app (apps/android), on a machine with JDK 17 and the Android SDK.
 # The release process calls it through scripts/phone-release-build.sh (same flags).
 # Output: apps/android/app/build/outputs/apk/release/app-release.apk, and a copy beside it named
-# milewage-<VERSION>.apk, the file attached to the GitHub release.
+# milewage-<VERSION>.apk, the file attached to the GitHub release; and the App Bundle for Google Play,
+# app/build/outputs/bundle/release/app-release.aab with milewage-<VERSION>.aab beside it.
 # Signing: the upload key when $HOME/.milewage/keystore.env (or MILEWAGE_KEYSTORE_ENV) exists, made
 # once by scripts/phone-keystore.sh and read by scripts/phone-signing-env.sh; otherwise the Android
 # debug key (not for Google Play). Same key and applicationId (app.milewage.phone) as the retired
@@ -48,12 +49,16 @@ echo "MileWage $version, versionCode ${MILEWAGE_VERSION_CODE:-default (app/build
 
 cd "$HERE"
 printf 'sdk.dir=%s\n' "$ANDROID_HOME" >local.properties
-./gradlew --no-daemon test lint assembleRelease ${gradle_args[@]+"${gradle_args[@]}"}
+./gradlew --no-daemon test lint assembleRelease bundleRelease ${gradle_args[@]+"${gradle_args[@]}"}
 
 apk=app/build/outputs/apk/release/app-release.apk
 named="app/build/outputs/apk/release/milewage-$version.apk"
 cp "$apk" "$named"
-ls -l "$apk" "$named"
+# The App Bundle for Google Play (npm run play:release uploads it).
+aab=app/build/outputs/bundle/release/app-release.aab
+named_aab="app/build/outputs/bundle/release/milewage-$version.aab"
+cp "$aab" "$named_aab"
+ls -l "$apk" "$named" "$aab" "$named_aab"
 if [[ -n "$publish" ]]; then
   "$ROOT/scripts/publish-apk.sh" "$apk" "$publish"
 fi

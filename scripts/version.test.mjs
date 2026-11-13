@@ -3,7 +3,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
-import { GRADLE_APP, androidProblems, check, releasedVersionCodes, sync } from './version.mjs';
+import {
+  GRADLE_APP,
+  androidProblems,
+  bump,
+  check,
+  releasedVersionCodes,
+  sync,
+} from './version.mjs';
 
 const repo = fileURLToPath(new URL('..', import.meta.url));
 
@@ -91,6 +98,29 @@ test('a versionName that no longer comes from VERSION fails', () => {
     changelog(''),
   );
   expect(check(root).map((p) => p.found)).toEqual(['a versionName not read from VERSION']);
+});
+
+test('bump moves every version, the lockfile and the versionCode, and adds a release-notes file', () => {
+  const root = withAndroid(fixture('1.2.3', { a: '1.2.3' }), null, changelog('(versionCode 2)'));
+  writeFileSync(
+    join(root, 'package-lock.json'),
+    '{\n  "name": "milewage",\n  "version": "1.2.3",\n  "packages": {\n    "": {\n      "name": "milewage",\n      "version": "1.2.3"\n    },\n    "packages/a": {\n      "name": "@milewage/a",\n      "version": "1.2.3"\n    },\n    "node_modules/x": {\n      "version": "1.2.3"\n    }\n  }\n}\n',
+  );
+  mkdirSync(join(root, 'apps', 'android', 'play', 'release-notes', 'en-US'), { recursive: true });
+  const before = Number(/return@let (\d+)/.exec(readFileSync(join(root, GRADLE_APP), 'utf8'))[1]);
+  const r = bump(root, '1.3.0');
+  expect(r.versionCode).toBe(before + 1);
+  expect(readFileSync(join(root, 'VERSION'), 'utf8')).toBe('1.3.0\n');
+  expect(check(root)).toEqual([]);
+  const lock = readFileSync(join(root, 'package-lock.json'), 'utf8');
+  expect(lock.match(/"1\.3\.0"/g)).toHaveLength(3);
+  expect(lock).toContain('"node_modules/x": {\n      "version": "1.2.3"');
+  expect(readFileSync(join(root, GRADLE_APP), 'utf8')).toContain(`return@let ${before + 1}`);
+  expect(readFileSync(join(root, 'apps/android/play/release-notes/en-US/1.3.0.txt'), 'utf8')).toBe(
+    '',
+  );
+  expect(() => bump(root, '1.3.0')).toThrow(/already/);
+  expect(() => bump(root, 'next')).toThrow(/semantic version/);
 });
 
 test('the repository itself is in sync, the Android app included', () => {

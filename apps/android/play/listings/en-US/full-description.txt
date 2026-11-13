@@ -1,0 +1,28 @@
+MileWage records the distance you drive for work, shift by shift, and works out what it is worth at tax time. It is made for delivery and rideshare drivers who work for more than one app.
+
+MileWage is self-hosted. The phone app sends your shifts to a MileWage server that you run yourself, on a home computer, a small server or a Raspberry Pi. Your routes and earnings stay with you. MileWage has no account with us, no ads, no analytics and no crash reporting.
+
+YOU NEED A MILEWAGE SERVER
+The app pairs with your server by scanning a QR code. The server runs in Docker; the setup guide is at github.com/raiz-toff/Milewage. MileWage is free and open source (AGPL-3.0).
+
+ON THE PHONE
+• Start shift and End shift, with large buttons that are easy to reach in a car mount.
+• GPS records only while a shift runs. It saves battery while you stand still and picks up again when you move.
+• Shifts are kept on the phone until your server has them, so no connection on the road means nothing lost.
+• Trips and stops for each shift, the route, the odometer and the distance per vehicle.
+• Today, this week and this month at a glance, with an estimate of the deduction.
+• Works at home on Wi-Fi and away through Tailscale.
+• Light and dark themes, and a colour of your choice or your wallpaper's.
+
+ON YOUR SERVER (IN THE BROWSER)
+• Earnings by platform, expenses with receipts, and vehicles.
+• Mileage rates for Canada, the United States and the United Kingdom, or a rate of your own.
+• A PDF report and exports for your accountant.
+• Encrypted nightly backups.
+
+PERMISSIONS
+• Location, all the time: so a shift keeps recording with the screen off. MileWage uses location only between Start shift and End shift.
+• Notifications: the notice that shows while a shift is recording.
+• Camera: only to scan your server's pairing code.
+
+MileWage gives estimates, not tax advice. Check the figures with your tax office or an accountant.
