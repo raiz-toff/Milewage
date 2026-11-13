@@ -47,6 +47,13 @@
     <string name="welcome_body_server">Your data stays on your server: a MileWage server you run at home or on your own computer.</string>
     <string name="welcome_have_server">I have a server</string>
     <string name="welcome_no_server">I don\'t have one yet</string>
+    <string name="welcome_try_demo">Try it without a server</string>
+    <string name="welcome_try_demo_busy">Setting up the demo</string>
+    <string name="demo_failed">The demo could not be set up.</string>
+    <string name="demo_mark">Demo: nothing is sent. Connect your own server to keep your shifts.</string>
+    <string name="connected_demo">This is the demo, with sample shifts. Shifts you record stay on this phone and nothing is sent.</string>
+    <string name="demo_server">Demo</string>
+    <string name="demo_server_body">Sample data in this app. Nothing leaves this phone.</string>
     <string name="welcome_revoked">This phone was disconnected from your server. Connect again.</string>
     <string name="welcome_revoked_detail">Shifts not yet sent stay on this phone.</string>
     <string name="link_not_a_code">That is not a MileWage pairing code.</string>
@@ -592,6 +599,13 @@
     <string name="unpair_running">End your shift before you disconnect this phone.</string>
     <string name="unpair_done">Phone disconnected.</string>
     <string name="unpair_failed">Could not disconnect.</string>
+    <string name="settings_leave_demo">Leave demo</string>
+    <string name="settings_leave_demo_body">Deletes the demo\'s shifts from this phone. Then connect your own server.</string>
+    <string name="leave_demo_title">Leave the demo?</string>
+    <string name="leave_demo_text">The sample shifts and any shifts you recorded in the demo are deleted from this phone.</string>
+    <string name="leave_demo_text_running">Your demo shift ends. The sample shifts and any shifts you recorded in the demo are deleted from this phone.</string>
+    <string name="leave_demo_confirm">Leave demo</string>
+    <string name="leave_demo_failed">Could not leave the demo.</string>
     <string name="settings_tracking">Tracking</string>
     <string name="settings_nudge">“Still on shift?” reminder</string>
     <string name="nudge_dialog_title">“Still on shift?” reminder</string>

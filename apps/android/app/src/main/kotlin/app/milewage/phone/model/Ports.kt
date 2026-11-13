@@ -49,6 +49,9 @@ interface ShiftData {
 
     fun pairingStatus(): Flow<PairingStatus>
 
+    /** True while the phone is in demo mode ("Try it without a server"): Home and Settings say so. */
+    fun demo(): Flow<Boolean>
+
     suspend fun refreshVehicles(): VehicleList
 
     suspend fun lastVehicleId(): Long?

@@ -111,6 +111,26 @@ allowed". The server validates its own merged object, so the check merges `allOf
   data waits; pass `{ false }` after the driver confirms (`MileWageData.unpair(confirmed = true)`).
   Nothing is deleted: what was not sent stays bound to that server (below).
 
+## Demo mode ("Try it without a server", `app.milewage.core.demo`)
+
+For Google Play's review and for a driver who wants to look first. The phone pairs with
+`DemoServer`, a MileWage server inside the app's process: `ServerConnection` routes every request
+to `Demo.BASE_URL` (`https://demo.milewage.invalid`, a name that never resolves) to it with
+`DemoServer.routing`, so no request of the demo reaches OkHttp. Everything above the transport is
+the real thing: pairing, the setup steps, the shift model, the tracker, sending.
+
+- **Entering**: `MileWageData.enterDemo()` notes the time (`demo.since`), redeems `Demo.LINK` and
+  writes `DemoSamples` (two vehicles, three weeks of sent shifts with trips, stops and routes around
+  Toronto). The demo's settings: Canada, km, CAD, Toronto time, a 72/66 cent two-step rate, Help
+  and diagnostics off.
+- **Using**: demo mode is "the credential points at `Demo.BASE_URL`" (`isDemo()`, `demo()`), not a
+  flag of its own. `DemoServer` keeps nothing: it answers from the request and the phone's own
+  record of the shift, so its end answer always matches the phone's numbers.
+- **Leaving**: `leaveDemo()` ends a running demo shift, unpairs and deletes what is bound to
+  `Demo.INSTANCE` (samples, shifts recorded since `demo.since`, the sample vehicles, the demo's
+  per-server bookkeeping). `connect(link)` (every pairing code) leaves the demo first, so nothing
+  of the demo ever goes to a real server.
+
 ## QR codes
 
 `QrDecoder` reads a QR code from a luminance frame with ZXing (`com.google.zxing:core`, plain Java,

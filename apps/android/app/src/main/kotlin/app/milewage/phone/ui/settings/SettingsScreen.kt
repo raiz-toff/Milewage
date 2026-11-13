@@ -77,6 +77,7 @@ import app.milewage.phone.ui.components.ListRow
 import app.milewage.phone.ui.components.TileTone
 import app.milewage.phone.ui.components.LocalSnackbars
 import app.milewage.phone.ui.components.NoticeCard
+import app.milewage.phone.ui.components.DemoMark
 import app.milewage.phone.ui.components.OtherServerCard
 import app.milewage.phone.ui.components.otherServerDeleteRequest
 import app.milewage.phone.ui.components.RowDivider
@@ -122,6 +123,8 @@ interface SettingsActions {
 
     /** Another server's shifts: delete them from the phone (asks first). */
     fun deleteOtherServer()
+
+    fun leaveDemo() {}
 }
 
 @Composable
@@ -178,6 +181,8 @@ fun SettingsRoute(
 
             override fun openDiagnostics() = onOpenDiagnostics()
 
+            override fun leaveDemo() = vm.leaveDemo()
+
             override fun deleteOtherServer() {
                 val n = vm.state.value.otherServer.shifts
                 if (n > 0) confirm.ask(otherServerDeleteRequest(res, n) { vm.deleteOtherServer() })
@@ -216,6 +221,16 @@ fun SettingsRoute(
                 is SettingsEvent.Sent -> snackbars.show(res.getString(if (e.done) R.string.sync_all_sent else R.string.sync_still_waiting))
                 is SettingsEvent.OtherServerDeleted -> snackbars.show(res.getQuantityString(R.plurals.other_server_deleted, e.shifts, e.shifts))
                 SettingsEvent.DeleteFailed -> snackbars.show(res.getString(R.string.delete_failed))
+                is SettingsEvent.AskLeaveDemo -> confirm.ask(
+                    ConfirmRequest(
+                        title = res.getString(R.string.leave_demo_title),
+                        text = res.getString(if (e.running) R.string.leave_demo_text_running else R.string.leave_demo_text),
+                        confirmLabel = res.getString(R.string.leave_demo_confirm),
+                        destructive = true,
+                        onConfirm = { vm.confirmLeaveDemo() },
+                    ),
+                )
+                SettingsEvent.LeaveDemoFailed -> snackbars.show(res.getString(R.string.leave_demo_failed), res.getString(R.string.try_again)) { vm.confirmLeaveDemo() }
             }
         }
     }
@@ -229,7 +244,8 @@ fun SettingsContent(state: SettingsState, info: AppInfo, actions: SettingsAction
     var nudgeOpen by rememberSaveable { mutableStateOf(false) }
     var themeOpen by rememberSaveable { mutableStateOf(false) }
     Screen(title = stringResource(R.string.nav_settings)) {
-        item(key = "server") { ServerSection(state, actions) }
+        if (state.demo) item(key = "demo") { DemoMark() }
+        item(key = "server") { if (state.demo) DemoServerSection() else ServerSection(state, actions) }
         item(key = "phone") {
             Rows(label = stringResource(R.string.settings_phone)) {
                 ListRow(
@@ -241,17 +257,28 @@ fun SettingsContent(state: SettingsState, info: AppInfo, actions: SettingsAction
                 )
                 RowDivider()
                 // Destructive: Material's error colour, and it asks first.
-                ListRow(
-                    headline = stringResource(R.string.settings_disconnect),
-                    supporting = state.facts?.let { stringResource(R.string.settings_disconnect_body, it.host) },
-                    leading = { IconTile(Icons.Close, tone = TileTone.Problem) },
-                    headlineColor = MaterialTheme.colorScheme.error,
-                    onClick = actions::disconnect,
-                )
+                if (state.demo) {
+                    ListRow(
+                        headline = stringResource(R.string.settings_leave_demo),
+                        supporting = stringResource(R.string.settings_leave_demo_body),
+                        leading = { IconTile(Icons.Close, tone = TileTone.Problem) },
+                        headlineColor = MaterialTheme.colorScheme.error,
+                        onClick = actions::leaveDemo,
+                    )
+                } else {
+                    ListRow(
+                        headline = stringResource(R.string.settings_disconnect),
+                        supporting = state.facts?.let { stringResource(R.string.settings_disconnect_body, it.host) },
+                        leading = { IconTile(Icons.Close, tone = TileTone.Problem) },
+                        headlineColor = MaterialTheme.colorScheme.error,
+                        onClick = actions::disconnect,
+                    )
+                }
             }
         }
         item(key = "tracking") { TrackingSection(state) { nudgeOpen = true } }
-        item(key = "sending") { SendingSection(state, actions) }
+        // Nothing is sent in the demo: no sending section to read.
+        if (!state.demo) item(key = "sending") { SendingSection(state, actions) }
         item(key = "appearance") {
             val haptics = LocalHapticFeedback.current
             Rows(label = stringResource(R.string.settings_appearance)) {
@@ -404,6 +431,18 @@ private fun Swatch(name: String, fill: Color, label: Color, selected: Boolean, w
 @Composable
 private fun nudgeLabel(minutes: Int): String =
     if (minutes == 0) stringResource(R.string.nudge_off) else pluralStringResource(R.plurals.nudge_minutes, minutes, minutes)
+
+/** The demo's "server": in this app, on this phone; nothing to check or connect. */
+@Composable
+private fun DemoServerSection() {
+    Rows(label = stringResource(R.string.settings_server)) {
+        ListRow(
+            headline = stringResource(R.string.demo_server),
+            supporting = stringResource(R.string.demo_server_body),
+            leading = { IconTile(Icons.Server, tone = TileTone.Kind(0)) },
+        )
+    }
+}
 
 /** The server: its two addresses (host names), which one the phone uses, and the connection. */
 @Composable

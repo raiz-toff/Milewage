@@ -41,6 +41,8 @@ class MileWageShiftData(private val data: MileWageData) : ShiftData {
 
     override fun pairingStatus(): Flow<PairingStatus> = data.pairing.statusFlow().distinctUntilChanged()
 
+    override fun demo(): Flow<Boolean> = data.demo()
+
     override suspend fun refreshVehicles() = data.refreshVehicles().let { it.copy(vehicles = it.vehicles.filter { v -> v.archivedAt == null }) }
 
     override suspend fun lastVehicleId() = data.lastVehicleId()

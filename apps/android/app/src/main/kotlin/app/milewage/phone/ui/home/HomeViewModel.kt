@@ -69,6 +69,8 @@ data class HomeState(
     val sending: Boolean = false,
     /** Shifts recorded for another server, never sent there: a card with its two ways forward. */
     val otherServer: OtherServerShifts = OtherServerShifts.NONE,
+    /** Demo mode: a line says so and that nothing is sent. */
+    val demo: Boolean = false,
 )
 
 /** One-off messages for a snackbar. */
@@ -145,7 +147,7 @@ class HomeViewModel(
         val otherServer: OtherServerShifts,
     )
 
-    val state: StateFlow<HomeState> = combine(inputs, data.runningShift(), tracking.status, local) { i, running, status, l ->
+    val state: StateFlow<HomeState> = combine(inputs, data.runningShift(), tracking.status, local, data.demo()) { i, running, status, l, demo ->
         val perm = l.permissions ?: tracking.permissions()
         HomeState(
             ready = true,
@@ -163,6 +165,7 @@ class HomeViewModel(
             refreshing = l.refreshing,
             sending = l.sending,
             otherServer = i.otherServer,
+            demo = demo,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeState())
 
