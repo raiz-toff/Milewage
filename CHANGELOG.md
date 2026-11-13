@@ -6,6 +6,38 @@ All notable changes to MileWage are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-12
+
+A smoother, calmer phone app, and a colour of your own. Install `milewage-0.3.1.apk`
+(versionCode 4) over 0.3.0: it keeps everything on the phone, and nothing changes on the server.
+
+### Added
+
+- Phone: Settings > Colour, one row of swatches, one tap each: Lane yellow (the default), Highway
+  blue, Signal teal, Dusk violet, and on Android 12 and later the colours of your wallpaper. The
+  colour goes only where the yellow was: Start shift, the route line, the scanner's corners.
+
+### Changed
+
+- Phone: Material motion. Going deeper slides, moving between tabs fades through; Home fades
+  between waiting and a running shift, the summary fades between periods and the distance rolls
+  up; lists animate in place. A light tap of haptics on Start and End shift, the period buttons
+  and the colour swatches.
+- Phone: less to read, nothing lost. A running shift shows a pulsing "Recording" mark instead of a
+  bar; the "everything sent" banner shows only when there is something to say; a deduction not
+  worked out yet is a dash with one line of why. Shifts keep the week's header on screen while you
+  scroll, load older weeks on their own, and a shift's second line shows only what needs
+  attention (TalkBack still reads all of it). Icons are plain instead of in coloured tiles.
+- Phone: Home is ready in about 0.4 s instead of up to 4.5 s; it no longer waits for the sending
+  status.
+- Development: vitest 5.1, which closes the critical advisories in vitest 3's worker pool.
+
+### Fixed
+
+- Two CodeQL findings in tooling: the Caddy test helper escapes every regex character in a path,
+  and the subdivision generator strips XML comments until none is left and keeps only tokens
+  shaped like CLDR codes.
+
 ## [0.3.0] - 2026-11-11
 
 Third release: a new phone app, a new look and a smaller MileWage. The phone app is now a native

@@ -74,6 +74,11 @@ The restore command (and the restore screen) prints what it found: shifts and th
 - Install the new Android app, `milewage-0.2.0.apk` (versionCode 2), on every paired phone. The old app keeps working against the new server, but it sends every phone-added trip without a purpose, which the server parks.
 - The Help pages are on by default; Settings > Help pages turns them off.
 
+### 0.3.1
+
+- Install `milewage-0.3.1.apk` (versionCode 4) on every paired phone. It installs over 0.3.0 and keeps everything on the phone: no pairing again, nothing to send first.
+- Nothing changes on the server: no migration, no new setting.
+
 ### 0.3.0 (the native Android app)
 
 - Install the new Android app, `milewage-0.3.0.apk` (versionCode 3), on every paired phone after the server is upgraded.
