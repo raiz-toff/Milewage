@@ -35,8 +35,8 @@ test('the Android app’s Gradle catalog and wrapper are covered: stable only, i
   expect(JSON.parse(text).enabledManagers).toBeUndefined();
 });
 
-test('the README says Renovate only runs when a bot is pointed at the project', () => {
-  const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+test('CONTRIBUTING.md says Renovate only runs when a bot is pointed at the project', () => {
+  const readme = readFileSync(new URL('../CONTRIBUTING.md', import.meta.url), 'utf8');
   expect(readme).toMatch(/renovate\.json/);
   expect(readme).toMatch(/only when a Renovate bot/i);
 });

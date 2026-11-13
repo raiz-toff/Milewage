@@ -1,215 +1,69 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="branding/coin-thin/lockup-reverse.svg" />
-    <img src="branding/coin-thin/lockup.svg" alt="MileWage" height="72" />
+    <img src="branding/coin-thin/lockup.svg" alt="MileWage" height="84" />
   </picture>
 </p>
 
-# MileWage
+<p align="center">
+  <strong>Self-hosted mileage tracking for gig riders and drivers.</strong><br />
+  Your phone records the shift. Your own server keeps the miles and the money.
+</p>
 
-Self-hosted mileage tracking for gig riders and drivers. Your phone records the shift, your own
-server keeps the miles and the money, and nothing leaves your network.
+<p align="center">
+  <a href="LICENSE"><img alt="Licence: AGPL-3.0" src="https://img.shields.io/badge/licence-AGPL--3.0-FFC21F?style=flat-square&labelColor=101214" /></a>
+  <a href="https://github.com/raiz-toff/Milewage/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/raiz-toff/Milewage?style=flat-square&label=release&color=FFC21F&labelColor=101214" /></a>
+  <a href="https://github.com/raiz-toff/Milewage/actions/workflows/verify.yml"><img alt="verify" src="https://img.shields.io/github/actions/workflow/status/raiz-toff/Milewage/verify.yml?branch=main&style=flat-square&label=verify&labelColor=101214" /></a>
+</p>
 
-[![Licence: AGPL-3.0](https://img.shields.io/github/license/raiz-toff/Milewage)](LICENSE)
-[![verify](https://img.shields.io/github/actions/workflow/status/raiz-toff/Milewage/verify.yml?branch=main&label=verify)](https://github.com/raiz-toff/Milewage/actions/workflows/verify.yml)
-[![Release](https://img.shields.io/github/v/release/raiz-toff/Milewage)](https://github.com/raiz-toff/Milewage/releases/latest)
+<p align="center"><img src="branding/readme/lane.svg" alt="" width="100%" /></p>
 
-## About
+## What it is
 
-Delivery and ride-hail drivers need a mileage log their accountant will accept, and a view of
-what a shift really earned after fuel and wear. The apps that do this keep the location history
-of every working day on someone else's servers. MileWage runs on a machine you own, a home
-server or a Raspberry Pi, reached from the phone over your Tailscale network. There is one driver
-per server, the phone works offline for weeks, and the backups are encrypted with a key only you
-hold.
+Delivery and ride-hail drivers need a mileage log their accountant will accept, and a view of what a shift really earned. The apps that do this keep the location history of every working day on someone else's servers.
 
-Three parts in one repository: the server and the web app in TypeScript, the phone app in Kotlin.
+MileWage runs on a machine you own, a home server or a Raspberry Pi, and the phone reaches it over your Tailscale network. There is one driver per server, and nothing leaves your network.
 
-| Part                       | What it is                                                                                                                                                                            |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Server (`apps/server`)     | Fastify and SQLite in Docker, behind Caddy. Holds the data, recomputes every shift, makes the backups.                                                                                |
-| Web app (`apps/web`)       | React, restyled to Material Design 3. Dashboard, shifts, expenses, tax, exports, backups, devices, settings.                                                                          |
-| Phone app (`apps/android`) | A native Android app: Kotlin, Jetpack Compose, Material 3. Records GPS while a shift runs and sends it when the server is reachable. No Google Play Services: de-Googled phones work. |
+## What it does
 
-## Features
+- **Records the shift.** The Android app tracks GPS while you work, keeps going with the screen off, and works offline for weeks. It needs nothing from Google.
+- **Counts the miles.** Shifts, trips and stops come from the track, with active and deadhead miles as an estimate.
+- **Keeps the money.** Earnings, expenses with receipt photos, vehicles, odometer readings, parking and tolls.
+- **Helps at tax time.** Mileage deductions for Canada, the United States and Great Britain, or your own rate, and a PDF report and CSV files for your accountant.
+- **Looks after the data.** Nightly encrypted backups with a recovery key only you hold.
 
-- Shifts, trips and stops from the phone's GPS track. The server recomputes every shift with the
-  same engine the phone runs (a Kotlin port that gives the same bytes as the TypeScript) and flags
-  any difference instead of overwriting it.
-- On the phone: a GPS fix every 5 seconds while you move, battery saving while you are stopped,
-  recording that resumes after the app is closed or the phone restarts, and a "Still on shift?"
-  reminder after a long stop.
-- Active and deadhead miles split by detected stops, with labels you add on the web. The split is
-  an estimate and says so. Total miles never depend on it.
-- Expenses with receipt photos, earnings, vehicles and odometer readings.
-  Each module can be switched off.
-- Country packs for Canada, the United States and Great Britain: a mileage deduction, and for
-  Canada a tax estimate. Your own mileage rate (an employer's or your accountant's) can replace the
-  country's from a date you choose.
-- Parking and tolls on a shift.
-- Exports for your accountant: a PDF mileage and expenses report, mileage log CSV per trip or per
-  shift, expenses CSV and tax summary.
-- Nightly encrypted backups (age) and a recovery key shown once. Restore onto a fresh server. An
-  upgrade takes a backup first. A failed migration is rolled back and the server stays up
-  read-only on the old database version.
-- Phones pair with a QR code and hold a device token you can revoke at any time.
-- Diagnostics that stay on your server and never carry coordinates.
+**Status.** MileWage is a complete build that has not had its field test yet: no real shift on the road, and no run over a real Tailscale network. What is still unverified is in [`CHANGELOG.md`](CHANGELOG.md) and [`TODO.md`](TODO.md).
 
-**Status.** Version 0.3.0 is a complete build that has not yet been tried in the real
-world: no real shift on a real phone with the new native Android app, and no run over a real
-Tailscale network. The mileage rates and tax figures were checked against the tax offices' pages
-on 2026-11-11; Canada and the United Kingdom still carry an "unverified" notice for the points
-left open. Details under "Not yet verified" in [`CHANGELOG.md`](CHANGELOG.md).
+## Get started
 
-The next version replaces the phone app with a native Android app, which has never run on a real
-phone. Its tests run on a computer only (unit tests, screens drawn by Robolectric, the engine
-checked against Node on millions of cases). Unverified until the field test in
-[`TODO.md`](TODO.md): GPS waking up after a stop, battery use, phones that stop background apps,
-the QR scanner, recording after a restart, and
-the engine's maths on a phone's own processor.
-
-## Install
-
-### The server
-
-You need a host with Docker and the Docker Compose plugin, about 1 GB of RAM, and a Tailscale
-account. Nothing is opened on your router.
+**The server.** You need a host with Docker and a Tailscale account. Nothing is opened on your router.
 
 ```bash
 git clone https://github.com/raiz-toff/Milewage.git milewage && cd milewage
 infra/install.sh
 ```
 
-The script writes `infra/docker/.env`, builds the two images, starts them and checks `/healthz`.
-It then offers to turn on https over Tailscale so the phone can reach the server from anywhere.
-To pull the published images instead of building, set `MILEWAGE_IMAGE_REPO=ghcr.io/raiz-toff/milewage`
-and use `docker-compose.release.yml`; the install guide shows the exact commands.
+Open the web app, create the owner account and **write down the recovery key** it shows. The server cannot show it again.
 
-Open the web app, create the owner account and **write down the recovery key** it shows. It
-decrypts your backups and the server cannot show it again.
+**The phone.** Android 8.0 or later. Install `milewage-<version>.apk` from the [latest release](https://github.com/raiz-toff/Milewage/releases/latest), tap "I have a server" and scan the QR code from the web's Devices page.
 
-The full guide, with LAN access for your home Wi-Fi, the Tailscale step and its privacy note, is
-[`infra/docs/install.md`](infra/docs/install.md). Setting it up with an AI coding agent?
-Give it [`infra/docs/agent-setup.md`](infra/docs/agent-setup.md).
-
-### The phone
-
-Android 8.0 or later. Phones without Google services (LineageOS, GrapheneOS and the like) work:
-the app uses the phone's own location service and needs nothing from Google.
-
-1. Install Tailscale on the Android phone and sign in to the same tailnet. On your home Wi-Fi with
-   LAN access on, this step can wait.
-2. Install `milewage-<version>.apk` from the
-   [latest release](https://github.com/raiz-toff/Milewage/releases/latest). Android asks once to
-   allow installs from your browser. Your server can also hand the file out from its own
-   download page.
-3. Open the app and tap "I have a server". Scan the QR code from the web's Devices page, or paste
-   the code text.
-4. Allow what the permissions screen asks, so recording goes on with the screen off.
-
-Moving from the Expo app of 0.2.0 and earlier: send every shift from the old app first (its
-banner says when everything is on the server), then install the new one over it. The new app
-starts empty and must be paired again.
-
-## Usage
-
-Start a shift on the phone before the first pickup and stop it after the last drop. The phone
-shows the live distance in its notification and keeps recording if the app is closed or the phone
-restarts. When the server is reachable the shift is sent; until then it stays on the phone and the
-app says so.
-
-On the web, each shift has a map, a timeline, stops you can label, earnings, odometer and notes.
-The dashboard shows the week's earnings and recent shifts. The Tax and Exports pages give
-the figures and the CSV files for the year. Backups are nightly; the Backups page can make one now,
-download it, or make a new recovery key.
+The full steps are in the [install guide](infra/docs/install.md) and [Getting started](docs/help/getting-started.md).
 
 ## Documentation
 
-| For                      | Read                                                                                                                                                                                                                                                  |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Drivers                  | [`docs/help/`](docs/help/README.md): getting started, shifts and trips, how miles are counted, vehicles, expenses, earnings, tax, backups, phones, settings, troubleshooting, questions and answers; also in the web app under Help.                  |
-| Running a server         | [`infra/docs/install.md`](infra/docs/install.md), [`infra/docs/upgrade.md`](infra/docs/upgrade.md), [`infra/docs/configuration.md`](infra/docs/configuration.md) (every `MILEWAGE_*` setting).                                                        |
-| What changed             | [`CHANGELOG.md`](CHANGELOG.md)                                                                                                                                                                                                                        |
-| Reporting a problem      | [`SECURITY.md`](SECURITY.md) for vulnerabilities, the bug template in Issues for everything else.                                                                                                                                                     |
-| Why it is built this way | [`DECISIONS.md`](DECISIONS.md), the dated index of the owner's decisions; [`PROGRESS.md`](PROGRESS.md), the build log; [`TODO.md`](TODO.md), open items.                                                                                              |
-| Design                   | [`.claude/skills/milewage-design/`](.claude/skills/milewage-design/SKILL.md): palette, type, components and voice. Claude Code loads it before UI work; it reads as a guide for people too. The brand marks are in [`branding/`](branding/README.md). |
+| For                 | Read                                                                                                                            |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Drivers             | [`docs/help/`](docs/help/README.md): shifts, miles, expenses, tax, backups and troubleshooting. Also in the web app under Help. |
+| Running a server    | [Install](infra/docs/install.md), [upgrade](infra/docs/upgrade.md), [configuration](infra/docs/configuration.md).               |
+| Changing the code   | [`docs/development.md`](docs/development.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md).                                          |
+| What changed        | [`CHANGELOG.md`](CHANGELOG.md)                                                                                                  |
+| Reporting a problem | [`SECURITY.md`](SECURITY.md) for vulnerabilities, [Issues](https://github.com/raiz-toff/Milewage/issues) for everything else.   |
+| Everything else     | [`docs/`](docs/README.md)                                                                                                       |
 
-The planning documents left the repository on 2026-11-08 and stay in the git history
-(`git show 25e3d6d:plans/milewage/README.md`).
+## The story
 
-## Development
-
-Requires Node 22.22.x (`.nvmrc`). Earlier 22.x releases crash `better-sqlite3`.
-
-```bash
-npm install
-npm run verify   # everything: verify:js, then verify:android
-npm run verify:js       # typecheck, lint, version and OpenAPI checks, every vitest test
-npm run verify:android  # the Android app: unit tests, Android lint, the Google-free policy check
-npm run dev      # API on 127.0.0.1:3000 with its data in .dev/, web dev server in front of it
-                 # (MILEWAGE_DEV_PORT=3200 npm run dev when 3000 is taken)
-```
-
-`npm run verify` needs JDK 17 and the Android SDK (`ANDROID_HOME`, default `$HOME/android-sdk`)
-for its Android half, and says so when either is missing. Gradle skips what has not changed, so a
-run with no change under `apps/android` adds seconds; after a change there it adds minutes.
-`npm run verify:js` is the quick check while working on the server or the web.
-
-`npm run dev -- --host` puts the web app on the LAN and gives the server its home address, so a
-phone on the same network can pair with it.
-
-The phone app is built with Gradle in `apps/android` (JDK 17, Android SDK platform 37):
-`./gradlew assembleDebug` makes a debug APK, `./gradlew test lint` checks it. The mileage engine
-there is a Kotlin port of `packages/track-engine`; after a change to the engine or a Node upgrade,
-`npm run conformance:fixtures` and `npm run crosscheck:engine` keep the two in step
-([`apps/android/engine/README.md`](apps/android/engine/README.md)). There is no emulator in this
-project's workflow: the owner tests on a real device. Details in
-[`apps/android/README.md`](apps/android/README.md).
-
-| Folder                  | Holds                                                                                                |
-| ----------------------- | ---------------------------------------------------------------------------------------------------- |
-| `apps/server`           | The API, database migrations, backups, exporters, `milewage-cli`.                                    |
-| `apps/web`              | The web app. Its restyled components live in `src/components/ui`, the repo's primitives in `src/ui`. |
-| `apps/android`          | The Android app: Gradle modules `:engine` and `:core` (plain Kotlin), `:data`, `:tracking`, `:app`.  |
-| `packages/track-engine` | The pure mileage engine the server runs and the Android app ports. No dependencies, no I/O.          |
-| `packages/shared`       | The OpenAPI contract and the types generated from it (`npm run openapi:generate`).                   |
-| `infra`                 | Docker Compose, the install script, the server guides, VM test drills.                               |
-| `scripts`               | Dev server, server bundle, versioning, OpenAPI generation, the phone keystore and release build.     |
-
-### Releasing
-
-1. Bump `VERSION` and run `npm run version:sync`. Move the changelog's Unreleased entries under the
-   new version and name the phone app's `versionCode` there.
-2. `npm run verify`.
-3. Build the phone app on the owner's machine:
-   `MILEWAGE_VERSION_CODE=<code> scripts/phone-release-build.sh`, with a code above the last
-   release's. It is signed with the upload key from `scripts/phone-keystore.sh` (kept in
-   `~/.milewage`, never in git, never on CI) and written as
-   `apps/android/app/build/outputs/apk/release/milewage-<version>.apk`.
-4. Tag `v<version>` and push the tag. GitHub Actions
-   ([`release.yml`](.github/workflows/release.yml)) builds the server and Caddy images for amd64
-   and arm64 and publishes them to `ghcr.io/raiz-toff/milewage`.
-5. `gh release create v<version>` with the changelog section, and attach the APK.
-6. Raise the default `versionCode` in `apps/android/app/build.gradle.kts` to the released one, so a
-   build from `main` still installs over it (`npm run version:check` holds it there).
-
-## Contributing
-
-This is a one-person project, and pull requests are welcome. Open an issue first for anything
-larger than a fix, so the work is not done twice.
-
-- Branch from `main`. A pull request needs the `verify` check green; the template asks what
-  changed, how it was checked and what the owner should confirm.
-- Commits on `main` are squashed, titled `[ID] Area: what changed`, as the log in `PROGRESS.md`
-  shows.
-- Before UI work, read the design skill. Driver-facing text follows its voice: short sentences,
-  plain words, every problem message with one way forward.
-- Dependency security updates arrive through Dependabot. `renovate.json` asks for one weekly pull
-  request with the minor and patch updates, but it runs only when a Renovate bot is pointed at the
-  project; nothing happens until then.
+MileWage began as a Google Sheet of delivery weeks. It became a tracker called Macadam, then [Comma](https://github.com/raiz-toff/Comma), and then this. Read [the story behind MileWage](docs/story.md).
 
 ## Licence
 
-MileWage is free software under the GNU Affero General Public License, version 3
-([`LICENSE`](LICENSE)). Copyright (C) 2026 rajkumar. If you run a changed MileWage for others, the
-AGPL asks you to offer them your changes.
+MileWage is free software under the GNU Affero General Public License, version 3 ([`LICENSE`](LICENSE)). Copyright (C) 2026 rajkumar. If you run a changed MileWage for others, the AGPL asks you to offer them your changes.

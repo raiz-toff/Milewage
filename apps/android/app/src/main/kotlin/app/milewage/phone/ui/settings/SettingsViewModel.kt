@@ -47,6 +47,7 @@ data class SettingsState(
     val nudgeMs: Long = TrackingSettings.DEFAULT_NUDGE_MS,
     val theme: AppTheme = AppTheme.SYSTEM,
     val wallpaper: Boolean = false,
+    val accent: app.milewage.data.prefs.Accent = app.milewage.data.prefs.Accent.LANE,
     /** The server's Help pages, through the address the phone uses now; null when the server turned Help off. */
     val helpBase: String? = null,
     /** Shifts recorded for another server, never sent there. */
@@ -112,6 +113,7 @@ class SettingsViewModel(
         viewModelScope.launch { data.otherServer().collect { o -> _state.update { it.copy(otherServer = o) } } }
         viewModelScope.launch { appearance.theme.collect { t -> _state.update { it.copy(theme = t) } } }
         viewModelScope.launch { appearance.wallpaperColours.collect { w -> _state.update { it.copy(wallpaper = w) } } }
+        viewModelScope.launch { appearance.accent.collect { a -> _state.update { it.copy(accent = a) } } }
         viewModelScope.launch {
             val t = tracking.settings()
             _state.update { it.copy(nudgeMs = t.nudgeAfterMs) }
@@ -198,6 +200,10 @@ class SettingsViewModel(
 
     fun setTheme(theme: AppTheme) {
         viewModelScope.launch { appearance.setTheme(theme) }
+    }
+
+    fun setAccent(accent: app.milewage.data.prefs.Accent) {
+        viewModelScope.launch { appearance.setAccent(accent) }
     }
 
     fun setWallpaper(on: Boolean) {

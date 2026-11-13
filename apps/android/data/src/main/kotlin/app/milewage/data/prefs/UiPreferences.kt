@@ -25,6 +25,23 @@ enum class AppTheme(val stored: String) {
     }
 }
 
+/**
+ * Settings > Accent: the colour of the one main action (Start shift), the route line and the
+ * scanner's corners. Lane yellow is MileWage's own; the others are there to try (owner, 2026-11-12).
+ */
+enum class Accent(val stored: String) {
+    LANE("lane"),
+    BLUE("blue"),
+    TEAL("teal"),
+    VIOLET("violet"),
+    ;
+
+    companion object {
+        /** An unknown or missing value is Lane yellow. */
+        fun of(stored: String?): Accent = entries.firstOrNull { it.stored == stored } ?: LANE
+    }
+}
+
 /** Choices about how the app looks, kept on this phone only. */
 class UiPreferences(context: Context) {
     private val file = context.applicationContext.uiFile
@@ -43,8 +60,16 @@ class UiPreferences(context: Context) {
         file.edit { it[THEME] = theme.stored }
     }
 
+    /** Settings > Accent. Lane yellow by default. */
+    val accent: Flow<Accent> = file.data.map { Accent.of(it[ACCENT]) }
+
+    suspend fun setAccent(accent: Accent) {
+        file.edit { it[ACCENT] = accent.stored }
+    }
+
     private companion object {
         val WALLPAPER_COLOURS = booleanPreferencesKey("use_wallpaper_colours")
         val THEME = stringPreferencesKey("theme")
+        val ACCENT = stringPreferencesKey("accent")
     }
 }
