@@ -34,6 +34,17 @@ MileWage runs on a machine you own, a home server or a Raspberry Pi, and the pho
 
 **Status.** MileWage is a complete build that has not had its field test yet: no real shift on the road, and no run over a real Tailscale network. What is still unverified is in [`CHANGELOG.md`](CHANGELOG.md) and [`TODO.md`](TODO.md).
 
+## On the phone
+
+<p align="center">
+  <img src="apps/android/play/listings/en-US/phone-screenshots/1-home.png" alt="Home: the distance driven this week, the shifts and the deduction estimate, and the Start shift button" width="24%" />
+  <img src="apps/android/play/listings/en-US/phone-screenshots/2-shifts.png" alt="Shifts: this week and last week, each shift with its time and distance" width="24%" />
+  <img src="apps/android/play/listings/en-US/phone-screenshots/3-shift.png" alt="A shift: total and business distance, time, the deduction and its trips" width="24%" />
+  <img src="apps/android/play/listings/en-US/phone-screenshots/4-colour.png" alt="Settings in light and dark, with the colour choice" width="24%" />
+</p>
+
+Light and dark follow the phone, with Lane yellow or a colour of your choice. These are the Google Play screenshots; all seven are in [`apps/android/play/`](apps/android/play/listings/en-US/phone-screenshots/).
+
 ## Get started
 
 **The server.** You need a host with Docker and a Tailscale account. Nothing is opened on your router.
