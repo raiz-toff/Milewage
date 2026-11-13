@@ -6,6 +6,12 @@ All notable changes to MileWage are listed here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Two CodeQL findings in tooling: the Caddy test helper escapes every regex character in a path,
+  and the subdivision generator strips XML comments until none is left and keeps only tokens
+  shaped like CLDR codes.
+
 ## [0.3.0] - 2026-11-11
 
 Third release: a new phone app, a new look and a smaller MileWage. The phone app is now a native
