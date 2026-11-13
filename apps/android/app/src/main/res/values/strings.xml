@@ -223,8 +223,8 @@
     <string name="summary_business">Business</string>
     <string name="summary_deduction">Deduction value</string>
     <string name="summary_deduction_yours">Deduction value (your rate)</string>
-    <string name="summary_deduction_caption">An estimate. It lowers your taxable income; it is not money paid to you.</string>
-    <string name="summary_deduction_none">No mileage rate on this phone yet. Your server shows it once the shift is sent.</string>
+    <string name="summary_deduction_estimate">Estimate, not paid to you</string>
+    <string name="summary_deduction_pending">Shown once sent</string>
     <string name="next_shift">Next shift</string>
     <string name="vehicle">Vehicle</string>
     <string name="vehicle_one">Vehicle: %1$s</string>
@@ -310,6 +310,7 @@
     <!-- Running shift -->
     <string name="running_title">Shift running</string>
     <string name="running_since">since %1$s</string>
+    <string name="running_live">Recording</string>
     <string name="reading_time">Time</string>
     <string name="reading_distance">Distance</string>
     <string name="reading_distance_note">Approximate. The server works out the final distance.</string>
@@ -382,7 +383,7 @@
         <item quantity="one">%d thing to check</item>
         <item quantity="other">%d things to check</item>
     </plurals>
-    <string name="shifts_older">Show older shifts</string>
+    <string name="shifts_loading_older">Loading older shifts…</string>
     <string name="shift_row_label">Shift %1$s, %2$s, %3$s, %4$s</string>
 
     <!-- Send state of a shift (ShiftMarker KDoc) -->
@@ -609,9 +610,12 @@
     <string name="theme_system">Follow the phone</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
-    <string name="settings_wallpaper_colours">Use wallpaper colours</string>
-    <string name="settings_wallpaper_colours_body">Colours from your wallpaper instead of MileWage yellow.</string>
-    <string name="settings_wallpaper_colours_unavailable">Needs Android 12 or later.</string>
+    <string name="settings_colour">Colour</string>
+    <string name="colour_wallpaper">From your wallpaper</string>
+    <string name="accent_lane">Lane yellow</string>
+    <string name="accent_blue">Highway blue</string>
+    <string name="accent_teal">Signal teal</string>
+    <string name="accent_violet">Dusk violet</string>
     <string name="settings_units">Units and formats</string>
     <string name="units_distance">Distance</string>
     <string name="units_km">Kilometres</string>

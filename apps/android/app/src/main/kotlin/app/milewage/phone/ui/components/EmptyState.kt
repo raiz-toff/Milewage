@@ -36,7 +36,7 @@ fun EmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        if (icon != null) IconTile(icon, Modifier.padding(bottom = 8.dp), round = true, size = 72.dp)
+        if (icon != null) IconTile(icon, Modifier.padding(bottom = 8.dp), size = 72.dp)
         Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         Text(
             body,

@@ -63,6 +63,8 @@ fun Screen(
     refreshing: Boolean = false,
     onTitleLongClick: (() -> Unit)? = null,
     titleLongClickLabel: String? = null,
+    /** The gap between items; a list with sticky headers sets its own (Shifts). */
+    spacing: androidx.compose.ui.unit.Dp = ScreenPadding,
     content: LazyListScope.() -> Unit,
 ) {
     val scroll = TopAppBarDefaults.pinnedScrollBehavior()
@@ -126,7 +128,7 @@ fun Screen(
                     top = ScreenPadding,
                     bottom = inner.calculateBottomPadding() + ScreenPadding,
                 ),
-                verticalArrangement = Arrangement.spacedBy(ScreenPadding),
+                verticalArrangement = Arrangement.spacedBy(spacing),
                 content = content,
             )
         }
@@ -136,6 +138,14 @@ fun Screen(
             androidx.compose.foundation.layout.Box(below) { list() }
         }
     }
+}
+
+/**
+ * A screen item that animates: it fades in when it appears, fades out when it goes, and slides to
+ * its new place when items above it come or go (a sync banner, the setup checklist).
+ */
+fun LazyListScope.animatedItem(key: Any, content: @Composable () -> Unit) {
+    item(key = key) { androidx.compose.foundation.layout.Box(Modifier.animateItem()) { content() } }
 }
 
 /**

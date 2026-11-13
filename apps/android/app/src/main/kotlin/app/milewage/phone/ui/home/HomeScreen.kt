@@ -15,14 +15,29 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.graphicsLayer
+import app.milewage.phone.ui.theme.Motion
+import app.milewage.phone.ui.theme.surfaces
+import app.milewage.phone.ui.components.animatedItem
+import app.milewage.phone.ui.theme.fadeThrough
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -31,7 +46,6 @@ import androidx.compose.ui.unit.dp
 import app.milewage.core.pairing.PairingStatus
 import app.milewage.core.sync.Reminder
 import app.milewage.data.RunningShiftView
-import app.milewage.phone.BuildConfig
 import app.milewage.phone.R
 import app.milewage.phone.ui.components.CardSurface
 import app.milewage.phone.logic.BannerKind
@@ -89,24 +103,17 @@ interface HomeActions {
 /** Home, a thin renderer of [HomeState]: the next shift, or the running shift. */
 @Composable
 fun HomeContent(state: HomeState, actions: HomeActions, confirm: ConfirmState) {
-    val running = state.running
-    if (running != null) {
-        RunningShiftContent(state, running, actions, confirm)
-    } else {
-        IdleContent(state, actions)
+    // Starting or ending a shift fades through from one Home to the other. The key is "is a shift
+    // running", so the running screen updates in place as its figures change.
+    AnimatedContent(targetState = state.running, contentKey = { it != null }, transitionSpec = { fadeThrough() }, label = "home") { running ->
+        if (running != null) {
+            RunningShiftContent(state, running, actions, confirm)
+        } else {
+            IdleContent(state, actions)
+        }
     }
     state.odometer?.let { ask ->
         OdometerDialog(ask, Formats(state.settings).unitLabel, actions::saveOdometer, actions::skipOdometer, actions::dismissOdometer)
-    }
-}
-
-@Composable
-private fun DiagnosticsAction(actions: HomeActions) {
-    // Debug builds: one tap. Every build: a long press on the title.
-    if (BuildConfig.DEBUG) {
-        IconButton(onClick = actions::openDiagnostics) {
-            Icon(Icons.Maintenance, contentDescription = stringResource(R.string.home_open_diagnostics))
-        }
     }
 }
 
@@ -119,17 +126,21 @@ private fun IdleContent(state: HomeState, actions: HomeActions) {
         subtitle = f.longDay(f.dayOf(now)),
         onTitleLongClick = actions::openDiagnostics,
         titleLongClickLabel = stringResource(R.string.home_open_diagnostics),
-        actions = { DiagnosticsAction(actions) },
         onRefresh = actions::refresh,
         refreshing = state.refreshing,
         bottomBar = {
             if (state.ready) {
                 BottomAction {
                     val starting = state.busy == Busy.START
+                    val haptics = LocalHapticFeedback.current
                     // The one brand action: lane yellow (primaryContainer), 64 dp, easy to hit in a mount.
+                    // A confirm tap, so a driver feels it start without looking.
                     BrandButton(
                         text = stringResource(if (starting) R.string.starting_shift else R.string.start_shift),
-                        onClick = actions::start,
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                            actions.start()
+                        },
                         icon = Icons.Play,
                         busy = starting,
                         size = BrandSize.VEHICLE,
@@ -139,8 +150,8 @@ private fun IdleContent(state: HomeState, actions: HomeActions) {
             }
         },
     ) {
-        if (state.ready && state.setup.any { !it.done }) item(key = "setup") { SetupCard(state.setup, actions::fix) }
-        item(key = "summary") {
+        if (state.ready && state.setup.any { !it.done }) animatedItem(key = "setup") { SetupCard(state.setup, actions::fix) }
+        animatedItem(key = "summary") {
             val s = state.summary
             SummarySection(
                 summary = when (state.period) {
@@ -153,11 +164,12 @@ private fun IdleContent(state: HomeState, actions: HomeActions) {
                 onPeriod = actions::selectPeriod,
             )
         }
-        state.banner?.let { b -> item(key = "banner") { SyncBannerCard(b, state.sending, actions::fix, actions::reminderShown) } }
+        // Home speaks up only when something waits; "everything is on the server" lives in Settings > Sending.
+        state.banner?.takeIf { it.kind != BannerKind.ALL_SENT || it.reminder != Reminder.Level.NONE }?.let { b -> animatedItem(key = "banner") { SyncBannerCard(b, state.sending, actions::fix, actions::reminderShown) } }
         if (!state.otherServer.none) {
-            item(key = "other-server") { OtherServerCard(state.otherServer, actions::connectOtherServer, actions::deleteOtherServer) }
+            animatedItem(key = "other-server") { OtherServerCard(state.otherServer, actions::connectOtherServer, actions::deleteOtherServer) }
         }
-        item(key = "next") {
+        animatedItem(key = "next") {
             NextShiftCard(state.vehicles, state.pairing == PairingStatus.UNPAIRED, actions::selectVehicle, actions::fix)
         }
     }
@@ -186,13 +198,17 @@ private fun RunningShiftContent(state: HomeState, running: RunningShiftView, act
         subtitle = listOfNotNull(running.vehicle?.name, stringResource(R.string.running_since, f.clock(shift.startedAt))).joinToString(" · "),
         onTitleLongClick = actions::openDiagnostics,
         titleLongClickLabel = stringResource(R.string.home_open_diagnostics),
-        actions = { DiagnosticsAction(actions) },
         bottomBar = {
             BottomAction {
                 val ending = state.busy == Busy.END
+                val haptics = LocalHapticFeedback.current
                 Button(
                     onClick = {
-                        confirm.ask(ConfirmRequest(endTitle, endText, endLabel, destructive = true, dismissLabel = keep, onConfirm = actions::end))
+                        val end = {
+                            haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                            actions.end()
+                        }
+                        confirm.ask(ConfirmRequest(endTitle, endText, endLabel, destructive = true, dismissLabel = keep, onConfirm = end))
                     },
                     enabled = !ending,
                     colors = ButtonDefaults.buttonColors(
@@ -211,15 +227,9 @@ private fun RunningShiftContent(state: HomeState, running: RunningShiftView, act
             }
         },
     ) {
-        item(key = "live") {
-            val live = line == TrackingLine.RECORDING || line == TrackingLine.SAVING_BATTERY || line == TrackingLine.NO_BACKGROUND
-            if (live && LocalTicking.current) {
-                LinearProgressIndicator(Modifier.fillMaxWidth())
-            } else {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            }
-        }
-        item(key = "readings") {
+        val live = line == TrackingLine.RECORDING || line == TrackingLine.SAVING_BATTERY || line == TrackingLine.NO_BACKGROUND
+        if (live) animatedItem(key = "live") { LiveChip() }
+        animatedItem(key = "readings") {
             CardSurface(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Reading(stringResource(R.string.reading_time), null) { mod ->
@@ -244,18 +254,51 @@ private fun RunningShiftContent(state: HomeState, running: RunningShiftView, act
                 }
             }
         }
-        item(key = "tracking") { TrackingCard(line, actions, confirm, closeTitle, closeText, closeLabel) }
-        item(key = "sent") {
+        animatedItem(key = "tracking") { TrackingCard(line, actions, confirm, closeTitle, closeText, closeLabel) }
+        animatedItem(key = "sent") {
             IconLine(
                 if (shift.serverId != null) Icons.CheckCircle else Icons.Info,
                 stringResource(if (shift.serverId != null) R.string.running_on_server else R.string.running_on_phone),
             )
         }
         if (running.serverHasOtherShift) {
-            item(key = "other") { NoticeCard(title = stringResource(R.string.running_other_shift), icon = Icons.Warning, tone = Tone.WARNING) }
+            animatedItem(key = "other") { NoticeCard(title = stringResource(R.string.running_other_shift), icon = Icons.Warning, tone = Tone.WARNING) }
         }
         state.banner?.takeIf { it.kind != BannerKind.ALL_SENT && it.kind != BannerKind.WAITING }?.let { b ->
-            item(key = "banner") { SyncBannerCard(b, state.sending, actions::fix, actions::reminderShown) }
+            animatedItem(key = "banner") { SyncBannerCard(b, state.sending, actions::fix, actions::reminderShown) }
+        }
+    }
+}
+
+/**
+ * "Recording" with a dot that breathes while the phone records, like a camera's: says the shift is
+ * live without a progress bar that reads as loading. The dot stands still when nothing ticks (tests,
+ * screenshots) and Android's "Remove animations" stops the breathing.
+ */
+@Composable
+private fun LiveChip() {
+    val ticking = LocalTicking.current
+    val alpha = if (ticking) {
+        val pulse = rememberInfiniteTransition(label = "live")
+        pulse.animateFloat(
+            initialValue = 1f,
+            targetValue = 0.3f,
+            animationSpec = infiniteRepeatable(tween(900, easing = Motion.Standard), RepeatMode.Reverse),
+            label = "dot",
+        ).value
+    } else {
+        1f
+    }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+        Row(
+            Modifier
+                .background(MaterialTheme.surfaces.card, CircleShape)
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.size(8.dp).graphicsLayer { this.alpha = alpha }.background(MaterialTheme.colorScheme.error, CircleShape))
+            Text(stringResource(R.string.running_live), style = MaterialTheme.typography.labelLarge)
         }
     }
 }
