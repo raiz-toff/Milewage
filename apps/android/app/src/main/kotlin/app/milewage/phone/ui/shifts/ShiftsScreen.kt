@@ -1,15 +1,20 @@
 package app.milewage.phone.ui.shifts
 
 import app.milewage.phone.ui.icons.Icons
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import app.milewage.phone.ui.theme.surfaces
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +48,7 @@ import app.milewage.phone.ui.components.LocalSnackbars
 import app.milewage.phone.ui.components.RowDivider
 import app.milewage.phone.ui.components.Rows
 import app.milewage.phone.ui.components.Screen
+import app.milewage.phone.ui.components.animatedItem
 import app.milewage.phone.ui.components.tabular
 
 @Composable
@@ -61,10 +67,14 @@ fun ShiftsRoute(onOpenShift: (String) -> Unit, onGoHome: () -> Unit, vm: ShiftsV
 }
 
 /** The shifts list, a thin renderer of [ShiftsState]. Pull down to send to the server. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ShiftsContent(state: ShiftsState, onOpenShift: (String) -> Unit, onGoHome: () -> Unit, onRefresh: () -> Unit, onShowOlder: () -> Unit) {
     val f = Formats(state.settings)
-    Screen(title = stringResource(R.string.nav_shifts), onRefresh = onRefresh, refreshing = state.refreshing) {
+    // The vehicle earns a place on each row only when there is more than one to tell apart.
+    val showVehicle = state.groups.flatMap { g -> g.rows.mapNotNull { it.vehicle } }.distinct().size > 1
+    val shown = state.groups.sumOf { it.rows.size }
+    Screen(title = stringResource(R.string.nav_shifts), onRefresh = onRefresh, refreshing = state.refreshing, spacing = 0.dp) {
         if (state.loaded && state.groups.isEmpty()) {
             item(key = "empty") {
                 EmptyState(
@@ -76,43 +86,67 @@ fun ShiftsContent(state: ShiftsState, onOpenShift: (String) -> Unit, onGoHome: (
                 )
             }
         }
-        state.groups.forEach { g -> item(key = g.start.toString()) { WeekGroup(g, f, onOpenShift) } }
+        state.groups.forEach { g ->
+            // The week's name and total stay at the top while its shifts scroll under them.
+            stickyHeader(key = "head-${g.start}") { WeekHeader(g, f) }
+            animatedItem(key = g.start.toString()) {
+                Rows(Modifier.padding(bottom = 16.dp)) {
+                    g.rows.forEachIndexed { i, row ->
+                        if (i > 0) RowDivider()
+                        ShiftListRow(row, f, showVehicle) { onOpenShift(row.clientId) }
+                    }
+                }
+            }
+        }
         if (state.hasMore) {
+            // Reaching the end loads the next page; a quiet line says so while it comes.
             item(key = "older") {
-                OutlinedButton(onClick = onShowOlder, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(stringResource(R.string.shifts_older)) }
+                LaunchedEffect(shown) { onShowOlder() }
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Text(stringResource(R.string.shifts_loading_older), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
     }
 }
 
+/** A week's name and its total, on the page's colour so the shifts scroll under it when it sticks. */
 @Composable
-private fun WeekGroup(g: ShiftGroup, f: Formats, onOpenShift: (String) -> Unit) {
+private fun WeekHeader(g: ShiftGroup, f: Formats) {
     val title = when (val t = g.title) {
         WeekTitle.ThisWeek -> stringResource(R.string.week_this)
         WeekTitle.LastWeek -> stringResource(R.string.week_last)
         is WeekTitle.WeekOf -> stringResource(R.string.week_of, f.day(t.start))
     }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
-            Text(
-                pluralStringResource(R.plurals.week_total, g.shifts, g.shifts, f.distance(g.totalM)),
-                style = MaterialTheme.typography.bodyMedium.tabular(),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Rows {
-            g.rows.forEachIndexed { i, row ->
-                if (i > 0) RowDivider()
-                ShiftListRow(row, f) { onOpenShift(row.clientId) }
-            }
-        }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.surfaces.page)
+            .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)
+            .semantics { heading() },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
+        Text(
+            pluralStringResource(R.plurals.week_total, g.shifts, g.shifts, f.distance(g.totalM)),
+            style = MaterialTheme.typography.bodyMedium.tabular(),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
-/** One shift: day and times, distance, who calculated it, its send state in words, and what to check. */
+/**
+ * One shift: day and times, and the distance. A second line only when something differs from a
+ * finished shift on the server (not sent yet, totals waiting, needs attention, flags to check), and
+ * the vehicle when the driver has more than one ([showVehicle]). TalkBack always reads it all.
+ */
 @Composable
-fun ShiftListRow(row: ShiftRow, f: Formats, onClick: () -> Unit) {
+fun ShiftListRow(row: ShiftRow, f: Formats, showVehicle: Boolean = true, onClick: () -> Unit) {
     val day = f.shortDay(row.day)
     val times = f.range(row.startedAt, row.endedAt)
     val distance = if (row.running) stringResource(R.string.shift_in_progress) else f.distance(row.totalM)
@@ -124,17 +158,25 @@ fun ShiftListRow(row: ShiftRow, f: Formats, onClick: () -> Unit) {
     }
     val marker = stringResource(Texts.marker(row.marker))
     val review = if (row.review > 0) pluralStringResource(R.plurals.shift_review, row.review, row.review) else null
-    val supporting = listOfNotNull(calc, marker, row.vehicle).joinToString(" · ")
-    val label = stringResource(R.string.shift_row_label, day, times, distance, listOfNotNull(supporting, review).joinToString(", "))
+    // TalkBack reads everything; the eye gets only what differs from a finished shift on the server.
+    val full = listOfNotNull(calc, marker, row.vehicle).joinToString(" · ")
+    val label = stringResource(R.string.shift_row_label, day, times, distance, listOfNotNull(full, review).joinToString(", "))
+    val exception = when {
+        row.running -> null
+        row.totalM == null -> calc
+        row.marker != ShiftMarker.SENT -> marker
+        else -> null
+    }
+    val seen = listOfNotNull(exception, row.vehicle.takeIf { showVehicle }).joinToString(" · ").ifEmpty { null }
     ListRow(
         headline = "$day · $times",
-        supporting = if (review != null) "$supporting\n$review" else supporting,
+        supporting = listOfNotNull(seen, review).joinToString("\n").ifEmpty { null },
         leading = {
             // The picture says what the row is; the send state stays in the words under the day.
             when {
-                row.running -> IconTile(Icons.Location, tone = TileTone.Selected, round = true)
-                row.marker == ShiftMarker.NEEDS_ATTENTION || row.marker == ShiftMarker.SENT_DIFFERS -> IconTile(Icons.Warning, tone = TileTone.Problem, round = true)
-                else -> IconTile(Icons.Route, tone = TileTone.Kind(0), round = true)
+                row.running -> IconTile(Icons.Location, tone = TileTone.Selected)
+                row.marker == ShiftMarker.NEEDS_ATTENTION || row.marker == ShiftMarker.SENT_DIFFERS -> IconTile(Icons.Warning, tone = TileTone.Problem)
+                else -> IconTile(Icons.Route)
             }
         },
         trailing = { Text(distance, style = MaterialTheme.typography.titleMedium.tabular()) },

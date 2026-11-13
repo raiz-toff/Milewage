@@ -12,14 +12,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import app.milewage.phone.ui.theme.kinds
 import app.milewage.phone.ui.theme.surfaces
 
 /**
- * The colour of an [IconTile]. Roles only, and never Lane yellow: [Neutral] for a plain row,
- * [Selected] for the thing going on now (the running shift), [Problem] for what needs the driver,
- * and [Kind] for things that come in kinds (the web's chart series, in the same order: 0 blue for
- * shifts and time, 1 orange for distance, 2 teal for the deduction).
+ * What an [IconTile]'s icon means, which decides its colour. Colour only where it means something,
+ * as in Google's own apps: [Problem] is red (what needs the driver, a destructive row), [Selected]
+ * is ink (the thing going on now). [Neutral] and [Kind] are the same quiet grey: a list of rows is
+ * read by its words, not a rainbow of tiles.
  */
 sealed interface TileTone {
     data object Neutral : TileTone
@@ -32,22 +31,23 @@ sealed interface TileTone {
 }
 
 /**
- * An icon in a tonal tile (the web's `IconTile`): the picture before a row or a figure. Decoration
- * only: the words beside it say everything, so TalkBack skips it.
+ * The picture before a row: a plain 24 dp Material symbol, no tile behind it. At [size] over 48 dp
+ * (an empty state's picture) it sits in a soft circle. Decoration only: the words beside it say
+ * everything, so TalkBack skips it.
  */
 @Composable
-fun IconTile(icon: ImageVector, modifier: Modifier = Modifier, tone: TileTone = TileTone.Neutral, round: Boolean = false, size: Dp = 40.dp) {
+fun IconTile(icon: ImageVector, modifier: Modifier = Modifier, tone: TileTone = TileTone.Neutral, size: Dp = 24.dp) {
     val scheme = MaterialTheme.colorScheme
-    val (container, content) = when (tone) {
-        TileTone.Neutral -> MaterialTheme.surfaces.fill to scheme.onSurfaceVariant
-        TileTone.Selected -> scheme.secondaryContainer to scheme.onSecondaryContainer
-        TileTone.Problem -> scheme.errorContainer to scheme.onErrorContainer
-        is TileTone.Kind -> MaterialTheme.kinds[tone.n].let { it.copy(alpha = 0.15f) to it }
+    val tint = when (tone) {
+        TileTone.Neutral, is TileTone.Kind -> scheme.onSurfaceVariant
+        TileTone.Selected -> scheme.primary
+        TileTone.Problem -> scheme.error
     }
-    Box(
-        modifier.size(size).background(container, if (round) CircleShape else MaterialTheme.shapes.medium),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(size / 2))
+    if (size > 48.dp) {
+        Box(modifier.size(size).background(MaterialTheme.surfaces.fill, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(size / 2))
+        }
+    } else {
+        Icon(icon, contentDescription = null, tint = tint, modifier = modifier.size(size))
     }
 }

@@ -10,15 +10,8 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import app.milewage.phone.R
 import app.milewage.phone.ui.icons.Icons
@@ -32,9 +25,6 @@ internal enum class TopLevel(val route: Any, val routeClass: KClass<*>, @StringR
     SETTINGS(SettingsRoute, SettingsRoute::class, R.string.nav_settings, Icons.Settings, Icons.SettingsFilled),
 }
 
-/** Material's gap between navigation bar items (NavigationBarItemHorizontalPadding). */
-private val ItemGap = 8.dp
-
 /**
  * The bottom navigation bar of the main screens: on the page's colour under an outline-variant
  * hairline (no tonal tint), the selected item in the cool-grey pill (secondaryContainer) with its
@@ -44,22 +34,9 @@ private val ItemGap = 8.dp
  */
 @Composable
 internal fun MainNavigationBar(selected: TopLevel?, onSelect: (TopLevel) -> Unit) {
-    val lane = MaterialTheme.colorScheme.primaryContainer
-    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
-    val index = selected?.ordinal
-    Column(
-        Modifier.drawWithContent {
-            drawContent()
-            if (index == null) return@drawWithContent
-            val count = TopLevel.entries.size
-            val gap = ItemGap.toPx()
-            val item = (size.width - gap * (count - 1)) / count
-            val slot = if (rtl) count - 1 - index else index
-            val centre = slot * (item + gap) + item / 2
-            val dash = Size(24.dp.toPx(), 3.dp.toPx())
-            drawRoundRect(lane, Offset(centre - dash.width / 2, 0f), dash, CornerRadius(dash.height / 2))
-        },
-    ) {
+    // No lane dash over the selected tab: on the phone it read as a stray mark. The pill and the
+    // filled icon say which tab is open, as in Google's own apps.
+    Column {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         NavigationBar(containerColor = MaterialTheme.surfaces.page, tonalElevation = 0.dp) {
             TopLevel.entries.forEach { top ->

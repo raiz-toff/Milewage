@@ -11,6 +11,7 @@ import app.milewage.core.shift.OdometerKind
 import app.milewage.core.shift.StartResult
 import app.milewage.core.sync.OtherServerShifts
 import app.milewage.core.sync.Reminder
+import app.milewage.core.sync.SendStatus
 import app.milewage.data.RunningShiftView
 import app.milewage.phone.logic.Banner
 import app.milewage.phone.logic.Banners
@@ -37,6 +38,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -122,15 +125,23 @@ class HomeViewModel(
 
     val event: Flow<HomeEvent> = events.receiveAsFlow()
 
-    private val inputs = combine(data.settings(), data.pairingStatus(), data.homeSummary(), data.syncStatus(), data.otherServer()) { s, p, sum, sync, other ->
-        Inputs(s, p, sum, Banners.of(sync, now.ms()), other)
+    /**
+     * The sending status can take seconds to give its first value on a cold start (measured: up to
+     * 3.5 s on the owner's phone), and Home needs it only for the banner. So it starts as "not known
+     * yet": the summary and Start shift show as soon as the local data is in, and the banner fades
+     * in when the status arrives.
+     */
+    private val sync: Flow<SendStatus?> = data.syncStatus().map<SendStatus, SendStatus?> { it }.onStart { emit(null) }
+
+    private val inputs = combine(data.settings(), data.pairingStatus(), data.homeSummary(), sync, data.otherServer()) { s, p, sum, sync, other ->
+        Inputs(s, p, sum, sync?.let { Banners.of(it, now.ms()) }, other)
     }
 
     private data class Inputs(
         val settings: DisplaySettings,
         val pairing: PairingStatus,
         val summary: HomeSummary,
-        val banner: Banner,
+        val banner: Banner?,
         val otherServer: OtherServerShifts,
     )
 

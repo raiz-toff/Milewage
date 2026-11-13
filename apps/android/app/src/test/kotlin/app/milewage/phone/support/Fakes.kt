@@ -416,4 +416,10 @@ class FakeAppearance : app.milewage.phone.model.AppearancePort {
     override suspend fun setWallpaperColours(on: Boolean) {
         wallpaperColours.value = on
     }
+
+    override val accent = MutableStateFlow(app.milewage.data.prefs.Accent.LANE)
+
+    override suspend fun setAccent(accent: app.milewage.data.prefs.Accent) {
+        this.accent.value = accent
+    }
 }

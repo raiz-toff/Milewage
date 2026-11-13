@@ -20,6 +20,7 @@ import app.milewage.phone.ui.ViewModels
 import app.milewage.phone.ui.nav.AppShell
 import app.milewage.phone.ui.nav.AppViewModel
 import app.milewage.phone.logic.Gate
+import app.milewage.data.prefs.Accent
 import app.milewage.data.prefs.AppTheme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.toArgb
@@ -47,18 +48,20 @@ class MainActivity : ComponentActivity() {
             val wallpaper by remember { prefs.useWallpaperColours.map<Boolean, Boolean?> { it } }
                 .collectAsStateWithLifecycle(initialValue = null)
             val theme by remember { prefs.theme.map<AppTheme, AppTheme?> { it } }.collectAsStateWithLifecycle(initialValue = null)
+            val accentChoice by remember { prefs.accent.map<Accent, Accent?> { it } }.collectAsStateWithLifecycle(initialValue = null)
             val state by shell.shell.collectAsStateWithLifecycle()
             val link by shell.link.collectAsStateWithLifecycle()
             val choice = wallpaper
             val look = theme
-            if (choice != null && look != null && state.gate != Gate.LOADING) {
+            val accent = accentChoice
+            if (choice != null && look != null && accent != null && state.gate != Gate.LOADING) {
                 SideEffect { ready = true }
                 val dark = when (look) {
                     AppTheme.SYSTEM -> isSystemInDarkTheme()
                     AppTheme.LIGHT -> false
                     AppTheme.DARK -> true
                 }
-                MileWageTheme(darkTheme = dark, wallpaperColours = choice) {
+                MileWageTheme(darkTheme = dark, wallpaperColours = choice, accent = accent) {
                     SystemBars(dark)
                     AppShell(shell = state, link = link, onLinkHandled = shell::consumeLink, net = app.graph.data.connection?.net, info = app.graph.appInfo)
                 }

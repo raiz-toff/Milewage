@@ -34,6 +34,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.animation.AnimatedContent
+import app.milewage.phone.ui.theme.fadeThrough
+import app.milewage.phone.ui.theme.rollUp
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -43,6 +48,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import app.milewage.core.format.DASH
 import app.milewage.core.shift.PeriodSummary
 import app.milewage.core.sync.Reminder
 import app.milewage.core.sync.StatusColor
@@ -72,53 +78,64 @@ import app.milewage.phone.ui.theme.surfaces
 @Composable
 fun SummarySection(summary: PeriodSummary?, period: Period, settings: DisplaySettings, onPeriod: (Period) -> Unit) {
     val f = Formats(settings)
+    val haptics = LocalHapticFeedback.current
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         val labels = listOf(Period.DAY to R.string.period_today, Period.WEEK to R.string.period_week, Period.MONTH to R.string.period_month)
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             labels.forEachIndexed { i, (p, label) ->
                 SegmentedButton(
                     selected = p == period,
-                    onClick = { onPeriod(p) },
+                    onClick = {
+                        if (p != period) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                        onPeriod(p)
+                    },
                     shape = SegmentedButtonDefaults.itemShape(i, labels.size),
                     modifier = Modifier.heightIn(min = 48.dp),
                 ) { Text(stringResource(label), maxLines = 1) }
             }
         }
-        val p = summary
-        // One card: the distance large, then the shifts and the deduction under a hairline.
-        CardSurface(Modifier.fillMaxWidth()) {
-            Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    val label = stringResource(R.string.summary_distance)
-                    val value = f.distance(p?.totalM)
-                    Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    BigFigure(value, MaterialTheme.typography.displaySmall, Modifier.semantics { contentDescription = "$label, $value" })
-                    if (p != null && p.unsent > 0) {
-                        Text(
-                            pluralStringResource(R.plurals.summary_unsent, p.unsent, p.unsent),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-                IconTile(Icons.Route, tone = TileTone.Kind(1), size = 48.dp)
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            val shifts = stringResource(R.string.summary_shifts)
-            val business = f.distance(p?.businessM) + " " + stringResource(R.string.summary_business).lowercase()
-            val deduction = stringResource(if (settings.yourRate) R.string.summary_deduction_yours else R.string.summary_deduction)
-            val estimate = stringResource(R.string.estimate)
-            FigureRow(
-                cells = listOf(
-                    { m -> StatCell(shifts, p?.shifts?.toString() ?: "0", m, caption = business, icon = Icons.Shifts, tile = TileTone.Kind(0)) },
-                    { m -> StatCell(deduction, f.money(p?.deductionCents), m, caption = estimate, icon = Icons.Savings, tile = TileTone.Kind(2)) },
-                ),
-            )
+        // A new period fades through. The key is the period, so the card that leaves keeps its own
+        // figures instead of flashing the new ones.
+        AnimatedContent(targetState = period to summary, contentKey = { it.first }, transitionSpec = { fadeThrough() }, label = "summary") { (_, p) ->
+            SummaryCard(p, settings, f)
         }
-        Text(
-            stringResource(if (p?.deductionCents == null) R.string.summary_deduction_none else R.string.summary_deduction_caption),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+    }
+}
+
+/** One card: the distance large (rolling when it changes), then the shifts and the deduction under a hairline. */
+@Composable
+private fun SummaryCard(p: PeriodSummary?, settings: DisplaySettings, f: Formats) {
+    CardSurface(Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(16.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                val label = stringResource(R.string.summary_distance)
+                val value = f.distance(p?.totalM)
+                Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                AnimatedContent(targetState = value, transitionSpec = { rollUp() }, label = "distance") { v ->
+                    BigFigure(v, MaterialTheme.typography.displaySmall, Modifier.semantics { contentDescription = "$label, $v" })
+                }
+                if (p != null && p.unsent > 0) {
+                    Text(
+                        pluralStringResource(R.plurals.summary_unsent, p.unsent, p.unsent),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        val shifts = stringResource(R.string.summary_shifts)
+        val business = f.distance(p?.businessM) + " " + stringResource(R.string.summary_business).lowercase()
+        val deduction = stringResource(if (settings.yourRate) R.string.summary_deduction_yours else R.string.summary_deduction)
+        val cents = p?.deductionCents
+        // The caption says what the figure is: an estimate that is not money paid to the driver, or,
+        // with no rate on the phone yet, a dash that the server fills in once the shift is sent.
+        val caption = stringResource(if (cents == null) R.string.summary_deduction_pending else R.string.summary_deduction_estimate)
+        FigureRow(
+            cells = listOf(
+                { m -> StatCell(shifts, p?.shifts?.toString() ?: "0", m, caption = business) },
+                { m -> StatCell(deduction, cents?.let { f.money(it) } ?: DASH, m, caption = caption) },
+            ),
         )
     }
 }
@@ -267,7 +284,11 @@ fun NextShiftCard(v: VehicleChoice, unpaired: Boolean, onSelect: (Long) -> Unit,
                         style = MaterialTheme.typography.bodyMedium,
                         color = muted,
                     )
+                    // Trying again helps only when they could not be loaded; when the server has none,
+                // the fix is on the web app, which the sentence says.
+                if (v.source != VehicleSource.SERVER) {
                     OutlinedButton(onClick = { onFix(Fix.RETRY_VEHICLES) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.try_again)) }
+                }
                 }
             }
             if (v.source == VehicleSource.KEPT && v.vehicles.isNotEmpty()) {

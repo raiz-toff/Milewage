@@ -85,9 +85,13 @@ and lists stay plain.
 
 **Themes.** On the web, light is the default. The app follows the OS or the Settings choice:
 `apps/web/src/theme.ts` toggles `.dark` on `<html>`, and `THEME_COLORS` feeds `theme-color`.
-Android follows the system's light or dark setting. Settings > Use wallpaper colours (off by
-default, Android 12+) swaps the scheme for the phone's dynamic colours, with earned and spent
-re-harmonised. Check every change in both themes on both platforms.
+Android follows the system's light or dark setting. Settings > Colour is a row of swatches: Lane
+yellow (the default), Highway blue, Signal teal, Dusk violet, and on Android 12+ "From your
+wallpaper". An accent replaces only `primaryContainer` / `onPrimaryContainer` (`withAccent`,
+`accentColours` in Theme.kt), so it lands exactly where the yellow would and nowhere else. The
+wallpaper choice swaps the whole scheme for the phone's dynamic colours, with earned and spent
+re-harmonised. Never read an accent's hex in a screen: draw with `primaryContainer`. Check every
+change in both themes on both platforms.
 
 **Type.** The web uses Roboto Flex (variable, bundled by fontsource) and Roboto Mono for codes and
 keys. Use Material's type scale as utilities (`text-headline-small`, `text-title-medium`,

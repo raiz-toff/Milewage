@@ -289,8 +289,8 @@ private fun Totals(state: DetailState, d: ShiftDetail, f: Formats) {
         val time = stringResource(R.string.shift_time)
         FigureRow(
             cells = listOf(
-                { m -> StatCell(business, f.distance(dist?.businessM), m, icon = Icons.Route, tile = TileTone.Kind(1)) },
-                { m -> StatCell(time, f.duration(s.startedAt, s.endedAt), m, icon = Icons.Time, tile = TileTone.Kind(0)) },
+                { m -> StatCell(business, f.distance(dist?.businessM), m) },
+                { m -> StatCell(time, f.duration(s.startedAt, s.endedAt), m) },
             ),
         )
         if (s.serverDeductionKnown && s.serverDeductionCents != null) {
@@ -365,7 +365,7 @@ private fun Trips(state: DetailState, d: ShiftDetail, f: Formats, onEdit: (TripR
                 ListRow(
                     headline = f.range(t.startedAt, t.endedAt) + " · " + f.distance(t.distanceM),
                     supporting = marks.joinToString(" · "),
-                    leading = { IconTile(Icons.Route, tone = if (t.kind == TripKind.PERSONAL) TileTone.Neutral else TileTone.Kind(0), round = true) },
+                    leading = { IconTile(Icons.Route, tone = if (t.kind == TripKind.PERSONAL) TileTone.Neutral else TileTone.Kind(0)) },
                     trailing = if (state.editable) {
                         {
                             val change = stringResource(R.string.trip_change_label, f.clock(t.startedAt))
@@ -398,7 +398,7 @@ private fun Stops(d: ShiftDetail, f: Formats) {
             ListRow(
                 headline = stringResource(R.string.stop_line, f.clock(st.startedAt), ((st.dwellS + 30) / 60).toInt(), st.confidence),
                 supporting = role,
-                leading = { IconTile(Icons.Location, round = true) },
+                leading = { IconTile(Icons.Location) },
             )
         }
     }
@@ -413,7 +413,7 @@ private fun Odometer(d: ShiftDetail, f: Formats, editable: Boolean, onEdit: (Odo
             ListRow(
                 headline = stringResource(label),
                 supporting = reading?.let { f.odometer(it.readingM) } ?: stringResource(R.string.odometer_none),
-                leading = { IconTile(Icons.Odometer, round = true) },
+                leading = { IconTile(Icons.Odometer) },
                 trailing = if (editable) {
                     { TextButton(onClick = { onEdit(kind) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.odometer_edit)) } }
                 } else {

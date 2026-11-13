@@ -72,6 +72,11 @@ interface AppearancePort {
     suspend fun setTheme(theme: AppTheme)
 
     suspend fun setWallpaperColours(on: Boolean)
+
+    /** Settings > Accent (Lane yellow unless the driver picked another to try). */
+    val accent: Flow<app.milewage.data.prefs.Accent> get() = kotlinx.coroutines.flow.flowOf(app.milewage.data.prefs.Accent.LANE)
+
+    suspend fun setAccent(accent: app.milewage.data.prefs.Accent) {}
 }
 
 /** [PairingPort] on the real facade. */
@@ -129,4 +134,8 @@ class PreferencesAppearance(private val prefs: UiPreferences) : AppearancePort {
     override suspend fun setTheme(theme: AppTheme) = prefs.setTheme(theme)
 
     override suspend fun setWallpaperColours(on: Boolean) = prefs.setUseWallpaperColours(on)
+
+    override val accent: Flow<app.milewage.data.prefs.Accent> get() = prefs.accent
+
+    override suspend fun setAccent(accent: app.milewage.data.prefs.Accent) = prefs.setAccent(accent)
 }

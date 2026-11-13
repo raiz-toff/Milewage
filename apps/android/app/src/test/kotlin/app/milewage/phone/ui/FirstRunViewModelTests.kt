@@ -256,6 +256,9 @@ class SettingsViewModelTest : VmTest() {
         assertEquals(AppTheme.DARK, vm.state.value.theme)
         vm.setWallpaper(true)
         assertEquals(true, vm.state.value.wallpaper)
+        assertEquals(app.milewage.data.prefs.Accent.LANE, vm.state.value.accent)
+        vm.setAccent(app.milewage.data.prefs.Accent.TEAL)
+        assertEquals(app.milewage.data.prefs.Accent.TEAL, vm.state.value.accent)
     }
 
     @Test
