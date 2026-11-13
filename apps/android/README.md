@@ -47,8 +47,8 @@ owner's machine only, because CI never holds the upload key. It signs with the u
 GitHub release; `--publish PATH` copies the APK where the server hands it out.
 
 - `versionName` is the root `VERSION` file.
-- `versionCode` is `MILEWAGE_VERSION_CODE`, or the default in `app/build.gradle.kts` (3: the Expo
-  app's last release was 2). `npm run version:check` fails when the default is below the last
+- `versionCode` is `MILEWAGE_VERSION_CODE`, or the default in `app/build.gradle.kts` (4: the last
+  release, 0.3.0, was 3). `npm run version:check` fails when the default is below the last
   `versionCode` named in a released section of `CHANGELOG.md`. Raise it for every build handed out.
 - minSdk 26 (Android 8.0), targetSdk 36, compileSdk 37. Library versions are in
   `gradle/libs.versions.toml`: latest stable only, no alpha, beta or rc.

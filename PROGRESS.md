@@ -2711,3 +2711,9 @@ Owner decisions of 2026-11-10: Material Design 3 on the web (restyled in place) 
 
 - `VERSION` 0.3.0, every package.json and the lockfile synced; the changelog's Unreleased entries moved under `## [0.3.0] - 2026-11-11` with the intro and the "After upgrading" notes; the README status paragraph and the 0.3.0 version notes in `infra/docs/upgrade.md` name the version and the APK.
 - The Android app: `milewage-0.3.0.apk`, versionCode 3, signed with the upload key. `npm run verify` passed on the release commit.
+
+## Release 0.3.1 (2026-11-12)
+
+- `VERSION` 0.3.1, every package.json and the lockfile synced; the Android default versionCode 4; the changelog section `## [0.3.1] - 2026-11-12`, the 0.3.1 notes in `infra/docs/upgrade.md`, the versionCode note in `apps/android/README.md`.
+- In it: MN38 (phone motion, a calmer Home and Shifts, Home ready in about 0.4 s, Settings > Colour), Dependabot's vitest 5.1, and the two CodeQL tooling fixes (Z15).
+- The Android app: `milewage-0.3.1.apk`, versionCode 4, to be built and signed with the upload key on the owner's machine.
