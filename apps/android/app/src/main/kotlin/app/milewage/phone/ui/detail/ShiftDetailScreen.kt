@@ -356,11 +356,13 @@ private fun Trips(state: DetailState, d: ShiftDetail, f: Formats, onEdit: (TripR
             if (d.trips.isEmpty()) ListRow(headline = stringResource(R.string.trips_none))
             d.trips.forEachIndexed { i, t ->
                 if (i > 0) RowDivider()
-                val marks = listOfNotNull(
-                    kindWord(t, state.estimated)?.let { stringResource(it) },
-                    t.purpose.takeIf { it.isNotBlank() },
-                    if (state.estimated && t.source == TripSource.AUTO) stringResource(R.string.trip_estimated) else null,
-                    if (t.source == TripSource.MANUAL) stringResource(R.string.trip_added) else null,
+                val marks = app.milewage.phone.logic.TripMarks.of(
+                    kind = kindWord(t, state.estimated)?.let { stringResource(it) },
+                    purpose = t.purpose,
+                    estimated = state.estimated && t.source == TripSource.AUTO,
+                    added = t.source == TripSource.MANUAL,
+                    estimatedWord = stringResource(R.string.trip_estimated),
+                    addedWord = stringResource(R.string.trip_added),
                 )
                 ListRow(
                     headline = f.range(t.startedAt, t.endedAt) + " · " + f.distance(t.distanceM),
