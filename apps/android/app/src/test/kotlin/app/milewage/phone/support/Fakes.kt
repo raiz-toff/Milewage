@@ -203,6 +203,10 @@ class FakeShiftData : ShiftData {
 
     override fun pairingStatus(): Flow<PairingStatus> = pairing
 
+    val demoFlow = MutableStateFlow(false)
+
+    override fun demo(): Flow<Boolean> = demoFlow
+
     override suspend fun refreshVehicles(): VehicleList {
         calls += "refreshVehicles"
         if (vehiclesFail) error("no network")
@@ -367,10 +371,35 @@ class FakePairing(status: PairingStatus = PairingStatus.UNPAIRED) : app.milewage
     override suspend fun redeem(link: app.milewage.core.pairing.PairingLink) {
         calls += "redeem ${link.baseUrl}"
         redeemFailure?.let { throw it }
+        // From demo mode the demo's data goes first (MileWageData.connect).
+        if (demoFlow.value) leaveDemo()
         becomePaired()
     }
 
     override suspend fun hasUnsentData() = unsent
+
+    /** Demo mode as the real port has it: entering pairs (setup follows), leaving unpairs. */
+    val demoFlow = MutableStateFlow(false)
+    var demoFailure: Exception? = null
+
+    override fun demo(): Flow<Boolean> = demoFlow
+
+    override suspend fun enterDemo() {
+        calls += "enterDemo"
+        demoFailure?.let { throw it }
+        demoFlow.value = true
+        becomePaired()
+    }
+
+    override suspend fun leaveDemo(): Boolean {
+        calls += "leaveDemo"
+        demoFailure?.let { throw it }
+        if (!demoFlow.value) return false
+        demoFlow.value = false
+        state = null
+        statusFlow.value = PairingStatus.UNPAIRED
+        return true
+    }
 
     override suspend fun unpair(confirmed: Boolean): Boolean {
         calls += "unpair $confirmed"

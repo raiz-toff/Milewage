@@ -70,10 +70,10 @@ import app.milewage.phone.ui.theme.surfaces
 
 /**
  * The first screen of a phone that is not paired: what MileWage is, where the data goes, and the
- * two ways on. [revoked]: the server disconnected this phone (it says so; unsent shifts stay).
+ * two ways on, plus a quiet third: the demo, with sample data and nothing sent. [revoked]: the server disconnected this phone (it says so; unsent shifts stay).
  */
 @Composable
-fun WelcomeScreen(revoked: Boolean, onHaveServer: () -> Unit, onNoServer: () -> Unit) {
+fun WelcomeScreen(revoked: Boolean, onHaveServer: () -> Unit, onNoServer: () -> Unit, onTryDemo: () -> Unit = {}, demoBusy: Boolean = false) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.surfaces.page) {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
             Column(
@@ -110,6 +110,10 @@ fun WelcomeScreen(revoked: Boolean, onHaveServer: () -> Unit, onNoServer: () -> 
                 BrandButton(stringResource(R.string.welcome_have_server), onHaveServer, Modifier.fillMaxWidth())
                 TextButton(onClick = onNoServer, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Text(stringResource(R.string.welcome_no_server))
+                }
+                // Quiet: a look around with sample data, for anyone without a server yet (and Play's review).
+                TextButton(onClick = onTryDemo, enabled = !demoBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text(stringResource(if (demoBusy) R.string.welcome_try_demo_busy else R.string.welcome_try_demo))
                 }
             }
         }
@@ -340,12 +344,13 @@ fun ConnectedContent(state: SetupState, countryName: (String) -> String, onCheck
             Lead(
                 when {
                     f == null -> stringResource(R.string.connected_reading)
+                    f.demo -> stringResource(R.string.connected_demo)
                     f.name != null -> stringResource(R.string.connected_as, f.host, f.name)
                     else -> stringResource(R.string.connected_to, f.host)
                 },
             )
         }
-        if (f != null) {
+        if (f != null && !f.demo) {
             item(key = "server") {
                 Rows(label = stringResource(R.string.settings_server)) {
                     ListRow(stringResource(R.string.row_home), supporting = f.homeHost ?: stringResource(R.string.not_set), leading = { IconTile(Icons.Wifi) })
@@ -353,6 +358,8 @@ fun ConnectedContent(state: SetupState, countryName: (String) -> String, onCheck
                     ListRow(stringResource(R.string.row_away), supporting = f.awayHost ?: stringResource(R.string.away_not_set), leading = { IconTile(Icons.Tailscale) })
                 }
             }
+        }
+        if (f != null) {
             item(key = "sent") {
                 Rows(label = stringResource(R.string.connected_sent)) {
                     ListRow(stringResource(R.string.row_country), supporting = f.country?.let(countryName) ?: stringResource(R.string.not_set))

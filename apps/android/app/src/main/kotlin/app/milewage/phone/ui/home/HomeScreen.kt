@@ -36,6 +36,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import app.milewage.phone.ui.theme.Motion
 import app.milewage.phone.ui.theme.surfaces
+import app.milewage.phone.ui.components.DemoMark
 import app.milewage.phone.ui.components.animatedItem
 import app.milewage.phone.ui.theme.fadeThrough
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -150,6 +151,7 @@ private fun IdleContent(state: HomeState, actions: HomeActions) {
             }
         },
     ) {
+        if (state.demo) animatedItem(key = "demo") { DemoMark() }
         if (state.ready && state.setup.any { !it.done }) animatedItem(key = "setup") { SetupCard(state.setup, actions::fix) }
         animatedItem(key = "summary") {
             val s = state.summary
@@ -228,6 +230,7 @@ private fun RunningShiftContent(state: HomeState, running: RunningShiftView, act
         },
     ) {
         val live = line == TrackingLine.RECORDING || line == TrackingLine.SAVING_BATTERY || line == TrackingLine.NO_BACKGROUND
+        if (state.demo) animatedItem(key = "demo") { DemoMark() }
         if (live) animatedItem(key = "live") { LiveChip() }
         animatedItem(key = "readings") {
             CardSurface(Modifier.fillMaxWidth()) {

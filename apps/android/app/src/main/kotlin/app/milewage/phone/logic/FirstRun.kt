@@ -1,5 +1,6 @@
 package app.milewage.phone.logic
 
+import app.milewage.core.demo.Demo
 import app.milewage.core.api.ApiCodes
 import app.milewage.core.api.ApiException
 import app.milewage.core.api.ApiFailure
@@ -135,6 +136,8 @@ data class ServerFacts(
     /** ISO 3166 code. */
     val country: String?,
     val region: String?,
+    /** The demo server in this process ("Try it without a server"), not a server of the driver's. */
+    val demo: Boolean = false,
 ) {
     /** No away address: shifts are sent only from the home Wi-Fi (Tailscale later, optional). */
     val homeOnly: Boolean get() = awayHost == null
@@ -151,6 +154,7 @@ data class ServerFacts(
                 awayHost = awayHost,
                 country = state.settings?.country?.takeIf { it.isNotBlank() },
                 region = state.settings?.region?.takeIf { it.isNotBlank() },
+                demo = Demo.isDemo(state.credential),
             )
         }
     }

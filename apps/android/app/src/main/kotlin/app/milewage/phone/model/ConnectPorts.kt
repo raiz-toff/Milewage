@@ -37,7 +37,17 @@ interface PairingPort {
     /** `GET /settings` through the paired route: null when it answered, else the failure. */
     suspend fun checkConnection(): ApiException?
 
+    /** Connects with a pairing code; from demo mode the demo's data is deleted first. */
     suspend fun redeem(link: PairingLink)
+
+    /** True while the phone is paired with the in-process demo server. */
+    fun demo(): Flow<Boolean>
+
+    /** "Try it without a server": pairs with the demo server and adds its sample data. */
+    suspend fun enterDemo()
+
+    /** "Leave demo": ends a running demo shift, deletes the demo's data and unpairs (first run follows). */
+    suspend fun leaveDemo(): Boolean
 
     suspend fun hasUnsentData(): Boolean
 
@@ -99,10 +109,13 @@ class MileWagePairing(private val data: MileWageData) : PairingPort {
         return pairing.refreshSettings(state).second
     }
 
-    override suspend fun redeem(link: PairingLink) {
-        pairing.redeem(link)
-        data.kick()
-    }
+    override suspend fun redeem(link: PairingLink) = data.connect(link)
+
+    override fun demo(): Flow<Boolean> = data.demo()
+
+    override suspend fun enterDemo() = data.enterDemo()
+
+    override suspend fun leaveDemo(): Boolean = data.leaveDemo()
 
     override suspend fun hasUnsentData(): Boolean = data.hasUnsentData()
 
