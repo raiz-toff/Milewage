@@ -14,7 +14,6 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextStyle
@@ -37,10 +36,8 @@ fun StatTile(
     modifier: Modifier = Modifier,
     caption: String? = null,
     tone: StatTone = StatTone.NEUTRAL,
-    icon: ImageVector? = null,
-    tile: TileTone = TileTone.Neutral,
 ) {
-    CardSurface(modifier) { StatCell(label, value, Modifier.fillMaxWidth(), caption, tone, icon, tile) }
+    CardSurface(modifier) { StatCell(label, value, Modifier.fillMaxWidth(), caption, tone) }
 }
 
 /** A [StatTile]'s content without the card: one figure inside a card, read out as one sentence. */
@@ -51,9 +48,6 @@ fun StatCell(
     modifier: Modifier = Modifier,
     caption: String? = null,
     tone: StatTone = StatTone.NEUTRAL,
-    /** A picture for the figure, in an [IconTile] of colour [tile], above the label. */
-    icon: ImageVector? = null,
-    tile: TileTone = TileTone.Neutral,
 ) {
     val valueColor = when (tone) {
         StatTone.NEUTRAL -> Color.Unspecified
@@ -66,7 +60,6 @@ fun StatCell(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        if (icon != null) IconTile(icon, Modifier.padding(bottom = 8.dp), tile)
         Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.headlineSmall.tabular(), color = valueColor)
         if (caption != null) {

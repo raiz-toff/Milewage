@@ -64,6 +64,11 @@ import app.milewage.phone.ui.shifts.ShiftsRoute as ShiftsScreenRoute
 import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
 import app.milewage.phone.ui.theme.surfaces
+import app.milewage.phone.ui.theme.fadeThroughIn
+import app.milewage.phone.ui.theme.fadeThroughOut
+import app.milewage.phone.ui.theme.sharedAxisXIn
+import app.milewage.phone.ui.theme.sharedAxisXOut
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.material3.MaterialTheme
 
 /**
@@ -140,6 +145,12 @@ fun AppShell(
                 navController = nav,
                 startDestination = start,
                 modifier = Modifier.padding(padding).consumeWindowInsets(padding),
+                // Material motion: deeper and back slide on the X axis (the back gesture scrubs it);
+                // peers (the tabs, first run and the app) fade through.
+                enterTransition = { if (peers()) fadeThroughIn() else sharedAxisXIn(forward = true) },
+                exitTransition = { if (peers()) fadeThroughOut() else sharedAxisXOut(forward = true) },
+                popEnterTransition = { if (peers()) fadeThroughIn() else sharedAxisXIn(forward = false) },
+                popExitTransition = { if (peers()) fadeThroughOut() else sharedAxisXOut(forward = false) },
             ) {
                 firstRun(nav, shell)
                 setup(nav, net)
@@ -182,6 +193,17 @@ fun AppShell(
         }
     }
 }
+
+/** The graph a destination belongs to (first run, setup or the app). */
+private fun graphClass(entry: NavBackStackEntry): KClass<*>? = listOf(FirstRunGraph::class, SetupGraph::class, MainGraph::class)
+    .firstOrNull { g -> entry.destination.hierarchy.any { it.hasRoute(g) } }
+
+private fun isTopLevel(entry: NavBackStackEntry): Boolean =
+    TopLevel.entries.any { top -> entry.destination.hierarchy.any { it.hasRoute(top.routeClass) } }
+
+/** Peers fade through: two bottom tabs, or a move between graphs (paired, unpaired, setup done). */
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.peers(): Boolean =
+    (isTopLevel(initialState) && isTopLevel(targetState)) || graphClass(initialState) != graphClass(targetState)
 
 /** First run's screens; Connect's view model is shared with the scanner (scoped to this graph). */
 private fun androidx.navigation.NavGraphBuilder.firstRun(nav: NavHostController, shell: ShellState) {

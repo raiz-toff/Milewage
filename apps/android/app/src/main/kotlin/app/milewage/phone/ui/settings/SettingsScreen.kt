@@ -16,7 +16,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -29,7 +28,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -43,7 +44,24 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.milewage.core.connect.Where
 import app.milewage.core.format.DistanceUnit
 import app.milewage.core.format.TimeFormat
+import app.milewage.data.prefs.Accent
 import app.milewage.data.prefs.AppTheme
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import app.milewage.phone.ui.theme.LocalDarkTheme
+import app.milewage.phone.ui.theme.Motion
+import app.milewage.phone.ui.theme.accentSwatch
 import app.milewage.phone.R
 import app.milewage.phone.logic.ConnectFix
 import app.milewage.phone.logic.ConnectionCheck
@@ -87,6 +105,8 @@ interface SettingsActions {
     fun setTheme(theme: AppTheme)
 
     fun setWallpaper(on: Boolean)
+
+    fun setAccent(accent: Accent) {}
 
     fun sendNow()
 
@@ -141,6 +161,8 @@ fun SettingsRoute(
             override fun setTheme(theme: AppTheme) = vm.setTheme(theme)
 
             override fun setWallpaper(on: Boolean) = vm.setWallpaper(on)
+
+            override fun setAccent(accent: Accent) = vm.setAccent(accent)
 
             override fun sendNow() = vm.sendNow()
 
@@ -231,22 +253,27 @@ fun SettingsContent(state: SettingsState, info: AppInfo, actions: SettingsAction
         item(key = "tracking") { TrackingSection(state) { nudgeOpen = true } }
         item(key = "sending") { SendingSection(state, actions) }
         item(key = "appearance") {
+            val haptics = LocalHapticFeedback.current
             Rows(label = stringResource(R.string.settings_appearance)) {
                 ListRow(
                     headline = stringResource(R.string.settings_theme),
                     supporting = stringResource(Texts.theme(state.theme)),
-                    leading = { IconTile(Icons.Palette, tone = TileTone.Kind(4)) },
+                    leading = { IconTile(Icons.DarkMode) },
                     onClick = { themeOpen = true },
                 )
                 RowDivider()
-                ListRow(
-                    headline = stringResource(R.string.settings_wallpaper_colours),
-                    supporting = stringResource(
-                        if (wallpaperColoursAvailable) R.string.settings_wallpaper_colours_body else R.string.settings_wallpaper_colours_unavailable,
-                    ),
-                    trailing = { Switch(checked = state.wallpaper && wallpaperColoursAvailable, enabled = wallpaperColoursAvailable, onCheckedChange = null) },
-                    onClick = if (wallpaperColoursAvailable) ({ actions.setWallpaper(!state.wallpaper) }) else null,
-                    role = Role.Switch,
+                ColourRow(
+                    accent = state.accent,
+                    wallpaper = state.wallpaper && wallpaperColoursAvailable,
+                    onAccent = {
+                        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                        if (state.wallpaper) actions.setWallpaper(false)
+                        actions.setAccent(it)
+                    },
+                    onWallpaper = {
+                        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                        actions.setWallpaper(true)
+                    },
                 )
             }
         }
@@ -312,6 +339,65 @@ fun SettingsContent(state: SettingsState, info: AppInfo, actions: SettingsAction
             },
             onDismiss = { themeOpen = false },
         )
+    }
+}
+
+@androidx.annotation.StringRes
+private fun accentName(a: Accent): Int = when (a) {
+    Accent.LANE -> R.string.accent_lane
+    Accent.BLUE -> R.string.accent_blue
+    Accent.TEAL -> R.string.accent_teal
+    Accent.VIOLET -> R.string.accent_violet
+}
+
+/**
+ * Settings > Colour: one tap on a swatch, no dialog. The four accents, then (Android 12 and later)
+ * the wallpaper's own colour. The chosen one carries a check and a ring; its name is the row's
+ * second line, and TalkBack reads each swatch as a radio button by name.
+ */
+@Composable
+private fun ColourRow(accent: Accent, wallpaper: Boolean, onAccent: (Accent) -> Unit, onWallpaper: () -> Unit) {
+    val chosen = if (wallpaper) stringResource(R.string.colour_wallpaper) else stringResource(accentName(accent))
+    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.Top) {
+        Box(Modifier.padding(top = 2.dp)) { IconTile(Icons.Palette) }
+        Column(Modifier.padding(start = 16.dp).weight(1f)) {
+            Text(stringResource(R.string.settings_colour), style = MaterialTheme.typography.bodyLarge)
+            Text(chosen, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(Modifier.padding(top = 8.dp).selectableGroup(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Accent.entries.forEach { a ->
+                    val (fill, label) = accentSwatch(a)
+                    Swatch(stringResource(accentName(a)), fill, label, selected = !wallpaper && a == accent) { onAccent(a) }
+                }
+                if (wallpaperColoursAvailable) {
+                    val context = LocalContext.current
+                    val dark = LocalDarkTheme.current
+                    val scheme = remember(dark) { if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context) }
+                    Swatch(stringResource(R.string.colour_wallpaper), scheme.primaryContainer, scheme.onPrimaryContainer, selected = wallpaper, wallpaperMark = true, onClick = onWallpaper)
+                }
+            }
+        }
+    }
+}
+
+/** One colour: a 40 dp dot in a 48 dp target; chosen, it shows a check and an ink ring. */
+@Composable
+private fun Swatch(name: String, fill: Color, label: Color, selected: Boolean, wallpaperMark: Boolean = false, onClick: () -> Unit) {
+    val ring by animateDpAsState(if (selected) 2.dp else 0.dp, tween(Motion.SHORT), label = "ring")
+    Box(
+        Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .semantics { contentDescription = name },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (ring > 0.dp) Box(Modifier.size(46.dp).border(ring, MaterialTheme.colorScheme.onSurface, CircleShape))
+        Box(Modifier.size(if (selected) 36.dp else 40.dp).background(fill, CircleShape), contentAlignment = Alignment.Center) {
+            when {
+                selected -> Icon(Icons.Check, contentDescription = null, tint = label, modifier = Modifier.size(20.dp))
+                wallpaperMark -> Icon(Icons.Palette, contentDescription = null, tint = label, modifier = Modifier.size(18.dp))
+            }
+        }
     }
 }
 

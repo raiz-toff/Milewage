@@ -17,6 +17,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import app.milewage.data.prefs.Accent
 
 /** Material 3's type scale on the system font (Roboto on most phones). No bundled font. */
 val MileWageTypography = Typography()
@@ -65,6 +66,7 @@ val LocalSurfaces = staticCompositionLocalOf { Surfaces.of(BrandColors.Light, is
 fun MileWageTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     wallpaperColours: Boolean = false,
+    accent: Accent = Accent.LANE,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -72,8 +74,8 @@ fun MileWageTheme(
     val colorScheme: ColorScheme = when {
         dynamic && darkTheme -> dynamicDarkColorScheme(context)
         dynamic -> dynamicLightColorScheme(context)
-        darkTheme -> BrandColors.Dark
-        else -> BrandColors.Light
+        darkTheme -> BrandColors.Dark.withAccent(accent, dark = true)
+        else -> BrandColors.Light.withAccent(accent, dark = false)
     }
     val extended = remember(colorScheme, darkTheme, dynamic) {
         when {
@@ -86,7 +88,12 @@ fun MileWageTheme(
     val kinds = remember(colorScheme, darkTheme, dynamic) {
         (if (darkTheme) Kinds.Dark else Kinds.Light).let { if (dynamic) it.harmonizedWith(colorScheme.primary.toArgb()) else it }
     }
-    CompositionLocalProvider(LocalExtendedColors provides extended, LocalSurfaces provides surfaces, LocalKinds provides kinds) {
+    CompositionLocalProvider(
+        LocalExtendedColors provides extended,
+        LocalSurfaces provides surfaces,
+        LocalKinds provides kinds,
+        LocalDarkTheme provides darkTheme,
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = MileWageTypography,
@@ -95,6 +102,33 @@ fun MileWageTheme(
         )
     }
 }
+
+/**
+ * The brand scheme with another [Accent] in the yellow's place: only the roles the yellow plays
+ * (the main action's container and its label), so ink, the neutrals, selection, money and error
+ * stay as they are. Each pair holds at least 4.5:1 between label and container.
+ */
+fun ColorScheme.withAccent(accent: Accent, dark: Boolean): ColorScheme {
+    if (accent == Accent.LANE) return this
+    val (container, label) = accentColours(accent, dark)
+    return copy(primaryContainer = container, onPrimaryContainer = label)
+}
+
+/** An [Accent]'s container and the label on it, in light or dark. Lane yellow is the brand's own pair. */
+fun accentColours(accent: Accent, dark: Boolean): Pair<Color, Color> = when (accent) {
+    Accent.LANE -> (if (dark) BrandColors.Dark else BrandColors.Light).let { it.primaryContainer to it.onPrimaryContainer }
+    Accent.BLUE -> if (dark) Color(0xFF9FBCFF) to Color(0xFF0A2A6B) else Color(0xFF2F5FD0) to Color(0xFFFFFFFF)
+    Accent.TEAL -> if (dark) Color(0xFF6ED5CF) to Color(0xFF00332F) else Color(0xFF006A6A) to Color(0xFFFFFFFF)
+    Accent.VIOLET -> if (dark) Color(0xFFC4BBFF) to Color(0xFF2A1F7A) else Color(0xFF5B4FB5) to Color(0xFFFFFFFF)
+}
+
+/** Whether the theme now drawn is dark, for the few things drawn outside the scheme (the accent swatches). */
+val LocalDarkTheme = staticCompositionLocalOf { false }
+
+/** An accent's swatch in the theme now drawn: its container and the label on it. */
+@Composable
+@ReadOnlyComposable
+fun accentSwatch(accent: Accent): Pair<Color, Color> = accentColours(accent, LocalDarkTheme.current)
 
 /** MileWage's colours beyond the Material roles: `MaterialTheme.extendedColors.earned`. */
 val MaterialTheme.extendedColors: ExtendedColors
