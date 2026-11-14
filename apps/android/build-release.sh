@@ -44,7 +44,7 @@ fi
 . "$ROOT/scripts/phone-signing-env.sh"
 milewage_signing_env
 
-version="$(tr -d ' \n' <"$ROOT/VERSION")"
+version="$(tr -d ' \r\n' <"$ROOT/VERSION")"
 echo "MileWage $version, versionCode ${MILEWAGE_VERSION_CODE:-default (app/build.gradle.kts)}."
 
 cd "$HERE"

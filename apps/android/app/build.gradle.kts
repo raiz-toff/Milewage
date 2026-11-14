@@ -97,7 +97,14 @@ android {
         // Robolectric (Compose UI tests and screenshots on the JVM) reads the app's resources.
         unitTests.isIncludeAndroidResources = true
         // Robolectric's native graphics draw full screens (and dialogs' windows) in memory.
-        unitTests.all { it.maxHeapSize = "3g" }
+        unitTests.all {
+            it.maxHeapSize = "3g"
+            // Robolectric turns a space in the home folder into %20 and then cannot find its Android
+            // jars in ~/.m2 (Windows accounts named "First Last"). Keep them in a folder without one.
+            if (System.getProperty("user.home").orEmpty().contains(' ')) {
+                it.systemProperty("maven.repo.local", rootDir.resolve(".gradle/robolectric-m2").absolutePath)
+            }
+        }
     }
 }
 

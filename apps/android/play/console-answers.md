@@ -26,13 +26,17 @@ Choose **All or some functionality is restricted**, then add one instruction set
   > with sample data, and Start shift records a real shift with GPS (kept on the phone, never
   > sent). Settings > Leave demo returns to the first screen.
 
-> This needs the demo mode (the "Phone: demo mode for Play review" task). Until it ships, Google
-> has no way in, and a review would most likely be rejected for missing access. Do not send the
-> app for review before it is in the build.
+Demo mode is in every build made after 0.3.1 was tagged (#13). Never send Google a build without
+it: Google would have no way in, and a review would most likely be rejected for missing access.
 
 ## Ads
 
 **No**, the app does not contain ads.
+
+## Advertising ID
+
+**No**, the app does not use an advertising ID (no ads or analytics library; the merged manifest
+has no `com.google.android.gms.permission.AD_ID`).
 
 ## Content rating (IARC questionnaire)
 

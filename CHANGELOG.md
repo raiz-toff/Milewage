@@ -13,6 +13,17 @@ All notable changes to MileWage are listed here. The format follows
   Start and End shift record for real; nothing leaves the phone. A line on Home and in Settings
   says it is the demo, and Settings > Leave demo deletes the demo's shifts. Connecting your own
   server from the demo deletes them too.
+- `scripts/play-setup.ps1`: the one-time Google Play setup on a Windows PC, step by step. It finds
+  the tools, makes the upload key, builds the App Bundle, opens each Play Console and Google Cloud
+  page with its answer on the clipboard, and remembers what is done.
+
+### Fixed
+
+- The release build on Windows. The shell scripts and `gradlew` are checked out with LF endings
+  (`.gitattributes`), and the version read from `VERSION` drops a carriage return, which had named
+  the files `milewage-0.3.1␍.aab`. Robolectric's Android jars live outside a home folder with a
+  space in it, and the one DataStore test Windows cannot run (it cannot replace an open file) is
+  skipped there; it still runs on Linux and in CI.
 
 ## [0.3.1] - 2026-11-12
 
