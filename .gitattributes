@@ -1,0 +1,7 @@
+# Every text file is checked out with LF, on Windows too. Bash keeps a Windows line ending as part of
+# the line (a version read as "0.3.1\r" named the files "milewage-0.3.1\r.aab"), Node cannot load a
+# script whose #! line ends in one, and Prettier expects LF everywhere.
+* text=auto eol=lf
+# Windows batch files (gradlew.bat) are kept exactly as committed, with CRLF: cmd.exe needs it.
+*.bat -text
+*.cmd -text

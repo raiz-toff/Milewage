@@ -11,7 +11,7 @@ src="${1:?Usage: scripts/publish-apk.sh <app.apk> <destination>}"
 dest="${2:?Usage: scripts/publish-apk.sh <app.apk> <destination>}"
 [ -f "$src" ] || { echo "No app file at $src" >&2; exit 1; }
 
-version="$(tr -d ' \n' <"$ROOT/VERSION")"
+version="$(tr -d ' \r\n' <"$ROOT/VERSION")"
 built="$(date -u -r "$src" +%Y-%m-%dT%H:%M:%SZ)"
 mkdir -p "$(dirname "$dest")"
 # Copy then rename, so a phone downloading at that moment never gets half a file.

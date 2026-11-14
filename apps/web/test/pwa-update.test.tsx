@@ -113,6 +113,9 @@ describe('server not reachable', () => {
     expect(await screen.findByText('The server could not be reached.')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'MileWage is not answering' })).toBeTruthy();
     up = true;
+    // The 'online' listener is attached in an effect, which can run just after the message is on
+    // screen: let pending effects run first, or a slow machine fires the event before anyone hears it.
+    await act(async () => {});
     window.dispatchEvent(new Event('online'));
     await waitFor(() => expect(screen.getByRole('navigation', { name: 'Main' })).toBeTruthy());
   });

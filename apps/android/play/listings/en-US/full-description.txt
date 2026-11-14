@@ -3,7 +3,7 @@ MileWage records the distance you drive for work, shift by shift, and works out 
 MileWage is self-hosted. The phone app sends your shifts to a MileWage server that you run yourself, on a home computer, a small server or a Raspberry Pi. Your routes and earnings stay with you. MileWage has no account with us, no ads, no analytics and no crash reporting.
 
 YOU NEED A MILEWAGE SERVER
-The app pairs with your server by scanning a QR code. The server runs in Docker; the setup guide is at github.com/raiz-toff/Milewage. MileWage is free and open source (AGPL-3.0).
+The app pairs with your server by scanning a QR code. The server runs in Docker; the setup guide is at github.com/raiz-toff/Milewage. MileWage is free and open source (AGPL-3.0). No server yet? Tap "Try it without a server" to look around with sample shifts.
 
 ON THE PHONE
 • Start shift and End shift, with large buttons that are easy to reach in a car mount.
