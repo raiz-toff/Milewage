@@ -56,7 +56,13 @@ infra/install.sh
 
 Open the web app, create the owner account and **write down the recovery key** it shows. The server cannot show it again.
 
-**The phone.** Android 8.0 or later. Install `milewage-<version>.apk` from the [latest release](https://github.com/raiz-toff/Milewage/releases/latest), tap "I have a server" and scan the QR code from the web's Devices page.
+**The phone.** Android 8.0 or later. Install `milewage-<version>.apk` from the [latest release](https://github.com/raiz-toff/Milewage/releases/latest), tap "I have a server" and scan the QR code from the web's Devices page. No server yet? "Try it without a server" shows every screen with sample shifts.
+
+To get updates by themselves, install the app with [Obtainium](https://obtainium.imranr.dev), which watches this repository's releases and installs each new APK:
+
+<p>
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/raiz-toff/Milewage"><img alt="Get it on Obtainium" src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" height="54" /></a>
+</p>
 
 The full steps are in the [install guide](infra/docs/install.md) and [Getting started](docs/help/getting-started.md).
 
