@@ -27,8 +27,13 @@ All notable changes to MileWage are listed here. The format follows
 
 ## [0.3.1] - 2026-11-12
 
-A smoother, calmer phone app, and a colour of your own. Install `milewage-0.3.1.apk`
-(versionCode 4) over 0.3.0: it keeps everything on the phone, and nothing changes on the server.
+A smoother, calmer phone app, and a colour of your own. Nothing changes on the server.
+
+**The phone app has a new signing key.** `milewage-0.3.1.apk` (versionCode 4) does not install
+over 0.3.0: let 0.3.0 send everything, uninstall it, install 0.3.1 and pair again
+(`infra/docs/upgrade.md`). The APK on the GitHub release was built after the `v0.3.1` tag and also
+has "Try it without a server" and the single "estimated" (under Unreleased); it is the same build
+as on Google Play.
 
 ### Added
 
