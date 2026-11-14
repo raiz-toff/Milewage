@@ -1,0 +1,4 @@
+• Smoother: screens slide and fade the way Android's own apps do.
+• Calmer: Home and Shifts show what needs your attention and keep the rest one tap away.
+• Faster: Home is ready in under half a second.
+• New: choose a colour in Settings, or use your wallpaper's.

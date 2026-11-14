@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Keeps every package.json version equal to the VERSION file, and checks that the Android app
 // (apps/android, which reads VERSION itself) still does and will install over the last release.
-// Usage: node scripts/version.mjs check|sync
+// Usage: node scripts/version.mjs check|sync|bump <version>
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -93,6 +93,56 @@ export function sync(root) {
   return changed;
 }
 
+/**
+ * A new version in one step: VERSION, every package.json, the Android default versionCode (one
+ * above what it was) and a release-notes file for Google Play to fill in. The lockfile follows on
+ * the next `npm install`. Returns what changed.
+ */
+export function bump(root, next) {
+  if (!SEMVER.test(next)) throw new Error(`"${next}" is not a semantic version (like 0.3.2)`);
+  const current = readVersion(root);
+  if (next === current) throw new Error(`VERSION is already ${next}`);
+  writeFileSync(join(root, 'VERSION'), next + '\n');
+  const changed = [join(root, 'VERSION'), ...sync(root)];
+  const lock = join(root, 'package-lock.json');
+  if (existsSync(lock)) {
+    const text = readFileSync(lock, 'utf8');
+    const names = /("name": "(milewage|@milewage\/[\w-]+)",\r?\n\s+"version": )"[^"]+"/g;
+    const updated = text
+      .replace(/^( {2}"version": )"[^"]+"/m, `$1"${next}"`)
+      .replace(names, `$1"${next}"`);
+    if (updated !== text) {
+      writeFileSync(lock, updated);
+      changed.push(lock);
+    }
+  }
+  const gradleFile = join(root, GRADLE_APP);
+  let versionCode = null;
+  if (existsSync(gradleFile)) {
+    const gradle = readFileSync(gradleFile, 'utf8');
+    const m = /isNullOrEmpty\(\)\) return@let (\d+)/.exec(gradle);
+    if (m) {
+      versionCode = Number(m[1]) + 1;
+      writeFileSync(
+        gradleFile,
+        gradle
+          .replace(m[0], `isNullOrEmpty()) return@let ${versionCode}`)
+          .replace(
+            /\/\/ The last release \([^)]*\) was \d+, so the default is \d+: this APK installs over it\./,
+            `// The last release (${current}) was ${versionCode - 1}, so the default is ${versionCode}: this APK installs over it.`,
+          ),
+      );
+      changed.push(gradleFile);
+    }
+  }
+  const notes = join(root, 'apps', 'android', 'play', 'release-notes', 'en-US', `${next}.txt`);
+  if (existsSync(dirname(notes)) && !existsSync(notes)) {
+    writeFileSync(notes, '');
+    changed.push(notes);
+  }
+  return { version: next, versionCode, changed };
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const root = join(dirname(fileURLToPath(import.meta.url)), '..');
   const mode = process.argv[2];
@@ -109,8 +159,15 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   } else if (mode === 'sync') {
     const changed = sync(root);
     console.log(changed.length ? `updated:\n${changed.join('\n')}` : 'already in sync');
+  } else if (mode === 'bump') {
+    const r = bump(root, process.argv[3] ?? '');
+    console.log(`MileWage ${r.version}, Android versionCode ${r.versionCode ?? '(unchanged)'}`);
+    console.log(r.changed.join('\n'));
+    console.log(
+      'Next: write the Play release notes (apps/android/play/release-notes/en-US/<version>.txt) and the CHANGELOG section.',
+    );
   } else {
-    console.error('Usage: version.mjs check|sync');
+    console.error('Usage: version.mjs check|sync|bump <version>');
     process.exit(2);
   }
 }
