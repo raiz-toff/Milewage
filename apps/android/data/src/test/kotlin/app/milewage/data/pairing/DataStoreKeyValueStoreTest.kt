@@ -6,7 +6,8 @@ import app.milewage.core.pairing.HaltReason
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.job
 import kotlinx.coroutines.runBlocking
 import org.junit.Assume.assumeFalse
 import java.io.File
@@ -34,12 +35,14 @@ class DataStoreKeyValueStoreTest {
         store.remove("pairing.settings")
         assertNull(store.get("pairing.settings"))
         DeviceSession(store).halt(HaltReason.REPAIR)
-        scope.cancel()
+        // Wait until the first store has really closed: a second store on the same file while the
+        // first is still shutting down is refused ("multiple DataStores active"), now and then on CI.
+        scope.coroutineContext.job.cancelAndJoin()
 
         val again = CoroutineScope(Dispatchers.IO + SupervisorJob())
         val reopened = DataStoreKeyValueStore(PreferenceDataStoreFactory.create(scope = again) { file })
         assertEquals(HaltReason.REPAIR, DeviceSession(reopened).halted())
-        again.cancel()
+        again.coroutineContext.job.cancelAndJoin()
         dir.deleteRecursively()
         Unit
     }
