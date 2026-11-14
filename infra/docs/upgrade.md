@@ -76,7 +76,8 @@ The restore command (and the restore screen) prints what it found: shifts and th
 
 ### 0.3.1
 
-- Install `milewage-0.3.1.apk` (versionCode 4) on every paired phone. It installs over 0.3.0 and keeps everything on the phone: no pairing again, nothing to send first.
+- `milewage-0.3.1.apk` (versionCode 4) is signed with a new upload key (certificate SHA-256 `f5bbff63b3f13c140f81ecc82468c1a904f557c1a27fe0780d36da9fbec5bc3a`; 0.1.0 to 0.3.0 were `b5e4549f…2127`), so Android does not install it over 0.3.0. On every paired phone: open MileWage 0.3.0 on a connection to your server, end any running shift and let it send everything (its banner says when everything is on the server); uninstall it; install 0.3.1, pair it again, and revoke the old entry on the Devices page. Anything on the server is untouched. Later versions install over 0.3.1 again.
+- The app from Google Play is signed by Google, so a Play copy and a GitHub copy cannot update each other: use one source per phone.
 - Nothing changes on the server: no migration, no new setting.
 
 ### 0.3.0 (the native Android app)
