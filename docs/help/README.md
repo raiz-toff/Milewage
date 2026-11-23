@@ -23,6 +23,7 @@ These pages explain MileWage in plain words. They are also in the web app, under
 ## When something goes wrong
 
 - [Troubleshooting](troubleshooting.md): What to do when the server does not answer, shifts stay on the phone, the phone stops recording, totals differ, the map is blank or the server has moved.
+- [Health and updates](health-and-updates.md): What the Health page checks, what it cannot see, how MileWage looks for a new version once a day, and how you upgrade (by one command, never from the app).
 - [If your phone is lost](if-your-phone-is-lost.md): What is on the phone, what to do, and what happens after your server is restored.
 - [If you lose your recovery key](if-you-lose-your-recovery-key.md): What can and cannot be recovered, and how to make a new key.
 

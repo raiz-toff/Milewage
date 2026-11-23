@@ -39,7 +39,7 @@ tags:
 x-modules:
   core:
     toggle: never
-    operations: [getHealth, getSetupStatus, listCountries, getErrorType, createOwner, confirmRecoveryKey, login, logout, changePassword, resetPassword, getSettings, updateSettings, listVehicles, createVehicle, updateVehicle, getSystemStatus, getSummary, getSummarySeries, listShifts, startShift, getShift, updateShift, purgeShift, endShift, finalizeShift, recalculateShift, setShiftOdometer, listOdometerReadings, createYearOdometerReading, updateOdometerReading, deleteOdometerReading, listShiftTrips, putManualTrip, updateTrip, deleteManualTrip, listOwnMileageRates, createOwnMileageRate, updateOwnMileageRate, deleteOwnMileageRate]
+    operations: [getHealth, getSetupStatus, listCountries, getErrorType, createOwner, confirmRecoveryKey, login, logout, changePassword, resetPassword, getSettings, updateSettings, listVehicles, createVehicle, updateVehicle, getSystemStatus, getHealthChecks, runUpdateCheck, getSummary, getSummarySeries, listShifts, startShift, getShift, updateShift, purgeShift, endShift, finalizeShift, recalculateShift, setShiftOdometer, listOdometerReadings, createYearOdometerReading, updateOdometerReading, deleteOdometerReading, listShiftTrips, putManualTrip, updateTrip, deleteManualTrip, listOwnMileageRates, createOwnMileageRate, updateOwnMileageRate, deleteOwnMileageRate]
   devices:
     toggle: modules.devices
     default: true
@@ -1807,6 +1807,32 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SystemStatus' }
+  /health/checks:
+    get:
+      tags: [system]
+      operationId: getHealthChecks
+      summary: What the server can check from inside its container, and what the update check found. Web session only. Host-level things (Docker, ports, Tailscale) are not visible from here and are not reported.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: client_time, in: query, required: false, schema: { type: integer, minimum: 0 }, description: The browser's own clock in epoch milliseconds. When present the report includes a clock check. }
+      responses:
+        '200':
+          description: The checks, in display order, and the update state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthReport' }
+  /health/update-check:
+    post:
+      tags: [system]
+      operationId: runUpdateCheck
+      summary: Ask GitHub's public releases API for the newest version now ("Check now"). Sends no data about the owner. A failure is not an error response; it is the result's state and the Health page's update check. Runs even while the daily check is switched off, because the owner asked. Web session only.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: The update state after the check.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UpdateInfo' }
   /diagnostics/events:
     post:
       tags: [diagnostics]
@@ -2028,7 +2054,7 @@ components:
         countries: { type: array, items: { type: string, minLength: 2, maxLength: 2 } }
     Settings:
       type: object
-      required: [country, distance_unit, currency, timezone, raw_retention_days, stops_enabled, help_enabled, display_name, region, logbook, own_mileage_rate, mileage_rate, week_start, time_format, default_vehicle_id, work_kinds, onboarded_at, setup_done, engine_version, diagnostics, modules]
+      required: [country, distance_unit, currency, timezone, raw_retention_days, stops_enabled, help_enabled, update_check_enabled, display_name, region, logbook, own_mileage_rate, mileage_rate, week_start, time_format, default_vehicle_id, work_kinds, onboarded_at, setup_done, engine_version, diagnostics, modules]
       properties:
         modules: { $ref: '#/components/schemas/Modules' }
         engine_version: { type: integer, description: The server's track-engine algorithmVersion (14 section 11). A phone with a lower number still shows its own result until sync. }
@@ -2039,6 +2065,7 @@ components:
         raw_retention_days: { type: integer, minimum: 7 }
         stops_enabled: { type: boolean, description: 'Driver-facing toggle for auto-detected stops, the estimated active/deadhead split and web labelling (decision 1.5b). Default true. Captured per shift at shift start (Shift.segmenter), so changing it never alters an existing shift.' }
         help_enabled: { type: boolean, description: 'The owner''s switch for the Help pages in the web app and the help links on screens. Default true. Web only; the server has no help module (ADR 0002).' }
+        update_check_enabled: { type: boolean, description: 'The owner''s switch for the daily check for a new MileWage version (the server asks GitHub''s public releases API, sending nothing about the owner). Default true. Web only.' }
         display_name: { type: [string, 'null'], description: Greeting and export header. }
         region: { type: [string, 'null'], description: 'Subdivision code without the country (CA: ON, QC ...); validated by the country pack.' }
         logbook:
@@ -2072,6 +2099,7 @@ components:
         raw_retention_days: { type: integer, minimum: 7 }
         stops_enabled: { type: boolean }
         help_enabled: { type: boolean }
+        update_check_enabled: { type: boolean }
         diagnostics_level: { enum: [off, basic, verbose], description: 'verbose reverts to basic after 7 days (16 section 5).' }
         display_name: { type: [string, 'null'], maxLength: 64 }
         region: { type: [string, 'null'], minLength: 2, maxLength: 3, description: A new country clears a region it does not have. }
@@ -2912,6 +2940,33 @@ components:
             level: { enum: [off, basic, verbose] }
             db_bytes: { type: integer }
             event_count: { type: integer }
+    HealthItem:
+      type: object
+      required: [id, status, title, detail, fix]
+      properties:
+        id: { enum: [database, backup, disk, clock, version, updates] }
+        status: { enum: [ok, warn, fail] }
+        title: { type: string }
+        detail: { type: string, description: What was found, in English. }
+        fix: { type: [string, 'null'], description: What to do about it; null when nothing is wrong. }
+    UpdateInfo:
+      type: object
+      required: [enabled, current_version, latest_version, available, release_url, notes_url, checked_at, check_failed]
+      properties:
+        enabled: { type: boolean, description: The owner's switch (settings.update_check_enabled). }
+        current_version: { type: string }
+        latest_version: { type: [string, 'null'], description: The newest release the last good check found. }
+        available: { type: boolean, description: True when latest_version is newer than current_version (semantic versions; pre-releases rank below their release). }
+        release_url: { type: [string, 'null'], description: The GitHub release page of latest_version. }
+        notes_url: { type: string, description: "What's new: the release page when a newer version exists, else the running version's CHANGELOG.md on GitHub." }
+        checked_at: { oneOf: [{ $ref: '#/components/schemas/EpochMs' }, { type: 'null' }], description: When the last check worked; null if none has. }
+        check_failed: { type: boolean, description: The last attempt did not work. Silent everywhere but the Health page and the answer to Check now. }
+    HealthReport:
+      type: object
+      required: [checks, update]
+      properties:
+        checks: { type: array, items: { $ref: '#/components/schemas/HealthItem' } }
+        update: { $ref: '#/components/schemas/UpdateInfo' }
     DiagnosticsSettings:
       type: object
       required: [level, verbose_until]

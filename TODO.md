@@ -10,6 +10,11 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
       merging and splitting shifts; a global undo (the confirm dialogs are the safety net); doctor
       reporting Docker subnet conflicts; a skip-backup flag for `infra/upgrade.sh`. Still unverified:
       the install, upgrade and doctor scripts on a real VM, a Raspberry Pi and a real tailnet.
+- [ ] **Deferred from the small-details research** (2026-11-22; spec Track C).
+      Add a missed shift on the web (typed times, marked manual); soft delete with a restore window
+      (delete is a hard purge today, the confirm dialogs are the net); an IANA zone stored on every
+      shift (the owner's zone at the start is used today, a migration with its own risk); merging
+      two trips; a startup warning when the server's `TZ` is odd; a DST test across a whole shift.
 - [ ] **Field test of the native Android app** (owner, on a real phone; 2026-11-10). Nothing in
       `apps/android` has run on a phone yet. Build with `scripts/phone-release-build.sh`, then in
       this order:

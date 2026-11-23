@@ -50,6 +50,10 @@ Installs the web app so it opens in its own window, like an app. Browsers instal
 
 Help pages: show or hide the Help screen and its links. The switch "Show help pages" is on by default. Off, Help leaves the sidebar and the help links on screens go. Nothing else changes, and this section stays so you can turn it back on.
 
+## Updates
+
+One switch, "Check for new versions", on by default and saved at once. On, your server asks GitHub's public release list for the newest version once a day and sends nothing about you. A newer version shows a banner. Off, the server makes no daily request. See [Health and updates](health-and-updates.md).
+
 ## Platforms
 
 Shown when the platforms module runs. The apps you work for, each with an active switch. An inactive platform drops out of the pickers, and its past labels and earnings stay. "Add a platform" adds your own. The row menu changes the badge colour and deletes a platform you added.
@@ -65,6 +69,10 @@ A link leads to the Privacy page: what the phone and the server record, and who 
 ## Your data
 
 Links to the Backups and Exports pages.
+
+## Health
+
+What the server can check about itself: the database, backups, free disk space, the clock and the update check, each with what to do about a Warning or a Problem, and a "Check now" button for a new version. It cannot see Docker, ports or Tailscale; for those run `infra/doctor.sh`. See [Health and updates](health-and-updates.md).
 
 ## Account and security
 

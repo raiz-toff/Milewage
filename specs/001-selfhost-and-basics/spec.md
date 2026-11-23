@@ -29,6 +29,20 @@ Evidence: install.sh is bash and Linux only with no stated host list; checks com
 - B5 `infra/doctor.sh`: containers up, `/healthz`, public and home URL answer, disk, host clock vs the server's, last backup age, Tailscale serve state. Green/red lines, a final "next step", exit code non-zero on failure. Runs without secrets in its output.
 - B6 Docs: one "Supported hosts" line; every `v0.1.0` and stale statement fixed; Tailscale marked optional with the 443-taken case and the exact undo; first-time APK path is the GitHub release APK only; own-server APK publishing moves under Advanced.
 
+## Track C: the small details (server, web, phone)
+
+From the community and open-source research plus a code audit. Only gaps the audit found are listed.
+
+- C1 Accidental shift. A shift that ends under 2 minutes, under 0.1 mi (160 m), with no earnings, costs, expenses or manual trips is "very short". The phone's End dialog says so and offers Discard (ask first, never an undo: delete stays a hard delete) or Keep. The web shift page uses the same rule, replacing the display-only 3-minute text, and offers Delete. One shared constant per side, same numbers.
+- C2 Overlap. Saving or retiming a shift that overlaps another (start before the other's end and end after its start) flags it `shift_overlap` in the existing review notice, naming the other shift with a link. End equal to the next start is not an overlap. A flag, never a refusal: the phone's synced data must not be rejected.
+- C3 Stale active shift. An active shift with nothing recorded for 12 hours gets a `stale_active_shift` review flag and a web notice with End now. The server never ends it on its own.
+- C4 No signal on the phone. While a shift runs at full power with no location fix for 3 minutes, the Home screen says so and what to try (location on, battery setting). Reads the existing `lastFixAt`.
+- C5 Midnight. A shift counts on the day it started, everywhere. The trip CSV gets a "Shift date" column (its own Date stays the trip's real date, which a mileage log needs). The rule is said once in `docs/help/shifts-and-trips.md` and as a caption on a shift that ends the next day.
+- C6 Phone sync after Wi-Fi returns (own agent): Wi-Fi arrival wakes sending with the app closed, route re-picked after a network change, no stale "offline" banner.
+- C7 Health page and update banner (own agent), see the plan in the conversation.
+
+Deferred, with reasons, in TODO.md: add a missed shift on the web, soft delete with restore, a zone stored on each shift, merge trips, an odd-`TZ` startup warning.
+
 ## Cut (decided, not forgotten)
 
 - Username change, delete-account / wipe-all in the app: one owner per server, `docker compose down -v` is the wipe and is documented.

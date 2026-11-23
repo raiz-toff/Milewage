@@ -8,6 +8,19 @@ All notable changes to MileWage are listed here. The format follows
 
 ### Added
 
+- Web: Settings > Health lists what the server can check from inside its container (database
+  integrity, newest backup, free disk space, clock against the browser, running version, whether
+  the last update check worked), each with what to do about it, and a small dot on Settings in the
+  sidebar while one is not OK. It does not pretend to see Docker, ports or Tailscale; it points at
+  `infra/doctor.sh` for those.
+- The server asks GitHub's public release list for the newest version once a day, and on "Check
+  now". It sends nothing about the owner, is on by default, and is switched off in Settings >
+  Updates (`update_check_enabled`). A newer version shows a dismissible banner (dismissed per
+  version, in the browser) with What's new (the release page, in a new tab) and the upgrade command
+  `./infra/upgrade.sh` with a Copy button. There is no upgrade button and no Docker access: the app
+  cannot upgrade itself. A failed check is silent except on the Health page. The privacy page says
+  the server contacts GitHub once a day unless switched off. New: `GET /health/checks`,
+  `POST /health/update-check`, `docs/help/health-and-updates.md`.
 - Phone: "Try it without a server" on the first screen. The app runs against a demo server inside
   the app, with sample shifts in kilometres and Canadian dollars, so every screen can be tried.
   Start and End shift record for real; nothing leaves the phone. A line on Home and in Settings
@@ -50,6 +63,15 @@ All notable changes to MileWage are listed here. The format follows
 - `PATCH /shifts/{ref}` also takes `started_at` and `ended_at` (web session only).
 
 ### Fixed
+
+- Phone: a shift ended away from home is now sent soon after the phone joins your home Wi-Fi, and
+  "Offline" no longer lingers. Sending wakes when Android says the network works (not only when it
+  appears), when the app opens, and, with the app closed, through a second background job that
+  waits for Wi-Fi and has its own short retries (the old one could sit in a long wait). The
+  home-or-away choice is dropped on every network change, and a home address that does not answer
+  right after joining Wi-Fi gets two quick retries before the phone settles on the away address. An
+  away choice on Wi-Fi is kept ten seconds, not a minute. "Offline" clears as soon as a send
+  succeeds. A phone paired without a home address now says so and what to do.
 
 - The release build on Windows. The shell scripts and `gradlew` are checked out with LF endings
   (`.gitattributes`), and the version read from `VERSION` drops a carriage return, which had named

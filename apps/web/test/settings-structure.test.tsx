@@ -27,9 +27,11 @@ describe('settings structure', () => {
       'Units and format',
       'App on this device',
       'Help pages',
+      'Updates',
       'Platforms',
       'Tracking and privacy',
       'Your data',
+      'Health',
       'Account and security',
       'Server modules',
     ]);
@@ -62,8 +64,10 @@ describe('settings structure', () => {
       'Units and format',
       'App on this device',
       'Help pages',
+      'Updates',
       'Tracking and privacy',
       'Your data',
+      'Health',
       'Account and security',
       'Server modules',
     ]);

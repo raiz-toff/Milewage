@@ -31,6 +31,8 @@ import { availableFormats } from './routes/exports';
 import { taxDeductionMethods } from './routes/tax';
 import { drivenSinceReader, settingsReader } from './routes/settings';
 import { createServerState, type ServerState } from './state';
+import { createUpdateService, type UpdateFetcher, type UpdateService } from './updates';
+import { SERVER_VERSION } from './version';
 
 export type Log = (message: string, fields?: object) => void;
 
@@ -72,6 +74,11 @@ export interface ServerInput {
   logStream?: { write(line: string): void };
   /** Told when an unreadable diagnostics.db was moved aside and a new one made. */
   onDiagnosticsRecreated?: (movedTo: string, reason: string) => void;
+  /**
+   * Asks where releases are published (`fetchLatestRelease` in production). Without it the server
+   * never calls out: no daily check, and Check now records a quiet failure.
+   */
+  fetchLatestRelease?: UpdateFetcher;
   tuning?: ServerTuning;
 }
 
@@ -112,6 +119,9 @@ export interface ServerHost {
   /** Formats that exist right now: the exporters module on, switched on, required modules on. */
   readonly exportFormats: (reg: ModuleRegistry) => string[];
   readonly earningsPolicy: (reg: ModuleRegistry) => EarningsPolicy;
+  /** The update check: what the last one found, and asking again. */
+  readonly updates: UpdateService;
+  readonly fetchLatestRelease: UpdateFetcher | undefined;
 }
 
 export interface App {
@@ -288,5 +298,12 @@ function shareServices(
     formatsOn,
     exportFormats,
     earningsPolicy: (reg) => createEarningsPolicy(drivers, reg, config.comma.earningsOverride),
+    fetchLatestRelease: input.fetchLatestRelease,
+    updates: createUpdateService({
+      db,
+      now,
+      current: SERVER_VERSION,
+      fetchLatest: input.fetchLatestRelease,
+    }),
   };
 }
