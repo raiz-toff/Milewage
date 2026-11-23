@@ -123,6 +123,8 @@ data class StatusInput(
     val restored: Boolean,
     val offline: Boolean,
     val storage: StorageState,
+    /** The credential has no home address (shown with the offline sentence: at home the phone needs Tailscale). */
+    val noHomeAddress: Boolean = false,
 )
 
 /** What the screens read about sending: the banner's colour, numbers and sentence. */
@@ -136,6 +138,8 @@ data class SyncStatus(
     val oldestAt: Long?,
     val message: StatusMessage?,
     val halt: HaltReason?,
+    /** With [StatusMessage.OFFLINE]: this phone has no home address for the server, so it cannot send over the home Wi-Fi alone. */
+    val noHomeAddress: Boolean = false,
 )
 
 /** The home banner (15 section 4.3): green nothing waits, yellow something waits or offline, red needs the driver. */
@@ -161,5 +165,5 @@ fun buildStatus(i: StatusInput): SyncStatus {
         open.isNotEmpty() || i.offline || i.storage == StorageState.LOW -> StatusColor.YELLOW
         else -> StatusColor.GREEN
     }
-    return SyncStatus(color, open.size, i.pendingFixes, times.minOrNull(), message, i.halt)
+    return SyncStatus(color, open.size, i.pendingFixes, times.minOrNull(), message, i.halt, i.noHomeAddress && message == StatusMessage.OFFLINE)
 }

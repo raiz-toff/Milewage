@@ -191,6 +191,9 @@ enum class BannerKind(val fix: Fix?) {
     ALL_SENT(null),
     WAITING(Fix.SEND_NOW),
     OFFLINE(Fix.SEND_NOW),
+
+    /** Offline, and the phone has no home address for the server: on the home Wi-Fi it needs Tailscale. */
+    OFFLINE_NO_HOME(Fix.SEND_NOW),
     SENDING(Fix.STOP_SENDING),
     WRONG_SERVER(Fix.CHECK_ADDRESS),
     REVOKED(Fix.PAIR),
@@ -227,7 +230,11 @@ object Banners {
             StatusMessage.STORAGE_CRITICAL -> BannerKind.STORAGE_CRITICAL
             StatusMessage.STORAGE_LOW -> BannerKind.STORAGE_LOW
             StatusMessage.NEEDS_ATTENTION -> BannerKind.NEEDS_ATTENTION
-            StatusMessage.OFFLINE -> if (running) BannerKind.SENDING else BannerKind.OFFLINE
+            StatusMessage.OFFLINE -> when {
+                running -> BannerKind.SENDING
+                sync.noHomeAddress -> BannerKind.OFFLINE_NO_HOME
+                else -> BannerKind.OFFLINE
+            }
             null -> when {
                 sync.halt == HaltReason.WRONG_SERVER -> BannerKind.WRONG_SERVER
                 running -> BannerKind.SENDING

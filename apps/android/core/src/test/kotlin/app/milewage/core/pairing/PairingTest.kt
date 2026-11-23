@@ -289,6 +289,22 @@ class PairingTest {
     }
 
     @Test
+    fun aNetworkChangeMakesTheNextRequestChooseHomeOrAwayAgain() = runTest {
+        val s = TwoServers()
+        val k = Kit(s)
+        k.pairing.redeem(code(HOME))
+        val session = k.pairing.session()!!
+        session.client.call(app.milewage.core.api.Api.settings)
+        s.calls.clear()
+        session.client.call(app.milewage.core.api.Api.settings) // remembered: no probe
+        assertEquals(listOf("GET $HOME/api/v1/settings"), s.calls)
+        s.calls.clear()
+        k.pairing.networkChanged() // the app came back to the foreground, or Wi-Fi joined
+        session.client.call(app.milewage.core.api.Api.settings)
+        assertEquals(listOf("GET $HOME/healthz", "GET $HOME/api/v1/settings"), s.calls)
+    }
+
+    @Test
     fun aServerAnswerCannotLowerTheRulesHomeMustBeAHomeAddressAwayHttps() = runTest {
         val evil = FakeServer(
             mutableMapOf(

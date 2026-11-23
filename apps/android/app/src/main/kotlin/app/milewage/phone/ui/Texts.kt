@@ -74,6 +74,7 @@ object Texts {
         BannerKind.ALL_SENT -> null
         BannerKind.WAITING -> R.string.sync_waiting
         BannerKind.OFFLINE -> R.string.sync_offline
+        BannerKind.OFFLINE_NO_HOME -> R.string.sync_offline_no_home
         BannerKind.SENDING -> null
         BannerKind.WRONG_SERVER -> R.string.sync_wrong_server
         BannerKind.REVOKED -> R.string.sync_revoked

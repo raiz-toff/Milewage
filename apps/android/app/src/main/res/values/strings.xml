@@ -290,6 +290,7 @@
     <string name="sync_not_yet">Not yet on server: %1$s · %2$s · %3$s</string>
     <string name="sync_waiting">Saved on your phone. It is sent to the server by itself.</string>
     <string name="sync_offline">Offline. Saved on your phone.</string>
+    <string name="sync_offline_no_home">Offline. Saved on your phone. This phone has no home address for your server, so on your home Wi-Fi it can send only through Tailscale. Turn Tailscale on, or pair again with a code made on your home Wi-Fi.</string>
     <string name="sync_wrong_server">This address now points to a different MileWage server than the one this phone was paired with. Nothing was sent.</string>
     <string name="sync_revoked">This phone was removed from your server. Re-pair to send your saved data.</string>
     <string name="sync_auth_problem">Sign-in problem. Re-pair this phone.</string>

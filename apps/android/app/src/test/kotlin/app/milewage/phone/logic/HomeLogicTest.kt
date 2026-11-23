@@ -128,6 +128,15 @@ class BannersTest {
     }
 
     @Test
+    fun `offline with no home address names Tailscale and still offers Send now`() {
+        val base = sendStatus(StatusColor.YELLOW, 1, 10, NOW, StatusMessage.OFFLINE)
+        val b = of(base.copy(sync = base.sync.copy(noHomeAddress = true)))
+        assertEquals(BannerKind.OFFLINE_NO_HOME, b.kind)
+        assertEquals(Fix.SEND_NOW, b.kind.fix)
+        assertEquals(BannerKind.OFFLINE, of(base).kind)
+    }
+
+    @Test
     fun `waiting and offline offer Send now, with the counts and the age`() {
         val b = of(sendStatus(StatusColor.YELLOW, 2, 340, NOW - 86_400_000L - 1, StatusMessage.OFFLINE))
         assertEquals(BannerKind.OFFLINE, b.kind)

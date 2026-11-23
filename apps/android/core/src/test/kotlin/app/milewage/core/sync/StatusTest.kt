@@ -11,6 +11,7 @@ import app.milewage.core.shift.ShiftStatus
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -39,6 +40,24 @@ class StatusTest {
         assertEquals(ShiftMarker.NEEDS_ATTENTION, ShiftMarker.of(shift(SendState.NEEDS_ATTENTION)))
         assertEquals(ShiftMarker.SENT, ShiftMarker.of(shift(SendState.SENT, ReconStatus.MATCH)))
         assertEquals(ShiftMarker.SENT_DIFFERS, ShiftMarker.of(shift(SendState.SENT, ReconStatus.DIFFERS)))
+    }
+
+    @Test
+    fun noHomeAddressIsReportedOnlyWithTheOfflineSentence() {
+        val open = listOf(shift(SendState.ON_PHONE_ONLY))
+        assertTrue(buildStatus(input(open, offline = true).copy(noHomeAddress = true)).noHomeAddress)
+        assertFalse(buildStatus(input(open, offline = true)).noHomeAddress)
+        // Nothing waits, or a worse problem comes first: the home-address hint stays out of it.
+        assertFalse(buildStatus(input(emptyList(), offline = true).copy(noHomeAddress = true)).noHomeAddress)
+        assertFalse(buildStatus(input(open, offline = true, halt = HaltReason.REPAIR).copy(noHomeAddress = true)).noHomeAddress)
+    }
+
+    @Test
+    fun theLoopsOwnRetryAfterAnOfflineRoundIsQuickAtFirstThenEveryMinute() {
+        assertEquals(5_000L, Sender.offlineRetryMs(1))
+        assertEquals(15_000L, Sender.offlineRetryMs(2))
+        assertEquals(60_000L, Sender.offlineRetryMs(4))
+        assertEquals(60_000L, Sender.offlineRetryMs(40))
     }
 
     @Test
