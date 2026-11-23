@@ -23,6 +23,7 @@ import {
   dateLocale,
   dateToIso,
   dateWords,
+  dayOf,
   isoToDate,
   rangeText,
   todayIn,
@@ -31,6 +32,7 @@ import {
 } from '../days';
 import { useSeries } from '../series';
 import { useSession, useSettings } from '../session';
+import { isStale, isVeryShort } from '../shift/checks';
 import { useShiftRecord } from '../shift/record';
 import { earnedOf, reviewCount, showsSplit } from '../shift/view';
 import type { Picked } from '../shift/view';
@@ -45,7 +47,13 @@ import { ShiftCosts, useShiftCosts } from './ShiftCosts';
 import { ShiftEarnings } from './ShiftEarnings';
 import { ShiftChecks, ShiftFigures } from './ShiftFacts';
 import { ShiftOdometer } from './ShiftOdometer';
-import { InProgressCard, NoRouteCard, ShiftNotes } from './ShiftStates';
+import {
+  AccidentalShiftNotice,
+  InProgressCard,
+  NoRouteCard,
+  ShiftNotes,
+  StaleShiftNotice,
+} from './ShiftStates';
 import { Est } from '../ui/Est';
 import { MoreCard } from '../ui/MoreCard';
 import { ShiftTimeline } from './ShiftTimeline';
@@ -670,6 +678,19 @@ export function ShiftDetail() {
       },
     });
 
+  // The very short rule needs everything on the shift read first, so it never shows on a guess.
+  const accidental =
+    view.earned !== null &&
+    trips.data !== null &&
+    (!settings.modules.expenses || !!costs.query.data) &&
+    isVeryShort(shift, {
+      earnings: view.earned?.cents != null,
+      costs: (costs.query.data?.items.length ?? 0) > 0,
+      manualTrips: trips.data.some((t) => t.source === 'manual'),
+    });
+  // A shift counts on the day it started (spec 001 C5); say so when it ends on a later day.
+  const endDay = shift.ended_at ? dayOf(shift.ended_at, settings.timezone) : null;
+
   const shiftActions: RowAction[] = [
     ...(shift.status === 'finalized'
       ? []
@@ -729,8 +750,18 @@ export function ShiftDetail() {
           </UiButton>
         ) : null}
       </PageHeader>
+      {endDay && endDay > shift.local_date ? (
+        <p className="-mt-3 text-body-small text-muted-foreground">
+          This shift ended on{' '}
+          {dateWords(endDay, { weekday: 'short', month: 'short', day: 'numeric' })}. It counts on{' '}
+          {dateWords(shift.local_date, { weekday: 'short', month: 'short', day: 'numeric' })}, the
+          day it started.
+        </p>
+      ) : null}
       {editingShift ? <ShiftEdit shift={shift} onClose={() => setEditingShift(false)} /> : null}
       {confirm.dialog}
+      {isStale(shift) ? <StaleShiftNotice shift={shift} /> : null}
+      {accidental ? <AccidentalShiftNotice shift={shift} onDelete={deleteShift} /> : null}
 
       <div className="space-y-2">
         <ShiftFigures

@@ -53,6 +53,8 @@ class MileWageShiftData(private val data: MileWageData) : ShiftData {
 
     override suspend fun closeUnfinished() = data.closeUnfinished()
 
+    override suspend fun discardShift() = data.discardShift()
+
     override suspend fun editTrip(tripKey: String, kind: TripKind?, purpose: String?) = data.editTrip(tripKey, kind, purpose)
 
     override suspend fun addManualTrip(clientId: String, kind: TripKind, startedAt: Long, endedAt: Long, distanceM: Long, purpose: String?) =

@@ -19,9 +19,13 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.animation.AnimatedContent
@@ -50,7 +54,9 @@ import app.milewage.data.RunningShiftView
 import app.milewage.phone.R
 import app.milewage.phone.ui.components.CardSurface
 import app.milewage.phone.logic.BannerKind
+import app.milewage.phone.logic.EndDialog
 import app.milewage.phone.logic.Fix
+import app.milewage.phone.logic.NoSignal
 import app.milewage.phone.logic.TrackingLine
 import app.milewage.phone.model.Formats
 import app.milewage.phone.ui.Texts
@@ -75,6 +81,9 @@ interface HomeActions {
     fun end()
 
     fun closeUnfinished()
+
+    /** Discard a very short shift (after its End dialog asked). */
+    fun discard()
 
     fun selectPeriod(p: Period)
 
@@ -195,6 +204,18 @@ private fun RunningShiftContent(state: HomeState, running: RunningShiftView, act
     val closeText = stringResource(R.string.close_unfinished_text)
     val closeLabel = stringResource(R.string.close_confirm)
     val line = state.trackingLine ?: TrackingLine.STARTING
+    val res = LocalContext.current.resources
+    val clock = LocalNow.current
+    val ticking = LocalTicking.current
+    // "No location for N min": the clock ticks the minutes while the shift runs.
+    val now by produceState(clock.ms(), ticking) {
+        value = clock.ms()
+        while (ticking) {
+            delay(10_000)
+            value = clock.ms()
+        }
+    }
+    val silentMin = NoSignal.minutes(state.fixSince, now)
     Screen(
         title = stringResource(R.string.running_title),
         subtitle = listOfNotNull(running.vehicle?.name, stringResource(R.string.running_since, f.clock(shift.startedAt))).joinToString(" · "),
@@ -210,7 +231,23 @@ private fun RunningShiftContent(state: HomeState, running: RunningShiftView, act
                             haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                             actions.end()
                         }
-                        confirm.ask(ConfirmRequest(endTitle, endText, endLabel, destructive = true, dismissLabel = keep, onConfirm = end))
+                        if (EndDialog.of(shift.startedAt, clock.ms(), running.distanceM) == EndDialog.VERY_SHORT) {
+                            // Asked, never decided: Discard deletes for good, Keep ends it as any shift, closing the box keeps recording.
+                            val seconds = ((clock.ms() - shift.startedAt) / 1000).toInt().coerceAtLeast(0)
+                            confirm.ask(
+                                ConfirmRequest(
+                                    res.getString(R.string.end_short_title),
+                                    res.getString(R.string.end_short_text, res.getQuantityString(R.plurals.end_short_seconds, seconds, seconds), distance),
+                                    res.getString(R.string.end_short_discard),
+                                    destructive = true,
+                                    dismissLabel = res.getString(R.string.end_short_keep),
+                                    onDismiss = end,
+                                    onConfirm = actions::discard,
+                                ),
+                            )
+                        } else {
+                            confirm.ask(ConfirmRequest(endTitle, endText, endLabel, destructive = true, dismissLabel = keep, onConfirm = end))
+                        }
                     },
                     enabled = !ending,
                     colors = ButtonDefaults.buttonColors(
@@ -229,7 +266,7 @@ private fun RunningShiftContent(state: HomeState, running: RunningShiftView, act
             }
         },
     ) {
-        val live = line == TrackingLine.RECORDING || line == TrackingLine.SAVING_BATTERY || line == TrackingLine.NO_BACKGROUND
+        val live = silentMin == null && (line == TrackingLine.RECORDING || line == TrackingLine.SAVING_BATTERY || line == TrackingLine.NO_BACKGROUND)
         if (state.demo) animatedItem(key = "demo") { DemoMark() }
         if (live) animatedItem(key = "live") { LiveChip() }
         animatedItem(key = "readings") {
@@ -257,7 +294,9 @@ private fun RunningShiftContent(state: HomeState, running: RunningShiftView, act
                 }
             }
         }
-        animatedItem(key = "tracking") { TrackingCard(line, actions, confirm, closeTitle, closeText, closeLabel) }
+        animatedItem(key = "tracking") {
+            if (silentMin != null) NoSignalCard(silentMin, actions) else TrackingCard(line, actions, confirm, closeTitle, closeText, closeLabel)
+        }
         animatedItem(key = "sent") {
             IconLine(
                 if (shift.serverId != null) Icons.CheckCircle else Icons.Info,
@@ -317,6 +356,21 @@ private fun Reading(label: String, note: String?, spoken: String? = null, figure
         figure(Modifier.fillMaxWidth())
         if (note != null) Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
+}
+
+/** Recording at full power but no location for minutes: what to check, with the two places to do it. */
+@Composable
+private fun NoSignalCard(minutes: Int, actions: HomeActions) {
+    NoticeCard(
+        title = stringResource(R.string.track_no_signal, minutes),
+        body = stringResource(R.string.track_no_signal_detail),
+        icon = Icons.Warning,
+        tone = Tone.WARNING,
+        actionLabel = stringResource(Texts.fix(Fix.LOCATION_SETTINGS)),
+        onAction = { actions.fix(Fix.LOCATION_SETTINGS) },
+        secondaryLabel = stringResource(Texts.fix(Fix.BATTERY_SETTINGS)),
+        onSecondary = { actions.fix(Fix.BATTERY_SETTINGS) },
+    )
 }
 
 /** The tracker's state in words with its one fix; "not recording" also offers to end the shift at its last point. */

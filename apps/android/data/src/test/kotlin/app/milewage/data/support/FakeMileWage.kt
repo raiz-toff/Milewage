@@ -224,6 +224,12 @@ class FakeMileWage(var instance: String = "inst-A") {
                             put("reading_m", body["reading_m"]!!); put("recorded_at", body["recorded_at"]!!)
                         })
                     }
+                    call.method == "DELETE" -> {
+                        if (s.status == "active") return problem(409, "shift_not_ended")
+                        state.shifts.remove(parts[1])
+                        state.points.remove(parts[1])
+                        MockResponse.Builder().code(204).addHeader("X-MileWage-Api", "1").addHeader("X-MileWage-Instance", instance).addHeader("X-MileWage-Restore-Gen", gen.toString()).build()
+                    }
                     call.method == "PATCH" -> ok(200, shiftJson(s))
                     call.method == "PUT" -> ok(200, buildJsonObject { put("shift", shiftJson(s)) })
                     else -> problem(404, "not_found")

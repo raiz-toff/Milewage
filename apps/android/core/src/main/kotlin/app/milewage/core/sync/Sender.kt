@@ -435,6 +435,8 @@ class Sender(
         val id = item.shiftClientId
         if (resend.holds(id)) return false
         if (item.kind == ChangeType.SHIFT_CREATE && !mayOpen(id)) return false
+        // A delete goes only after the shift's create and end were accepted: the server refuses a running shift.
+        if (item.kind == ChangeType.SHIFT_DELETE) return !outbox.has(ChangeType.SHIFT_CREATE, id) && !outbox.has(ChangeType.SHIFT_END, id)
         return item.kind != ChangeType.SHIFT_END || store.pendingCount(id) == 0L
     }
 
@@ -474,6 +476,11 @@ class Sender(
                 } else {
                     store.shift(id)?.let { store.upsertShift(it.copy(sendState = SendState.SENT)) }
                 }
+            }
+            ChangeType.SHIFT_DELETE -> {
+                // The server has deleted it: the phone's copy goes too (the change log would bring the same).
+                outbox.dropShift(id)
+                store.deleteShift(id)
             }
             ChangeType.ODOMETER_PUT -> {
                 val kind = OdometerKind.of(sent.item.entityKey.substringAfter(':'))

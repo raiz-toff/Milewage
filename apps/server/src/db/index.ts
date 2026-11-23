@@ -13,6 +13,7 @@ export * from './own-rate-repository';
 export * from './processing-repository';
 export * from './repositories';
 export * from './schema';
+export * from './shift-check-repository';
 export * from './shift-repository';
 export * from './sync-repository';
 export * from './tax-repository';

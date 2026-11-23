@@ -34,6 +34,7 @@ export const money = (cents: number) => (cents / 100).toFixed(2);
 function* tripLevel(c: ExportContext) {
   yield row([
     'date',
+    'shift_date',
     'start_time',
     'end_time',
     'vehicle',
@@ -58,6 +59,8 @@ function* tripLevel(c: ExportContext) {
       const estimated = s.segmenter === 'stops' && t.source === 'auto' && t.editedAt === null;
       yield row([
         localDate(t.startedAt, c.driver.timeZone),
+        // A shift counts on the day it started; the trip's own date above stays its real one.
+        s.localDate,
         timeOf(t.startedAt, c.driver.timeZone),
         timeOf(t.endedAt, c.driver.timeZone),
         c.vehicles.get(s.vehicleId)?.name ?? '',

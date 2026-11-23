@@ -117,6 +117,9 @@ object Texts {
         ShiftFlag.CLOCK_SKEW -> R.string.flag_clock_skew
         ShiftFlag.OVERRIDE_ORPHANED -> R.string.flag_override_orphaned
         ShiftFlag.MANUAL_TRIP_PRESENT -> R.string.flag_manual_trip_present
+        ShiftFlag.VERY_SHORT_SHIFT -> R.string.flag_very_short_shift
+        ShiftFlag.SHIFT_OVERLAP -> R.string.flag_shift_overlap
+        ShiftFlag.STALE_ACTIVE_SHIFT -> R.string.flag_stale_active_shift
         ShiftFlag.CALC_MISMATCH -> R.string.flag_calc_mismatch
         ShiftFlag.OTHER -> R.string.flag_other
     }

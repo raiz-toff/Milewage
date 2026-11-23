@@ -63,9 +63,10 @@ class ShiftRequestsTest {
 
     @Test
     fun coversEveryChangeType() {
-        assertEquals(ChangeType.entries.toSet(), cases.map { it.kind }.toSet())
+        // The delete has no body, so it has its own test below.
+        assertEquals(ChangeType.entries.toSet(), (cases.map { it.kind } + ChangeType.SHIFT_DELETE).toSet())
         assertEquals(ChangeType.entries.toSet(), ChangeType.entries.map { ChangeType.of(it.wire) }.toSet())
-        assertNull(ChangeType.of("shift.delete"))
+        assertEquals(ChangeType.SHIFT_DELETE, ChangeType.of("shift.delete"))
         assertFalse(ChangeType.TELEMETRY_BATCH.queued)
     }
 
@@ -80,6 +81,18 @@ class ShiftRequestsTest {
             assertEquals(emptyList(), accepts(req), c.kind.wire)
             assertEquals(c.kind == ChangeType.TELEMETRY_BATCH, req.gzip)
         }
+    }
+
+    @Test
+    fun discardIsADeleteWithTheDeliberateYesAndNoBody() {
+        val req = ShiftRequests.encode(ShiftChange.Delete(a))
+        assertEquals(ChangeType.SHIFT_DELETE, req.kind)
+        assertEquals(a, req.entityKey)
+        assertEquals(HttpMethod.DELETE, req.method)
+        assertEquals("/shifts/$a?confirm_recent=true", req.path)
+        assertEquals(JsonObject(emptyMap()), req.body)
+        assertEquals(req, ShiftRequests.requestFor(ChangeType.SHIFT_DELETE, a, req.body))
+        assertTrue(ChangeType.SHIFT_DELETE.queued)
     }
 
     @Test

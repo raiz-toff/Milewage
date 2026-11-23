@@ -46,6 +46,10 @@ class RecordingHomeActions : HomeActions {
         calls += "close"
     }
 
+    override fun discard() {
+        calls += "discard"
+    }
+
     override fun selectPeriod(p: Period) {
         calls += "period $p"
     }

@@ -8,6 +8,22 @@ All notable changes to MileWage are listed here. The format follows
 
 ### Added
 
+- A shift started by mistake can be thrown away. A shift under 2 minutes and under 160 m (0.1 mi)
+  with no earnings, parking or tolls, expenses or trips added by hand is "very short". The phone's
+  End dialog says so and offers Discard (deletes it for good, asked first, never automatic) or Keep
+  (ends it as usual); offline, the delete is queued behind the end and the shift stays on the phone
+  until the server answers. The web shift page says "This shift is 40 seconds and 0 mi. Started by
+  mistake?" with Delete, which asks first. The server marks it `very_short_shift` (info).
+- A shift that overlaps another one (it starts before the other ends and ends after the other
+  starts; ending exactly when the next one starts is not an overlap) is flagged `shift_overlap`
+  (review) and the shift page names the other shift with a link. It is only ever a flag: the
+  phone's data is never refused. The flag clears when an edit or a delete removes the overlap.
+- A running shift with nothing recorded for 12 hours is flagged `stale_active_shift` (review) and the
+  shift page and the dashboard show a notice with End now. The server never ends it itself.
+- Phone: while a shift records at full power and no location has come for 3 minutes, Home says "No
+  location for N min" with the places to look (location, battery).
+- The trip CSV has a `shift_date` column (the day the shift started) next to its `date` (the trip's
+  own date). A shift that ends on a later day than it started says which day it counts on.
 - Web: Settings > Health lists what the server can check from inside its container (database
   integrity, newest backup, free disk space, clock against the browser, running version, whether
   the last update check worked), each with what to do about it, and a small dot on Settings in the
@@ -44,6 +60,9 @@ All notable changes to MileWage are listed here. The format follows
 
 ### Changed
 
+- `DELETE /shifts/{ref}` is also open to a paired phone (it was web only), but only for a very short
+  shift (the `very_short_shift` rule; any other is 403, "delete it on the web"); it still refuses a running shift (409) and needs `confirm_recent=true` under 7 years. The
+  phone only reaches shifts inside its 14-day window.
 - **Node 24.22 (LTS) replaces Node 22.22** in the server image, `.nvmrc`, `engines` and the type packages. `better-sqlite3` builds on it and the test suite passes on Linux x86-64. Still to run: the engine's phone cross-check on Node 24, and on an arm64 host (`TODO.md`). Web page tests fail on native Windows (cause unknown), so run them in WSL2 (`docs/development.md`).
 - `infra/install.sh` checks the host before it writes anything (Linux or WSL2, 64-bit, Docker
   installed, reachable and allowed, Compose v2, free disk, memory) and each failure names the next

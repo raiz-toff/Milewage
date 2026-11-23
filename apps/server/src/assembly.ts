@@ -273,7 +273,7 @@ function shareServices(
     authn: new Authenticator(createSessionRepository(db), now),
     drivers,
     deduction,
-    present: shiftPresenter(db, deduction),
+    present: shiftPresenter(db, deduction, now),
     secrets,
     backup,
     book: createShiftBook({

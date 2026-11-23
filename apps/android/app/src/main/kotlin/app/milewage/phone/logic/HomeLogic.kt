@@ -3,6 +3,7 @@ package app.milewage.phone.logic
 import app.milewage.core.pairing.HaltReason
 import app.milewage.core.pairing.PairingStatus
 import app.milewage.core.shift.ShiftRecord
+import app.milewage.core.shift.VeryShortShift
 import app.milewage.core.shift.VehicleRecord
 import app.milewage.core.sync.Progress
 import app.milewage.core.sync.Reminder
@@ -183,6 +184,46 @@ object TrackingLines {
                 else -> TrackingLine.RECORDING
             }
         }
+    }
+}
+
+/** Which question the End button asks. */
+enum class EndDialog {
+    /** "End this shift?" with Keep recording. */
+    NORMAL,
+
+    /** The shift is very short ([VeryShortShift]): Discard or Keep, so a shift started by mistake is not kept. */
+    VERY_SHORT,
+    ;
+
+    companion object {
+        /** Never decided for the driver: this only picks the question. Discard is always the driver's tap. */
+        fun of(startedAt: Long, nowMs: Long, distanceM: Long): EndDialog =
+            if (VeryShortShift.of(nowMs - startedAt, distanceM)) VERY_SHORT else NORMAL
+    }
+}
+
+/**
+ * "No location for N min" (spec 001 C4): while a shift records at full power and no fix has come
+ * for more than 3 minutes. Reads [TrackingStatus.lastFixAt]; a shift that has had no fix at all
+ * counts from its start. A clock in the screen ticks the minutes.
+ */
+object NoSignal {
+    const val AFTER_MS = 180_000L
+
+    /** Where the silence is counted from; null when the shift is not recording at full power. */
+    fun since(running: ShiftRecord, status: TrackingStatus, line: TrackingLine): Long? =
+        if ((line == TrackingLine.RECORDING || line == TrackingLine.NO_BACKGROUND) && status.power == PowerLevel.FULL) {
+            maxOf(running.startedAt, status.lastFixAt ?: 0L)
+        } else {
+            null
+        }
+
+    /** Whole minutes of silence, once it is older than [AFTER_MS]; null before that. */
+    fun minutes(since: Long?, nowMs: Long): Int? {
+        if (since == null) return null
+        val silent = nowMs - since
+        return if (silent > AFTER_MS) (silent / 60_000).toInt() else null
     }
 }
 

@@ -24,6 +24,8 @@ data class ConfirmRequest(
     val destructive: Boolean = false,
     /** The answer that changes nothing ("Keep recording"); "Cancel" when null. */
     val dismissLabel: String? = null,
+    /** What the dismiss button does besides closing the question ("Keep" on a very short shift ends it as normal). */
+    val onDismiss: (() -> Unit)? = null,
     val onConfirm: () -> Unit,
 )
 
@@ -69,7 +71,12 @@ fun ConfirmHost(state: ConfirmState) {
             ) { Text(request.confirmLabel) }
         },
         dismissButton = {
-            TextButton(onClick = state::dismiss) { Text(request.dismissLabel ?: stringResource(R.string.cancel)) }
+            TextButton(
+                onClick = {
+                    state.dismiss()
+                    request.onDismiss?.invoke()
+                },
+            ) { Text(request.dismissLabel ?: stringResource(R.string.cancel)) }
         },
     )
 }

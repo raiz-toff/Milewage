@@ -1,7 +1,12 @@
 import { useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
+import { FlagIcon } from '@/ui/icons';
 import type { Schemas } from '../api/client';
 import { put, useChange } from '../api/query';
+import { formatDateTime, formatDistance } from '../format';
+import { useSettings } from '../session';
+import { shortDuration } from '../shift/checks';
 import { Button, FormError, denseField } from '../ui/form';
 import { cn } from '@/lib/utils';
 import { Section } from '../ui/layout';
@@ -9,9 +14,6 @@ import { PERMISSIONS, adviceFor } from '../shift/advice';
 import { AdviceList, CheckList } from './ShiftFacts';
 
 type Shift = Schemas['Shift'];
-
-/** Under this length a shift with nothing recorded was most likely started by mistake. */
-const SHORT_MIN = 3;
 
 /**
  * In the map's place when an ended shift has nothing recorded: what happened, the likely reason
@@ -28,8 +30,6 @@ export function NoRouteCard({
   /** Opens the add-a-trip form; absent when the shift cannot be changed. */
   onAdd?: () => void;
 }) {
-  const mins = shift.ended_at === null ? null : (shift.ended_at - shift.started_at) / 60_000;
-  const short = mins !== null && mins < SHORT_MIN && !shift.total_m;
   // "No stops changed the estimate" says nothing more when nothing at all was recorded.
   const checks = { ...shift, flags: shift.flags?.filter((f) => f.code !== 'no_stops_detected') };
   const found = !!checks.flags?.length || !!shift.recon_status;
@@ -43,12 +43,6 @@ export function NoRouteCard({
           : 'No trips or stops were recorded for this shift.'
       }
     >
-      {short ? (
-        <p className="text-body-medium">
-          It lasted under {SHORT_MIN} minutes, so it may have been started by mistake. With no
-          distance it adds nothing to your totals.
-        </p>
-      ) : null}
       {found ? (
         <div className="space-y-1.5">
           <h3 className="text-title-small">What the checks found</h3>
@@ -67,6 +61,63 @@ export function NoRouteCard({
         </div>
       ) : null}
     </Section>
+  );
+}
+
+/**
+ * A shift under 2 minutes and 0.1 mi with no earnings, costs or trips added by hand (the rule is in
+ * `shift/checks.ts`): asks whether it was started by mistake, and offers Delete. Nothing is deleted
+ * without the confirm the shift page's Delete shift asks for.
+ */
+export function AccidentalShiftNotice({ shift, onDelete }: { shift: Shift; onDelete: () => void }) {
+  const { distance_unit: unit } = useSettings();
+  if (shift.ended_at === null) return null;
+  return (
+    <Alert role="note">
+      <FlagIcon />
+      <AlertDescription className="flex flex-wrap items-center justify-between gap-3 text-foreground">
+        <span>
+          This shift is {shortDuration(shift.ended_at - shift.started_at)} and{' '}
+          {formatDistance(shift.total_m ?? 0, unit)}. Started by mistake?
+        </span>
+        <UiButton variant="outline" size="sm" onClick={onDelete}>
+          Delete
+        </UiButton>
+      </AlertDescription>
+    </Alert>
+  );
+}
+
+/**
+ * A running shift with nothing recorded for 12 hours (the server's `stale_active_shift`). The
+ * server never ends it; End now does, at this moment, and the times can be corrected after.
+ */
+export function StaleShiftNotice({ shift }: { shift: Shift }) {
+  const { timezone, time_format: tf } = useSettings();
+  const change = useChange();
+  const at = (
+    shift.flags?.find((f) => f.code === 'stale_active_shift')?.detail as
+      { at?: number | null } | null | undefined
+  )?.at;
+  const ref = String(shift.id);
+  const endNow = () =>
+    change.run((api) =>
+      api.POST('/shifts/{ref}/end', { params: { path: { ref } }, body: { ended_at: Date.now() } }),
+    );
+  return (
+    <Alert role="note">
+      <FlagIcon />
+      <AlertDescription className="space-y-2 text-foreground">
+        <p>
+          This shift is still running, but nothing has been recorded since{' '}
+          {formatDateTime(at ?? shift.started_at, timezone, tf)}. Did it end earlier?
+        </p>
+        <UiButton variant="outline" size="sm" disabled={change.busy} onClick={() => void endNow()}>
+          End now
+        </UiButton>
+        <FormError message={change.error} />
+      </AlertDescription>
+    </Alert>
   );
 }
 

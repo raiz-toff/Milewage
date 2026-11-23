@@ -14,6 +14,7 @@ import type { EventEmit } from '../events';
 import type { ValuedShift } from '../mileage-deduction';
 import type { ShiftPresenter } from '../processing/presenter';
 import type { ShiftBook } from '../processing/shift-book';
+import { createShiftChecks } from '../processing/shift-checks';
 import { refParam as ref, snakeKeys, str, strictObject, type AuthFn, type Principal } from './util';
 
 const ms = { type: 'integer', minimum: 0 };
@@ -165,6 +166,7 @@ export function shiftRoutes(
 ) {
   const shifts = shiftRepo(db);
   const processing = processingRepo(db);
+  const checks = createShiftChecks({ db, now });
   /** One shift with its flags, the way every route returns it. */
   const view = (r: ShiftRow) => present.one(r);
   const odometer = odometerRepo(db);
@@ -339,10 +341,17 @@ export function shiftRoutes(
     '/shifts/:ref',
     { schema: { params: refParams, querystring: purgeQuery } },
     async (req, reply) => {
-      const p = auth(req, 'S');
+      // The web (after its confirm) and the phone (Discard on a very short shift, once ended).
+      const p = auth(req, 'SD');
       const row = load(p, refOf(req), false);
       if (row.status === 'active')
         throw new ProblemError('shift_not_ended', 'End the shift before deleting it.');
+      // A phone discards only a shift the server itself calls very short; anything else is deleted on the web.
+      if (p.kind === 'device' && !checks.isVeryShort(row))
+        throw new ProblemError(
+          'scope_forbidden',
+          'A phone can only discard a shift that was started by mistake. Delete it on the web.',
+        );
       // The retention rules keep evidence for 7 years, so a younger shift needs a deliberate yes (07 section 4.2).
       const evidence = new Date(now());
       evidence.setUTCFullYear(evidence.getUTCFullYear() - 7);

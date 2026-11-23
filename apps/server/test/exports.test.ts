@@ -61,25 +61,32 @@ describe('csv (08 section 11)', () => {
     );
     const rows = lines(res.body);
     expect(rows[0]).toBe(
-      'date,start_time,end_time,vehicle,kind,platform,purpose,start_location,end_location,distance,distance_unit,source',
+      'date,shift_date,start_time,end_time,vehicle,kind,platform,purpose,start_location,end_location,distance,distance_unit,source',
     );
     const trips = engine().trips;
     expect(rows).toHaveLength(1 + trips.length);
     const first = rows[1]!.split(',');
     expect(first[0]).toBe('2027-01-15'); // owner time zone America/Chicago
-    expect(first[3]).toBe('Civic');
-    expect(first[4]).toBe(`${trips[0]!.kind} (estimated)`);
+    expect(first[1]).toBe('2027-01-15'); // the shift's day
+    expect(first[4]).toBe('Civic');
+    expect(first[5]).toBe(`${trips[0]!.kind} (estimated)`);
     expect(Number(first.at(-3))).toBe(Math.round((trips[0]!.distanceM / 1609.344) * 100) / 100);
     expect(first.slice(-2)).toEqual(['mi', 'auto']);
-    expect(first[7]).toMatch(/^\d+\.\d{6} -?\d+\.\d{6}$/);
+    expect(first[8]).toMatch(/^\d+\.\d{6} -?\d+\.\d{6}$/);
     expect(res.body.endsWith('\r\n')).toBe(true);
+  });
+
+  test('midnight: the trip keeps its real date, shift_date is the day the shift started', async () => {
+    h.db.prepare("UPDATE shifts SET local_date = '2027-01-14'").run();
+    const first = lines(await text(`/exports/csv?from=2027-01-01&to=2027-12-31`))[1]!.split(',');
+    expect(first.slice(0, 2)).toEqual(['2027-01-15', '2027-01-14']);
   });
 
   test('the platform of the stop that opened an active segment comes from the web label', async () => {
     await label({ platform: 'ubereats', payout_cents: 850, tip_cents: 200, place: 'Pizza Place' });
     const body = await text(`/exports/csv${range}`);
-    const active = lines(body).find((l) => l.split(',')[4]!.startsWith('active'))!;
-    expect(active.split(',')[5]).toBe('ubereats');
+    const active = lines(body).find((l) => l.split(',')[5]!.startsWith('active'))!;
+    expect(active.split(',')[6]).toBe('ubereats');
     expect(body).not.toContain('Pizza Place'); // customer data never leaves in the trip file
   });
 

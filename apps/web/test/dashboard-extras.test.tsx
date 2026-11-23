@@ -145,6 +145,25 @@ describe('dashboard checklist and notices (18 section 13)', () => {
     expect(screen.queryByText(/checks to review|No successful backup|backup failed/)).toBeNull();
   });
 
+  it('a running shift with nothing recorded for 12 hours shows End now, which ends it', async () => {
+    const stale = {
+      ...shift(7, false),
+      status: 'active',
+      ended_at: null,
+      flags: [
+        { code: 'stale_active_shift', severity: 'review', detail: { at: null, detail: null } },
+      ],
+    };
+    const s = open({ shifts: [stale] });
+    const note = (await screen.findByText(/nothing recorded for over 12 hours/)).closest(
+      '[role="note"]',
+    ) as HTMLElement;
+    fireEvent.click(within(note).getByRole('button', { name: 'End now' }));
+    await waitFor(() =>
+      expect(s.calls.some((c) => c.method === 'POST' && c.path === '/shifts/7/end')).toBe(true),
+    );
+  });
+
   it('a failed last backup shows as a notice with its time and a link to Backups', async () => {
     open({
       status: systemStatus({

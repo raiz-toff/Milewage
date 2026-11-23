@@ -30,6 +30,10 @@ Below the figures:
 
 The menu in the header (the three dots) edits or deletes the shift. See [Correcting or deleting a shift](#correcting-or-deleting-a-shift).
 
+## A shift counts on the day it started
+
+A shift counts on the day it started, everywhere: in the Shifts list, the week's totals, the Tax page and the exports. A shift that starts at 11 pm and ends at 2 am is the first day's, and its page says so. In the trip CSV each trip keeps its own real date in `date`, which a mileage log needs, and `shift_date` is the day its shift started.
+
 ## Parking and tolls
 
 Paid for parking or a toll during a shift? Add it on the shift page, under Parking and tolls (shown when the expenses module runs).
@@ -45,6 +49,21 @@ While a shift runs, the page says "Shift in progress". Trips and stops appear wh
 ## When nothing was recorded
 
 If the phone sent no location points, the page says "No route for this shift" and lists what the checks found. A shift with no distance adds nothing to your totals. If you know the distance, add it as a trip. If the shift was started by mistake, delete it (see below).
+
+## Started by mistake
+
+A shift under 2 minutes and under 160 m (0.1 mi), with no earnings, parking or tolls, expenses or trips you added, is "very short". Nothing is deleted for you.
+
+- **On the phone**, End shift on such a shift asks "Started by mistake?". Discard deletes it for good. Keep ends it like any shift. Closing the box keeps recording. If the phone cannot reach the server, the shift stays on the phone, marked as waiting, until the server confirms the delete.
+- **On the web**, the shift's page says "This shift is 40 seconds and 0 mi. Started by mistake?" with a Delete button. It asks first, and it cannot be undone.
+
+## Shifts that overlap
+
+If a shift starts before another one ends and ends after that one starts, the Checks on its page say "This shift overlaps" and link to the other shift, marked Review. MileWage never refuses or changes either of them. Open the shifts and correct a time with "Edit times and vehicle", or delete the one that is a mistake. The check goes away when they no longer overlap. A shift that ends exactly when the next one starts does not overlap.
+
+## A shift left running
+
+A shift with nothing recorded for 12 hours is probably one that was never ended (a flat battery, a forgotten stop). Its page and the dashboard say so, with End now. MileWage never ends it for you. After End now, correct the end time if it was earlier.
 
 ## Correcting or deleting a shift
 

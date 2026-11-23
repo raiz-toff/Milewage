@@ -333,6 +333,16 @@
     <string name="end_confirm_title">End this shift?</string>
     <string name="end_confirm_text">Recording stops at %1$s. You cannot restart this shift.</string>
     <string name="end_keep">Keep recording</string>
+    <string name="end_short_title">Started by mistake?</string>
+    <string name="end_short_text">This shift is %1$s and %2$s. Discard it to delete it for good, or keep it and end the shift. Close this box to keep recording.</string>
+    <plurals name="end_short_seconds">
+        <item quantity="one">%1$d second</item>
+        <item quantity="other">%1$d seconds</item>
+    </plurals>
+    <string name="end_short_discard">Discard</string>
+    <string name="end_short_keep">Keep</string>
+    <string name="shift_discarded">Shift discarded.</string>
+    <string name="shift_discarded_offline">Shift discarded. It is deleted from your server when it is reachable.</string>
     <string name="shift_ended">Shift ended.</string>
     <string name="shift_ended_offline">Shift ended. It is saved on your phone and sent when the server is reachable.</string>
     <string name="view_shift">View shift</string>
@@ -360,6 +370,8 @@
     <string name="track_permission_lost_detail">Nothing is being recorded. Allow precise location again.</string>
     <string name="track_no_provider">This phone gives no location</string>
     <string name="track_no_provider_detail">Check the location settings, then reopen MileWage.</string>
+    <string name="track_no_signal" tools:ignore="PluralsCandidate">No location for %1$d min</string>
+    <string name="track_no_signal_detail">Check that location is on and that MileWage is set to unrestricted battery use. A clear view of the sky helps.</string>
     <string name="track_not_recording">This shift is not recording</string>
     <string name="track_not_recording_detail">It may have stopped when the phone restarted. Resume it, or end it at its last point if you stopped working.</string>
 
@@ -538,6 +550,9 @@
     <string name="flag_low_fix_density">Few positions were recorded for the length of the shift.</string>
     <string name="flag_clock_skew">The phone\'s clock was more than 2 minutes off.</string>
     <string name="flag_override_orphaned">A trip edit no longer matches a trip.</string>
+    <string name="flag_very_short_shift">A very short shift with nothing recorded: it may have been started by mistake.</string>
+    <string name="flag_shift_overlap">This shift overlaps another shift.</string>
+    <string name="flag_stale_active_shift">Nothing was recorded on this running shift for 12 hours.</string>
     <string name="flag_manual_trip_present">A trip you added by hand is in the totals.</string>
     <string name="flag_calc_mismatch">The server\'s figures differ from the phone\'s.</string>
     <string name="flag_other">The server marked this shift for a check. Open it on the web.</string>

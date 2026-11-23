@@ -11,6 +11,7 @@ import type { DriverContexts } from '../driver-context';
 import { ProblemError } from '../errors';
 import type { EventEmit } from '../events';
 import type { Principal } from '../routes/util';
+import { createShiftChecks } from './shift-checks';
 import { createShiftProcessor, type PhoneReport } from './shift-processor';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -126,6 +127,7 @@ export function createShiftBook({
   const odometer = createOdometerRepository(db);
   const archive = createArchiveRepository(db);
   const processor = createShiftProcessor({ db, now, stopsModule, emit });
+  const checks = createShiftChecks({ db, now });
 
   const since = (p: Principal) => (p.kind === 'device' ? now() - DEVICE_READ_WINDOW_MS : undefined);
   const touched = (p: Principal): Partial<ShiftRow> =>
@@ -163,7 +165,7 @@ export function createShiftBook({
         ...touched(p),
       });
       emit('shift.started', id(row));
-      return row;
+      return checks.settle(row);
     },
 
     end(p, row, e) {
@@ -181,7 +183,7 @@ export function createShiftBook({
       if (!trackingModule()) {
         const saved = shifts.update(row.id, ended) ?? row;
         emit('shift.ended', id(row));
-        return saved;
+        return checks.settle(saved);
       }
       const outcome = processor.run(
         { ...row, ...ended },
@@ -190,7 +192,7 @@ export function createShiftBook({
       );
       emit('shift.ended', id(row));
       ran(row);
-      return outcome.shift;
+      return checks.settle(outcome.shift);
     },
 
     edit(p, row, set) {
@@ -214,14 +216,16 @@ export function createShiftBook({
     finalize(row) {
       const saved = shifts.update(row.id, { status: 'finalized', updatedAt: now() }) ?? row;
       emit('shift.finalized', id(row));
-      return saved;
+      return checks.settle(saved);
     },
 
     purge(p, row) {
       const tripKeys = processing.tripsOf(row.id).map((t) => t.tripKey);
       const overrideKeys = processing.overridesOf(row.id).map((o) => o.tripKey);
       const odometerIds = odometer.idsOfShift(row.id).map(String);
+      const named = checks.named(row.id);
       shifts.purge(row.id);
+      checks.afterPurge(named);
       emit('shift.deleted', {
         ...id(row),
         userId: String(p.userId),
@@ -252,6 +256,7 @@ export function createShiftBook({
               timesEdited: change.cause === 'times',
             }).shift
           : processor.retotal(row);
+        saved = checks.settle(saved);
       }
       if (p.kind === 'device') saved = shifts.update(saved.id, touched(p)) ?? saved;
       if (change.cause === 'trip' && change.tripId !== undefined) {
@@ -270,7 +275,9 @@ export function createShiftBook({
       const row = shifts.byId(shiftId);
       // A running shift is computed at its end; a finalized one is the driver's tax record.
       if (!row || row.status !== 'ended') return undefined;
-      const saved = processor.run(row, { latePoints: true, reason: 'late_points' }).shift;
+      const saved = checks.settle(
+        processor.run(row, { latePoints: true, reason: 'late_points' }).shift,
+      );
       emit('shift.updated', id(row));
       ran(row);
       return saved;

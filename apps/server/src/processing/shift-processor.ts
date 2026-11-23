@@ -18,6 +18,8 @@ const REVIEW = new Set([
   'override_orphaned',
   'calc_mismatch',
   'clock_skew',
+  'shift_overlap',
+  'stale_active_shift',
 ]);
 
 export interface Totals {

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.milewage.core.format.parseDistance
 import app.milewage.core.pairing.PairingStatus
+import app.milewage.core.shift.DiscardResult
 import app.milewage.core.shift.EditResult
 import app.milewage.core.shift.EndResult
 import app.milewage.core.shift.HomeSummary
@@ -16,6 +17,7 @@ import app.milewage.data.RunningShiftView
 import app.milewage.phone.logic.Banner
 import app.milewage.phone.logic.Banners
 import app.milewage.phone.logic.EditOutcome
+import app.milewage.phone.logic.NoSignal
 import app.milewage.phone.logic.OdometerAsk
 import app.milewage.phone.logic.Setup
 import app.milewage.phone.logic.SetupItem
@@ -60,6 +62,8 @@ data class HomeState(
     /** The running shift, or null: Home then shows the next shift and Start shift. */
     val running: RunningShiftView? = null,
     val trackingLine: TrackingLine? = null,
+    /** Where the silence of "no location for N min" is counted from; null unless recording at full power. */
+    val fixSince: Long? = null,
     val banner: Banner? = null,
     val vehicles: VehicleChoice = VehicleChoice(),
     val setup: List<SetupItem> = emptyList(),
@@ -81,6 +85,9 @@ sealed interface HomeEvent {
     data class Ended(val clientId: String, val sent: Boolean) : HomeEvent
 
     data object EndFailed : HomeEvent
+
+    /** A very short shift was discarded; [deleted]: the server has it deleted too (or never had it). */
+    data class Discarded(val deleted: Boolean) : HomeEvent
 
     data object ResumeFailed : HomeEvent
 
@@ -157,6 +164,7 @@ class HomeViewModel(
             period = l.period,
             running = running,
             trackingLine = running?.let { TrackingLines.of(it.shift, status, perm, i.settings.tracking, l.checked) },
+            fixSince = running?.let { r -> NoSignal.since(r.shift, status, TrackingLines.of(r.shift, status, perm, i.settings.tracking, l.checked)) },
             banner = i.banner,
             vehicles = l.vehicles,
             setup = Setup.of(perm),
@@ -255,6 +263,27 @@ class HomeViewModel(
                 ended(r, running.shift.vehicleId)
             } else if (r == null) {
                 events.trySend(HomeEvent.EndFailed)
+            }
+            local.update { it.copy(busy = null) }
+        }
+    }
+
+    /**
+     * "Discard" on the End dialog of a very short shift, after the driver tapped it: the shift is
+     * dropped, or ended and deleted (queued when the server cannot be reached; nothing is lost silently).
+     */
+    fun discard() {
+        if (state.value.running == null || state.value.busy != null) return
+        viewModelScope.launch {
+            local.update { it.copy(busy = Busy.END) }
+            when (val r = safely { data.discardShift() }) {
+                DiscardResult.Dropped -> events.trySend(HomeEvent.Discarded(deleted = true))
+                is DiscardResult.Queued -> {
+                    val sent = withTimeoutOrNull(SEND_WAIT_MS) { safely { data.sendNow() } } == true
+                    events.trySend(HomeEvent.Discarded(deleted = sent))
+                }
+                DiscardResult.NoShift -> Unit
+                null -> events.trySend(HomeEvent.EndFailed)
             }
             local.update { it.copy(busy = null) }
         }

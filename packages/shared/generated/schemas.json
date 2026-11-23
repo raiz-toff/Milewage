@@ -2544,7 +2544,9 @@
             "integer",
             "null"
           ],
-          "description": "Set when a late upload made this shift overlap another (15 section 9.2)."
+          "description": "The other shift of the user this one overlaps (it starts before the other ends and ends after the other starts; end equal to start is not an overlap). Set when the shift starts",
+          "ends or is retimed": null,
+          "cleared when the overlap is gone. The review flag `shift_overlap` carries the same id in `detail.detail`.": null
         }
       }
     },
@@ -2557,7 +2559,7 @@
       "properties": {
         "code": {
           "type": "string",
-          "description": "One of the flags in 14 section 8."
+          "description": "One of the flags in 14 section 8, or a server flag: `very_short_shift` (info), `shift_overlap` and `stale_active_shift` (review; the latter is worked out when the shift is read, for a running shift with no point for 12 hours)."
         },
         "severity": {
           "enum": [

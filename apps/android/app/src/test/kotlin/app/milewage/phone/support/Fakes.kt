@@ -5,6 +5,7 @@ import app.milewage.core.api.TripKind
 import app.milewage.core.pairing.PairingStatus
 import app.milewage.core.shift.CalcSource
 import app.milewage.core.shift.Distances
+import app.milewage.core.shift.DiscardResult
 import app.milewage.core.shift.EditResult
 import app.milewage.core.shift.EndResult
 import app.milewage.core.shift.HomeSummary
@@ -228,6 +229,15 @@ class FakeShiftData : ShiftData {
         val r = running.value ?: return EndResult.NoShift
         running.value = null
         return EndResult.Ended(r.shift.copy(status = ShiftStatus.ENDED, endedAt = NOW), null)
+    }
+
+    var discardResult: DiscardResult? = null
+
+    override suspend fun discardShift(): DiscardResult {
+        calls += "discard"
+        val r = running.value ?: return DiscardResult.NoShift
+        running.value = null
+        return discardResult ?: DiscardResult.Queued(r.shift.copy(status = ShiftStatus.ENDED, endedAt = NOW))
     }
 
     override suspend fun closeUnfinished(): EndResult {

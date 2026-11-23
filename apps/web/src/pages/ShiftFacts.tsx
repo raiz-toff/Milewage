@@ -1,7 +1,12 @@
+import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Schemas, Settings } from '../api/client';
-import { deductionWord, formatDistance, formatDuration, formatMoney } from '../format';
+import { useApiQuery } from '../api/query';
+import { dateWords } from '../days';
+import { deductionWord, formatDistance, formatDuration, formatMoney, formatTime } from '../format';
+import { useSettings } from '../session';
+import { overlapOf } from '../shift/checks';
 import { adviceFor } from '../shift/advice';
 import type { EarnedSummary } from '../shift/view';
 import { HelpLink } from '../help';
@@ -25,8 +30,36 @@ const FLAG_WORDS: Record<string, string> = {
   override_orphaned: 'A trip edit no longer matches a trip.',
   manual_trip_present: 'A trip you added by hand is in the totals.',
   calc_mismatch: "The server's figures differ from the phone's.",
+  very_short_shift:
+    'A very short shift with nothing recorded: it may have been started by mistake.',
+  shift_overlap: 'This shift overlaps another shift.',
+  stale_active_shift: 'Nothing has been recorded on this running shift for 12 hours.',
 };
 export const flagWords = (code: string) => FLAG_WORDS[code] ?? code;
+
+/** "This shift overlaps the shift on Mon, Jan 14, 10:00 to 11:00", the other one linked. */
+function OverlapLine({ id }: { id: number | null }) {
+  const { timezone, time_format: tf } = useSettings();
+  const other = useApiQuery(
+    '/shifts/{ref}',
+    { params: { path: { ref: String(id ?? 0) } } },
+    { enabled: id !== null },
+  ).data;
+  if (id === null || !other) return <>{flagWords('shift_overlap')}</>;
+  const day = dateWords(other.local_date, { weekday: 'short', month: 'short', day: 'numeric' });
+  const times = `${formatTime(other.started_at, timezone, tf)}${
+    other.ended_at ? ` to ${formatTime(other.ended_at, timezone, tf)}` : ' to now'
+  }`;
+  return (
+    <>
+      This shift overlaps{' '}
+      <Link to={`/shifts/${id}`} className="underline underline-offset-2">
+        the shift on {day}, {times}
+      </Link>
+      .
+    </>
+  );
+}
 
 /** The phone check (recon_status): did the phone's own result match the server's? */
 const RECON_WORDS: Record<NonNullable<Shift['recon_status']>, string> = {
@@ -118,7 +151,7 @@ export function CheckList({ shift }: { shift: Shift }) {
       {flags.map((f, i) => (
         <li key={`${f.code}-${i}`} className="flex items-start justify-between gap-3">
           <span className={f.severity === 'review' ? '' : 'text-muted-foreground'}>
-            {flagWords(f.code)}
+            {f.code === 'shift_overlap' ? <OverlapLine id={overlapOf(shift)} /> : flagWords(f.code)}
           </span>
           {f.severity === 'review' ? (
             <Badge variant="outline" className="shrink-0 border-primary/60">

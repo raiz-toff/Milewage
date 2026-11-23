@@ -436,7 +436,7 @@ export interface paths {
         get: operations["getShift"];
         put?: never;
         post?: never;
-        /** Permanently delete a shift and everything under it (web only). An active shift is 409 shift_not_ended; a shift under 7 years old without confirm_recent=true is 422. */
+        /** Permanently delete a shift and everything under it. The web (after its confirm) calls it for any shift. A paired phone may call it only for a very short shift (under 2 minutes, under 160 m, no earnings, costs, expenses or manual trips: the `very_short_shift` rule), after it was ended, within its 14-day window; any other shift is 403 scope_forbidden for a phone. An active shift is 409 shift_not_ended; a shift under 7 years old without confirm_recent=true is 422. */
         delete: operations["purgeShift"];
         options?: never;
         head?: never;
@@ -1980,11 +1980,11 @@ export interface components {
             recon_reasons?: string[];
             calc_mismatch?: boolean;
             flags?: components["schemas"]["ShiftFlag"][];
-            /** @description Set when a late upload made this shift overlap another (15 section 9.2). */
+            /** @description The other shift of the user this one overlaps (it starts before the other ends and ends after the other starts; end equal to start is not an overlap). Set when the shift starts */
             overlaps_shift_id?: number | null;
         };
         ShiftFlag: {
-            /** @description One of the flags in 14 section 8. */
+            /** @description One of the flags in 14 section 8, or a server flag: `very_short_shift` (info), `shift_overlap` and `stale_active_shift` (review; the latter is worked out when the shift is read, for a running shift with no point for 12 hours). */
             code: string;
             /** @enum {unknown} */
             severity: "info" | "review";

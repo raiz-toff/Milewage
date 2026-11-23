@@ -125,6 +125,9 @@ enum class ShiftFlag(val wire: String, val review: Boolean, val advice: FlagAdvi
     OVERRIDE_ORPHANED("override_orphaned", true),
     MANUAL_TRIP_PRESENT("manual_trip_present", false),
     CALC_MISMATCH("calc_mismatch", true),
+    VERY_SHORT_SHIFT("very_short_shift", false),
+    SHIFT_OVERLAP("shift_overlap", true),
+    STALE_ACTIVE_SHIFT("stale_active_shift", true),
 
     /** A code this version does not know (a newer server): shown, as "marked for review". */
     OTHER("", true),

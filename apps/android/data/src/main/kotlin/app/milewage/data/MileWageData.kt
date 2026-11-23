@@ -21,6 +21,7 @@ import app.milewage.core.pairing.Pairing
 import app.milewage.core.pairing.PairingLink
 import app.milewage.core.ports.Clock
 import app.milewage.core.shift.BatteryPort
+import app.milewage.core.shift.DiscardResult
 import app.milewage.core.shift.EditResult
 import app.milewage.core.shift.EndResult
 import app.milewage.core.shift.HomeSummary
@@ -417,6 +418,9 @@ class MileWageData private constructor(
     suspend fun startShift(vehicleId: Long, odometerStartM: Long? = null): StartResult = shifts.start(vehicleId, odometerStartM)
 
     suspend fun endShift(odometerEndM: Long? = null): EndResult = shifts.end(odometerEndM)
+
+    /** "Discard" on the End dialog of a very short shift (spec 001 C1): dropped, or ended and its delete queued. */
+    suspend fun discardShift(): DiscardResult = off { shifts.discard() }
 
     /** "End it at its last fix" for a running shift the tracker lost. */
     suspend fun closeUnfinished(): EndResult = off { shifts.closeUnfinished() }
