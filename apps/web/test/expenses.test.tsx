@@ -4,6 +4,8 @@ import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bodyOf, quickCategories } from '../src/pages/Expenses';
 import {
+  confirmNo,
+  confirmYes,
   renderApp,
   settingsFixture,
   signedIn,
@@ -314,6 +316,13 @@ describe('expenses screen (module expenses)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Remind me in a week/ }));
     await waitFor(() => expect(s.calls.some((c) => c.path === '/expenses/9/snooze')).toBe(true));
     menu(/Shell/, 'Delete');
+    expect(
+      (await screen.findByRole('dialog', { name: 'Delete this expense?' })).textContent,
+    ).toMatch(/cannot be undone/);
+    await confirmNo();
+    expect(s.calls.some((c) => c.method === 'DELETE')).toBe(false);
+    menu(/Shell/, 'Delete');
+    await confirmYes('Delete expense');
     await waitFor(() => expect(s.calls.some((c) => c.method === 'DELETE')).toBe(true));
   });
 
@@ -335,6 +344,7 @@ describe('expenses screen (module expenses)', () => {
       '/api/v1/expenses/2/receipt',
     );
     menu(/Esso/, 'Remove receipt');
+    await confirmYes('Remove receipt');
     await waitFor(() =>
       expect(s.calls.some((c) => c.method === 'DELETE' && c.path === '/expenses/2/receipt')).toBe(
         true,

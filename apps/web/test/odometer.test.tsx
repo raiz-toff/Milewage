@@ -2,7 +2,17 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startOfDay } from '../src/days';
-import { renderApp, settingsFixture, signedIn, pick, pickDay, pickDate } from './support/kit';
+import {
+  confirmNo,
+  confirmYes,
+  menu,
+  renderApp,
+  settingsFixture,
+  signedIn,
+  pick,
+  pickDay,
+  pickDate,
+} from './support/kit';
 import type { Handler } from './support/kit';
 
 beforeEach(() => {
@@ -151,9 +161,46 @@ describe('odometer logbook', () => {
         return { status: 204 };
       },
     });
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
+    await screen.findByText('12480.0 km');
+    menu(/reading 12480/, 'Delete');
+    await confirmNo();
+    expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
+    menu(/reading 12480/, 'Delete');
+    await confirmYes('Delete reading');
     await waitFor(() => expect(screen.getAllByText('No readings.').length).toBe(2));
     expect(calls.some((c) => c.method === 'DELETE')).toBe(true);
+  });
+
+  it('edits a tax-year reading in the form: only the value changes, the stored time is kept', async () => {
+    const rows = [reading(1, 'year_start', 12_480_000, JAN_1 + 3_600_000)];
+    const { calls } = open(rows, {
+      'PATCH /odometer/1': ({ body }) => {
+        rows[0] = { ...rows[0]!, ...(body as object) };
+        return { body: rows[0] };
+      },
+    });
+    await screen.findByText('12480.0 km');
+    menu(/reading 12480/, 'Edit');
+    expect(screen.getByRole('heading', { name: 'Edit reading' })).toBeTruthy();
+    const value = screen.getByLabelText('Odometer (km)') as HTMLInputElement;
+    expect(value.value).toBe('12480');
+    fireEvent.change(value, { target: { value: '12,408' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(await screen.findByText('12408.0 km')).toBeTruthy();
+    expect(calls.find((c) => c.method === 'PATCH')!.body).toEqual({
+      reading_m: 12_408_000,
+      recorded_at: JAN_1 + 3_600_000,
+    });
+    expect(screen.getByRole('heading', { name: 'Add a tax-year reading' })).toBeTruthy();
+  });
+
+  it('Cancel leaves an edit without sending anything', async () => {
+    const { calls } = open([reading(1, 'year_start', 12_480_000, JAN_1)]);
+    await screen.findByText('12480.0 km');
+    menu(/reading 12480/, 'Edit');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Add reading' })).toBeTruthy();
+    expect(calls.some((c) => c.method === 'PATCH')).toBe(false);
   });
 
   it('asks for a vehicle choice only when there are several', async () => {

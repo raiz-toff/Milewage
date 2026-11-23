@@ -1,19 +1,22 @@
 #!/usr/bin/env bash
 # MileWage first-run script for a home-lab host (10 section 8, install guide: infra/docs/install.md).
-# Writes infra/docker/.env (never overwrites one), builds and starts the stack, waits until it is healthy.
+# Runs on Linux, or on Windows inside WSL2. Checks the host first, then writes infra/docker/.env (never
+# overwrites one), builds and starts the stack, waits until it is healthy and prints the address to open.
 #
-# LAN access (plan 28): phones on the home Wi-Fi connect over plain http. Then the Tailscale step (plan 19 section 3.4): asks, runs `tailscale serve`, writes
-# MILEWAGE_PUBLIC_URL, so phones also connect away from home.
+# LAN access (plan 28): phones on the home Wi-Fi connect over plain http. Then the optional Tailscale step
+# (plan 19 section 3.4): asks, runs `tailscale serve`, writes MILEWAGE_PUBLIC_URL, so phones also connect away from home.
 #
 # Usage: infra/install.sh [--port N] [--subnet CIDR] [--env-file PATH] [--no-start]
 #                         [--lan | --no-lan] [--yes-tailscale | --no-tailscale]
 #   --env-file PATH  where to write the .env (default: infra/docker/.env); used by the tests
-#   --no-start       write the .env and stop (the "dry run")
+#   --no-start       write the .env and stop (the "dry run": no host checks, nothing is started)
 #   --lan            let phones on the home network connect (asked when run in a terminal); --no-lan: loopback only
 #   --yes-tailscale  turn on https through Tailscale without asking; --no-tailscale skips that step
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=infra/lib.sh
+. "$here/lib.sh"
 port=8080
 subnet="172.29.88.0/24"
 env_file="$here/docker/.env"
@@ -31,7 +34,7 @@ while [ $# -gt 0 ]; do
     --no-tailscale) tailscale_answer=n; shift ;;
     --lan) lan_answer=y; shift ;;
     --no-lan) lan_answer=n; shift ;;
-    -h | --help) sed -n '2,15p' "$0"; exit 0 ;;
+    -h | --help) sed -n '2,16p' "$0"; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
 done
@@ -47,6 +50,26 @@ case "$subnet" in
   [0-9]*.[0-9]*.[0-9]*.[0-9]*/[0-9]*) ;;
   *) echo "The subnet must look like 172.29.88.0/24, got: $subnet" >&2; exit 2 ;;
 esac
+
+# Before anything is written: can this host run MileWage? Each failure says the next command to run.
+if [ "$start" = 1 ]; then
+  mw_check_host || exit 1
+  if ! command -v curl >/dev/null 2>&1; then
+    mw_fail "curl is not installed. On Ubuntu or Debian: sudo apt-get install curl, then run this script again."
+    exit 1
+  fi
+  mw_check_docker || exit 1
+  min_mb="${MILEWAGE_MIN_DISK_MB:-4096}"
+  if free_mb="$(mw_free_mb "$here")" && [ "$free_mb" -lt "$min_mb" ]; then
+    mw_fail "Only $free_mb MB are free here, and the first build needs about $min_mb MB (images and your records)."
+    mw_fail "Free some space ('docker system df' shows what Docker itself uses), then run this script again."
+    exit 1
+  fi
+  mem_kb="$(sed -n 's/^MemTotal: *\([0-9]*\) kB.*/\1/p' "${MILEWAGE_MEMINFO:-/proc/meminfo}" 2>/dev/null | head -n 1 || true)"
+  if [ -n "$mem_kb" ] && [ "$mem_kb" -lt 900000 ]; then
+    echo "Warning: this host has only $((mem_kb / 1024)) MB of memory; 1 GB is recommended. The build can fail; add swap space if it does." >&2
+  fi
+fi
 
 # Is something already listening on 127.0.0.1:$1? (bash's /dev/tcp needs no extra tool)
 busy() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
@@ -71,24 +94,7 @@ EOF
   echo "Wrote $env_file (port $port, proxy subnet $subnet)."
 fi
 
-set_env() {
-  if grep -q "^$1=" "$env_file"; then
-    sed -i "s|^$1=.*|$1=$2|" "$env_file"
-  else
-    echo "$1=$2" >>"$env_file"
-  fi
-}
-# This host's address on the home network: the source address of its default route (MILEWAGE_LAN_IP
-# overrides it). Only a private IPv4 address is used.
-lan_ip() {
-  local ip="${MILEWAGE_LAN_IP:-}"
-  if [ -z "$ip" ] && command -v ip >/dev/null 2>&1; then
-    ip="$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p' | head -n 1)"
-  fi
-  case "$ip" in
-    10.* | 192.168.* | 172.1[6-9].* | 172.2[0-9].* | 172.3[01].*) echo "$ip" ;;
-  esac
-}
+set_env() { mw_set_env "$env_file" "$1" "$2"; }
 
 # LAN access (plan 28). Asked only in a terminal; the answer is kept in the .env.
 if [ -z "$lan_answer" ] && [ -t 0 ] && ! grep -q '^MILEWAGE_BIND_ADDRESS=' "$env_file"; then
@@ -97,12 +103,12 @@ if [ -z "$lan_answer" ] && [ -t 0 ] && ! grep -q '^MILEWAGE_BIND_ADDRESS=' "$env
   case "$lan_answer" in '' | y | Y | yes | Yes) lan_answer=y ;; *) lan_answer=n ;; esac
 fi
 if [ "$lan_answer" = y ]; then
-  addr="$(lan_ip)"
+  addr="$(mw_lan_ip)"
   if [ -z "$addr" ]; then
     echo "Could not find this host's home network address, so LAN access stays off." >&2
     echo "Run again with MILEWAGE_LAN_IP=<this host's address, e.g. 192.168.1.20> and --lan." >&2
   else
-    lan_port="$(sed -n 's/^MILEWAGE_HOST_PORT=//p' "$env_file")"
+    lan_port="$(mw_env_get "$env_file" MILEWAGE_HOST_PORT)"
     set_env MILEWAGE_BIND_ADDRESS 0.0.0.0
     set_env MILEWAGE_HOME_URL "http://$addr:${lan_port:-8080}"
     echo "LAN access on: phones on your Wi-Fi use http://$addr:${lan_port:-8080}."
@@ -117,38 +123,44 @@ if [ "$start" = 0 ]; then
   exit 0
 fi
 
-for tool in docker curl; do
-  command -v "$tool" >/dev/null 2>&1 || { echo "$tool is not installed." >&2; exit 1; }
-done
-docker compose version >/dev/null 2>&1 || { echo "The 'docker compose' plugin is not installed." >&2; exit 1; }
-docker info >/dev/null 2>&1 || { echo "Docker is not running, or this user may not use it." >&2; exit 1; }
-
 # shellcheck disable=SC1090
 set -a; . "$env_file"; set +a
 echo "Building and starting MileWage (the first build takes a few minutes)..."
-docker compose --env-file "$env_file" -f "$here/docker/docker-compose.yml" up -d --build --wait --wait-timeout 300
+docker compose --env-file "$env_file" -f "$here/docker/docker-compose.yml" up -d --build --remove-orphans --wait --wait-timeout 300
 
 url="http://127.0.0.1:${MILEWAGE_HOST_PORT}"
-curl -fsS "$url/healthz" >/dev/null || { echo "The stack is up but $url/healthz does not answer." >&2; exit 1; }
+curl -fsS "$url/healthz" >/dev/null || { echo "The stack is up but $url/healthz does not answer. Run: infra/doctor.sh" >&2; exit 1; }
 
-echo
-if [ -n "${MILEWAGE_HOME_URL:-}" ]; then
-  echo "MileWage is running at $url, and at ${MILEWAGE_HOME_URL} on your home network."
+# The address to open on the computer: the one a phone can use too, because the pairing code carries the
+# address the browser is on.
+if [ -n "${MILEWAGE_PUBLIC_URL:-}" ]; then
+  open_url="$MILEWAGE_PUBLIC_URL"
+elif [ -n "${MILEWAGE_HOME_URL:-}" ]; then
+  open_url="$MILEWAGE_HOME_URL"
 else
-  echo "MileWage is running at $url (loopback only)."
+  open_url="http://localhost:${MILEWAGE_HOST_PORT}"
+fi
+echo
+echo "MileWage is running. Open this address in a browser on your computer:"
+echo "    $open_url"
+echo "Create the owner account there and write down the recovery key it shows."
+echo "When you pair a phone, open MileWage at this same address: the pairing code carries the address you opened,"
+echo "and a code made at 127.0.0.1 or localhost cannot work on a phone."
+if [ -z "${MILEWAGE_HOME_URL:-}" ] && [ -z "${MILEWAGE_PUBLIC_URL:-}" ]; then
+  echo "That address works on this host only. For a phone, run 'infra/install.sh --lan' (home Wi-Fi) or use Tailscale (infra/docs/install.md, section 3)."
 fi
 
 compose=(docker compose --env-file "$env_file" -f "$here/docker/docker-compose.yml")
 manual() {
   cat <<EOF
 
-Next, on this host:
-  1. Install Tailscale on this host and on the phone, then (see infra/docs/install.md section 3,
-     including the privacy note about machine names before you enable HTTPS):
-         tailscale serve --bg ${MILEWAGE_HOST_PORT}
-  2. Open https://<host>.<tailnet>.ts.net in a browser and create the owner account. Write down the
-     recovery key it shows: it is the only way to restore a backup.
-  3. In MileWage, follow the setup steps: Get the app, then Pair your phone.
+Optional, to reach MileWage away from home: Tailscale on this host and on the phone. The exact steps:
+  1. sudo tailscale up
+  2. In the Tailscale admin console, DNS: turn on MagicDNS and HTTPS Certificates. Privacy note: turning on https
+     publishes this host's machine name in a public list of certificates, so choose a name you are happy to be public.
+  3. tailscale serve --bg ${MILEWAGE_HOST_PORT}
+  4. Open https://<host>.<tailnet>.ts.net in a browser (the first request is slow while the certificate is issued).
+If step 3 says port 443 is already in use, 'tailscale serve status' shows what holds it; to undo ours: tailscale serve --https=443 off
 EOF
 }
 
@@ -160,8 +172,7 @@ if [ "$tailscale_answer" = n ]; then
 fi
 if ! command -v tailscale >/dev/null 2>&1; then
   echo
-  echo "Tailscale is not installed on this host. Install it from https://tailscale.com/download,"
-  echo "sign in, then run this script again (or follow the steps below)."
+  echo "Tailscale is not installed on this host (it is optional). Install it from https://tailscale.com/download"
   manual
   exit 0
 fi
@@ -169,7 +180,7 @@ status="$(tailscale status --json --peers=false 2>/dev/null || true)"
 if ! printf '%s' "$status" | grep -q '"BackendState": *"Running"'; then
   echo
   echo "Tailscale is installed but this host is not signed in. Run: sudo tailscale up"
-  echo "Then run this script again."
+  manual
   exit 0
 fi
 name="$(printf '%s' "$status" | sed -n 's/.*"DNSName": *"\([^"]*\)".*/\1/p' | head -n 1)"
@@ -189,7 +200,8 @@ if ! printf '%s' "$status" | grep -q '"CertDomains"'; then
   cat <<EOF
 
 HTTPS certificates are off for your tailnet. In the Tailscale admin console, open DNS, make sure
-MagicDNS is on, then turn on HTTPS Certificates. Then run this script again.
+MagicDNS is on, then turn on HTTPS Certificates. Then run:
+    tailscale serve --bg ${MILEWAGE_HOST_PORT}
 EOF
   exit 0
 fi
@@ -205,15 +217,12 @@ esac
 if ! out="$(tailscale serve --bg "$MILEWAGE_HOST_PORT" 2>&1)"; then
   echo "$out" >&2
   echo "tailscale serve failed. Run it yourself: sudo tailscale serve --bg $MILEWAGE_HOST_PORT" >&2
+  echo "If it says port 443 is already in use, 'tailscale serve status' shows what holds it; to undo ours: tailscale serve --https=443 off" >&2
   exit 1
 fi
 
 public="https://$name"
-if grep -q '^MILEWAGE_PUBLIC_URL=' "$env_file"; then
-  sed -i "s|^MILEWAGE_PUBLIC_URL=.*|MILEWAGE_PUBLIC_URL=$public|" "$env_file"
-else
-  echo "MILEWAGE_PUBLIC_URL=$public" >>"$env_file"
-fi
+set_env MILEWAGE_PUBLIC_URL "$public"
 export MILEWAGE_PUBLIC_URL="$public"
 echo "Wrote MILEWAGE_PUBLIC_URL=$public to $env_file; restarting the API so it takes effect."
 "${compose[@]}" up -d --wait --wait-timeout 120 api
@@ -225,12 +234,12 @@ for _ in $(seq 1 30); do
   sleep "${MILEWAGE_INSTALL_RETRY_S:-3}"
 done
 if [ "$ok" = 0 ]; then
-  echo "$public does not answer yet. Check that HTTPS certificates are on (install.md section 3)." >&2
+  echo "$public does not answer yet. Check that HTTPS certificates are on (install.md section 3), then: infra/doctor.sh" >&2
   exit 1
 fi
 cat <<EOF
 
 MileWage is reachable at $public from your devices on Tailscale.
-Open $public in your browser and create the owner account (write down the recovery key it shows),
+Open $public in your browser (not the address above) and pair the phone from there,
 then follow the setup steps: Get the app, then Pair your phone.
 EOF

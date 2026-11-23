@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { renderApp, settingsFixture, signedIn, pick, DASHBOARD } from './support/kit';
+import { confirmYes, renderApp, settingsFixture, signedIn, pick, DASHBOARD } from './support/kit';
 import { createQueryClient } from '../src/api/query';
 import { formatDay } from '../src/days';
 
@@ -245,6 +245,7 @@ describe('tax screen (module tax)', () => {
     expect(s.calls.find((c) => c.method === 'POST')?.body).toEqual({ amount_cents: 5000 });
     fireEvent.click(screen.getByText('Tax jar entries'));
     fireEvent.click(screen.getByRole('button', { name: /Delete jar entry/ }));
+    await confirmYes('Delete entry');
     await waitFor(() => expect(s.calls.some((c) => c.method === 'DELETE')).toBe(true));
   });
 

@@ -2,8 +2,8 @@ import { useState } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { useQuery } from '@tanstack/react-query';
 import { EmptyState, PageHeader, Section, StatCard } from '../ui/layout';
-import { Link, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
-import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from '@/ui/icons';
+import { Link, Route, Routes, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, DeleteIcon, EditIcon } from '@/ui/icons';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -36,7 +36,10 @@ import { earnedOf, reviewCount, showsSplit } from '../shift/view';
 import type { Picked } from '../shift/view';
 import { FormError } from '../ui/form';
 import { ExportButtons } from './Exports';
-import { AddTrip, DeleteTripDialog } from './AddTrip';
+import { AddTrip } from './AddTrip';
+import { ShiftEdit } from './ShiftEdit';
+import { useConfirm } from '../ui/ConfirmDialog';
+import { RowMenu, type RowAction } from '../ui/RowMenu';
 import { useSeen } from './DashboardShifts';
 import { ShiftCosts, useShiftCosts } from './ShiftCosts';
 import { ShiftEarnings } from './ShiftEarnings';
@@ -608,13 +611,15 @@ export function ShiftList() {
 
 export function ShiftDetail() {
   const { ref } = useParams();
+  const navigate = useNavigate();
+  const confirm = useConfirm();
+  const [editingShift, setEditingShift] = useState(false);
   const settings = useSettings();
   const record = useShiftRecord(ref ?? '');
   const { shift, view, trips, stops } = record;
   const [picked, setPicked] = useState<Picked>(null);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Schemas['Trip'] | null>(null);
-  const [deleting, setDeleting] = useState<Schemas['Trip'] | null>(null);
   const costs = useShiftCosts(shift?.id, settings.modules.expenses);
 
   if (record.error && !shift)
@@ -626,6 +631,67 @@ export function ShiftDetail() {
   if (!shift || !view) return <p className="text-muted-foreground">Loading</p>;
   const notes = (bare?: boolean) => <ShiftNotes shift={shift} bare={bare} />;
   const exportButtons = <ExportButtons selection={{ shift_id: shift.id }} />;
+  const day = dateWords(shift.local_date, {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  const unit = settings.distance_unit;
+  const deleteTrip = (t: Schemas['Trip']) =>
+    confirm.ask({
+      title: 'Delete this trip?',
+      description: `${[
+        formatDistance(t.distance_m, unit),
+        `${formatTime(t.started_at, settings.timezone, settings.time_format)} to ${formatTime(t.ended_at, settings.timezone, settings.time_format)}`,
+        t.purpose,
+      ]
+        .filter(Boolean)
+        .join(
+          ', ',
+        )}. Its distance leaves this shift's totals, on the web and on your phone. This cannot be undone.`,
+      confirmLabel: 'Delete trip',
+      action: (run) => run((api) => api.DELETE('/trips/{id}', { params: { path: { id: t.id } } })),
+    });
+  const deleteShift = () =>
+    confirm.ask({
+      title: 'Delete this shift?',
+      description: `The shift on ${day} goes, with ${shift.total_m ? `its ${formatDistance(shift.total_m, unit)}, ` : 'its '}trips, stops, odometer readings and the earnings you entered for it. The miles and money no longer count in your totals, reports or tax figures, on the web and on your phone. Parking and tolls stay in Expenses. This cannot be undone.`,
+      confirmLabel: 'Delete shift',
+      // The dialog is the deliberate yes the server asks for on a shift under 7 years old.
+      action: async (run) => {
+        const done = await run((api) =>
+          api.DELETE('/shifts/{ref}', {
+            params: { path: { ref: String(shift.id) }, query: { confirm_recent: true } },
+          }),
+        );
+        if (done) navigate('/shifts');
+        return done;
+      },
+    });
+
+  const shiftActions: RowAction[] = [
+    ...(shift.status === 'finalized'
+      ? []
+      : [
+          {
+            label: shift.status === 'ended' ? 'Edit times and vehicle' : 'Change vehicle',
+            icon: EditIcon,
+            onSelect: () => setEditingShift(true),
+          },
+        ]),
+    // A running shift is ended first (End now, below); the server refuses to delete it.
+    ...(shift.status === 'active'
+      ? []
+      : [
+          {
+            label: 'Delete shift',
+            icon: DeleteIcon,
+            destructive: true,
+            onSelect: deleteShift,
+          },
+        ]),
+  ];
 
   return (
     <section className="@container space-y-6">
@@ -636,12 +702,7 @@ export function ShiftDetail() {
         </Link>
       </UiButton>
       <PageHeader
-        title={dateWords(shift.local_date, {
-          weekday: 'long',
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-        })}
+        title={day}
         description={
           <span className="tabular-nums">
             {view.context}
@@ -660,7 +721,16 @@ export function ShiftDetail() {
             <a href="#checks">{view.review} to review</a>
           </Badge>
         ) : null}
+        {shiftActions.length > 1 ? (
+          <RowMenu name="this shift" actions={shiftActions} />
+        ) : shiftActions[0] ? (
+          <UiButton variant="outline" size="sm" onClick={shiftActions[0].onSelect}>
+            {shiftActions[0].label}
+          </UiButton>
+        ) : null}
       </PageHeader>
+      {editingShift ? <ShiftEdit shift={shift} onClose={() => setEditingShift(false)} /> : null}
+      {confirm.dialog}
 
       <div className="space-y-2">
         <ShiftFigures
@@ -683,7 +753,7 @@ export function ShiftDetail() {
       >
         <div className="min-w-0">
           {view.main === 'in-progress' ? (
-            <InProgressCard earnings={settings.modules.earnings} />
+            <InProgressCard shift={shift} earnings={settings.modules.earnings} />
           ) : view.main === 'nothing-recorded' ? (
             <div id="checks" className="scroll-mt-20">
               <NoRouteCard
@@ -728,7 +798,6 @@ export function ShiftDetail() {
               onClose={() => setEditing(null)}
             />
           ) : null}
-          {deleting ? <DeleteTripDialog trip={deleting} onClose={() => setDeleting(null)} /> : null}
           {trips.error ? (
             <p className="text-muted-foreground">Trips could not be loaded. {trips.error}</p>
           ) : trips.data === null ? (
@@ -761,7 +830,7 @@ export function ShiftDetail() {
                       }
                     : undefined
                 }
-                onDeleteTrip={view.canEditTrips ? setDeleting : undefined}
+                onDeleteTrip={view.canEditTrips ? deleteTrip : undefined}
               />
             </div>
           )}

@@ -39,10 +39,7 @@ To go through the questions again later: Settings > Profile and region > Run set
 
 ## Install the phone app
 
-The phone app is for Android 8.0 or later. It is not on Google Play yet. It needs nothing from Google, so a phone without Google services works too. Get it in one of two ways:
-
-- From the [latest GitHub release](https://github.com/raiz-toff/Milewage/releases/latest): the file `milewage-<version>.apk`, with the version of your server.
-- From your own server, if the app file was put there ([install guide, section 3a](../../infra/docs/install.md#3a-the-phone-app-from-your-own-server)). The setup step Get the app shows a QR code for your server's download page. Scan it with the phone's camera.
+The phone app is for Android 8.0 or later. It needs nothing from Google, so a phone without Google services works too. Download `milewage-<version>.apk`, with the version of your server, from the [latest GitHub release](https://github.com/raiz-toff/Milewage/releases/latest) and open it on the phone. (Offering the download from your own server is an [advanced option](../../infra/docs/install.md#3a-the-phone-app-from-your-own-server).)
 
 The first time, Android asks to let your browser install apps. Tap Settings, turn on Allow from this source, go back, then tap Install.
 

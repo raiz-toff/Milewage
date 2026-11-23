@@ -2,7 +2,7 @@
 # The same services, settings and volumes as docker-compose.yml, but the images come from the
 # registry the `images` CI job pushes to instead of being built here (infra/docker/release.test.mjs
 # keeps the two files in step). Set MILEWAGE_IMAGE_REPO (for example
-# registry.example.com/you/milewage) and MILEWAGE_VERSION (a release tag such as v0.1.0; pin it,
+# registry.example.com/you/milewage) and MILEWAGE_VERSION (a release tag such as v<version>; pin it,
 # :latest is only the fallback) in infra/docker/.env.
 name: milewage
 # Container logs rotate (10 section 11.2): 3 files of 10 MB per service.

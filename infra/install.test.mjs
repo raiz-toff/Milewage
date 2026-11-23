@@ -1,20 +1,15 @@
 import { spawnSync } from 'node:child_process';
 import { createServer } from 'node:net';
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import process from 'node:process';
 import { join } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
-import { afterEach, beforeAll, beforeEach, expect, test } from 'vitest';
+import { fakeBin } from './fake-host.mjs';
+import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+
+// Each run starts a dozen processes; Git Bash on Windows needs seconds for that.
+vi.setConfig({ testTimeout: 60_000 });
 
 const script = join(fileURLToPath(new URL('.', import.meta.url)), 'install.sh');
 let dir;
@@ -113,24 +108,11 @@ test('refuses a bad port and a bad subnet and writes nothing', () => {
 });
 
 /**
- * The Tailscale step (plan 19 section 3.4) with fake `docker`, `curl` and `tailscale`, on a PATH
- * that holds only the tools the script needs, so the host's own Tailscale is never touched.
+ * The start-up path with a fake host (infra/fake-host.mjs): fake docker, curl, uname, df and tailscale on a
+ * PATH that holds only the tools the script needs, so the host's own Docker and Tailscale are never touched.
  */
-function fakeHost({ tailscale = null, serveFails = false } = {}) {
-  const bin = join(dir, 'bin');
-  mkdirSync(bin);
-  for (const tool of ['sed', 'grep', 'head', 'seq', 'sleep', 'mkdir', 'cat', 'dirname']) {
-    const real = spawnSync('bash', ['-c', `command -v ${tool}`], {
-      encoding: 'utf8',
-    }).stdout.trim();
-    symlinkSync(real, join(bin, tool));
-  }
-  const fake = (name, body) => {
-    writeFileSync(join(bin, name), `#!/bin/bash\necho "$*" >>"${dir}/${name}.log"\n${body}\n`);
-    chmodSync(join(bin, name), 0o755);
-  };
-  fake('docker', 'exit 0');
-  fake('curl', 'exit 0');
+function fakeHost({ tailscale = null, serveFails = false, ...host } = {}) {
+  const { bin, fake } = fakeBin(dir, host);
   if (tailscale !== null) {
     writeFileSync(join(dir, 'status.json'), JSON.stringify(tailscale, null, 2));
     fake(
@@ -138,14 +120,14 @@ function fakeHost({ tailscale = null, serveFails = false } = {}) {
       `case "$1" in status) cat "${dir}/status.json" ;; serve) ${serveFails ? 'echo denied; exit 1' : 'exit 0'} ;; esac`,
     );
   }
-  return (args = [], input = '') =>
+  return (args = [], input = '', env = {}) =>
     spawnSync(
-      '/bin/bash',
+      'bash',
       [script, '--env-file', join(dir, 'sub', '.env'), '--port', String(hostPort), ...args],
       {
         encoding: 'utf8',
         input,
-        env: { PATH: bin, MILEWAGE_INSTALL_RETRY_S: '0' },
+        env: { PATH: bin, MILEWAGE_INSTALL_RETRY_S: '0', ...env },
       },
     );
 }
@@ -241,4 +223,125 @@ test('--lan without a private address of this host leaves LAN access off', () =>
 test('without --lan and without a terminal nothing about the LAN is written', () => {
   expect(run().status).toBe(0);
   expect(envText()).not.toMatch(/MILEWAGE_BIND_ADDRESS|MILEWAGE_HOME_URL/);
+});
+
+// Host checks (B2): each failure says the next command to run and nothing is written.
+describe('preflight', () => {
+  const cases = [
+    ['macOS', { os: 'Darwin' }, 'macOS is not supported'],
+    ['Git Bash', { os: 'MINGW64_NT-10.0' }, 'wsl --install'],
+    ['WSL 1', { kernel: '4.4.0-19041-Microsoft' }, 'wsl --set-version'],
+    ['a 32-bit CPU', { arch: 'armv7l' }, '64-bit version of Raspberry Pi OS'],
+    ['no Docker', { docker: 'missing' }, 'https://docs.docker.com/engine/install/'],
+    ['Docker, not allowed', { docker: 'permission' }, 'sudo usermod -aG docker'],
+    ['Docker, not running', { docker: 'down' }, 'sudo systemctl start docker'],
+    ['no compose v2', { compose: false }, 'sudo apt-get install docker-compose-plugin'],
+    // Git Bash on Windows has its own curl on the PATH, so the stub cannot hide it there.
+    ...(process.platform === 'win32'
+      ? []
+      : [['no curl', { curl: false }, 'sudo apt-get install curl']]),
+    ['little disk', { freeKb: 1_000_000 }, 'docker system df'],
+  ];
+  test.each(cases)('%s: stops with the next step and writes nothing', (_name, host, says) => {
+    const r = fakeHost(host)();
+    expect(r.status, r.stdout + r.stderr).toBe(1);
+    expect(r.stderr).toContain(says);
+    expect(existsSync(join(dir, 'sub', '.env'))).toBe(false);
+    expect(log('docker')).not.toMatch(/up -d/);
+  });
+
+  test('little memory only warns; WSL2 is accepted', () => {
+    const meminfo = join(dir, 'meminfo');
+    writeFileSync(meminfo, 'MemTotal:         524288 kB\nMemFree: 1 kB\n');
+    const r = fakeHost({ kernel: '5.15.153.1-microsoft-standard-WSL2' })(['--no-tailscale'], '', {
+      MILEWAGE_MEMINFO: meminfo,
+    });
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stderr).toContain('only 512 MB of memory');
+    expect(existsSync(join(dir, 'sub', '.env'))).toBe(true);
+  });
+
+  test('--no-start checks nothing about the host (it only writes the file)', () => {
+    const { bin } = fakeBin(dir, { os: 'Darwin', docker: 'missing' });
+    const r = spawnSync(
+      'bash',
+      [script, '--no-start', '--env-file', join(dir, 'sub', '.env'), '--port', String(hostPort)],
+      { encoding: 'utf8', env: { PATH: bin } },
+    );
+    expect(r.status, r.stderr).toBe(0);
+  });
+});
+
+test('the happy path ends with the address to open on the computer, not 127.0.0.1', () => {
+  const r = fakeHost()(['--lan', '--no-tailscale'], '', { MILEWAGE_LAN_IP: '192.168.1.20' });
+  expect(r.status, r.stderr).toBe(0);
+  expect(r.stdout).toContain(
+    `Open this address in a browser on your computer:\n    http://192.168.1.20:${hostPort}`,
+  );
+  expect(r.stdout).toContain('open MileWage at this same address');
+  expect(r.stdout).not.toMatch(/running at http:\/\/127\.0\.0\.1/);
+  expect(log('docker')).toMatch(/up -d --build --remove-orphans --wait/);
+});
+
+test('loopback only: says the address is for this computer and how to reach it from a phone', () => {
+  const r = fakeHost()(['--no-lan', '--no-tailscale']);
+  expect(r.status, r.stderr).toBe(0);
+  expect(r.stdout).toContain(`http://localhost:${hostPort}`);
+  expect(r.stdout).toContain('infra/install.sh --lan');
+});
+
+test('Tailscale steps are printed as exact commands, never "run this script again"', () => {
+  for (const host of [
+    {},
+    { tailscale: signedIn({ BackendState: 'NeedsLogin' }) },
+    { tailscale: signedIn({ CertDomains: undefined }) },
+  ]) {
+    rmSync(dir, { recursive: true, force: true });
+    mkdirSync(dir);
+    const r = fakeHost(host)(['--lan'], '', { MILEWAGE_LAN_IP: '192.168.1.20' });
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toContain(`tailscale serve --bg ${hostPort}`);
+    expect(r.stdout).not.toMatch(/run this script again/i);
+  }
+});
+
+test('a serve that fails says what to do when port 443 is taken, with the undo', () => {
+  const r = fakeHost({ tailscale: signedIn(), serveFails: true })(['--yes-tailscale']);
+  expect(r.status).toBe(1);
+  expect(r.stderr).toContain('port 443 is already in use');
+  expect(r.stderr).toContain('tailscale serve --https=443 off');
+});
+
+// The home address (B3): skips Docker and VPN interfaces; no `sed -i`, `grep -P` or required `ip`.
+describe('the host address', () => {
+  const lanIp = (ipBody, hostnameBody = null, env = {}) => {
+    const { bin, fake } = fakeBin(dir);
+    if (ipBody !== null) fake('ip', ipBody);
+    if (hostnameBody !== null) fake('hostname', hostnameBody);
+    return spawnSync('bash', ['-c', `. "${join(script, '..', 'lib.sh')}"; mw_lan_ip`], {
+      encoding: 'utf8',
+      env: { PATH: bin, ...env },
+    }).stdout.trim();
+  };
+  const route = (src, dev) => `echo "1.1.1.1 via 10.0.0.1 dev ${dev} src ${src} uid 1000"`;
+  const addrs = `printf '2: eth0    inet 192.168.1.20/24 brd 192.168.1.255 scope global eth0\n3: docker0    inet 172.17.0.1/16 scope global docker0\n'`;
+
+  test('the source of the default route', () => {
+    expect(lanIp(`case "$*" in *route*) ${route('192.168.1.7', 'eth0')} ;; esac`)).toBe(
+      '192.168.1.7',
+    );
+  });
+  test('not Docker, and not a VPN: the next usable interface', () => {
+    const ip = (src, dev) => `case "$*" in *route*) ${route(src, dev)} ;; *addr*) ${addrs} ;; esac`;
+    expect(lanIp(ip('172.17.0.1', 'docker0'))).toBe('192.168.1.20');
+    expect(lanIp(ip('10.8.0.2', 'tun0'))).toBe('192.168.1.20');
+    expect(lanIp(ip('10.9.0.2', 'tailscale0'))).toBe('192.168.1.20');
+  });
+  test('without `ip`: hostname -I, skipping Docker', () => {
+    expect(lanIp(null, 'echo "172.17.0.1 192.168.5.9"')).toBe('192.168.5.9');
+  });
+  test('MILEWAGE_LAN_IP wins, if private', () => {
+    expect(lanIp(null, null, { MILEWAGE_LAN_IP: '10.1.2.3' })).toBe('10.1.2.3');
+    expect(lanIp(null, null, { MILEWAGE_LAN_IP: '8.8.8.8' })).toBe('');
+  });
 });

@@ -10,6 +10,7 @@ import { formatMoney, parseMoney } from '../format';
 import { useSettings } from '../session';
 import { Button, CheckField, Field, FormError } from '../ui/form';
 import { MoreCard } from '../ui/MoreCard';
+import { useConfirm } from '../ui/ConfirmDialog';
 import { TaxJar } from '../ui/TaxJar';
 import { usePlatformOf } from '../platforms/usePlatforms';
 
@@ -51,6 +52,7 @@ export function TaxPage() {
     if (report) setRate(String(report.set_aside_bp / 100));
   }, [report]);
   const change = useChange();
+  const confirm = useConfirm();
   const error = errorText(change, asked, jarQuery);
   const money = (c: number | null | undefined) => (c == null ? '—' : formatMoney(c, currency));
   const day = (iso: string | undefined) => formatDay(iso ?? '', dateLocale(country));
@@ -229,9 +231,15 @@ export function TaxPage() {
                       className="text-error"
                       aria-label={`Delete jar entry ${day(e.entered_on)} ${money(e.amount_cents)}`}
                       onClick={() =>
-                        void change.run((api) =>
-                          api.DELETE('/tax/jar/{id}', { params: { path: { id: e.id } } }),
-                        )
+                        confirm.ask({
+                          title: 'Delete this jar entry?',
+                          description: `The ${money(e.amount_cents)} you set aside on ${day(e.entered_on)} is removed from your tax jar. This cannot be undone.`,
+                          confirmLabel: 'Delete entry',
+                          action: (run) =>
+                            run((api) =>
+                              api.DELETE('/tax/jar/{id}', { params: { path: { id: e.id } } }),
+                            ),
+                        })
                       }
                     >
                       Delete
@@ -451,6 +459,7 @@ export function TaxPage() {
       </div>
 
       {details.length > 0 ? <MoreCard label="Details" title="Details" rows={details} /> : null}
+      {confirm.dialog}
     </section>
   );
 }

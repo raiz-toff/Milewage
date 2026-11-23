@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Button as UiButton } from '@/components/ui/button';
 import { DeleteIcon } from '@/ui/icons';
+import { useConfirm } from '../ui/ConfirmDialog';
 import type { Schemas } from '../api/client';
 import { errorText, useApiQuery, useChange } from '../api/query';
 import { formatMoney, parseMoney } from '../format';
@@ -46,6 +47,7 @@ export function ShiftCosts({ shift, bare }: { shift: Shift; bare?: boolean }) {
   const { currency } = useSettings();
   const { query, items, totalCents } = useShiftCosts(shift.id, true);
   const change = useChange();
+  const confirm = useConfirm();
   const error = errorText(change, query);
   const [kind, setKind] = useState<Kind>('parking');
   const [amount, setAmount] = useState('');
@@ -75,9 +77,15 @@ export function ShiftCosts({ shift, bare }: { shift: Shift; bare?: boolean }) {
     }
   }
 
-  const remove = (x: Expense) =>
-    change.run((api) => api.DELETE('/expenses/{id}', { params: { path: { id: x.id } } }));
   const word = (x: Expense) => KINDS.find((k) => k.value === x.category)?.label ?? x.category;
+  const remove = (x: Expense) =>
+    confirm.ask({
+      title: `Remove this ${word(x).toLowerCase()}?`,
+      description: `${formatMoney(x.amount_cents, currency)} is deleted from this shift and from your expenses. This cannot be undone.`,
+      confirmLabel: 'Remove expense',
+      action: (run) =>
+        run((api) => api.DELETE('/expenses/{id}', { params: { path: { id: x.id } } })),
+    });
 
   const body = (
     <div className="space-y-4">
@@ -99,7 +107,7 @@ export function ShiftCosts({ shift, bare }: { shift: Shift; bare?: boolean }) {
                   size="icon-sm"
                   aria-label={`Remove ${word(x).toLowerCase()} ${formatMoney(x.amount_cents, currency)}`}
                   disabled={change.busy}
-                  onClick={() => void remove(x)}
+                  onClick={() => remove(x)}
                 >
                   <DeleteIcon />
                 </UiButton>
@@ -149,6 +157,7 @@ export function ShiftCosts({ shift, bare }: { shift: Shift; bare?: boolean }) {
           </Link>
         </div>
       </form>
+      {confirm.dialog}
     </div>
   );
   return bare ? (

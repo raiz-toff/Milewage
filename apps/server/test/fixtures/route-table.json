@@ -51,6 +51,7 @@
   "GET /api/v1/vehicles/:id/tax-years/:year": "tax",
   "PATCH /api/v1/devices/:id": "devices",
   "PATCH /api/v1/expenses/:id": "expenses",
+  "PATCH /api/v1/odometer/:id": "core",
   "PATCH /api/v1/own-mileage-rates/:id": "core",
   "PATCH /api/v1/settings": "core",
   "PATCH /api/v1/shifts/:ref": "core",

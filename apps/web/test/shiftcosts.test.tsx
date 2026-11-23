@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { shift, trip } from './support/fixtures';
-import { renderApp, settingsFixture, signedIn } from './support/kit';
+import { confirmYes, renderApp, settingsFixture, signedIn } from './support/kit';
 
 afterEach(cleanup);
 
@@ -86,6 +86,7 @@ describe("a shift's parking and tolls", () => {
     );
     await within(more).findByText('$10.25 on this shift');
     fireEvent.click(within(more).getByRole('button', { name: 'Remove parking $6.50' }));
+    await confirmYes('Remove expense');
     await within(more).findByText('$3.75 on this shift');
   });
 

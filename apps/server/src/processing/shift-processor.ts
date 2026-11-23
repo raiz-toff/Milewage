@@ -70,6 +70,8 @@ export interface PhoneReport {
   latePoints?: boolean;
   /** Why the engine runs, for the `engine.ran` event; `recalc` unless the caller says otherwise. */
   reason?: 'shift_end' | 'late_points' | 'label' | 'recalc';
+  /** The driver changed the shift's start or end time on the web; the phone's figures describe the old window. */
+  timesEdited?: boolean;
 }
 
 export interface ProcessOutcome {
@@ -183,6 +185,9 @@ export function createShiftProcessor({ db, now, stopsModule, emit }: ShiftProces
       // Anything the web (or a manual trip) added after the phone's own run explains a different total.
       const editedOnWeb =
         manual.length > 0 ||
+        phone.timesEdited === true ||
+        // A later run keeps the reason a time edit gave.
+        (shift.reconReasons ?? '').includes('edited_on_web') ||
         overrides.some((o) => o.deviceId === null) ||
         (stopsModule() && repo.labelsOf(shift.id).length > 0);
       const stored =

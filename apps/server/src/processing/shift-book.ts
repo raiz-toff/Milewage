@@ -34,7 +34,9 @@ export type ShiftChange =
   /** A stop label was set or cleared; only the engine can apply it. */
   | { cause: 'label' }
   /** The driver asked for a recalculation. */
-  | { cause: 'recalc' };
+  | { cause: 'recalc' }
+  /** The driver corrected the start or end time on the web (`ShiftBook.retime`). */
+  | { cause: 'times' };
 
 /**
  * The shift book: the one place that records a shift, recomputes it and announces it, and the one
@@ -76,6 +78,16 @@ export interface ShiftBook {
     p: Principal,
     row: ShiftRow,
     set: Pick<Partial<ShiftRow>, 'notes' | 'vehicleId' | 'updatedAt'>,
+  ): ShiftRow;
+  /**
+   * Corrects a finished shift's start and end time, sets its local date from the new start and
+   * recomputes through the same path as Recalculate (the engine reads the points inside the new
+   * window). With the engine needed and the raw points archived: `not_recomputable`, nothing changed.
+   */
+  retime(
+    p: Principal,
+    row: ShiftRow,
+    t: { startedAt: number; endedAt: number; updatedAt: number },
   ): ShiftRow;
   /** The driver reviewed it; from now on nothing changes it. */
   finalize(row: ShiftRow): ShiftRow;
@@ -124,7 +136,7 @@ export function createShiftBook({
     if (stopsModule()) emit('stops.derived', id(row));
   };
 
-  return {
+  const book: ShiftBook = {
     since,
     find(p, ref, o = {}) {
       const row = shifts.byRef(p.userId, ref, since(p));
@@ -187,6 +199,18 @@ export function createShiftBook({
       return saved;
     },
 
+    retime(p, row, t) {
+      if (trackingModule()) processor.assertRecomputable(row);
+      const saved =
+        shifts.update(row.id, {
+          startedAt: t.startedAt,
+          endedAt: t.endedAt,
+          localDate: drivers.of(p.userId).dateOf(t.startedAt),
+          updatedAt: t.updatedAt,
+        }) ?? row;
+      return book.recompute(p, saved, { cause: 'times' });
+    },
+
     finalize(row) {
       const saved = shifts.update(row.id, { status: 'finalized', updatedAt: now() }) ?? row;
       emit('shift.finalized', id(row));
@@ -219,10 +243,14 @@ export function createShiftBook({
       let engine = false;
       if (row.status !== 'active') {
         // Recalculate and labels ask for the engine; a trip change is re-added when it cannot run.
-        const asked = change.cause === 'recalc' || change.cause === 'label';
+        const asked =
+          change.cause === 'recalc' || change.cause === 'label' || change.cause === 'times';
         engine = trackingModule() && (asked || !archive.hasArchive(row.id));
         saved = engine
-          ? processor.run(row, { reason: change.cause === 'label' ? 'label' : 'recalc' }).shift
+          ? processor.run(row, {
+              reason: change.cause === 'label' ? 'label' : 'recalc',
+              timesEdited: change.cause === 'times',
+            }).shift
           : processor.retotal(row);
       }
       if (p.kind === 'device') saved = shifts.update(saved.id, touched(p)) ?? saved;
@@ -248,4 +276,5 @@ export function createShiftBook({
       return saved;
     },
   };
+  return book;
 }

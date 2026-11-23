@@ -28,6 +28,8 @@ Below the figures:
 - **Checks**: facts about the recording, with "What to do" under them. Ones marked Review come first.
 - **Odometer**, **Parking and tolls**, **Notes**, **Export this shift**, and **Label stops** where stops were found.
 
+The menu in the header (the three dots) edits or deletes the shift. See [Correcting or deleting a shift](#correcting-or-deleting-a-shift).
+
 ## Parking and tolls
 
 Paid for parking or a toll during a shift? Add it on the shift page, under Parking and tolls (shown when the expenses module runs).
@@ -36,13 +38,23 @@ Paid for parking or a toll during a shift? Add it on the shift page, under Parki
 2. Type the amount and, if you like, where.
 3. Choose **Add parking** or **Add toll**.
 
-It is saved as an ordinary expense on the shift's day, with the shift's vehicle, and appears in Expenses like any other. Add a receipt or change it there. The shift page shows the shift's parking and toll total; the trash button removes one. A running shift takes them too. The phone app cannot add them yet.
+It is saved as an ordinary expense on the shift's day, with the shift's vehicle, and appears in Expenses like any other. Add a receipt or change it there. The shift page shows the shift's parking and toll total; the trash button removes one, after asking. A running shift takes them too. The phone app cannot add them yet.
 
 While a shift runs, the page says "Shift in progress". Trips and stops appear when it ends.
 
 ## When nothing was recorded
 
-If the phone sent no location points, the page says "No route for this shift" and lists what the checks found. A shift with no distance adds nothing to your totals. The web app has no button to delete a shift. If you know the distance, add it as a trip.
+If the phone sent no location points, the page says "No route for this shift" and lists what the checks found. A shift with no distance adds nothing to your totals. If you know the distance, add it as a trip. If the shift was started by mistake, delete it (see below).
+
+## Correcting or deleting a shift
+
+Open the shift and use the menu in the header.
+
+**Edit times and vehicle.** The usual slip is forgetting to stop the shift. Choose "Edit times and vehicle", change the start or end date and time, and choose Save changes. The distance, trips and stops are worked out again from the GPS points inside the new times, so a later end can add distance and an earlier one can remove it. The phone's own figure is kept; if the two now differ, the checks say the shift was edited on the web. Times can be changed on a shift that has ended and is not Reviewed. They cannot be set to a time that has not happened yet, and the end cannot come before the start. If the raw points of an old shift were archived, the times cannot be changed, because they cannot be worked out again. The same form changes the vehicle, and that works while a shift is running too.
+
+**A shift that is still "in progress".** If the phone never ended it (a flat battery, a forgotten stop), the page says so and offers "End now". It ends the shift at this moment. If it really ended earlier, choose "Edit times and vehicle" afterwards and correct the end time.
+
+**Delete shift.** The box says what goes: the shift's distance, trips, stops, odometer readings and the earnings you entered for it. They stop counting in your totals, reports and tax figures, on the web and on your phone. Parking and tolls stay in Expenses. Choose "Delete shift" to confirm; this cannot be undone, and a shift less than 7 years old needs that confirmation. A running shift cannot be deleted: use End now first. After deleting you are taken back to the Shifts list.
 
 ## Adding a trip by hand
 
@@ -95,4 +107,4 @@ If the server's figures differ with the same points and the same engine version,
 
 ## What "Reviewed" means
 
-A Reviewed shift is finalized: it is your tax record. It is never worked out again, and its trips, stop labels and odometer readings cannot be changed. The web app has no button to mark a shift reviewed in this version. A shift only reaches this state through the server's API.
+A Reviewed shift is finalized: it is your tax record. It is never worked out again, and its times, vehicle, trips, stop labels and odometer readings cannot be changed. It can still be deleted, after the same confirmation. The web app has no button to mark a shift reviewed in this version. A shift only reaches this state through the server's API.

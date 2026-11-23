@@ -401,7 +401,8 @@ export interface paths {
         delete: operations["deleteOdometerReading"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** Correct a reading's value or time. A reading of a finalized shift is 409 shift_finalized. */
+        patch: operations["updateOdometerReading"];
         trace?: never;
     };
     "/shifts": {
@@ -439,7 +440,7 @@ export interface paths {
         delete: operations["purgeShift"];
         options?: never;
         head?: never;
-        /** Edit notes or vehicle. Start/end times are not editable (they define which points count). */
+        /** Edit notes, vehicle, or (web only) the start and end time of an ended shift. A time change recomputes the shift like Recalculate (the points inside the new window count). A running shift is 409 shift_not_ended, a finalized one 409 shift_finalized, an end before the start 422, and with the raw points archived 409 not_recomputable. */
         patch: operations["updateShift"];
         trace?: never;
     };
@@ -3293,6 +3294,38 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    updateOdometerReading: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reading_m?: number;
+                    recorded_at?: components["schemas"]["EpochMs"];
+                };
+            };
+        };
+        responses: {
+            /** @description Updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OdometerReading"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
     listShifts: {
         parameters: {
             query?: {
@@ -3435,6 +3468,8 @@ export interface operations {
                 "application/json": {
                     notes?: string | null;
                     vehicle_id?: number;
+                    started_at?: components["schemas"]["EpochMs"];
+                    ended_at?: components["schemas"]["EpochMs"];
                     updated_at?: components["schemas"]["EpochMs"];
                 };
             };

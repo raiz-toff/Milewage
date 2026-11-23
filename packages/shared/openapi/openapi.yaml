@@ -39,7 +39,7 @@ tags:
 x-modules:
   core:
     toggle: never
-    operations: [getHealth, getSetupStatus, listCountries, getErrorType, createOwner, confirmRecoveryKey, login, logout, changePassword, resetPassword, getSettings, updateSettings, listVehicles, createVehicle, updateVehicle, getSystemStatus, getSummary, getSummarySeries, listShifts, startShift, getShift, updateShift, purgeShift, endShift, finalizeShift, recalculateShift, setShiftOdometer, listOdometerReadings, createYearOdometerReading, deleteOdometerReading, listShiftTrips, putManualTrip, updateTrip, deleteManualTrip, listOwnMileageRates, createOwnMileageRate, updateOwnMileageRate, deleteOwnMileageRate]
+    operations: [getHealth, getSetupStatus, listCountries, getErrorType, createOwner, confirmRecoveryKey, login, logout, changePassword, resetPassword, getSettings, updateSettings, listVehicles, createVehicle, updateVehicle, getSystemStatus, getSummary, getSummarySeries, listShifts, startShift, getShift, updateShift, purgeShift, endShift, finalizeShift, recalculateShift, setShiftOdometer, listOdometerReadings, createYearOdometerReading, updateOdometerReading, deleteOdometerReading, listShiftTrips, putManualTrip, updateTrip, deleteManualTrip, listOwnMileageRates, createOwnMileageRate, updateOwnMileageRate, deleteOwnMileageRate]
   devices:
     toggle: modules.devices
     default: true
@@ -667,6 +667,33 @@ paths:
               schema: { $ref: '#/components/schemas/OdometerReading' }
         '422': { $ref: '#/components/responses/Unprocessable' }
   /odometer/{id}:
+    patch:
+      tags: [vehicles]
+      operationId: updateOdometerReading
+      summary: Correct a reading's value or time. A reading of a finalized shift is 409 shift_finalized.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              properties:
+                reading_m: { type: integer, minimum: 0 }
+                recorded_at: { $ref: '#/components/schemas/EpochMs' }
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OdometerReading' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
     delete:
       tags: [vehicles]
       operationId: deleteOdometerReading
@@ -745,7 +772,7 @@ paths:
     patch:
       tags: [shifts]
       operationId: updateShift
-      summary: Edit notes or vehicle. Start/end times are not editable (they define which points count).
+      summary: Edit notes, vehicle, or (web only) the start and end time of an ended shift. A time change recomputes the shift like Recalculate (the points inside the new window count). A running shift is 409 shift_not_ended, a finalized one 409 shift_finalized, an end before the start 422, and with the raw points archived 409 not_recomputable.
       requestBody:
         required: true
         content:
@@ -757,6 +784,8 @@ paths:
               properties:
                 notes: { type: [string, 'null'], maxLength: 2000 }
                 vehicle_id: { type: integer }
+                started_at: { $ref: '#/components/schemas/EpochMs' }
+                ended_at: { $ref: '#/components/schemas/EpochMs' }
                 updated_at: { $ref: '#/components/schemas/EpochMs' }
       responses:
         '200':

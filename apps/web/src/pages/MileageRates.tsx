@@ -14,6 +14,7 @@ import { SegmentedButtons } from '../ui/chips';
 import { Button, CheckField, DateField, Field, FormError, SelectField } from '../ui/form';
 import { EmptyState } from '../ui/layout';
 import { RowMenu } from '../ui/RowMenu';
+import { useConfirm } from '../ui/ConfirmDialog';
 
 type Rate = Schemas['DatedOwnMileageRate'];
 type Unit = 'km' | 'mi';
@@ -52,6 +53,7 @@ export function MileageRateSection() {
   const ratesQuery = useApiQuery('/own-mileage-rates');
   const rates = ratesQuery.data ?? null;
   const change = useChange();
+  const confirm = useConfirm();
   const error = errorText(change, ratesQuery);
   const today = todayIn(timezone);
   const locale = dateLocale(code);
@@ -136,7 +138,13 @@ export function MileageRateSection() {
   }
 
   const remove = (r: Rate) =>
-    change.run((api) => api.DELETE('/own-mileage-rates/{id}', { params: { path: { id: r.id } } }));
+    confirm.ask({
+      title: 'Remove this rate?',
+      description: `${rateWords(r)}, ${fromWords(r).toLowerCase()}, is removed. Mileage it valued goes back to the country rate. This cannot be undone.`,
+      confirmLabel: 'Remove rate',
+      action: (run) =>
+        run((api) => api.DELETE('/own-mileage-rates/{id}', { params: { path: { id: r.id } } })),
+    });
 
   return (
     <Card>
@@ -199,7 +207,7 @@ export function MileageRateSection() {
                         label: 'Remove',
                         icon: DeleteIcon,
                         destructive: true,
-                        onSelect: () => void remove(r),
+                        onSelect: () => remove(r),
                       },
                     ]}
                   />
@@ -296,6 +304,7 @@ export function MileageRateSection() {
             ) : null}
           </div>
         </form>
+        {confirm.dialog}
       </CardContent>
     </Card>
   );

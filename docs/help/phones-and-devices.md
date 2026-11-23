@@ -62,7 +62,7 @@ Revoke a phone you lost, sold or replaced:
 
 1. Open the Devices page.
 2. Open the phone's row menu and choose Revoke.
-3. Choose "Confirm revoke".
+3. A box asks you to confirm. Choose "Revoke phone".
 
 The phone's secret stops working at once. It stays on the list, marked revoked. The phone itself says "This phone was removed from your server. Re-pair to send your saved data." Nothing on the phone is deleted.
 

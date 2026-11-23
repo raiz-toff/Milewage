@@ -5,6 +5,7 @@ import type { FormEvent } from 'react';
 import type { Schemas } from '../api/client';
 import { errorText, put, useApiQuery, useChange } from '../api/query';
 import { formatMoney, parseMoney } from '../format';
+import { useConfirm } from '../ui/ConfirmDialog';
 import type { Read } from '../shift/view';
 import { EarningLedger } from './EarningLedger';
 import { useSettings } from '../session';
@@ -33,6 +34,7 @@ export function ShiftEarnings({
   const data = earnings.data;
   const platforms = useApiQuery('/platforms', undefined, { enabled: modules.platforms }).data ?? [];
   const change = useChange();
+  const confirm = useConfirm();
   const error = errorText(change, earnings);
   /** A save answers with the shift's earnings: shown at once; every other figure is read again. */
   const answered = (next: Earnings) => [put('/shifts/{ref}/earnings', { path }, next)];
@@ -79,19 +81,25 @@ export function ShiftEarnings({
     if (saved) setForm({ ...form, gross: '', tips: '', bonus: '', orders: '' });
   }
 
-  const remove = (platform: string) =>
-    change.run(
-      (api) =>
-        api.DELETE('/shifts/{ref}/earnings/{platform}', {
-          params: { path: { ...path, platform } },
-        }),
-      answered,
-    );
-
   /** A platform by slug: the driver's list, else the built-in name, else the slug itself. */
   const platformOf = (slug: string): PlatformLike =>
     known.find((p) => p.slug === slug) ?? { slug, label: builtinPlatform(slug)?.label ?? slug };
   const label = (slug: string) => platformOf(slug).label;
+
+  const remove = (platform: string) =>
+    confirm.ask({
+      title: 'Remove the entered total?',
+      description: `The total you entered for ${label(platform)} is removed from this shift's earnings. This cannot be undone.`,
+      confirmLabel: 'Remove total',
+      action: (run) =>
+        run(
+          (api) =>
+            api.DELETE('/shifts/{ref}/earnings/{platform}', {
+              params: { path: { ...path, platform } },
+            }),
+          answered,
+        ),
+    });
 
   // Nothing yet: one line says so and how, and the less common lines wait behind a button.
   const none = data?.effective.length === 0;
@@ -126,7 +134,7 @@ export function ShiftEarnings({
                   size="sm"
                   className="text-error"
                   aria-label={`Remove entered total for ${label(r.platform)}`}
-                  onClick={() => void remove(r.platform)}
+                  onClick={() => remove(r.platform)}
                 >
                   Remove
                 </UiButton>
@@ -190,6 +198,7 @@ export function ShiftEarnings({
       ) : (
         <EarningLedger shiftId={shift.id} data={data} options={options} />
       )}
+      {confirm.dialog}
     </Section>
   );
 }

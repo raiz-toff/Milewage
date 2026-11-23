@@ -123,6 +123,11 @@ export function createOdometerRepository(db: Db) {
         .all(),
     insert: (row: typeof odometerReadings.$inferInsert): OdometerRow =>
       orm.insert(odometerReadings).values(row).returning().get(),
+    update: (
+      id: number,
+      set: { readingM?: number; recordedAt?: number },
+    ): OdometerRow | undefined =>
+      orm.update(odometerReadings).set(set).where(eq(odometerReadings.id, id)).returning().get(),
     remove: (id: number) =>
       void orm.delete(odometerReadings).where(eq(odometerReadings.id, id)).run(),
     /** Upsert on (shift, kind). */

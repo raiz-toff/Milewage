@@ -4,6 +4,7 @@ import { Button as UiButton } from '@/components/ui/button';
 import { put, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
 import { formatMoney, parseMoney } from '../format';
+import { useConfirm } from '../ui/ConfirmDialog';
 import { useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
 import type { PickOption } from '../ui/form';
@@ -42,6 +43,7 @@ export function EarningLedger({
 }) {
   const { currency } = useSettings();
   const change = useChange();
+  const confirm = useConfirm();
   const { error } = change;
   const [form, setForm] = useState({
     platform: '',
@@ -78,14 +80,20 @@ export function EarningLedger({
     );
     if (ok) setForm({ ...form, amount: '', note: '' });
   }
-  const remove = (p: string, id: number) =>
-    void change.run(
-      (api) =>
-        api.DELETE('/shifts/{ref}/earnings/{platform}/entries/{id}', {
-          params: { path: { ref, platform: p, id } },
-        }),
-      shown,
-    );
+  const remove = (p: string, id: number, text: string) =>
+    confirm.ask({
+      title: 'Remove this line?',
+      description: `${text} is removed from this shift's earnings and your balance with ${label(p)}. This cannot be undone.`,
+      confirmLabel: 'Remove line',
+      action: (run) =>
+        run(
+          (api) =>
+            api.DELETE('/shifts/{ref}/earnings/{platform}/entries/{id}', {
+              params: { path: { ref, platform: p, id } },
+            }),
+          shown,
+        ),
+    });
 
   const rows = data.entries.filter((r) => r.ledger.some((x) => !PAY.includes(x.type)));
   return (
@@ -115,7 +123,7 @@ export function EarningLedger({
                     size="sm"
                     className="text-error"
                     aria-label={`Remove ${text}`}
-                    onClick={() => remove(r.platform, x.id)}
+                    onClick={() => remove(r.platform, x.id, text)}
                   >
                     Remove
                   </UiButton>
@@ -172,6 +180,7 @@ export function EarningLedger({
         For cash orders, commission, fees, tax the app kept, top-ups and payouts. Type the amount
         without a sign. A cash order is a fare plus the cash you collected.
       </p>
+      {confirm.dialog}
     </div>
   );
 }

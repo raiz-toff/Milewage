@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { renderApp, settingsFixture, signedIn, menu } from './support/kit';
+import { confirmNo, confirmYes, renderApp, settingsFixture, signedIn, menu } from './support/kit';
 
 afterEach(cleanup);
 
@@ -190,12 +190,14 @@ describe('devices page', () => {
     expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ name: 'Bike mount' });
   });
 
-  it('revokes only after a second click, then shows it revoked', async () => {
+  it('revokes only after the confirmation, then shows it revoked', async () => {
     const { calls } = server();
     await screen.findByText('Pixel');
     menu('Pixel', 'Revoke');
+    await confirmNo();
     expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm revoke' }));
+    menu('Pixel', 'Revoke');
+    await confirmYes('Revoke phone');
     await waitFor(() => expect(screen.getByText('revoked')).toBeTruthy());
     expect(screen.queryByRole('button', { name: 'Actions for Pixel' })).toBeNull();
   });

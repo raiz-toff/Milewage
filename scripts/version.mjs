@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Keeps every package.json version equal to the VERSION file, and checks that the Android app
-// (apps/android, which reads VERSION itself) still does and will install over the last release.
+// Keeps every package.json version and the image tags of infra/docker/docker-compose.yml equal to the
+// VERSION file, and checks that the Android app (apps/android, which reads VERSION itself) still does
+// and will install over the last release.
 // Usage: node scripts/version.mjs check|sync|bump <version>
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -25,6 +26,23 @@ export function packageFiles(root) {
     }
   }
   return files;
+}
+
+export const COMPOSE_FILE = join('infra', 'docker', 'docker-compose.yml');
+const COMPOSE_TAG = /^(\s*image:\s*milewage-[\w-]+:)(\S+)[ \t]*$/gm;
+
+/** The `image: milewage-*:TAG` lines of the local compose file whose tag is not the VERSION. */
+export function composeProblems(root) {
+  const file = join(root, COMPOSE_FILE);
+  if (!existsSync(file)) return [];
+  const version = readVersion(root);
+  return [...readFileSync(file, 'utf8').matchAll(COMPOSE_TAG)]
+    .filter((m) => m[2] !== version)
+    .map((m) => ({
+      file,
+      found: `${m[1].trim().replace(/^image:\s*/, '')}${m[2]}`,
+      expected: version,
+    }));
 }
 
 export const GRADLE_APP = join('apps', 'android', 'app', 'build.gradle.kts');
@@ -75,11 +93,12 @@ export function check(root) {
   }));
   return [
     ...found.filter((p) => p.found !== version).map((p) => ({ ...p, expected: version })),
+    ...composeProblems(root),
     ...androidProblems(root),
   ];
 }
 
-/** Rewrites every package.json version to VERSION; returns the files changed. */
+/** Rewrites every package.json version and the compose image tags to VERSION; returns the files changed. */
 export function sync(root) {
   const version = readVersion(root);
   const changed = [];
@@ -89,6 +108,15 @@ export function sync(root) {
     pkg.version = version;
     writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
     changed.push(file);
+  }
+  const compose = join(root, COMPOSE_FILE);
+  if (existsSync(compose)) {
+    const text = readFileSync(compose, 'utf8');
+    const updated = text.replace(COMPOSE_TAG, `$1${version}`);
+    if (updated !== text) {
+      writeFileSync(compose, updated);
+      changed.push(compose);
+    }
   }
   return changed;
 }
@@ -151,7 +179,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     for (const b of bad) console.error(`${b.file}: ${b.found}, expected ${b.expected}`);
     if (bad.length) {
       console.error(
-        'package.json versions: run "npm run version:sync". The Android default versionCode: raise it in apps/android/app/build.gradle.kts.',
+        'package.json versions and the compose image tags: run "npm run version:sync". The Android default versionCode: raise it in apps/android/app/build.gradle.kts.',
       );
       process.exit(1);
     }

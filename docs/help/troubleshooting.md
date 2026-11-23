@@ -8,7 +8,7 @@ order: 10
 
 ## "MileWage is not answering"
 
-The web app shows this when it cannot reach your server. Usually the server machine is off, Tailscale is off on this computer, or you opened the home address away from home. Fix that, then choose "Try again". If it still fails, check on the server machine that the two containers run and read the API log, as the install guide shows in [Where things live](../../infra/docs/install.md#5-where-things-live).
+The web app shows this when it cannot reach your server. Usually the server machine is off, Tailscale is off on this computer, or you opened the home address away from home. Fix that, then choose "Try again". If it still fails, run `infra/doctor.sh` on the server machine: it checks each part, says what is wrong and the command that fixes it. The API log is shown in [Where things live](../../infra/docs/install.md#5-where-things-live).
 
 ## "You are offline"
 

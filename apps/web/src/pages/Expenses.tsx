@@ -12,6 +12,7 @@ import {
   RemoveReceiptIcon,
 } from '@/ui/icons';
 import { RowMenu } from '../ui/RowMenu';
+import { useConfirm } from '../ui/ConfirmDialog';
 import { ShowMore } from '../ui/ShowMore';
 import { EmptyState, PageHeader, Section, StatCard, TableBox, tableClass } from '../ui/layout';
 import { Button as UiButton } from '@/components/ui/button';
@@ -141,6 +142,7 @@ export function ExpensesPage() {
   const ids = useId();
   const [editing, setEditing] = useState<number | null>(null);
   const change = useChange();
+  const confirm = useConfirm();
   const error = errorText(change, list, totalsQuery, dueQuery, catsQuery, vehiclesQuery);
 
   // Shifts within 7 days of the expense date are offered as a link (Comma behaviour).
@@ -611,11 +613,18 @@ export function ExpensesPage() {
                                   icon: RemoveReceiptIcon,
                                   destructive: true,
                                   onSelect: () =>
-                                    void change.run((api) =>
-                                      api.DELETE('/expenses/{id}/receipt', {
-                                        params: { path: { id: x.id } },
-                                      }),
-                                    ),
+                                    confirm.ask({
+                                      title: 'Remove this receipt?',
+                                      description:
+                                        'The photo or file is deleted. The expense stays. This cannot be undone.',
+                                      confirmLabel: 'Remove receipt',
+                                      action: (run) =>
+                                        run((api) =>
+                                          api.DELETE('/expenses/{id}/receipt', {
+                                            params: { path: { id: x.id } },
+                                          }),
+                                        ),
+                                    }),
                                 },
                               ]
                             : []),
@@ -624,9 +633,17 @@ export function ExpensesPage() {
                             icon: DeleteIcon,
                             destructive: true,
                             onSelect: () =>
-                              void change.run((api) =>
-                                api.DELETE('/expenses/{id}', { params: { path: { id: x.id } } }),
-                              ),
+                              confirm.ask({
+                                title: 'Delete this expense?',
+                                description: `${formatMoney(x.amount_cents, currency)} on ${day(x.spent_on)}${x.has_receipt ? ', with its receipt,' : ''} goes from your expenses and from your tax figures. This cannot be undone.`,
+                                confirmLabel: 'Delete expense',
+                                action: (run) =>
+                                  run((api) =>
+                                    api.DELETE('/expenses/{id}', {
+                                      params: { path: { id: x.id } },
+                                    }),
+                                  ),
+                              }),
                           },
                         ]}
                       />
@@ -639,6 +656,7 @@ export function ExpensesPage() {
         )}
         <ShowMore more={list.more} busy={list.loadingMore} onClick={list.showMore} />
       </Section>
+      {confirm.dialog}
     </section>
   );
 }

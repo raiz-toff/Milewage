@@ -70,8 +70,18 @@ export function NoRouteCard({
   );
 }
 
-/** In the map's place while the shift is still running on the phone. */
-export function InProgressCard({ earnings }: { earnings: boolean }) {
+/**
+ * In the map's place while the shift is still running on the phone. A shift the phone never ended
+ * (a dead battery, a forgotten stop) is ended here: End now stops it at this moment, and the times
+ * can be corrected after.
+ */
+export function InProgressCard({ shift, earnings }: { shift: Shift; earnings: boolean }) {
+  const change = useChange();
+  const ref = String(shift.id);
+  const endNow = () =>
+    change.run((api) =>
+      api.POST('/shifts/{ref}/end', { params: { path: { ref } }, body: { ended_at: Date.now() } }),
+    );
   return (
     <Section label="In progress" title="Shift in progress">
       <p className="text-body-medium text-muted-foreground">
@@ -83,6 +93,16 @@ export function InProgressCard({ earnings }: { earnings: boolean }) {
           Earnings can be entered once the shift has ended.
         </p>
       ) : null}
+      <p className="text-body-medium text-muted-foreground">
+        Not recording any more, or forgot to stop it? End it here at this moment, then correct the
+        end time if it was earlier.
+      </p>
+      <div>
+        <Button type="button" variant="tonal" busy={change.busy} onClick={() => void endNow()}>
+          End now
+        </Button>
+      </div>
+      <FormError message={change.error} />
     </Section>
   );
 }

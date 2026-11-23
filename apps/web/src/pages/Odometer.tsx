@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { OdometerIcon, VehiclesIcon } from '@/ui/icons';
+import { DeleteIcon, EditIcon, OdometerIcon, VehiclesIcon } from '@/ui/icons';
 import { useQueries } from '@tanstack/react-query';
 import { EmptyState, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
 import { Button as UiButton } from '@/components/ui/button';
+import { RowMenu } from '../ui/RowMenu';
+import { useConfirm } from '../ui/ConfirmDialog';
 import { Link } from 'react-router-dom';
 import { unwrap } from '../api/client';
 import { apiKey, errorText, useApiQuery, useChange } from '../api/query';
 import type { Schemas } from '../api/client';
-import { formatDateTime, formatDistance, parseDistance } from '../format';
+import { distanceInput, formatDateTime, formatDistance, parseDistance } from '../format';
 import { useSession, useSettings } from '../session';
 import { Button, DateField, Field, FormError, SelectField } from '../ui/form';
 import { dayOf, startOfDay, todayIn } from '../days';
@@ -30,7 +32,7 @@ const KIND_TEXT: Record<Reading['kind'], string> = {
  */
 export function OdometerPage() {
   const { api } = useSession();
-  const { distance_unit: unit, timezone, logbook } = useSettings();
+  const { distance_unit: unit, timezone, logbook, time_format: tf } = useSettings();
   const vehiclesQuery = useApiQuery('/vehicles');
   const vehicles = vehiclesQuery.data ?? null;
   const [chosen, setVehicleId] = useState('');
@@ -50,11 +52,14 @@ export function OdometerPage() {
     ? lists.flatMap((q) => q.data!).sort((x, y) => y.recorded_at - x.recorded_at)
     : null;
   const change = useChange();
+  const confirm = useConfirm();
   const { busy } = change;
   const error = errorText(change, vehiclesQuery, ...lists);
   const [kind, setKind] = useState<Kind>('year_start');
   const [date, setDate] = useState(() => todayIn(timezone));
   const [value, setValue] = useState('');
+  // The year reading being corrected, in the form below; null while adding.
+  const [editing, setEditing] = useState<Reading | null>(null);
 
   async function add() {
     const metres = parseDistance(value, unit);
@@ -73,8 +78,50 @@ export function OdometerPage() {
     if (saved) setValue('');
   }
 
+  function edit(r: Reading) {
+    setEditing(r);
+    setKind(r.kind as Kind);
+    setDate(dayOf(r.recorded_at, timezone));
+    setValue(distanceInput(r.reading_m, unit));
+    change.setError(null);
+  }
+
+  function stopEditing() {
+    setEditing(null);
+    setValue('');
+    setDate(todayIn(timezone));
+    change.setError(null);
+  }
+
+  async function save() {
+    if (!editing) return;
+    const metres = parseDistance(value, unit);
+    if (metres === null) return change.setError(`Enter the odometer as a number of ${unit}.`);
+    if (date > todayIn(timezone)) return change.setError('The date cannot be in the future.');
+    const saved = await change.run((api) =>
+      api.PATCH('/odometer/{id}', {
+        params: { path: { id: editing.id } },
+        body: {
+          reading_m: metres,
+          // A day left as it was keeps the exact time stored.
+          recorded_at:
+            date === dayOf(editing.recorded_at, timezone)
+              ? editing.recorded_at
+              : startOfDay(date, timezone),
+        },
+      }),
+    );
+    if (saved) stopEditing();
+  }
+
   const remove = (r: Reading) =>
-    change.run((api) => api.DELETE('/odometer/{id}', { params: { path: { id: r.id } } }));
+    confirm.ask({
+      title: 'Delete this reading?',
+      description: `The ${KIND_TEXT[r.kind].toLowerCase()} reading of ${formatDistance(r.reading_m, unit)} on ${formatDateTime(r.recorded_at, timezone, tf)} is deleted. This cannot be undone.`,
+      confirmLabel: 'Delete reading',
+      action: (run) =>
+        run((api) => api.DELETE('/odometer/{id}', { params: { path: { id: r.id } } })),
+    });
 
   if (vehicles === null)
     return error ? <FormError message={error} /> : <p className="text-muted-foreground">Loading</p>;
@@ -132,18 +179,19 @@ export function OdometerPage() {
         </div>
       ) : null}
 
-      <Section title="Add a tax-year reading">
+      <Section title={editing ? 'Edit reading' : 'Add a tax-year reading'}>
         <form
           className="grid gap-3 sm:grid-cols-4"
           onSubmit={(e) => {
             e.preventDefault();
-            void add();
+            void (editing ? save() : add());
           }}
         >
           <SelectField
             label="Reading"
             value={kind}
             onChange={(v) => setKind(v as Kind)}
+            disabled={!!editing}
             options={[
               { value: 'year_start', label: 'Year start' },
               { value: 'year_end', label: 'Year end' },
@@ -156,10 +204,15 @@ export function OdometerPage() {
             value={value}
             onChange={(e) => setValue(e.target.value)}
           />
-          <div className="flex items-end">
+          <div className="flex items-end gap-2">
             <Button type="submit" busy={busy || value.trim() === ''}>
-              Add reading
+              {editing ? 'Save changes' : 'Add reading'}
             </Button>
+            {editing ? (
+              <UiButton type="button" variant="ghost" onClick={stopEditing}>
+                Cancel
+              </UiButton>
+            ) : null}
           </div>
         </form>
         <FormError message={error} />
@@ -169,10 +222,11 @@ export function OdometerPage() {
         <p className="text-muted-foreground">Loading</p>
       ) : (
         <>
-          <ReadingsTable title="Tax year" rows={yearReadings} onDelete={remove} />
+          <ReadingsTable title="Tax year" rows={yearReadings} onEdit={edit} onDelete={remove} />
           <ReadingsTable title="Shifts" rows={shiftReadings} />
         </>
       )}
+      {confirm.dialog}
     </section>
   );
 }
@@ -180,10 +234,12 @@ export function OdometerPage() {
 function ReadingsTable({
   title,
   rows,
+  onEdit,
   onDelete,
 }: {
   title: string;
   rows: Reading[];
+  onEdit?: (r: Reading) => void;
   onDelete?: (r: Reading) => void;
 }) {
   const { distance_unit: unit, timezone, time_format: tf } = useSettings();
@@ -222,16 +278,19 @@ function ReadingsTable({
                         Shift
                       </Link>
                     ) : null}
-                    {onDelete ? (
-                      <UiButton
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="ml-3 text-error"
-                        onClick={() => onDelete(r)}
-                      >
-                        Delete
-                      </UiButton>
+                    {onEdit && onDelete ? (
+                      <RowMenu
+                        name={`${KIND_TEXT[r.kind].toLowerCase()} reading ${formatDistance(r.reading_m, unit)}`}
+                        actions={[
+                          { label: 'Edit', icon: EditIcon, onSelect: () => onEdit(r) },
+                          {
+                            label: 'Delete',
+                            icon: DeleteIcon,
+                            destructive: true,
+                            onSelect: () => onDelete(r),
+                          },
+                        ]}
+                      />
                     ) : null}
                   </td>
                 </tr>

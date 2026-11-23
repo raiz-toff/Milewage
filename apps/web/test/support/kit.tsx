@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { App } from '../../src/App';
@@ -114,6 +114,18 @@ export function openMenu(name: string | RegExp) {
 export function menu(name: string | RegExp, item: string | RegExp) {
   openMenu(name);
   fireEvent.click(screen.getByRole('menuitem', { name: item }));
+}
+
+/** Answer the shared confirmation: press the destructive button of the open dialog. */
+export async function confirmYes(name: string | RegExp) {
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.click(within(dialog).getByRole('button', { name }));
+}
+
+/** Answer the shared confirmation with Cancel. */
+export async function confirmNo() {
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 }
 
 /** The values a dropdown offers, read by opening it and closing it again. */

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { menu, renderApp, settingsFixture, signedIn } from './support/kit';
+import { confirmYes, menu, renderApp, settingsFixture, signedIn } from './support/kit';
 
 afterEach(cleanup);
 
@@ -73,6 +73,7 @@ describe('platforms card (module platforms)', () => {
       label: 'Skip It',
     });
     menu('Mine', 'Delete');
+    await confirmYes('Delete platform');
     await waitFor(() => expect(screen.queryByText('Mine')).toBeNull());
   });
 

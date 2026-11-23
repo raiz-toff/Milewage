@@ -16,6 +16,37 @@ All notable changes to MileWage are listed here. The format follows
 - `scripts/play-setup.ps1`: the one-time Google Play setup on a Windows PC, step by step. It finds
   the tools, makes the upload key, builds the App Bundle, opens each Play Console and Google Cloud
   page with its answer on the clipboard, and remembers what is done.
+- Self-hosting: `infra/upgrade.sh` (refuses a dirty or diverged checkout and a missing or stale
+  backup, copies the newest backup out, pulls, rebuilds, waits healthy, names the version notes to
+  read) and `infra/doctor.sh` (one line per check, then the next step, no secrets, works with the
+  stack down). Both are tested with a pretend host, like `install.sh`.
+- Web: manage your own records. A shift's page has a menu with "Delete shift" (it says what goes,
+  and the server's 7-year confirmation is the button) and "Edit times and vehicle". Correcting the
+  start or end time (the usual slip is forgetting to stop) makes the server work the shift out
+  again from the points inside the new times, the same way Recalculate does; it refuses a running
+  or Reviewed shift, an end before the start, and a shift whose raw points were archived. A shift
+  the phone never ended shows "End now". An odometer reading can be edited
+  (`PATCH /odometer/{id}`), not only deleted and added again. The Backups page says so when
+  downloads are turned off.
+
+### Changed
+
+- `infra/install.sh` checks the host before it writes anything (Linux or WSL2, 64-bit, Docker
+  installed, reachable and allowed, Compose v2, free disk, memory) and each failure names the next
+  command. It ends by printing the address to open on the computer, not only `127.0.0.1`, finds the
+  home network address without picking Docker's or a VPN's, no longer needs `sed -i` or `ip`, and
+  prints the exact Tailscale commands (with the port 443 case and its undo) instead of "run this
+  again". The compose image tags follow `VERSION` (`npm run version:sync` moves them, and
+  `version:check` fails when they drift); they were still `0.1.0`.
+- The install, upgrade and getting-started guides: a supported-hosts line, Tailscale marked
+  optional, your own reverse proxy, the security headers and publishing the app from your own
+  server moved under Advanced, the app download from the GitHub release only, and the stale
+  `v0.1.0` statements removed.
+- Web: one confirmation box, the same everywhere, before anything is deleted: a shift, a trip, an
+  expense or its receipt, an odometer reading, a platform, a mileage rate, a tax-jar entry, a parking
+  or toll line, an entered earnings total or line, and revoking a phone. It says what is lost; before,
+  most of these ran on the first click.
+- `PATCH /shifts/{ref}` also takes `started_at` and `ended_at` (web session only).
 
 ### Fixed
 

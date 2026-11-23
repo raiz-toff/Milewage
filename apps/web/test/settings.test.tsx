@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { changes } from '../src/pages/SettingsPage';
-import { renderApp, settingsFixture, signedIn, pick, optionsOf } from './support/kit';
+import { confirmYes, renderApp, settingsFixture, signedIn, pick, optionsOf } from './support/kit';
 import type { Handler } from './support/kit';
 import { countriesFixture } from './support/fixtures';
 
@@ -263,6 +263,7 @@ describe('settings page', () => {
       { button: 0, ctrlKey: false },
     );
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Remove' }));
+    await confirmYes('Remove rate');
     await waitFor(() => expect(calls.some((c) => c.method === 'DELETE')).toBe(true));
   });
 

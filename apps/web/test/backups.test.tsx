@@ -146,10 +146,12 @@ describe('backups page', () => {
     open([backup()], status(), { backup_download: false });
     await screen.findByText('nightly');
     expect(screen.queryByRole('link', { name: 'Download' })).toBeNull();
+    expect(screen.getByText(/Downloads are turned off on this server/)).toBeTruthy();
     cleanup();
     open([backup()], status(), { backup_download: true });
     const link = await screen.findByRole('link', { name: 'Download' });
     expect(link.getAttribute('href')).toBe('/api/v1/backups/1/download');
+    expect(screen.queryByText(/Downloads are turned off/)).toBeNull();
   });
 });
 
