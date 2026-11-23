@@ -11,6 +11,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vi
 // Each run starts a dozen processes; Git Bash on Windows needs seconds for that.
 vi.setConfig({ testTimeout: 60_000 });
 
+// A child with a fake PATH cannot find `bash` by name on Linux.
+const BASH = process.platform === 'win32' ? 'bash' : '/bin/bash';
 const script = join(fileURLToPath(new URL('.', import.meta.url)), 'install.sh');
 let dir;
 /** The port the fake-host tests ask for; chosen once so nothing else on the machine holds it. */
@@ -20,7 +22,7 @@ beforeEach(() => void (dir = mkdtempSync(join(tmpdir(), 'install-'))));
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 const run = (...args) =>
-  spawnSync('bash', [script, '--no-start', '--env-file', join(dir, 'sub', '.env'), ...args], {
+  spawnSync(BASH, [script, '--no-start', '--env-file', join(dir, 'sub', '.env'), ...args], {
     encoding: 'utf8',
   });
 const envText = () => readFileSync(join(dir, 'sub', '.env'), 'utf8');
@@ -122,7 +124,7 @@ function fakeHost({ tailscale = null, serveFails = false, ...host } = {}) {
   }
   return (args = [], input = '', env = {}) =>
     spawnSync(
-      'bash',
+      BASH,
       [script, '--env-file', join(dir, 'sub', '.env'), '--port', String(hostPort), ...args],
       {
         encoding: 'utf8',
@@ -192,7 +194,7 @@ test('--yes-tailscale answers for the driver; a failing serve exits 1 with the c
 
 test('--lan: Caddy on the LAN and the home address; --no-lan turns it off', () => {
   const lan = (...args) =>
-    spawnSync('bash', [script, '--no-start', '--env-file', join(dir, 'sub', '.env'), ...args], {
+    spawnSync(BASH, [script, '--no-start', '--env-file', join(dir, 'sub', '.env'), ...args], {
       encoding: 'utf8',
       env: { ...process.env, MILEWAGE_LAN_IP: '192.168.1.20' },
     });
@@ -211,7 +213,7 @@ test('--lan: Caddy on the LAN and the home address; --no-lan turns it off', () =
 
 test('--lan without a private address of this host leaves LAN access off', () => {
   const r = spawnSync(
-    'bash',
+    BASH,
     [script, '--no-start', '--env-file', join(dir, 'sub', '.env'), '--lan'],
     { encoding: 'utf8', env: { PATH: '/usr/bin:/bin', MILEWAGE_LAN_IP: '8.8.8.8' } },
   );
@@ -264,7 +266,7 @@ describe('preflight', () => {
   test('--no-start checks nothing about the host (it only writes the file)', () => {
     const { bin } = fakeBin(dir, { os: 'Darwin', docker: 'missing' });
     const r = spawnSync(
-      'bash',
+      BASH,
       [script, '--no-start', '--env-file', join(dir, 'sub', '.env'), '--port', String(hostPort)],
       { encoding: 'utf8', env: { PATH: bin } },
     );
@@ -318,7 +320,7 @@ describe('the host address', () => {
     const { bin, fake } = fakeBin(dir);
     if (ipBody !== null) fake('ip', ipBody);
     if (hostnameBody !== null) fake('hostname', hostnameBody);
-    return spawnSync('bash', ['-c', `. "${join(script, '..', 'lib.sh')}"; mw_lan_ip`], {
+    return spawnSync(BASH, ['-c', `. "${join(script, '..', 'lib.sh')}"; mw_lan_ip`], {
       encoding: 'utf8',
       env: { PATH: bin, ...env },
     }).stdout.trim();
