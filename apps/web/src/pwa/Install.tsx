@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { CloseIcon, DownloadIcon } from '@/ui/icons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { cardShows, dismissInstallCard, promptInstall, useInstall } from './install';
-import type { InstallState } from './install';
+import { cardShows, dismissInstallCard, promptInstall, useInstall } from './installPrompt';
+import type { InstallState } from './installPrompt';
 
 /** The browser's own steps, for browsers that install from their menu (plan 27 section 3). */
 const STEPS: Partial<Record<InstallState, string>> = {
