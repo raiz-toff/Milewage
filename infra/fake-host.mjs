@@ -143,7 +143,8 @@ exit 0`,
 
 /** Runs a script with the fake host as the whole PATH. */
 export function runScript(script, args, { bin, env = {}, input = '' }) {
-  return spawnSync('bash', [script, ...args], {
+  // The child's PATH is the fake folder alone, so Node could not find `bash` by name on Linux.
+  return spawnSync(process.platform === 'win32' ? 'bash' : '/bin/bash', [script, ...args], {
     encoding: 'utf8',
     input,
     env: { PATH: bin, MILEWAGE_INSTALL_RETRY_S: '0', ...env },
