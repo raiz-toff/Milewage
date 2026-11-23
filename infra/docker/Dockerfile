@@ -1,11 +1,11 @@
 # MileWage server image (10 section 14, 03 section 3). Build context is the repository root:
 #   docker build -f infra/docker/Dockerfile -t milewage-server:local .
-# Debian slim, not Alpine: better-sqlite3 13.0.3 needs Node >= 22.22 (spike B findings).
+# Debian slim, not Alpine: better-sqlite3 13.0.3 needs Node >= 22.22 and builds on 24 (Node 24 LTS since 2026-11-22; DECISIONS.md).
 # Base images are pinned by the digest of their multi-arch index (amd64 and arm64 alike), read from
-# Docker Hub on 2026-11-08; Renovate (renovate.json) proposes updates. To check one by hand:
-#   docker buildx imagetools inspect node:22.22.0-bookworm-slim   (the "Digest:" line)
+# Docker Hub on 2026-11-22; Renovate (renovate.json) proposes updates. To check one by hand:
+#   docker buildx imagetools inspect node:24.22.3-bookworm-slim   (the "Digest:" line)
 # infra/docker/dockerfile.test.mjs requires every FROM of a registry image to carry a digest.
-FROM node:22.22.0-bookworm-slim@sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94 AS build
+FROM node:24.22.3-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS build
 WORKDIR /src
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
   && rm -rf /var/lib/apt/lists/*
@@ -22,14 +22,14 @@ FROM caddy:2.8.4-alpine@sha256:af32e97399febea808609119bb21544d0265c58a02836576e
 COPY --from=web /src/apps/web/dist /srv/web
 
 # Runtime dependencies: only the native module stays external to the bundle.
-FROM node:22.22.0-bookworm-slim@sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94 AS native
+FROM node:24.22.3-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS native
 WORKDIR /rt
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=build /src/dist/native-package.json package.json
 RUN npm install --omit=dev --no-audit --no-fund
 
-FROM node:22.22.0-bookworm-slim@sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94
+FROM node:24.22.3-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54
 WORKDIR /app
 ENV NODE_ENV=production \
     MILEWAGE_PORT=3000 \

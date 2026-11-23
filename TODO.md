@@ -87,10 +87,10 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
       6 April year everywhere (then the Tax page, exports and `expense-math.ts` change together).
 - [ ] **Run `milewage-cli recalc` once after upgrading to 0.2.0** if shifts were ever created by CSV import
       (AR4): earlier imports left `calculated_at` empty, so their trips never reached the phone.
-- [ ] **Make Node 22.22 the default on `coder`** (owner, 2026-11-08). `node --version` is v24.15.0;
-      `.nvmrc` says 22.22.0. Verify runs use Node 22 only because `~/.local/node22/bin` is put first
-      on `PATH`; a shell without it runs Node 24. Install 22.22 as the default (nvm is not
-      installed), or put `~/.local/node22/bin` first on `PATH` in the shell profile.
+- [ ] **Re-run the engine's phone cross-check on Node 24** (2026-11-22). The repo moved from Node 22.22
+      to 24.22 (DECISIONS.md). The engine's fixture tests pass on 24 on x86-64, but `sin`, `cos` and
+      `atan2` must match the phone to the last bit, so run `npm run crosscheck:engine` (JDK 17 and the
+      Android SDK) with Node 24 first on `PATH`, and on an arm64 host (Raspberry Pi).
 - [ ] **Run spikes A, B and D, or record that the field test replaces them** (owner, 2026-11-08).
       Only S0 has run; E is optional. Status table in
       plan 12 section 2, "Spike status (2026-11-08)".

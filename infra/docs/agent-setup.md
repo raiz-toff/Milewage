@@ -11,7 +11,7 @@ Two containers from `infra/docker/docker-compose.yml`:
 
 | Container | Does                                                                                  | Limits        |
 | --------- | ------------------------------------------------------------------------------------- | ------------- |
-| `api`     | the MileWage server (Node 22, SQLite)                                                 | 192 MB, 1 CPU |
+| `api`     | the MileWage server (Node 24, SQLite)                                                 | 192 MB, 1 CPU |
 | `caddy`   | serves the web app, passes `/api` to the server, published on `127.0.0.1:<port>` only | 64 MB, ½ CPU  |
 
 Data lives in Docker volumes (`data`, `backups`, `config`, `caddy_data`, `caddy_config`). Expect

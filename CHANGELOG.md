@@ -31,6 +31,7 @@ All notable changes to MileWage are listed here. The format follows
 
 ### Changed
 
+- **Node 24.22 (LTS) replaces Node 22.22** in the server image, `.nvmrc`, `engines` and the type packages. `better-sqlite3` builds on it and the test suite passes on Linux x86-64. Still to run: the engine's phone cross-check on Node 24, and on an arm64 host (`TODO.md`). Web page tests fail on native Windows (cause unknown), so run them in WSL2 (`docs/development.md`).
 - `infra/install.sh` checks the host before it writes anything (Linux or WSL2, 64-bit, Docker
   installed, reachable and allowed, Compose v2, free disk, memory) and each failure names the next
   command. It ends by printing the address to open on the computer, not only `127.0.0.1`, finds the

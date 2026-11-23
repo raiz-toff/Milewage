@@ -25,7 +25,7 @@ test('the pinned versions are the ones the stack is tested on, one digest per im
     if (byTag.has(tag)) expect(byTag.get(tag)).toBe(digest);
     byTag.set(tag, digest);
   }
-  expect([...byTag.keys()].sort()).toEqual(['caddy:2.8.4-alpine', 'node:22.22.0-bookworm-slim']);
+  expect([...byTag.keys()].sort()).toEqual(['caddy:2.8.4-alpine', 'node:24.22.3-bookworm-slim']);
 });
 
 test('the server stays the last stage, so a plain build and the images job produce it', () => {

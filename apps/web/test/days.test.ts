@@ -91,7 +91,10 @@ describe('periods', () => {
 
   it('writes a short range in the local order', () => {
     expect(rangeText('2026-11-02', '2026-11-08', 'en-CA')).toBe('Nov 2–8, 2026');
-    expect(rangeText('2026-11-02', '2026-11-08', 'en-GB')).toBe('2–8 Nov 2026');
+    // Newer ICU data (Node 24) spaces the dash in en-GB ('2 – 8 Nov 2026'); older data does not.
+    expect(rangeText('2026-11-02', '2026-11-08', 'en-GB').replace(/ ?– ?/, '–')).toBe(
+      '2–8 Nov 2026',
+    );
   });
 });
 

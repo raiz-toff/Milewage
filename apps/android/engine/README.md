@@ -105,7 +105,7 @@ decimetres; `route.ts` takes one `cos`. `+ - * /` and `sqrt` are correctly round
 every platform, so the only freedom is in `sin`, `cos` and `atan2`, which no standard pins to the
 last bit. One bit can move a distance across a half decimetre.
 
-What Node runs: Node v22.22.0 (the server image pins it) is built without
+What Node runs: Node v22.22.0 when this was measured (the server image now pins Node 24.22.3; see the open check in TODO.md) is built without
 `V8_USE_LIBM_TRIG_FUNCTIONS` (its `tools/v8_gypfiles` never define it, and `--use-libm-trig-functions`
 does not exist in `node --v8-options`), so `Math.sin`, `Math.cos` and `Math.atan2` are V8's fdlibm
 port in `deps/v8/src/base/ieee754.cc`. `FdLibm.kt` ports those functions line for line
@@ -137,7 +137,7 @@ Residual risk, plainly:
 - **Kotlin/Native (iPhone, later).** Kotlin/Native emits plain IEEE operations without the LLVM
   contraction flag, so no FMA should appear. Unverified until the module moves to `commonMain`:
   run the same tests in `iosTest` then.
-- **The server's Node.** The truth was measured on Node v22.22.0 on x86-64. Node is built with
+- **The server's Node.** The truth was measured on Node v22.22.0 on x86-64; the fixture tests also pass on Node 24.22.3 on x86-64, the phone cross-check has not been re-run on 24. Node is built with
   `-std=gnu++17`, where GCC may contract `a * b + c` into a fused multiply-add on targets that
   have one; only s390x and ppc64 builds turn that off. A server on arm64 (Raspberry Pi, Ampere)
   may therefore compute fdlibm's polynomials with FMA and differ in the last bit from an x86-64
