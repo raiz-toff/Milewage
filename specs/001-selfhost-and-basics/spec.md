@@ -3,9 +3,11 @@
 Status: in progress. Sources: three read-only audits (install journey, missing basics, public self-host reports), 2026-11-22.
 
 ## Principle
+
 Fewer things, each one finished. Every item kept has its whole path done: the action, a confirm where it destroys, an error that says what to do, a test and the doc line. Anything that cannot be finished properly is cut and written under "Cut".
 
 ## Track A: manage your own records (apps/server, apps/web)
+
 Evidence: the server has `DELETE /shifts/:ref` but the web never calls it; destructive actions in Expenses, Odometer, Platforms, Devices, Tax and Mileage rates run with no confirm.
 
 - A1 One shared confirm dialog (built on `components/ui/dialog.tsx`), used by every destructive action in the web. Says what is lost; the shift dialog says that miles and money for it go too.
@@ -17,6 +19,7 @@ Evidence: the server has `DELETE /shifts/:ref` but the web never calls it; destr
 - A7 Download a backup from the Backups page if the server already serves it; otherwise state in the page that downloads are by CLI. No new backup features.
 
 ## Track B: install, run, upgrade, diagnose (infra, docs)
+
 Evidence: install.sh is bash and Linux only with no stated host list; checks come late and one Docker message covers three causes; compose tags are `0.1.0` while VERSION is 0.3.1; upgrade is a manual three steps; there is no health check; the pairing code can carry `127.0.0.1`.
 
 - B1 Compose image tags follow VERSION, with a test that fails when they drift.
@@ -27,6 +30,7 @@ Evidence: install.sh is bash and Linux only with no stated host list; checks com
 - B6 Docs: one "Supported hosts" line; every `v0.1.0` and stale statement fixed; Tailscale marked optional with the 443-taken case and the exact undo; first-time APK path is the GitHub release APK only; own-server APK publishing moves under Advanced.
 
 ## Cut (decided, not forgotten)
+
 - Username change, delete-account / wipe-all in the app: one owner per server, `docker compose down -v` is the wipe and is documented.
 - CSV import: large and unproven demand. Logged in TODO.md.
 - Shift merge, split, global undo: confirmation dialogs are the safety net.
@@ -36,4 +40,5 @@ Evidence: install.sh is bash and Linux only with no stated host list; checks com
 - `POST /shifts/:ref/recalculate` and `/finalize` with no web caller: kept (phone and tests use them); decision recorded, not removed here.
 
 ## Done means
+
 `npm run verify:js` green, new tests for every server change and for the shell scripts (infra/*.test.mjs style), docs updated, CHANGELOG entry, no new warnings.
