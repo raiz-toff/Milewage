@@ -270,14 +270,13 @@ class HomeViewModel(
 
     /**
      * "Discard" on the End dialog of a very short shift, after the driver tapped it: the shift is
-     * dropped, or ended and deleted (queued when the server cannot be reached; nothing is lost silently).
+     * ended and deleted (queued when the server cannot be reached; nothing is lost silently).
      */
     fun discard() {
         if (state.value.running == null || state.value.busy != null) return
         viewModelScope.launch {
             local.update { it.copy(busy = Busy.END) }
             when (val r = safely { data.discardShift() }) {
-                DiscardResult.Dropped -> events.trySend(HomeEvent.Discarded(deleted = true))
                 is DiscardResult.Queued -> {
                     val sent = withTimeoutOrNull(SEND_WAIT_MS) { safely { data.sendNow() } } == true
                     events.trySend(HomeEvent.Discarded(deleted = sent))

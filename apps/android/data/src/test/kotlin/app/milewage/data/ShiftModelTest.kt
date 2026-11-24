@@ -117,23 +117,21 @@ class ShiftModelTest {
     }
 
     @Test
-    fun discardingAShiftTheServerNeverHeardOfDropsItFromThePhone() = runBlocking {
+    fun discardingAShiftWhoseCreateIsNotAcknowledgedStillEndsAndDeletesIt() = runBlocking {
         val srv = server()
         val p = Phone(srv)
         p.net.down = true
         p.data.startShift(3, odometerStartM = 50_000)
         assertTrue(p.data.store.hasChange(ChangeType.SHIFT_CREATE, ID))
         p.clock.t = 31_000
-        assertEquals(DiscardResult.Dropped, p.data.discardShift())
-        assertNull(p.data.store.shift(ID))
-        assertNull(p.data.shifts.running())
-        assertEquals(null, p.recorder.recordingId)
-        assertEquals(emptyList(), p.data.store.odometer(ID))
-        assertFalse(p.data.store.hasChange(ChangeType.SHIFT_CREATE, ID))
-        // Nothing is left to send, and nothing was ever sent.
+        // The create may already be on its way: nothing is dropped, the end and the delete queue behind it.
+        assertIs<DiscardResult.Queued>(p.data.discardShift())
+        assertTrue(p.data.store.hasChange(ChangeType.SHIFT_CREATE, ID))
+        assertTrue(p.data.store.hasChange(ChangeType.SHIFT_DELETE, ID))
+        assertNotNull(p.data.store.shift(ID)) // the phone's copy stays until the server answers
         p.net.down = false
         assertTrue(p.data.sendNow())
-        assertTrue(srv.calls.none { it.method != "GET" })
+        assertNull(p.data.store.shift(ID))
     }
 
     @Test

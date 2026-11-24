@@ -273,7 +273,7 @@ class HomeViewModelTest : VmTest() {
     }
 
     @Test
-    fun `discarding a very short shift ends and deletes it, and a shift the server never heard of is just dropped`() = runTest {
+    fun `discarding a very short shift ends and deletes it`() = runTest {
         data.running.value = runningView()
         val (vm, events) = home()
         vm.discard()
@@ -282,12 +282,6 @@ class HomeViewModelTest : VmTest() {
         assertTrue("end" !in data.calls) // the model ends it itself; the screen never ends and then discards
         assertEquals(HomeEvent.Discarded(deleted = true), events.last()) // the fake's send round succeeds
         assertNull(vm.state.value.running)
-
-        data.running.value = runningView()
-        data.discardResult = app.milewage.core.shift.DiscardResult.Dropped
-        vm.discard()
-        advanceUntilIdle()
-        assertEquals(HomeEvent.Discarded(deleted = true), events.last())
     }
 
     @Test

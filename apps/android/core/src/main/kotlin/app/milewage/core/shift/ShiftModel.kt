@@ -41,9 +41,6 @@ sealed interface EndResult {
 
 /** What [ShiftModel.discard] did. */
 sealed interface DiscardResult {
-    /** The server never heard of the shift: it is gone from the phone, nothing is left to send. */
-    data object Dropped : DiscardResult
-
     /** The shift was ended and its delete queued; the phone's copy goes when the server confirms. */
     data class Queued(val shift: ShiftRecord) : DiscardResult
 
@@ -179,31 +176,19 @@ class ShiftModel(
 
     /**
      * "Discard" on the End dialog of a very short shift ([VeryShortShift]); asked first, never
-     * automatic. A shift the server never heard of (its create still waits in the outbox) is dropped
-     * from the phone with everything queued for it. Otherwise the shift is ended as normal and a
-     * delete is queued behind its end (the server refuses to delete a running shift): the phone's
+     * automatic. The shift is ended as normal and a delete is queued behind its end (the server
+     * refuses to delete a running shift), even when its create has not been acknowledged: that request
+     * may already be on its way, and dropping the shift here could leave a running shift on the
+     * server that nothing ends. The phone's
      * copy stays until the server confirms, so offline nothing is lost silently and the delete goes
      * with the next send.
      */
     suspend fun discard(): DiscardResult {
         val shift = running() ?: return DiscardResult.NoShift
-        if (dropIfUnheard(shift.clientId)) return DiscardResult.Dropped
         val ended = (end() as? EndResult.Ended) ?: return DiscardResult.NoShift
         outbox.enqueue(ShiftChange.Delete(ended.shift.clientId))
         onQueued()
         return DiscardResult.Queued(ended.shift)
-    }
-
-    private suspend fun dropIfUnheard(clientId: String): Boolean = lock.withLock {
-        val shift = store.runningShift()?.takeIf { it.endedAt == null && it.clientId == clientId } ?: return@withLock false
-        // Rechecked under the lock: the create may have gone out since.
-        if (shift.serverId != null || !outbox.has(ChangeType.SHIFT_CREATE, clientId)) return@withLock false
-        recorder.stop()
-        store.transaction {
-            outbox.dropShift(clientId)
-            store.deleteShift(clientId)
-        }
-        true
     }
 
     private suspend fun endAt(endedAt: Long, odometerEndM: Long?, autoClosed: Boolean): EndResult = lock.withLock {
