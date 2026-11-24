@@ -15,11 +15,11 @@ val milewageVersion: String = providers.fileContents(
 ).asText.get().trim()
 
 // versionCode: MILEWAGE_VERSION_CODE, a whole number that grows with every build handed out.
-// The last release (0.3.0) was 3, so the default is 4: this APK installs over it.
+// The last release (0.3.1) was 4, so the default is 5: this APK installs over it.
 val maxVersionCode = 2_100_000_000 // Google Play's largest allowed versionCode
 val milewageVersionCode: Int = providers.environmentVariable("MILEWAGE_VERSION_CODE").orNull
     .let { raw ->
-        if (raw.isNullOrEmpty()) return@let 4
+        if (raw.isNullOrEmpty()) return@let 5
         val n = raw.toIntOrNull()
         require(raw.all(Char::isDigit) && n != null && n in 1..maxVersionCode) {
             "MILEWAGE_VERSION_CODE must be a whole number from 1 to $maxVersionCode, got \"$raw\""

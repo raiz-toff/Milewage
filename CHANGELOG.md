@@ -6,6 +6,8 @@ All notable changes to MileWage are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-11-23
+
 ### Added
 
 - A shift started by mistake can be thrown away. A shift under 2 minutes and under 160 m (0.1 mi)

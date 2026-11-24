@@ -1,0 +1,4 @@
+• Fixed: the phone now sends your shifts as soon as home Wi-Fi works, and "offline" clears by itself.
+• New: ended a shift by mistake? MileWage offers to discard shifts under 2 minutes.
+• New: a heads-up when no location has come in for 3 minutes.
+• Better: overlapping and forgotten shifts are flagged for review instead of silently kept.
