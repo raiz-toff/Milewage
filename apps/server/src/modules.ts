@@ -20,6 +20,7 @@ import { createLateRecompute } from './processing/late-recompute';
 import { receiptsDirOf } from './receipts/store';
 import { taxReport } from './tax-report';
 import { SERVER_VERSION } from './version';
+import { updateCheckJob } from './updates';
 import { backupRoutes } from './routes/backup';
 import { coreRoutes } from './routes/core';
 import { devicesRoutes } from './routes/devices';
@@ -78,6 +79,12 @@ export const serverModules = [
           drivers: h.drivers,
           deduction: h.deduction,
           present: h.present,
+          health: {
+            disk: h.disk,
+            backups: () => h.backup.list(),
+            updates: h.updates,
+            updatesEnabled: (userId) => h.drivers.of(userId).settings.updateCheckEnabled !== 0,
+          },
           status: {
             state: h.state,
             disk: h.disk,
@@ -92,6 +99,16 @@ export const serverModules = [
         },
         h.authn,
       ),
+      // Without a fetcher (tests) the server never calls out, so there is nothing to schedule.
+      jobs: h.fetchLatestRelease
+        ? [
+            updateCheckJob({
+              service: h.updates,
+              enabled: () => h.drivers.owner()?.settings.updateCheckEnabled !== 0,
+              now: h.now,
+            }),
+          ]
+        : [],
     }),
   }),
   serverModule({

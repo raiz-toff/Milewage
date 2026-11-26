@@ -76,7 +76,8 @@ class ApiClient(
      */
     suspend fun send(request: ShiftRequest): ApiResponse<JsonElement> {
         val endpoint = ShiftRequests.endpointOf(request.kind)
-        val bytes = ApiJson.encodeToString(JsonObject.serializer(), request.body).encodeToByteArray()
+        // A DELETE has no body.
+        val bytes = if (request.method == HttpMethod.DELETE) null else ApiJson.encodeToString(JsonObject.serializer(), request.body).encodeToByteArray()
         val res = exchange(request.method, request.path, emptyList(), bytes, endpoint.gzip, root = false)
         return ApiResponse(res.status, parseJson(res), res.headers)
     }

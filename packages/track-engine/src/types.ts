@@ -65,7 +65,10 @@ export type FlagCode =
   | 'clock_skew'
   | 'override_orphaned'
   | 'manual_trip_present'
-  | 'calc_mismatch';
+  | 'calc_mismatch'
+  | 'very_short_shift'
+  | 'shift_overlap'
+  | 'stale_active_shift';
 
 export interface Flag {
   code: FlagCode;

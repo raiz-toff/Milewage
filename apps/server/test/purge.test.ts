@@ -92,7 +92,7 @@ describe('DELETE /shifts/{ref} (07 section 4.2)', () => {
     expect((await web('GET', `/shifts/${OTHER}`)).json().total_m).toBeGreaterThan(0);
   });
 
-  test('an active shift, a phone and a signed-out caller are refused', async () => {
+  test('an active shift, a delete without the yes and a signed-out caller are refused', async () => {
     const active = '22222222-3333-4444-8555-666666666666';
     h.clock.t += 3_600_000;
     await h.call(
@@ -103,9 +103,14 @@ describe('DELETE /shifts/{ref} (07 section 4.2)', () => {
     );
     const res = await web('DELETE', `/shifts/${active}?confirm_recent=true`);
     expect([res.statusCode, res.json().code]).toEqual([409, 'shift_not_ended']);
-    expect(
-      (await h.call('DELETE', `/shifts/${SHIFT}?confirm_recent=true`, undefined, auth)).statusCode,
-    ).toBe(403);
+    // A phone may delete (Discard on a very short shift), but only an ended shift and only with the yes.
+    const phone = await h.call('DELETE', `/shifts/${active}?confirm_recent=true`, undefined, auth);
+    expect([phone.statusCode, phone.json().code]).toEqual([409, 'shift_not_ended']);
+    // A normal shift is refused for a phone, with or without the yes.
+    for (const q of ['', '?confirm_recent=true']) {
+      const normal = await h.call('DELETE', `/shifts/${SHIFT}${q}`, undefined, auth);
+      expect([normal.statusCode, normal.json().code]).toEqual([403, 'scope_forbidden']);
+    }
     expect((await h.call('DELETE', `/shifts/${SHIFT}?confirm_recent=true`)).statusCode).toBe(401);
   });
 

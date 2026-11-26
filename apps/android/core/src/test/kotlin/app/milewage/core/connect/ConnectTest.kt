@@ -127,6 +127,106 @@ class ConnectTest {
         assertEquals(Where.HOME, p.r.where)
     }
 
+    // ---- the way home: a network change drops the choice, a failed probe gets quick retries
+
+    /** A picker whose home probe answers from [answers] in turn (the last repeats), with every wait recorded. */
+    private class Flaky(vararg answers: Boolean, local: () -> Boolean? = { true }) {
+        val probes = mutableListOf<String>()
+        val waits = mutableListOf<Long>()
+        val clock = TestClock(0)
+        private var i = 0
+        val r = RoutePicker(
+            localNetwork = { local() },
+            probe = { url, _ -> probes += url; answers[minOf(i++, answers.size - 1)] },
+            clock = clock,
+            pause = { waits += it },
+        )
+    }
+
+    @Test
+    fun aNetworkChangeDropsTheChoiceSoTheNextPickLooksAgain() = runTest {
+        val p = Flaky(true)
+        p.r.pick(both)
+        p.r.pick(both)
+        assertEquals(1, p.probes.size) // remembered
+        p.r.networkChanged()
+        assertEquals(Where.HOME, p.r.pick(both).where)
+        assertEquals(2, p.probes.size)
+    }
+
+    @Test
+    fun aHomeProbeThatFailsRightAfterJoiningWifiIsRetriedBeforeSettlingOnAway() = runTest {
+        val p = Flaky(false, false, true) // Wi-Fi joined, DNS not ready, then ready
+        assertEquals(Picked(HOME, Where.HOME), p.r.pick(both))
+        assertEquals(3, p.probes.size)
+        assertEquals(RouteTimes.RETRY_AFTER_MS.toList(), p.waits)
+    }
+
+    @Test
+    fun whenEveryRetryFailsItSettlesOnAwayAndTheRetriesAreNotRepeatedForTheSameNetwork() = runTest {
+        val p = Flaky(false)
+        assertEquals(Picked(AWAY, Where.AWAY), p.r.pick(both))
+        assertEquals(1 + RouteTimes.RETRY_AFTER_MS.size, p.probes.size)
+        p.clock.now = RouteTimes.REMEMBER_AWAY_ON_LAN_MS // the short memo is over
+        p.waits.clear()
+        p.r.pick(both)
+        assertEquals(2 + RouteTimes.RETRY_AFTER_MS.size, p.probes.size) // one probe, no retries
+        assertEquals(emptyList(), p.waits)
+        p.r.networkChanged()
+        p.r.pick(both)
+        assertEquals(RouteTimes.RETRY_AFTER_MS.toList(), p.waits) // a new network: retries again
+    }
+
+    @Test
+    fun anAwayPickAfterAFailedHomeProbeOnWifiIsNotKeptForAMinute() = runTest {
+        val p = Flaky(false)
+        p.r.pick(both)
+        val probed = p.probes.size
+        p.clock.now = RouteTimes.REMEMBER_AWAY_ON_LAN_MS - 1
+        p.r.pick(both)
+        assertEquals(probed, p.probes.size) // briefly remembered
+        p.clock.now = RouteTimes.REMEMBER_AWAY_ON_LAN_MS
+        p.r.pick(both)
+        assertTrue(p.probes.size > probed) // looked again long before 60 s
+        assertTrue(RouteTimes.REMEMBER_AWAY_ON_LAN_MS < RouteTimes.REMEMBER_MS)
+    }
+
+    @Test
+    fun anAwayPickWhoseRequestGotNoAnswerIsForgottenAtOnce() = runTest {
+        val p = Flaky(false)
+        p.r.pick(both)
+        val probed = p.probes.size
+        p.r.forget() // what the API client's onUnreachable does
+        p.r.pick(both)
+        assertTrue(p.probes.size > probed)
+    }
+
+    @Test
+    fun mobileDataIsAwayWithoutProbingOrWaiting() = runTest {
+        val p = Flaky(true, local = { false })
+        assertEquals(Where.AWAY, p.r.pick(both).where)
+        assertEquals(emptyList(), p.probes)
+        assertEquals(emptyList(), p.waits)
+    }
+
+    @Test
+    fun theRetriesStopWhenThePhoneMovedToMobileDataMeanwhile() = runTest {
+        var local: Boolean? = true
+        val p = Flaky(false, local = { local })
+        val r = RoutePicker(localNetwork = { local }, probe = { _, _ -> false }, clock = p.clock, pause = { local = false; p.waits += it })
+        assertEquals(Where.AWAY, r.pick(both).where)
+        assertEquals(1, p.waits.size)
+    }
+
+    @Test
+    fun theProbeStillWantsTheSameInstanceSoTheTokenNeverGoesToAnotherServer() = runTest {
+        // The retries probe with the credential's instance id each time.
+        val ids = mutableListOf<String?>()
+        val r = RoutePicker(localNetwork = { true }, probe = { _, id -> ids += id; false }, clock = TestClock(0), pause = {})
+        r.pick(both)
+        assertEquals<List<String?>>(List(1 + RouteTimes.RETRY_AFTER_MS.size) { "inst-1" }, ids)
+    }
+
     @Test
     fun theProbeWantsAQuickMileWageAnswerFromTheSameServer() = runTest {
         fun answer(headers: Map<String, String>, status: Int = 200) =

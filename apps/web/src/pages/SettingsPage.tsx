@@ -14,6 +14,7 @@ import { Button, Field, FormError, PrivacyLink, SelectField } from '../ui/form';
 import { PageHeader } from '../ui/layout';
 import { LinkRow, SectionNav } from '../ui/nav';
 import { Account } from './Account';
+import { HealthSection, UpdatesSection } from './Health';
 import { PlatformsCard } from './Platforms';
 import { InstallSection } from '../pwa/Install';
 import { MileageRateSection } from './MileageRates';
@@ -111,9 +112,11 @@ type SectionId =
   | 'units'
   | 'app'
   | 'help'
+  | 'updates'
   | 'platforms'
   | 'tracking'
   | 'data'
+  | 'health'
   | 'account'
   | 'modules';
 
@@ -170,6 +173,12 @@ const GROUPS: { label: string; sections: Section[] }[] = [
           'How MileWage works, in plain words: in the sidebar and as links on some screens.',
         saves: 'shared',
       },
+      {
+        id: 'updates',
+        label: 'Updates',
+        description: 'Whether your server looks for a new version of MileWage once a day.',
+        saves: 'instant',
+      },
     ],
   },
   {
@@ -197,6 +206,12 @@ const GROUPS: { label: string; sections: Section[] }[] = [
         id: 'data',
         label: 'Your data',
         description: 'Where to find your backups and exports.',
+      },
+      {
+        id: 'health',
+        label: 'Health',
+        description:
+          'What this server can check about itself: database, backups, disk space, clock and updates.',
       },
       {
         id: 'account',
@@ -591,6 +606,8 @@ export function SettingsPage() {
         <HelpSection prefs={prefs} />
       </PrefsForm>
     ),
+    updates: <UpdatesSection />,
+    health: <HealthSection />,
     platforms: (
       <SettingsCard>
         <PlatformsCard />

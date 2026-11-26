@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button, Field, FormError } from '../ui/form';
 import { PlatformBadge, PRESET_COLORS } from '../platforms/PlatformBadge';
 import { RowMenu } from '../ui/RowMenu';
+import { useConfirm } from '../ui/ConfirmDialog';
 import type { RowAction } from '../ui/RowMenu';
 import { slugOf } from '../platforms/usePlatforms';
 
@@ -74,6 +75,7 @@ export function PlatformsCard() {
   const asked = useApiQuery('/platforms', { params: { query: { include_inactive: true } } });
   const list = asked.data ?? null;
   const change = useChange();
+  const confirm = useConfirm();
   const error = errorText(change, asked);
   const [name, setName] = useState('');
   const [colouring, setColouring] = useState<string | null>(null);
@@ -89,8 +91,15 @@ export function PlatformsCard() {
     setName('');
   }
 
-  const remove = (slug: string) =>
-    change.run((api) => api.DELETE('/platforms/{slug}', { params: { path: { slug } } }));
+  const remove = (p: Platform) =>
+    confirm.ask({
+      title: `Delete ${p.label}?`,
+      description:
+        'The platform leaves your list. If labels or earnings use it, turn it off instead. This cannot be undone.',
+      confirmLabel: 'Delete platform',
+      action: (run) =>
+        run((api) => api.DELETE('/platforms/{slug}', { params: { path: { slug: p.slug } } })),
+    });
 
   const actions = (p: Platform): RowAction[] => [
     {
@@ -104,7 +113,7 @@ export function PlatformsCard() {
             label: 'Delete',
             icon: DeleteIcon,
             destructive: true,
-            onSelect: () => void remove(p.slug),
+            onSelect: () => remove(p),
           },
         ]
       : []),
@@ -165,6 +174,7 @@ export function PlatformsCard() {
       <p className="text-body-small text-muted-foreground">
         Platform names belong to their owners. MileWage is not affiliated with them.
       </p>
+      {confirm.dialog}
     </section>
   );
 }

@@ -132,6 +132,7 @@ class DemoServer(
                 val trip = Trip(idOf(key), s.id, key, put.kind, put.kind, "manual", put.startedAt, put.endedAt, distanceM = put.distanceM, purpose = put.purpose, editedAt = put.editedAt)
                 ok(TripEditResult.serializer(), TripEditResult(trip, s))
             }
+            m == HttpMethod.DELETE && parts.size == 2 -> HttpResponse(204, headers("application/json"), ByteArray(0))
             m == HttpMethod.PATCH && parts.size == 2 -> ok(Shift.serializer(), shiftOf(id, local))
             else -> problem(404, "not_found")
         }

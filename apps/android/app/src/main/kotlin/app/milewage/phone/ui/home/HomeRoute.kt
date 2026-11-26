@@ -56,6 +56,8 @@ fun HomeRoute(
 
             override fun closeUnfinished() = vm.closeUnfinished()
 
+            override fun discard() = vm.discard()
+
             override fun selectPeriod(p: Period) = vm.selectPeriod(p)
 
             override fun selectVehicle(id: Long) = vm.selectVehicle(id)
@@ -110,6 +112,7 @@ fun HomeRoute(
                     }
                 }
                 is HomeEvent.Ended -> snackbars.show(if (e.sent) ended else endedOffline, viewShift) { onOpenShift(e.clientId) }
+                is HomeEvent.Discarded -> snackbars.show(res.getString(if (e.deleted) R.string.shift_discarded else R.string.shift_discarded_offline))
                 HomeEvent.EndFailed -> snackbars.show(res.getString(R.string.end_failed), res.getString(R.string.try_again)) { vm.end() }
                 HomeEvent.ResumeFailed -> snackbars.show(res.getString(R.string.resume_failed), res.getString(R.string.fix_app_settings)) {
                     onOpenPermissions()

@@ -14,7 +14,9 @@ The server recomputes every shift with the same engine the phone runs (a Kotlin 
 
 ## Run and check
 
-Requires Node 22.22.x (`.nvmrc`). Earlier 22.x releases crash `better-sqlite3`.
+Requires Node 24.22.x (`.nvmrc`), the current LTS. The Docker image pins the same version.
+
+**On Windows, run the tests in WSL2.** The web page tests (`apps/web`) fail on native Windows with "MileWage is not answering" (cause not found yet) and pass on Linux with the same Node; so do the shell-script tests in `infra/`. Clone the repository inside WSL (not under `/mnt/c`) and run `npm run verify:js` there.
 
 ```bash
 npm install

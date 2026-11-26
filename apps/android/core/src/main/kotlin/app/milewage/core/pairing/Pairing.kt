@@ -107,6 +107,11 @@ class Pairing(private val d: PairingDeps) {
     /** Where requests go now (plan 28): home, away, or null before the first one. */
     val where: Where? get() = d.route?.where
 
+    /** A network came up or the app returned to the foreground: choose home or away again on this network. */
+    fun networkChanged() {
+        d.route?.networkChanged()
+    }
+
     /**
      * Where to redeem a code: its home address when the phone is on Wi-Fi and the home address
      * answers (plan 28: at home the phone never needs Tailscale), else the code's own address.

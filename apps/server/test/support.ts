@@ -10,6 +10,7 @@ import {
   serverExporters,
   type ServerConfig,
   type ServerTuning,
+  type UpdateFetcher,
 } from '../src/index';
 import { COMMA_DEFAULTS, type CommaOptions } from '../src/comma-options';
 
@@ -34,6 +35,8 @@ type TestConfig = Partial<
   diagnosticsBundle?: boolean;
   /** `modules.export_<format>`: only these formats are switched on. */
   enabledExportFormats?: () => readonly string[];
+  /** The update check's outbound call; without one the server never calls out. */
+  fetchLatestRelease?: UpdateFetcher;
 };
 
 /**
@@ -73,6 +76,7 @@ export function harness(
     httpAddressAllowed,
     appStoreUrl,
     trustProxy,
+    fetchLatestRelease,
     ...tuning
   } = extra;
   const exporters = tuning.exporters ?? serverExporters();
@@ -107,7 +111,15 @@ export function harness(
   };
   let built: ReturnType<typeof assembleServer>;
   try {
-    built = assembleServer({ db, config, now: () => clock.t, state, disk, tuning });
+    built = assembleServer({
+      db,
+      config,
+      now: () => clock.t,
+      state,
+      disk,
+      tuning,
+      fetchLatestRelease,
+    });
   } catch (e) {
     // An invalid module configuration is refused at start; do not leak the throwaway files.
     db.close();

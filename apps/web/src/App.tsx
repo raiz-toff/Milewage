@@ -58,6 +58,8 @@ import { Restore } from './pages/Restore';
 import { Setup } from './pages/Setup';
 import { PageErrorBoundary } from './ui/ErrorBoundary';
 import { useSession } from './session';
+import { needsAttention, useHealth } from './api/health';
+import { UpdateBanner } from './ui/UpdateBanner';
 import { useTheme } from './theme';
 import type { ThemeChoice } from './theme';
 import type { Settings } from './api/client';
@@ -105,7 +107,16 @@ const routeOf = (s: Screen) => s.path.replace(/\/\*$/, '');
 const isUnder = (pathname: string, route: string) =>
   pathname === route || pathname.startsWith(`${route}/`);
 
-function NavItem({ screen, pathname }: { screen: Screen; pathname: string }) {
+function NavItem({
+  screen,
+  pathname,
+  attention = false,
+}: {
+  screen: Screen;
+  pathname: string;
+  /** A small dot: something on this destination needs a look (Settings, while a health check is not ok). */
+  attention?: boolean;
+}) {
   const Icon = screen.nav!.icon;
   const active = isUnder(pathname, routeOf(screen));
   return (
@@ -123,6 +134,16 @@ function NavItem({ screen, pathname }: { screen: Screen; pathname: string }) {
           {/* Material: the selected destination's icon is the filled form. */}
           <Icon filled={active} />
           <span>{screen.label}</span>
+          {attention ? (
+            <>
+              <span
+                aria-hidden
+                data-testid="attention-dot"
+                className="ml-auto size-2 shrink-0 rounded-full bg-error group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:top-1.5 group-data-[collapsible=icon]:right-1.5"
+              />
+              <span className="sr-only">Needs attention</span>
+            </>
+          ) : null}
         </NavLink>
       </SidebarMenuButton>
     </SidebarMenuItem>
@@ -194,6 +215,8 @@ function AppSidebar({ list, name }: { list: Screen[]; name: string | null }) {
   useEffect(() => setOpenMobile(false), [pathname, setOpenMobile]);
   const inGroup = (id: string) => list.filter((s) => s.nav?.group === id);
   const system = inGroup('system');
+  // The dot on Settings: the Health page has something that is not ok. Quiet while unread.
+  const attention = needsAttention(useHealth().data);
 
   return (
     <Sidebar collapsible="icon">
@@ -241,7 +264,12 @@ function AppSidebar({ list, name }: { list: Screen[]; name: string | null }) {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {system.map((s) => (
-                    <NavItem key={s.path} screen={s} pathname={pathname} />
+                    <NavItem
+                      key={s.path}
+                      screen={s}
+                      pathname={pathname}
+                      attention={attention && s.path === '/settings/*'}
+                    />
                   ))}
                 </SidebarMenu>
               </SidebarGroupContent>
@@ -318,6 +346,7 @@ function Shell({ settings }: { settings: Settings }) {
           </header>
           <main className="flex-1 p-4 md:p-6">
             <div className="mx-auto w-full max-w-6xl">
+              <UpdateBanner />
               <PageErrorBoundary resetKey={pathname}>
                 <Routes>
                   {list.map((s) => (

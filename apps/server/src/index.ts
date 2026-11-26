@@ -19,3 +19,4 @@ export * from './backup/secrets';
 export * from './backup/restore';
 export * from './state';
 export * from './disk';
+export * from './updates';

@@ -39,6 +39,14 @@ sealed interface EndResult {
     data object NoShift : EndResult
 }
 
+/** What [ShiftModel.discard] did. */
+sealed interface DiscardResult {
+    /** The shift was ended and its delete queued; the phone's copy goes when the server confirms. */
+    data class Queued(val shift: ShiftRecord) : DiscardResult
+
+    data object NoShift : DiscardResult
+}
+
 /** What [ShiftModel.recover] did at app start. */
 enum class Recovery {
     /** No running shift. */
@@ -165,6 +173,23 @@ class ShiftModel(
 
     /** "End shift": stops the tracker, runs the engine over the stored fixes and queues the end. */
     suspend fun end(odometerEndM: Long? = null): EndResult = endAt(clock.nowMs(), odometerEndM, autoClosed = false)
+
+    /**
+     * "Discard" on the End dialog of a very short shift ([VeryShortShift]); asked first, never
+     * automatic. The shift is ended as normal and a delete is queued behind its end (the server
+     * refuses to delete a running shift), even when its create has not been acknowledged: that request
+     * may already be on its way, and dropping the shift here could leave a running shift on the
+     * server that nothing ends. The phone's
+     * copy stays until the server confirms, so offline nothing is lost silently and the delete goes
+     * with the next send.
+     */
+    suspend fun discard(): DiscardResult {
+        val shift = running() ?: return DiscardResult.NoShift
+        val ended = (end() as? EndResult.Ended) ?: return DiscardResult.NoShift
+        outbox.enqueue(ShiftChange.Delete(ended.shift.clientId))
+        onQueued()
+        return DiscardResult.Queued(ended.shift)
+    }
 
     private suspend fun endAt(endedAt: Long, odometerEndM: Long?, autoClosed: Boolean): EndResult = lock.withLock {
         val shift = store.runningShift() ?: return@withLock EndResult.NoShift

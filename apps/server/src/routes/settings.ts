@@ -83,6 +83,7 @@ const patchSchema = strictObject(
     raw_retention_days: { type: 'integer', minimum: 7 },
     stops_enabled: { type: 'boolean' },
     help_enabled: { type: 'boolean' },
+    update_check_enabled: { type: 'boolean' },
     diagnostics_level: { enum: ['off', 'basic', 'verbose'] },
     display_name: { type: ['string', 'null'], maxLength: 64 },
     region: { type: ['string', 'null'], minLength: 2, maxLength: 3 },
@@ -179,6 +180,7 @@ export function settingsReader(ctx: ReaderContext) {
       raw_retention_days: row.rawRetentionDays,
       stops_enabled: row.stopsEnabled === 1,
       help_enabled: row.helpEnabled === 1,
+      update_check_enabled: row.updateCheckEnabled === 1,
       display_name: row.displayName,
       region: row.region,
       logbook: logbookOf(d),
@@ -297,6 +299,9 @@ export function settingsRoutes(
     if (b.raw_retention_days) patch.rawRetentionDays = Number(b.raw_retention_days);
     if (b.stops_enabled !== undefined) patch.stopsEnabled = b.stops_enabled ? 1 : 0;
     if (b.help_enabled !== undefined) patch.helpEnabled = b.help_enabled ? 1 : 0;
+    if (b.update_check_enabled !== undefined) {
+      patch.updateCheckEnabled = b.update_check_enabled ? 1 : 0;
+    }
     if (b.diagnostics_level) {
       patch.diagnosticsLevel = b.diagnostics_level as SettingsRow['diagnosticsLevel'];
       patch.diagnosticsVerboseUntil = b.diagnostics_level === 'verbose' ? now + VERBOSE_MS : null;

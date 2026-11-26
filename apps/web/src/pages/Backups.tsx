@@ -158,6 +158,12 @@ export function Backups() {
             </table>
           </TableBox>
         )}
+        {backups && backups.length > 0 && !modules.backup_download ? (
+          <p className="text-body-medium text-muted-foreground">
+            Downloads are turned off on this server. To keep a copy elsewhere, copy the files from
+            the backup folder on the server, or turn on backup.download in its configuration.
+          </p>
+        ) : null}
       </Section>
       {status && modules.backup_download ? (
         <Offsite offsite={status.offsite} downloaded={downloaded} onChange={acknowledge} />

@@ -401,7 +401,8 @@ export interface paths {
         delete: operations["deleteOdometerReading"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** Correct a reading's value or time. A reading of a finalized shift is 409 shift_finalized. */
+        patch: operations["updateOdometerReading"];
         trace?: never;
     };
     "/shifts": {
@@ -435,11 +436,11 @@ export interface paths {
         get: operations["getShift"];
         put?: never;
         post?: never;
-        /** Permanently delete a shift and everything under it (web only). An active shift is 409 shift_not_ended; a shift under 7 years old without confirm_recent=true is 422. */
+        /** Permanently delete a shift and everything under it. The web (after its confirm) calls it for any shift. A paired phone may call it only for a very short shift (under 2 minutes, under 160 m, no earnings, costs, expenses or manual trips: the `very_short_shift` rule), after it was ended, within its 14-day window; any other shift is 403 scope_forbidden for a phone. An active shift is 409 shift_not_ended; a shift under 7 years old without confirm_recent=true is 422. */
         delete: operations["purgeShift"];
         options?: never;
         head?: never;
-        /** Edit notes or vehicle. Start/end times are not editable (they define which points count). */
+        /** Edit notes, vehicle, or (web only) the start and end time of an ended shift. A time change recomputes the shift like Recalculate (the points inside the new window count). A running shift is 409 shift_not_ended, a finalized one 409 shift_finalized, an end before the start 422, and with the raw points archived 409 not_recomputable. */
         patch: operations["updateShift"];
         trace?: never;
     };
@@ -1201,6 +1202,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/health/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the server can check from inside its container, and what the update check found. Web session only. Host-level things (Docker, ports, Tailscale) are not visible from here and are not reported. */
+        get: operations["getHealthChecks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health/update-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask GitHub's public releases API for the newest version now ("Check now"). Sends no data about the owner. A failure is not an error response; it is the result's state and the Health page's update check. Runs even while the daily check is switched off, because the owner asked. Web session only. */
+        post: operations["runUpdateCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/diagnostics/events": {
         parameters: {
             query?: never;
@@ -1369,6 +1404,8 @@ export interface components {
             stops_enabled: boolean;
             /** @description The owner's switch for the Help pages in the web app and the help links on screens. Default true. Web only; the server has no help module (ADR 0002). */
             help_enabled: boolean;
+            /** @description The owner's switch for the daily check for a new MileWage version (the server asks GitHub's public releases API, sending nothing about the owner). Default true. Web only. */
+            update_check_enabled: boolean;
             /** @description Greeting and export header. */
             display_name: string | null;
             /** @description Subdivision code without the country (CA: ON, QC ...); validated by the country pack. */
@@ -1413,6 +1450,7 @@ export interface components {
             raw_retention_days?: number;
             stops_enabled?: boolean;
             help_enabled?: boolean;
+            update_check_enabled?: boolean;
             /**
              * @description verbose reverts to basic after 7 days (16 section 5).
              * @enum {unknown}
@@ -1942,11 +1980,11 @@ export interface components {
             recon_reasons?: string[];
             calc_mismatch?: boolean;
             flags?: components["schemas"]["ShiftFlag"][];
-            /** @description Set when a late upload made this shift overlap another (15 section 9.2). */
+            /** @description The other shift of the user this one overlaps (it starts before the other ends and ends after the other starts; end equal to start is not an overlap). Set when the shift starts */
             overlaps_shift_id?: number | null;
         };
         ShiftFlag: {
-            /** @description One of the flags in 14 section 8. */
+            /** @description One of the flags in 14 section 8, or a server flag: `very_short_shift` (info), `shift_overlap` and `stale_active_shift` (review; the latter is worked out when the shift is read, for a running shift with no point for 12 hours). */
             code: string;
             /** @enum {unknown} */
             severity: "info" | "review";
@@ -2257,6 +2295,38 @@ export interface components {
                 db_bytes?: number;
                 event_count?: number;
             };
+        };
+        HealthItem: {
+            /** @enum {unknown} */
+            id: "database" | "backup" | "disk" | "clock" | "version" | "updates";
+            /** @enum {unknown} */
+            status: "ok" | "warn" | "fail";
+            title: string;
+            /** @description What was found */
+            detail: string;
+            /** @description What to do about it; null when nothing is wrong. */
+            fix: string | null;
+        };
+        UpdateInfo: {
+            /** @description The owner's switch (settings.update_check_enabled). */
+            enabled: boolean;
+            current_version: string;
+            /** @description The newest release the last good check found. */
+            latest_version: string | null;
+            /** @description True when latest_version is newer than current_version (semantic versions; pre-releases rank below their release). */
+            available: boolean;
+            /** @description The GitHub release page of latest_version. */
+            release_url: string | null;
+            /** @description What's new: the release page when a newer version exists, else the running version's CHANGELOG.md on GitHub. */
+            notes_url: string;
+            /** @description When the last check worked; null if none has. */
+            checked_at: components["schemas"]["EpochMs"] | null;
+            /** @description The last attempt did not work. Silent everywhere but the Health page and the answer to Check now. */
+            check_failed: boolean;
+        };
+        HealthReport: {
+            checks: components["schemas"]["HealthItem"][];
+            update: components["schemas"]["UpdateInfo"];
         };
         DiagnosticsSettings: {
             /** @enum {unknown} */
@@ -3293,6 +3363,38 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    updateOdometerReading: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reading_m?: number;
+                    recorded_at?: components["schemas"]["EpochMs"];
+                };
+            };
+        };
+        responses: {
+            /** @description Updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OdometerReading"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+        };
+    };
     listShifts: {
         parameters: {
             query?: {
@@ -3435,6 +3537,8 @@ export interface operations {
                 "application/json": {
                     notes?: string | null;
                     vehicle_id?: number;
+                    started_at?: components["schemas"]["EpochMs"];
+                    ended_at?: components["schemas"]["EpochMs"];
                     updated_at?: components["schemas"]["EpochMs"];
                 };
             };
@@ -4944,6 +5048,49 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SystemStatus"];
+                };
+            };
+        };
+    };
+    getHealthChecks: {
+        parameters: {
+            query?: {
+                /** @description The browser's own clock in epoch milliseconds. When present the report includes a clock check. */
+                client_time?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The checks, in display order, and the update state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthReport"];
+                };
+            };
+        };
+    };
+    runUpdateCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The update state after the check. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateInfo"];
                 };
             };
         };

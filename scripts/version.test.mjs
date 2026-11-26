@@ -4,10 +4,12 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
 import {
+  COMPOSE_FILE,
   GRADLE_APP,
   androidProblems,
   bump,
   check,
+  composeProblems,
   releasedVersionCodes,
   sync,
 } from './version.mjs';
@@ -126,4 +128,35 @@ test('bump moves every version, the lockfile and the versionCode, and adds a rel
 test('the repository itself is in sync, the Android app included', () => {
   expect(check(repo)).toEqual([]);
   expect(androidProblems(repo)).toEqual([]);
+});
+
+// The local compose file's image tags follow VERSION.
+const compose = (caddy, server) =>
+  `services:\n  caddy:\n    image: milewage-caddy:${caddy}\n  api:\n    image: milewage-server:${server}\n  other:\n    image: caddy:2.8\n`;
+function withCompose(root, text) {
+  mkdirSync(join(root, 'infra', 'docker'), { recursive: true });
+  writeFileSync(join(root, COMPOSE_FILE), text);
+  return root;
+}
+
+test('check fails when a compose image tag is not the VERSION, naming the tag', () => {
+  const root = withCompose(fixture('0.3.1', {}), compose('0.1.0', '0.3.1'));
+  expect(check(root)).toEqual([
+    { file: join(root, COMPOSE_FILE), found: 'milewage-caddy:0.1.0', expected: '0.3.1' },
+  ]);
+  expect(composeProblems(withCompose(fixture('0.3.1', {}), compose('0.3.1', '0.3.1')))).toEqual([]);
+});
+
+test('sync rewrites the compose tags (and only milewage-* ones), then check passes', () => {
+  const root = withCompose(fixture('0.4.0', {}), compose('0.1.0', '0.3.1'));
+  expect(sync(root)).toEqual([join(root, COMPOSE_FILE)]);
+  expect(readFileSync(join(root, COMPOSE_FILE), 'utf8')).toBe(compose('0.4.0', '0.4.0'));
+  expect(check(root)).toEqual([]);
+  expect(sync(root)).toEqual([]);
+});
+
+test('bump moves the compose tags with everything else', () => {
+  const root = withCompose(fixture('1.2.3', {}), compose('1.2.3', '1.2.3'));
+  bump(root, '1.3.0');
+  expect(readFileSync(join(root, COMPOSE_FILE), 'utf8')).toBe(compose('1.3.0', '1.3.0'));
 });

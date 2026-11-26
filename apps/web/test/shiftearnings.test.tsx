@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseMoney } from '../src/format';
-import { pick, renderApp, settingsFixture, signedIn } from './support/kit';
+import { confirmYes, pick, renderApp, settingsFixture, signedIn } from './support/kit';
 
 afterEach(cleanup);
 
@@ -143,6 +143,7 @@ describe('shift earnings block (module earnings)', () => {
       orders: 7,
     });
     fireEvent.click(screen.getByRole('button', { name: /Remove entered total for DoorDash/ }));
+    await confirmYes('Remove total');
     expect(await screen.findByText(/No earnings entered or labelled/)).toBeTruthy();
   });
 
@@ -194,6 +195,7 @@ describe('shift earnings block (module earnings)', () => {
       }),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Remove Commission -$20.00' }));
+    await confirmYes('Remove line');
     await waitFor(() => expect(screen.queryByText(/You owe the app/)).toBeNull());
     expect(s.calls.some((c) => c.method === 'DELETE' && c.path.endsWith('/entries/4'))).toBe(true);
   });

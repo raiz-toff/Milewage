@@ -14,6 +14,7 @@ import type { EventEmit } from '../events';
 import type { ValuedShift } from '../mileage-deduction';
 import type { ShiftPresenter } from '../processing/presenter';
 import type { ShiftBook } from '../processing/shift-book';
+import { createShiftChecks } from '../processing/shift-checks';
 import { refParam as ref, snakeKeys, str, strictObject, type AuthFn, type Principal } from './util';
 
 const ms = { type: 'integer', minimum: 0 };
@@ -39,6 +40,8 @@ const patch = strictObject(
   {
     notes: { type: ['string', 'null'], maxLength: 2000 },
     vehicle_id: { type: 'integer', minimum: 1 },
+    started_at: ms,
+    ended_at: ms,
     updated_at: ms,
   },
   [],
@@ -163,6 +166,7 @@ export function shiftRoutes(
 ) {
   const shifts = shiftRepo(db);
   const processing = processingRepo(db);
+  const checks = createShiftChecks({ db, now });
   /** One shift with its flags, the way every route returns it. */
   const view = (r: ShiftRow) => present.one(r);
   const odometer = odometerRepo(db);
@@ -255,32 +259,61 @@ export function shiftRoutes(
   );
 
   app.patch('/shifts/:ref', { schema: { params: refParams, body: patch } }, async (req, reply) => {
-    const p = auth(req, 'SD');
+    const b = req.body as {
+      notes?: string | null;
+      vehicle_id?: number;
+      started_at?: number;
+      ended_at?: number;
+      updated_at?: number;
+    };
+    // Correcting the times is the driver's own edit on the web; the phone never sends it.
+    const retiming = b.started_at !== undefined || b.ended_at !== undefined;
+    const p: Principal = retiming ? auth(req, 'S') : auth(req, 'SD');
     const row = load(p, refOf(req));
-    const b = req.body as { notes?: string | null; vehicle_id?: number; updated_at?: number };
     if (b.updated_at !== undefined) notFuture('/updated_at', b.updated_at);
     // Last writer wins on the client's edit time; ties go to the server (08 section 4.4).
     if (b.updated_at !== undefined && b.updated_at <= row.updatedAt) {
       return reply.header('X-MileWage-Applied', 'false').send(view(row));
     }
     if (b.vehicle_id !== undefined) checkVehicle(p.userId, b.vehicle_id);
+    let times: { startedAt: number; endedAt: number } | undefined;
+    if (retiming) {
+      if (row.status === 'active')
+        throw new ProblemError('shift_not_ended', 'End the shift before changing its times.');
+      const startedAt = b.started_at ?? row.startedAt;
+      const endedAt = b.ended_at ?? row.endedAt ?? row.startedAt;
+      if (b.started_at !== undefined) notFuture('/started_at', startedAt);
+      if (b.ended_at !== undefined) notFuture('/ended_at', endedAt);
+      if (endedAt < startedAt) throw invalid('/ended_at', 'must not be before the shift started');
+      if (startedAt !== row.startedAt || endedAt !== row.endedAt) times = { startedAt, endedAt };
+    }
     const set: Partial<ShiftRow> = { updatedAt: b.updated_at ?? now() };
     if (b.notes !== undefined) set.notes = b.notes;
     if (b.vehicle_id !== undefined) set.vehicleId = b.vehicle_id;
+    // Recomputed the way Recalculate is, on the points inside the new window. First: it can refuse
+    // (archived points) and then nothing else of this edit is written.
+    if (times) book.retime(p, row, { ...times, updatedAt: set.updatedAt! });
     // A value replaced by a newer edit is kept in the overwrite log (15 section 8.2).
     if (
       (set.notes !== undefined && set.notes !== row.notes) ||
-      (set.vehicleId !== undefined && set.vehicleId !== row.vehicleId)
+      (set.vehicleId !== undefined && set.vehicleId !== row.vehicleId) ||
+      times
     ) {
       emit('edit.overwritten', {
         userId: String(p.userId),
         entity: 'shift',
         key: row.clientId,
-        superseded: { notes: row.notes, vehicle_id: row.vehicleId, updated_at: row.updatedAt },
+        superseded: {
+          notes: row.notes,
+          vehicle_id: row.vehicleId,
+          started_at: row.startedAt,
+          ended_at: row.endedAt,
+          updated_at: row.updatedAt,
+        },
         ...(p.kind === 'device' ? { deviceId: String(p.deviceId) } : {}),
       });
     }
-    const saved = book.edit(p, row, set);
+    const saved = book.edit(p, times ? load(p, refOf(req)) : row, set);
     return reply.header('X-MileWage-Applied', 'true').send(view(saved));
   });
 
@@ -308,10 +341,17 @@ export function shiftRoutes(
     '/shifts/:ref',
     { schema: { params: refParams, querystring: purgeQuery } },
     async (req, reply) => {
-      const p = auth(req, 'S');
+      // The web (after its confirm) and the phone (Discard on a very short shift, once ended).
+      const p = auth(req, 'SD');
       const row = load(p, refOf(req), false);
       if (row.status === 'active')
         throw new ProblemError('shift_not_ended', 'End the shift before deleting it.');
+      // A phone discards only a shift the server itself calls very short; anything else is deleted on the web.
+      if (p.kind === 'device' && !checks.isVeryShort(row))
+        throw new ProblemError(
+          'scope_forbidden',
+          'A phone can only discard a shift that was started by mistake. Delete it on the web.',
+        );
       // The retention rules keep evidence for 7 years, so a younger shift needs a deliberate yes (07 section 4.2).
       const evidence = new Date(now());
       evidence.setUTCFullYear(evidence.getUTCFullYear() - 7);

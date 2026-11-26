@@ -12,3 +12,6 @@ packages/shared/openapi/
 apps/android/.gradle/
 apps/android/**/build/
 apps/android/data/schemas/
+
+# spec-kit scaffold (generated)
+.specify/

@@ -3,6 +3,7 @@ package app.milewage.phone.logic
 import app.milewage.core.pairing.HaltReason
 import app.milewage.core.pairing.PairingStatus
 import app.milewage.core.shift.ShiftRecord
+import app.milewage.core.shift.VeryShortShift
 import app.milewage.core.shift.VehicleRecord
 import app.milewage.core.sync.Progress
 import app.milewage.core.sync.Reminder
@@ -186,11 +187,54 @@ object TrackingLines {
     }
 }
 
+/** Which question the End button asks. */
+enum class EndDialog {
+    /** "End this shift?" with Keep recording. */
+    NORMAL,
+
+    /** The shift is very short ([VeryShortShift]): Discard or Keep, so a shift started by mistake is not kept. */
+    VERY_SHORT,
+    ;
+
+    companion object {
+        /** Never decided for the driver: this only picks the question. Discard is always the driver's tap. */
+        fun of(startedAt: Long, nowMs: Long, distanceM: Long): EndDialog =
+            if (VeryShortShift.of(nowMs - startedAt, distanceM)) VERY_SHORT else NORMAL
+    }
+}
+
+/**
+ * "No location for N min" (spec 001 C4): while a shift records at full power and no fix has come
+ * for more than 3 minutes. Reads [TrackingStatus.lastFixAt]; a shift that has had no fix at all
+ * counts from its start. A clock in the screen ticks the minutes.
+ */
+object NoSignal {
+    const val AFTER_MS = 180_000L
+
+    /** Where the silence is counted from; null when the shift is not recording at full power. */
+    fun since(running: ShiftRecord, status: TrackingStatus, line: TrackingLine): Long? =
+        if ((line == TrackingLine.RECORDING || line == TrackingLine.NO_BACKGROUND) && status.power == PowerLevel.FULL) {
+            maxOf(running.startedAt, status.lastFixAt ?: 0L)
+        } else {
+            null
+        }
+
+    /** Whole minutes of silence, once it is older than [AFTER_MS]; null before that. */
+    fun minutes(since: Long?, nowMs: Long): Int? {
+        if (since == null) return null
+        val silent = nowMs - since
+        return if (silent > AFTER_MS) (silent / 60_000).toInt() else null
+    }
+}
+
 /** What the sync banner says, most serious first (15 section 4.3), each with its one action. */
 enum class BannerKind(val fix: Fix?) {
     ALL_SENT(null),
     WAITING(Fix.SEND_NOW),
     OFFLINE(Fix.SEND_NOW),
+
+    /** Offline, and the phone has no home address for the server: on the home Wi-Fi it needs Tailscale. */
+    OFFLINE_NO_HOME(Fix.SEND_NOW),
     SENDING(Fix.STOP_SENDING),
     WRONG_SERVER(Fix.CHECK_ADDRESS),
     REVOKED(Fix.PAIR),
@@ -227,7 +271,11 @@ object Banners {
             StatusMessage.STORAGE_CRITICAL -> BannerKind.STORAGE_CRITICAL
             StatusMessage.STORAGE_LOW -> BannerKind.STORAGE_LOW
             StatusMessage.NEEDS_ATTENTION -> BannerKind.NEEDS_ATTENTION
-            StatusMessage.OFFLINE -> if (running) BannerKind.SENDING else BannerKind.OFFLINE
+            StatusMessage.OFFLINE -> when {
+                running -> BannerKind.SENDING
+                sync.noHomeAddress -> BannerKind.OFFLINE_NO_HOME
+                else -> BannerKind.OFFLINE
+            }
             null -> when {
                 sync.halt == HaltReason.WRONG_SERVER -> BannerKind.WRONG_SERVER
                 running -> BannerKind.SENDING

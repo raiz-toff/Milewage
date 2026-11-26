@@ -13,7 +13,7 @@ object ContractFixtures {
 
     val SETTINGS = """
         {"country":"CA","distance_unit":"km","currency":"CAD","timezone":"America/Toronto",
-         "raw_retention_days":90,"stops_enabled":true,"help_enabled":true,"display_name":"Sam","region":"ON",
+         "raw_retention_days":90,"stops_enabled":true,"help_enabled":true,"update_check_enabled":true,"display_name":"Sam","region":"ON",
          "logbook":{"readings":"Start and end of the year","notes":["Keep the log for six years."]},
          "own_mileage_rate":{"cents_per_unit":30.5,"unit":"km","step":null},"mileage_rate":"official","week_start":1,
          "time_format":"24h","default_vehicle_id":3,"work_kinds":["delivery","ride_hailing"],

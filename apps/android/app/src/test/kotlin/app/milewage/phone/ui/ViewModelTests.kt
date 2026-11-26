@@ -273,6 +273,39 @@ class HomeViewModelTest : VmTest() {
     }
 
     @Test
+    fun `discarding a very short shift ends and deletes it`() = runTest {
+        data.running.value = runningView()
+        val (vm, events) = home()
+        vm.discard()
+        advanceUntilIdle()
+        assertTrue("discard" in data.calls)
+        assertTrue("end" !in data.calls) // the model ends it itself; the screen never ends and then discards
+        assertEquals(HomeEvent.Discarded(deleted = true), events.last()) // the fake's send round succeeds
+        assertNull(vm.state.value.running)
+    }
+
+    @Test
+    fun `discard offline says the delete waits for the server`() = runTest {
+        data.running.value = runningView()
+        data.sendDone = false
+        val (vm, events) = home()
+        vm.discard()
+        advanceUntilIdle()
+        assertEquals(HomeEvent.Discarded(deleted = false), events.last())
+    }
+
+    @Test
+    fun `no signal counts from the last fix while recording at full power`() = runTest {
+        data.running.value = runningView()
+        tracking.status.value = recording("run").copy(lastFixAt = NOW - 4 * 60_000)
+        val (vm, _) = home()
+        vm.onResume()
+        assertEquals(NOW - 4 * 60_000, vm.state.value.fixSince)
+        tracking.status.value = recording("run", app.milewage.core.tracking.PowerLevel.LOW).copy(lastFixAt = NOW - 4 * 60_000)
+        assertNull(vm.state.value.fixSince)
+    }
+
+    @Test
     fun `a shift that stopped recording can be ended at its last point`() = runTest {
         data.running.value = runningView()
         tracking.status.value = TrackingStatus()

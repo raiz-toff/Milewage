@@ -74,6 +74,7 @@ object Texts {
         BannerKind.ALL_SENT -> null
         BannerKind.WAITING -> R.string.sync_waiting
         BannerKind.OFFLINE -> R.string.sync_offline
+        BannerKind.OFFLINE_NO_HOME -> R.string.sync_offline_no_home
         BannerKind.SENDING -> null
         BannerKind.WRONG_SERVER -> R.string.sync_wrong_server
         BannerKind.REVOKED -> R.string.sync_revoked
@@ -116,6 +117,9 @@ object Texts {
         ShiftFlag.CLOCK_SKEW -> R.string.flag_clock_skew
         ShiftFlag.OVERRIDE_ORPHANED -> R.string.flag_override_orphaned
         ShiftFlag.MANUAL_TRIP_PRESENT -> R.string.flag_manual_trip_present
+        ShiftFlag.VERY_SHORT_SHIFT -> R.string.flag_very_short_shift
+        ShiftFlag.SHIFT_OVERLAP -> R.string.flag_shift_overlap
+        ShiftFlag.STALE_ACTIVE_SHIFT -> R.string.flag_stale_active_shift
         ShiftFlag.CALC_MISMATCH -> R.string.flag_calc_mismatch
         ShiftFlag.OTHER -> R.string.flag_other
     }

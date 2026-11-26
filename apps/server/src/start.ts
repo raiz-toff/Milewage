@@ -5,6 +5,7 @@ import { loadConfig } from './config';
 import { loadMigrations, MIGRATIONS_DIR, openDatabase, upgradeDatabase, type Db } from './db';
 import { createDiskMonitor } from './disk';
 import { createServerState } from './state';
+import { fetchLatestRelease } from './updates';
 
 export interface RunningServer extends App {
   db: Db;
@@ -41,6 +42,7 @@ export async function startServer(
       backup,
       log,
       nightlyBackups: state.mode === 'normal',
+      fetchLatestRelease: state.mode === 'normal' ? fetchLatestRelease : undefined,
       onDiagnosticsRecreated: (movedTo, reason) =>
         console.warn(JSON.stringify({ msg: 'diagnostics.db recreated', movedTo, reason })),
     });

@@ -8,11 +8,24 @@ order: 10
 
 ## "MileWage is not answering"
 
-The web app shows this when it cannot reach your server. Usually the server machine is off, Tailscale is off on this computer, or you opened the home address away from home. Fix that, then choose "Try again". If it still fails, check on the server machine that the two containers run and read the API log, as the install guide shows in [Where things live](../../infra/docs/install.md#5-where-things-live).
+The web app shows this when it cannot reach your server. Usually the server machine is off, Tailscale is off on this computer, or you opened the home address away from home. Fix that, then choose "Try again". If it still fails, run `infra/doctor.sh` on the server machine: it checks each part, says what is wrong and the command that fixes it. When the web app does open, Settings > Health checks the database, backups, disk space and clock from inside the server: see [Health and updates](health-and-updates.md). The API log is shown in [Where things live](../../infra/docs/install.md#5-where-things-live).
 
 ## "You are offline"
 
 This device has no network. Your data is safe on your server, and the web app tries again by itself when the connection comes back. Reconnect, or choose "Try again". The phone app keeps recording shifts offline.
+
+## It says "Offline" at home
+
+You ended a shift away from home, came home and joined your Wi-Fi, and the phone still says "Offline. Saved on your phone." Nothing is lost: the shift is on the phone and is sent as soon as the phone can reach your server.
+
+What the phone does by itself: when it joins a Wi-Fi network it waits until the network really works, then tries your server's home address. If that first try fails, it tries again after a moment, and keeps trying every few seconds, then every minute. Opening MileWage also tries at once. Even with the app closed, Android starts a send as soon as the phone joins Wi-Fi, so give it a minute.
+
+To send now, open MileWage and choose "Send now" on the home screen. "Offline" goes away the moment a send succeeds. If it stays:
+
+1. Check that the server machine is on and on the same Wi-Fi as the phone. A guest Wi-Fi often keeps devices apart.
+2. Open Settings on the phone and tap Check next to the server. It says which part is wrong.
+3. If the home screen says "This phone has no home address for your server", the phone was paired away from home, so it knows only the https address and needs Tailscale to reach the server, even on your own Wi-Fi. Turn Tailscale on, or make a new pairing code at the server's home address (the install guide, section 2a, sets it) and pair the phone again. See [Phones and devices](phones-and-devices.md#home-and-away-addresses).
+4. If the server's home address changed, pair the phone again so it learns the new one.
 
 ## Tailscale is off or signed out on the phone
 

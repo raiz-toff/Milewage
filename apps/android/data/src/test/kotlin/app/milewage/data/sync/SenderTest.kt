@@ -307,6 +307,24 @@ class SenderTest {
     }
 
     @Test
+    fun offlineClearsAtOnceAfterTheFirstSuccessfulRoundAndSendNowAlwaysTries() = runBlocking {
+        val srv = server()
+        val p = endedOffline(srv, fixes = true)
+        assertEquals(StatusMessage.OFFLINE, p.data.sender.status().sync.message)
+        // Wi-Fi joined but the server does not answer yet: still offline, and Send now tries again each time.
+        p.net.down = true
+        assertFalse(p.data.sender.retry())
+        assertFalse(p.data.sender.retry())
+        assertEquals(StatusMessage.OFFLINE, p.data.sender.status().sync.message)
+        p.net.down = false
+        assertTrue(p.data.sender.retry())
+        val s = p.data.sender.status().sync
+        assertNull(s.message)
+        assertEquals(StatusColor.GREEN, s.color)
+        assertFalse(s.noHomeAddress)
+    }
+
+    @Test
     fun aRunningShiftTheServerRefusesBecauseAnotherRunsThereKeepsRecordingAndWaits() = runBlocking {
         val srv = server()
         srv.overrides["POST /shifts"] = { srv.problem(409, "shift_already_active") }

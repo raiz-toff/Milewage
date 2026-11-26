@@ -249,6 +249,50 @@ describe('odometer (08 section 3, 07 section 2.2)', () => {
     expect((await web('DELETE', `/odometer/${list[0].id}`)).statusCode).toBe(204);
   });
 
+  test('a reading can be corrected: value and time; refused when finalized, missing or in the future', async () => {
+    await year({ vehicle_id: 1, kind: 'year_start', reading_m: 1_000, recorded_at: h.clock.t });
+    const fixed = await web('PATCH', '/odometer/1', { reading_m: 12_000_000 });
+    expect([fixed.statusCode, fixed.json().reading_m, fixed.json().kind]).toEqual([
+      200,
+      12_000_000,
+      'year_start',
+    ]);
+    const moved = await web('PATCH', '/odometer/1', { recorded_at: h.clock.t - 86_400_000 });
+    expect(moved.json()).toMatchObject({
+      reading_m: 12_000_000,
+      recorded_at: h.clock.t - 86_400_000,
+    });
+    expect((await web('GET', '/odometer')).json()[0].reading_m).toBe(12_000_000);
+
+    const future = await web('PATCH', '/odometer/1', { recorded_at: h.clock.t + 10 * 60_000 });
+    expect([future.statusCode, future.json().errors[0].path]).toEqual([422, '/recorded_at']);
+    expect((await web('PATCH', '/odometer/1', {})).statusCode).toBe(422);
+    expect((await web('PATCH', '/odometer/1', { reading_m: -1 })).statusCode).toBe(422);
+    expect((await web('PATCH', '/odometer/99', { reading_m: 1 })).json().code).toBe('not_found');
+    expect((await h.call('PATCH', '/odometer/1', { reading_m: 1 }, auth)).statusCode).toBe(403);
+
+    await h.call(
+      'POST',
+      '/shifts',
+      { client_id: SHIFT, vehicle_id: 1, started_at: h.clock.t },
+      auth,
+    );
+    await h.call(
+      'PUT',
+      `/shifts/${SHIFT}/odometer/shift_start`,
+      { reading_m: 5_000, recorded_at: h.clock.t },
+      auth,
+    );
+    const shiftReading = (await web('GET', '/odometer?kind=shift_start')).json()[0];
+    h.db.prepare("UPDATE shifts SET status = 'finalized'").run();
+    const locked = await web('PATCH', `/odometer/${shiftReading.id}`, { reading_m: 6_000 });
+    expect([locked.statusCode, locked.json().code]).toEqual([409, 'shift_finalized']);
+    h.db.prepare("UPDATE shifts SET status = 'ended'").run();
+    expect(
+      (await web('PATCH', `/odometer/${shiftReading.id}`, { reading_m: 6_000 })).json().reading_m,
+    ).toBe(6_000);
+  });
+
   test('validation and access', async () => {
     for (const bad of [
       { vehicle_id: 9 },

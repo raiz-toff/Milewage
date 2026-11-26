@@ -14,7 +14,7 @@ services:
       context: ../..
       dockerfile: infra/docker/Dockerfile
       target: caddy
-    image: milewage-caddy:0.1.0
+    image: milewage-caddy:0.3.2
     restart: unless-stopped
     logging: *logging
     ports:
@@ -39,7 +39,7 @@ services:
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile
-    image: milewage-server:0.1.0
+    image: milewage-server:0.3.2
     restart: unless-stopped
     logging: *logging
     environment:

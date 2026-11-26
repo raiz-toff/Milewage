@@ -2,6 +2,7 @@ package app.milewage.core.api
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 
 /**
  * One operation of the contract, as the phone calls it. [path] is the spec's template
@@ -79,6 +80,13 @@ object Api {
     val endShift = Endpoint(
         "endShift", HttpMethod.POST, "/shifts/{ref}/end", ShiftEnd.serializer(), EndShiftResult.serializer(), setOf(200),
     )
+    /**
+     * Discard on a very short shift, after it was ended: 204, no body. The query `confirm_recent=true`
+     * is part of the queued path ([ShiftRequests.route]); the server refuses a running shift (409).
+     */
+    val purgeShift = Endpoint<Unit, Unit>(
+        "purgeShift", HttpMethod.DELETE, "/shifts/{ref}", null, Unit.serializer(), emptySet(),
+    )
     val uploadPoints = Endpoint(
         "uploadTelemetryBatch", HttpMethod.POST, "/telemetry/batch",
         TelemetryBatch.serializer(), TelemetryBatchResult.serializer(), setOf(200), gzip = true,
@@ -96,7 +104,7 @@ object Api {
 
     val all: List<Endpoint<*, *>> = listOf(
         health, redeem, settings, vehicles,
-        startShift, updateShift, setOdometer, putTripOverride, putManualTrip, endShift,
+        startShift, updateShift, setOdometer, putTripOverride, putManualTrip, endShift, purgeShift,
         uploadPoints, pullChanges, diagnostics,
     )
 }

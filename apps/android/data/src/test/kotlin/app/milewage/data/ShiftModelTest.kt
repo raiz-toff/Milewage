@@ -6,6 +6,7 @@ import app.milewage.core.api.Settings
 import app.milewage.core.api.TripKind
 import app.milewage.core.shift.BatteryReading
 import app.milewage.core.shift.CalcSource
+import app.milewage.core.shift.DiscardResult
 import app.milewage.core.shift.EditResult
 import app.milewage.core.shift.EndResult
 import app.milewage.core.shift.OdometerKind
@@ -113,6 +114,76 @@ class ShiftModelTest {
         assertEquals(app.milewage.core.api.Segmenter.WHOLE_SHIFT, p.data.store.shift(ID)!!.segmenter)
         assertEquals(emptyList(), p.data.store.stops(ID))
         assertTrue(p.data.store.trips(ID).isNotEmpty())
+    }
+
+    @Test
+    fun discardingAShiftWhoseCreateIsNotAcknowledgedStillEndsAndDeletesIt() = runBlocking {
+        val srv = server()
+        val p = Phone(srv)
+        p.net.down = true
+        p.data.startShift(3, odometerStartM = 50_000)
+        assertTrue(p.data.store.hasChange(ChangeType.SHIFT_CREATE, ID))
+        p.clock.t = 31_000
+        // The create may already be on its way: nothing is dropped, the end and the delete queue behind it.
+        assertIs<DiscardResult.Queued>(p.data.discardShift())
+        assertTrue(p.data.store.hasChange(ChangeType.SHIFT_CREATE, ID))
+        assertTrue(p.data.store.hasChange(ChangeType.SHIFT_DELETE, ID))
+        assertNotNull(p.data.store.shift(ID)) // the phone's copy stays until the server answers
+        p.net.down = false
+        assertTrue(p.data.sendNow())
+        assertNull(p.data.store.shift(ID))
+    }
+
+    @Test
+    fun discardingAShiftTheServerKnowsEndsItThenDeletesIt() = runBlocking {
+        val srv = server()
+        val p = Phone(srv)
+        p.data.startShift(3)
+        assertTrue(p.data.sendNow()) // the create is acknowledged
+        p.clock.t = 41_000
+        val r = assertIs<DiscardResult.Queued>(p.data.discardShift())
+        assertEquals(ShiftStatus.ENDED, r.shift.status)
+        assertTrue(p.data.store.hasChange(ChangeType.SHIFT_DELETE, ID))
+        assertTrue(p.data.sendNow())
+        val writes = srv.writes().filter { !it.contains("telemetry") }
+        assertEquals(listOf("POST /shifts", "POST /shifts/$ID/end", "DELETE /shifts/$ID"), writes)
+        assertTrue(srv.state.shifts.isEmpty())
+        assertNull(p.data.store.shift(ID))
+        assertFalse(p.data.store.hasChange(ChangeType.SHIFT_DELETE, ID))
+    }
+
+    @Test
+    fun aDiscardMadeOfflineIsQueuedAndKeptUntilTheServerAnswers() = runBlocking {
+        val srv = server()
+        val p = Phone(srv)
+        p.data.startShift(3)
+        assertTrue(p.data.sendNow())
+        p.net.down = true
+        p.clock.t = 41_000
+        assertIs<DiscardResult.Queued>(p.data.discardShift())
+        assertFalse(p.data.sendNow())
+        // Not lost: the ended shift and its delete wait on the phone.
+        assertNotNull(p.data.store.shift(ID))
+        assertTrue(p.data.store.hasChange(ChangeType.SHIFT_END, ID))
+        assertTrue(p.data.store.hasChange(ChangeType.SHIFT_DELETE, ID))
+        p.net.down = false
+        assertTrue(p.data.sendNow())
+        assertTrue(srv.state.shifts.isEmpty())
+        assertNull(p.data.store.shift(ID))
+    }
+
+    @Test
+    fun aDeleteTheServerAnswersNotFoundToIsDone() = runBlocking {
+        val srv = server()
+        val p = Phone(srv)
+        p.data.startShift(3)
+        assertTrue(p.data.sendNow())
+        srv.overrides["DELETE /shifts/$ID"] = { srv.problem(404, "shift_not_found") }
+        p.clock.t = 41_000
+        p.data.discardShift()
+        assertTrue(p.data.sendNow())
+        assertNull(p.data.store.shift(ID))
+        assertFalse(p.data.store.hasChange(ChangeType.SHIFT_DELETE, ID))
     }
 
     @Test

@@ -39,7 +39,7 @@ MileWage counts distance from the GPS track. An odometer reading is evidence bes
 - **After a shift ends**, when you gave a start reading or a check is due, the phone asks for the end reading. "Save reading" saves it; Not now skips it.
 - **On the phone**, open Shifts, then the shift. Under Odometer, tap Edit next to Start reading or End reading.
 - **On a shift page on the web**, under Odometer, type the Start or End reading and choose Save.
-- **On the Odometer page on the web**, under "Add a tax-year reading", choose Year start or Year end, the date and the reading. Shift readings are listed below, each with a link to its shift.
+- **On the Odometer page on the web**, under "Add a tax-year reading", choose Year start or Year end, the date and the reading. Shift readings are listed below, each with a link to its shift. A tax-year reading's menu has Edit, to correct its value or date after a typo, and Delete, which asks first.
 
 The readings of a Reviewed shift cannot be changed.
 

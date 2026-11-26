@@ -5,16 +5,8 @@ import type { Schemas } from '../api/client';
 import { useSettings } from '../session';
 import { Button, Field, FormError, SelectField } from '../ui/form';
 import { startOfDay } from '../days';
-import { distanceInput, formatDistance, formatTime, parseDistance } from '../format';
+import { distanceInput, parseDistance } from '../format';
 import { Button as UiButton } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 
 type Shift = Schemas['Shift'];
 type Trip = Schemas['Trip'];
@@ -22,7 +14,7 @@ type Trip = Schemas['Trip'];
 const MIN = 60_000;
 
 /** "HH:MM" (24 h) of an instant in the driver's time zone, for a time input. */
-const hhmm = (ms: number, timeZone: string) =>
+export const hhmm = (ms: number, timeZone: string) =>
   new Intl.DateTimeFormat('en-GB', {
     timeZone,
     hour: '2-digit',
@@ -174,57 +166,5 @@ export function AddTrip({
         <FormError message={error} />
       </div>
     </form>
-  );
-}
-
-/**
- * Asks before a manual trip is deleted (`DELETE /trips/{id}`): its distance leaves the shift's
- * totals, and the phone is told through the change feed (a `trip` delete, which both phone apps
- * already apply).
- */
-export function DeleteTripDialog({ trip, onClose }: { trip: Trip; onClose: () => void }) {
-  const { distance_unit: unit, timezone, time_format: timeFormat } = useSettings();
-  const { run, busy, error } = useChange();
-  const what = [
-    formatDistance(trip.distance_m, unit),
-    `${formatTime(trip.started_at, timezone, timeFormat)} to ${formatTime(trip.ended_at, timezone, timeFormat)}`,
-    trip.purpose,
-  ]
-    .filter(Boolean)
-    .join(', ');
-
-  async function remove() {
-    const done = await run((api) =>
-      api.DELETE('/trips/{id}', { params: { path: { id: trip.id } } }),
-    );
-    if (done) onClose();
-  }
-
-  return (
-    <Dialog open onOpenChange={(o) => (o ? null : onClose())}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Delete this trip?</DialogTitle>
-          <DialogDescription>
-            {what}. Its distance leaves this shift&apos;s totals, on the web and on your phone. This
-            cannot be undone.
-          </DialogDescription>
-        </DialogHeader>
-        <FormError message={error} />
-        <DialogFooter>
-          <UiButton type="button" variant="ghost" onClick={onClose}>
-            Cancel
-          </UiButton>
-          <UiButton
-            type="button"
-            variant="destructive"
-            disabled={busy}
-            onClick={() => void remove()}
-          >
-            Delete trip
-          </UiButton>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }

@@ -334,6 +334,7 @@
         "raw_retention_days",
         "stops_enabled",
         "help_enabled",
+        "update_check_enabled",
         "display_name",
         "region",
         "logbook",
@@ -383,6 +384,10 @@
         "help_enabled": {
           "type": "boolean",
           "description": "The owner's switch for the Help pages in the web app and the help links on screens. Default true. Web only; the server has no help module (ADR 0002)."
+        },
+        "update_check_enabled": {
+          "type": "boolean",
+          "description": "The owner's switch for the daily check for a new MileWage version (the server asks GitHub's public releases API, sending nothing about the owner). Default true. Web only."
         },
         "display_name": {
           "type": [
@@ -527,6 +532,9 @@
           "type": "boolean"
         },
         "help_enabled": {
+          "type": "boolean"
+        },
+        "update_check_enabled": {
           "type": "boolean"
         },
         "diagnostics_level": {
@@ -2536,7 +2544,9 @@
             "integer",
             "null"
           ],
-          "description": "Set when a late upload made this shift overlap another (15 section 9.2)."
+          "description": "The other shift of the user this one overlaps (it starts before the other ends and ends after the other starts; end equal to start is not an overlap). Set when the shift starts",
+          "ends or is retimed": null,
+          "cleared when the overlap is gone. The review flag `shift_overlap` carries the same id in `detail.detail`.": null
         }
       }
     },
@@ -2549,7 +2559,7 @@
       "properties": {
         "code": {
           "type": "string",
-          "description": "One of the flags in 14 section 8."
+          "description": "One of the flags in 14 section 8, or a server flag: `very_short_shift` (info), `shift_overlap` and `stale_active_shift` (review; the latter is worked out when the shift is read, for a running shift with no point for 12 hours)."
         },
         "severity": {
           "enum": [
@@ -3794,6 +3804,127 @@
               "type": "integer"
             }
           }
+        }
+      }
+    },
+    "HealthItem": {
+      "type": "object",
+      "required": [
+        "id",
+        "status",
+        "title",
+        "detail",
+        "fix"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "database",
+            "backup",
+            "disk",
+            "clock",
+            "version",
+            "updates"
+          ]
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "warn",
+            "fail"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string",
+          "description": "What was found",
+          "in English.": null
+        },
+        "fix": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "What to do about it; null when nothing is wrong."
+        }
+      }
+    },
+    "UpdateInfo": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "current_version",
+        "latest_version",
+        "available",
+        "release_url",
+        "notes_url",
+        "checked_at",
+        "check_failed"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "The owner's switch (settings.update_check_enabled)."
+        },
+        "current_version": {
+          "type": "string"
+        },
+        "latest_version": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The newest release the last good check found."
+        },
+        "available": {
+          "type": "boolean",
+          "description": "True when latest_version is newer than current_version (semantic versions; pre-releases rank below their release)."
+        },
+        "release_url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The GitHub release page of latest_version."
+        },
+        "notes_url": {
+          "type": "string",
+          "description": "What's new: the release page when a newer version exists, else the running version's CHANGELOG.md on GitHub."
+        },
+        "checked_at": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/EpochMs"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "When the last check worked; null if none has."
+        },
+        "check_failed": {
+          "type": "boolean",
+          "description": "The last attempt did not work. Silent everywhere but the Health page and the answer to Check now."
+        }
+      }
+    },
+    "HealthReport": {
+      "type": "object",
+      "required": [
+        "checks",
+        "update"
+      ],
+      "properties": {
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HealthItem"
+          }
+        },
+        "update": {
+          "$ref": "#/$defs/UpdateInfo"
         }
       }
     },

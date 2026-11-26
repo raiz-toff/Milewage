@@ -9,7 +9,7 @@ import {
   installState,
   promptInstall,
   resetInstall,
-} from '../src/pwa/install';
+} from '../src/pwa/installPrompt';
 import { renderApp, signedIn } from './support/kit';
 
 // Plan 27 section 4.4: the install prompt.

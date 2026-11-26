@@ -22,6 +22,7 @@ import type { ShiftPresenter } from '../processing/presenter';
 import { describeError, ProblemError } from '../errors';
 import { ownRateRoutes } from './own-rates';
 import { settingsRoutes } from './settings';
+import { healthRoutes, type HealthContext } from './health';
 import { statusRoute, type StatusContext } from './status';
 import type { ShiftBook } from '../processing/shift-book';
 import { odometerRoutes } from './odometer';
@@ -46,6 +47,8 @@ export interface CoreContext {
     StatusContext,
     'state' | 'disk' | 'lastBackup' | 'lastBackupFailure' | 'diagnostics'
   >;
+  /** Inputs of `GET /health/checks`; a bare core (tests) has none and serves no health routes. */
+  health?: Omit<HealthContext, 'db' | 'now' | 'auth'>;
   /** `backup.download` (10 section 3.1); reported to clients as `modules.backup_download`. */
   backupDownload?: boolean;
   exportFormats?: (reg: ModuleRegistry) => string[];
@@ -98,6 +101,7 @@ export function coreRoutes(
     countries = countryModules.codes(),
     secrets = fileSecrets('config'),
     status,
+    health,
     book,
     backupDownload,
     exportFormats,
@@ -143,6 +147,7 @@ export function coreRoutes(
       earnings: createEarningsPolicy(drivers, registry, comma?.earningsOverride),
     });
     statusRoute(app, { db, now, auth, registry, drivers, ...status });
+    if (health) healthRoutes(app, { db, now, auth, ...health });
     shiftRoutes(app, { db, now, auth, present, book, emit });
     tripRoutes(app, {
       db,

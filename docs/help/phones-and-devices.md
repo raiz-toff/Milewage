@@ -39,9 +39,11 @@ A paired phone can know two addresses for your server:
 
 The pairing code carries both when the server knows both. Under the QR code the page shows them as "At home" and "Away".
 
-On Wi-Fi the phone first tries the home address. If your own server answers there within a second and a half, it uses it. Otherwise it uses the away address. It remembers the choice for a minute, and looks again as soon as a request gets no answer. If your server's home address changes, pair the phone again so it learns the new one.
+On Wi-Fi the phone first tries the home address. If your own server answers there within a second and a half, it uses it. Otherwise it uses the away address. Just after the phone joins a Wi-Fi network, a first try that fails is tried again after a second and a half and again after three more, because a new connection is often not ready at once. It remembers the choice for a minute (ten seconds when it chose away on Wi-Fi), forgets it whenever the network changes or a request gets no answer, and looks again. If your server's home address changes, pair the phone again so it learns the new one.
 
 Plain http is allowed only for a home address: a private network address, or a name ending in `.local`, `.lan` or `.home.arpa`. Everywhere else the phone uses https only. Plain http is not encrypted on your home network, so do not turn home access on for a shared or public Wi-Fi.
+
+A phone paired with a code made at the https address only has no home address. On your home Wi-Fi it then needs Tailscale, and the home screen says so when it is offline. Pair it again with a code made at the home address to fix that.
 
 If the page says "Away: not set up", the phone sends shifts only when it is back on your Wi-Fi. To send them from anywhere, set up Tailscale as the install guide says in [section 3](../../infra/docs/install.md#3-reach-it-from-the-phone-tailscale-on-the-host).
 
@@ -62,7 +64,7 @@ Revoke a phone you lost, sold or replaced:
 
 1. Open the Devices page.
 2. Open the phone's row menu and choose Revoke.
-3. Choose "Confirm revoke".
+3. A box asks you to confirm. Choose "Revoke phone".
 
 The phone's secret stops working at once. It stays on the list, marked revoked. The phone itself says "This phone was removed from your server. Re-pair to send your saved data." Nothing on the phone is deleted.
 

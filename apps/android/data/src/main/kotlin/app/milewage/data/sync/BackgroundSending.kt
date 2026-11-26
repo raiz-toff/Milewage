@@ -30,11 +30,48 @@ interface SendScheduler {
     }
 }
 
+/** One unique one-time work the scheduler asks WorkManager for (a plain description, so the decision is testable). */
+data class SendWork(
+    val name: String,
+    /** The network the work waits for. */
+    val network: Network,
+    /** What a second request does while one is already waiting: keep it, or start the wait again. */
+    val keepExisting: Boolean,
+    val backoff: Backoff,
+    val backoffSeconds: Long,
+) {
+    enum class Network { CONNECTED, UNMETERED }
+
+    enum class Backoff { EXPONENTIAL, LINEAR }
+}
+
+/** What gets enqueued when something waits to be sent. */
+object SendPlan {
+    const val ONE_TIME = "milewage-send"
+    const val WIFI = "milewage-send-wifi"
+
+    /**
+     * Two one-time works. The first runs on any network and backs off exponentially when the server
+     * cannot be reached (a shift that ends on mobile data with the server only on the home network
+     * fails here and waits longer each time, up to an hour). The second waits for an unmetered
+     * network (Wi-Fi): JobScheduler runs it the moment the phone joins one, whatever state the
+     * first is in, even when the app is closed. Its backoff is short and linear: a Wi-Fi that has
+     * just joined often is not ready for a second or two.
+     */
+    fun onWaiting(): List<SendWork> = listOf(
+        SendWork(ONE_TIME, SendWork.Network.CONNECTED, keepExisting = true, SendWork.Backoff.EXPONENTIAL, 30),
+        SendWork(WIFI, SendWork.Network.UNMETERED, keepExisting = true, SendWork.Backoff.LINEAR, 15),
+    )
+}
+
 /**
  * Background sending on WorkManager (the platform's JobScheduler underneath; no Google services).
  *
- * - [kick]: unique one-time work `milewage-send` with a connected-network constraint, KEEP (one
- *   waiting is enough: it sends everything queued when it runs), exponential backoff from 30 s.
+ * - [kick]: the works of [SendPlan.onWaiting]: `milewage-send` with a connected-network constraint,
+ *   KEEP (one waiting is enough: it sends everything queued when it runs), exponential backoff from
+ *   30 s; and `milewage-send-wifi`, the same with an unmetered-network constraint and a short linear
+ *   backoff, so joining Wi-Fi at home wakes sending even while the first one sits in a long backoff
+ *   (WorkManager does not shorten a backoff when a network arrives).
  * - [ensurePeriodic]: unique periodic work `milewage-send-periodic` every hour with a network: what
  *   waits goes even if the app is never opened, and the change log is read.
  *
@@ -49,11 +86,19 @@ class WorkSendScheduler(private val context: Context) : SendScheduler {
     private val connected = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
     override fun kick() {
-        val work = OneTimeWorkRequestBuilder<SendWorker>()
-            .setConstraints(connected)
-            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
-            .build()
-        WorkManager.getInstance(context).enqueueUniqueWork(ONE_TIME, ExistingWorkPolicy.KEEP, work)
+        val manager = WorkManager.getInstance(context)
+        for (w in SendPlan.onWaiting()) {
+            val network = if (w.network == SendWork.Network.UNMETERED) NetworkType.UNMETERED else NetworkType.CONNECTED
+            val work = OneTimeWorkRequestBuilder<SendWorker>()
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(network).build())
+                .setBackoffCriteria(
+                    if (w.backoff == SendWork.Backoff.LINEAR) BackoffPolicy.LINEAR else BackoffPolicy.EXPONENTIAL,
+                    w.backoffSeconds,
+                    TimeUnit.SECONDS,
+                )
+                .build()
+            manager.enqueueUniqueWork(w.name, if (w.keepExisting) ExistingWorkPolicy.KEEP else ExistingWorkPolicy.REPLACE, work)
+        }
     }
 
     override fun ensurePeriodic() {
@@ -65,7 +110,8 @@ class WorkSendScheduler(private val context: Context) : SendScheduler {
     }
 
     companion object {
-        const val ONE_TIME = "milewage-send"
+        const val ONE_TIME = SendPlan.ONE_TIME
+        const val WIFI = SendPlan.WIFI
         const val PERIODIC = "milewage-send-periodic"
     }
 }

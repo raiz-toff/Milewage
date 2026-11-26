@@ -28,7 +28,7 @@ Your backups sit on the same disk as your data. If that disk fails, both are los
 
 After 30 days without a download, the page says "No copy of your backups has left this server recently." If another tool already copies your backup folder elsewhere, tick "My backup folder is copied to another place". You are asked again after 90 days.
 
-If there is no Download link, downloads are turned off on the server. Turn `backup.download` back on as the [configuration guide](../../infra/docs/configuration.md) says.
+If there is no Download link, downloads are turned off on the server, and the Backups page says so. The backups are then files in the server's backup folder, which you can copy from there. Turn `backup.download` back on as the [configuration guide](../../infra/docs/configuration.md) says.
 
 ## Restore onto a new server
 

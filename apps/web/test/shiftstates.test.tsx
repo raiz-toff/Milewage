@@ -33,6 +33,9 @@ function open(
       'GET /shifts/1/trips': () => ({ body: trips }),
       'GET /shifts/1/stops': () => ({ body: stops }),
       'GET /odometer': () => ({ body: [] }),
+      'GET /shifts/1/earnings': () => ({
+        body: { entries: [], labels: [], effective: [] },
+      }),
       'GET /expenses': () => ({ body: { items: [], next_cursor: null } }),
       'PATCH /shifts/1': ({ body }) => ({ body: { ...theShift, ...(body as object) } }),
     },
@@ -51,9 +54,8 @@ describe('shift detail with little or nothing recorded', () => {
     const card = await screen.findByRole('region', { name: 'What happened' });
     expect(within(card).getByText('No route for this shift')).toBeTruthy();
     expect(within(card).getByText(/sent no location points/)).toBeTruthy();
-    expect(
-      within(card).getByText(/under 3 minutes, so it may have been started by mistake/),
-    ).toBeTruthy();
+    // The "started by mistake" notice is the shift page's own (shift-checks.test.tsx), not this card's.
+    expect(within(card).queryByText(/started by mistake/)).toBeNull();
     expect(items(within(card).getByRole('list', { name: 'Checks' }))).toEqual([
       'Few positions were recorded for the length of the shift.',
       "The phone's result never arrived.",

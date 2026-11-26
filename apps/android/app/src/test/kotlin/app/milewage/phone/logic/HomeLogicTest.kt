@@ -116,6 +116,51 @@ class TrackingLinesTest {
     }
 }
 
+class EndDialogTest {
+    private val start = NOW - 10 * 60_000
+
+    @Test
+    fun `under 120 seconds and under 160 metres asks Discard or Keep, on the boundary values`() {
+        assertEquals(EndDialog.VERY_SHORT, EndDialog.of(start, start + 119_000, 159))
+        assertEquals(EndDialog.NORMAL, EndDialog.of(start, start + 120_000, 159))
+        assertEquals(EndDialog.NORMAL, EndDialog.of(start, start + 119_000, 160))
+        assertEquals(EndDialog.NORMAL, EndDialog.of(start, start + 10 * 60_000, 23_400))
+    }
+}
+
+class NoSignalTest {
+    private val shift = runningView("run").shift
+    private val fix = NOW - 5 * 60_000
+
+    @Test
+    fun `silent for more than 180 seconds says how many whole minutes`() {
+        assertNull(NoSignal.minutes(fix, fix + 180_000))
+        assertEquals(3, NoSignal.minutes(fix, fix + 181_000))
+        assertEquals(5, NoSignal.minutes(fix, fix + 5 * 60_000 + 59_000))
+        assertNull(NoSignal.minutes(null, NOW))
+    }
+
+    @Test
+    fun `counted from the last fix at full power, from the shift's start when there was none`() {
+        val status = recording("run").copy(lastFixAt = fix)
+        assertEquals(fix, NoSignal.since(shift, status, TrackingLine.RECORDING))
+        assertEquals(fix, NoSignal.since(shift, status, TrackingLine.NO_BACKGROUND))
+        assertEquals(shift.startedAt, NoSignal.since(shift, recording("run"), TrackingLine.RECORDING))
+        // A fix from before the shift started does not count against it.
+        assertEquals(shift.startedAt, NoSignal.since(shift, recording("run").copy(lastFixAt = shift.startedAt - 1_000), TrackingLine.RECORDING))
+    }
+
+    @Test
+    fun `never while saving battery, with a problem already named, or when not recording`() {
+        val low = recording("run", PowerLevel.LOW).copy(lastFixAt = fix)
+        assertNull(NoSignal.since(shift, low, TrackingLine.SAVING_BATTERY))
+        assertNull(NoSignal.since(shift, low, TrackingLine.RECORDING))
+        for (line in listOf(TrackingLine.LOCATION_OFF, TrackingLine.PERMISSION_LOST, TrackingLine.NO_PROVIDER, TrackingLine.NOT_RECORDING, TrackingLine.STARTING)) {
+            assertNull(NoSignal.since(shift, recording("run").copy(lastFixAt = fix), line), "$line")
+        }
+    }
+}
+
 class BannersTest {
     private fun of(s: SendStatus) = Banners.of(s, NOW)
 
@@ -125,6 +170,15 @@ class BannersTest {
         assertEquals(BannerKind.ALL_SENT, b.kind)
         assertNull(b.kind.fix)
         assertEquals(Reminder.Level.NONE, b.reminder)
+    }
+
+    @Test
+    fun `offline with no home address names Tailscale and still offers Send now`() {
+        val base = sendStatus(StatusColor.YELLOW, 1, 10, NOW, StatusMessage.OFFLINE)
+        val b = of(base.copy(sync = base.sync.copy(noHomeAddress = true)))
+        assertEquals(BannerKind.OFFLINE_NO_HOME, b.kind)
+        assertEquals(Fix.SEND_NOW, b.kind.fix)
+        assertEquals(BannerKind.OFFLINE, of(base).kind)
     }
 
     @Test

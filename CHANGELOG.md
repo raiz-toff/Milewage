@@ -6,8 +6,39 @@ All notable changes to MileWage are listed here. The format follows
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-11-23
+
 ### Added
 
+- A shift started by mistake can be thrown away. A shift under 2 minutes and under 160 m (0.1 mi)
+  with no earnings, parking or tolls, expenses or trips added by hand is "very short". The phone's
+  End dialog says so and offers Discard (deletes it for good, asked first, never automatic) or Keep
+  (ends it as usual); offline, the delete is queued behind the end and the shift stays on the phone
+  until the server answers. The web shift page says "This shift is 40 seconds and 0 mi. Started by
+  mistake?" with Delete, which asks first. The server marks it `very_short_shift` (info).
+- A shift that overlaps another one (it starts before the other ends and ends after the other
+  starts; ending exactly when the next one starts is not an overlap) is flagged `shift_overlap`
+  (review) and the shift page names the other shift with a link. It is only ever a flag: the
+  phone's data is never refused. The flag clears when an edit or a delete removes the overlap.
+- A running shift with nothing recorded for 12 hours is flagged `stale_active_shift` (review) and the
+  shift page and the dashboard show a notice with End now. The server never ends it itself.
+- Phone: while a shift records at full power and no location has come for 3 minutes, Home says "No
+  location for N min" with the places to look (location, battery).
+- The trip CSV has a `shift_date` column (the day the shift started) next to its `date` (the trip's
+  own date). A shift that ends on a later day than it started says which day it counts on.
+- Web: Settings > Health lists what the server can check from inside its container (database
+  integrity, newest backup, free disk space, clock against the browser, running version, whether
+  the last update check worked), each with what to do about it, and a small dot on Settings in the
+  sidebar while one is not OK. It does not pretend to see Docker, ports or Tailscale; it points at
+  `infra/doctor.sh` for those.
+- The server asks GitHub's public release list for the newest version once a day, and on "Check
+  now". It sends nothing about the owner, is on by default, and is switched off in Settings >
+  Updates (`update_check_enabled`). A newer version shows a dismissible banner (dismissed per
+  version, in the browser) with What's new (the release page, in a new tab) and the upgrade command
+  `./infra/upgrade.sh` with a Copy button. There is no upgrade button and no Docker access: the app
+  cannot upgrade itself. A failed check is silent except on the Health page. The privacy page says
+  the server contacts GitHub once a day unless switched off. New: `GET /health/checks`,
+  `POST /health/update-check`, `docs/help/health-and-updates.md`.
 - Phone: "Try it without a server" on the first screen. The app runs against a demo server inside
   the app, with sample shifts in kilometres and Canadian dollars, so every screen can be tried.
   Start and End shift record for real; nothing leaves the phone. A line on Home and in Settings
@@ -16,8 +47,52 @@ All notable changes to MileWage are listed here. The format follows
 - `scripts/play-setup.ps1`: the one-time Google Play setup on a Windows PC, step by step. It finds
   the tools, makes the upload key, builds the App Bundle, opens each Play Console and Google Cloud
   page with its answer on the clipboard, and remembers what is done.
+- Self-hosting: `infra/upgrade.sh` (refuses a dirty or diverged checkout and a missing or stale
+  backup, copies the newest backup out, pulls, rebuilds, waits healthy, names the version notes to
+  read) and `infra/doctor.sh` (one line per check, then the next step, no secrets, works with the
+  stack down). Both are tested with a pretend host, like `install.sh`.
+- Web: manage your own records. A shift's page has a menu with "Delete shift" (it says what goes,
+  and the server's 7-year confirmation is the button) and "Edit times and vehicle". Correcting the
+  start or end time (the usual slip is forgetting to stop) makes the server work the shift out
+  again from the points inside the new times, the same way Recalculate does; it refuses a running
+  or Reviewed shift, an end before the start, and a shift whose raw points were archived. A shift
+  the phone never ended shows "End now". An odometer reading can be edited
+  (`PATCH /odometer/{id}`), not only deleted and added again. The Backups page says so when
+  downloads are turned off.
+
+### Changed
+
+- `DELETE /shifts/{ref}` is also open to a paired phone (it was web only), but only for a very short
+  shift (the `very_short_shift` rule; any other is 403, "delete it on the web"); it still refuses a running shift (409) and needs `confirm_recent=true` under 7 years. The
+  phone only reaches shifts inside its 14-day window.
+- **Node 24.22 (LTS) replaces Node 22.22** in the server image, `.nvmrc`, `engines` and the type packages. `better-sqlite3` builds on it and the test suite passes on Linux x86-64. Still to run: the engine's phone cross-check on Node 24, and on an arm64 host (`TODO.md`). Web page tests fail on native Windows (cause unknown), so run them in WSL2 (`docs/development.md`).
+- `infra/install.sh` checks the host before it writes anything (Linux or WSL2, 64-bit, Docker
+  installed, reachable and allowed, Compose v2, free disk, memory) and each failure names the next
+  command. It ends by printing the address to open on the computer, not only `127.0.0.1`, finds the
+  home network address without picking Docker's or a VPN's, no longer needs `sed -i` or `ip`, and
+  prints the exact Tailscale commands (with the port 443 case and its undo) instead of "run this
+  again". The compose image tags follow `VERSION` (`npm run version:sync` moves them, and
+  `version:check` fails when they drift); they were still `0.1.0`.
+- The install, upgrade and getting-started guides: a supported-hosts line, Tailscale marked
+  optional, your own reverse proxy, the security headers and publishing the app from your own
+  server moved under Advanced, the app download from the GitHub release only, and the stale
+  `v0.1.0` statements removed.
+- Web: one confirmation box, the same everywhere, before anything is deleted: a shift, a trip, an
+  expense or its receipt, an odometer reading, a platform, a mileage rate, a tax-jar entry, a parking
+  or toll line, an entered earnings total or line, and revoking a phone. It says what is lost; before,
+  most of these ran on the first click.
+- `PATCH /shifts/{ref}` also takes `started_at` and `ended_at` (web session only).
 
 ### Fixed
+
+- Phone: a shift ended away from home is now sent soon after the phone joins your home Wi-Fi, and
+  "Offline" no longer lingers. Sending wakes when Android says the network works (not only when it
+  appears), when the app opens, and, with the app closed, through a second background job that
+  waits for Wi-Fi and has its own short retries (the old one could sit in a long wait). The
+  home-or-away choice is dropped on every network change, and a home address that does not answer
+  right after joining Wi-Fi gets two quick retries before the phone settles on the away address. An
+  away choice on Wi-Fi is kept ten seconds, not a minute. "Offline" clears as soon as a send
+  succeeds. A phone paired without a home address now says so and what to do.
 
 - The release build on Windows. The shell scripts and `gradlew` are checked out with LF endings
   (`.gitattributes`), and the version read from `VERSION` drops a carriage return, which had named

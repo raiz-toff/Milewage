@@ -11,7 +11,7 @@ Two containers from `infra/docker/docker-compose.yml`:
 
 | Container | Does                                                                                  | Limits        |
 | --------- | ------------------------------------------------------------------------------------- | ------------- |
-| `api`     | the MileWage server (Node 22, SQLite)                                                 | 192 MB, 1 CPU |
+| `api`     | the MileWage server (Node 24, SQLite)                                                 | 192 MB, 1 CPU |
 | `caddy`   | serves the web app, passes `/api` to the server, published on `127.0.0.1:<port>` only | 64 MB, ½ CPU  |
 
 Data lives in Docker volumes (`data`, `backups`, `config`, `caddy_data`, `caddy_config`). Expect
@@ -61,7 +61,7 @@ clone is refused: **STOP: owner** (they add the key or give you another URL). Us
 infra/install.sh --no-tailscale
 ```
 
-What it does: checks Docker, writes `infra/docker/.env` (port 8080 or the next free one, and the
+What it does: checks the host (Linux or WSL2, 64-bit, Docker usable by this user, Compose v2, free disk; each failure prints the command to run), writes `infra/docker/.env` (port 8080 or the next free one, and the
 proxy subnet), builds both images (the first build takes several minutes), starts them, waits until
 they are healthy and checks `/healthz`. It never overwrites an existing `.env`. Options: `--port N`,
 `--subnet CIDR`, `--no-start`.
@@ -70,10 +70,11 @@ Check:
 
 ```bash
 docker compose -f infra/docker/docker-compose.yml --env-file infra/docker/.env ps   # both "healthy"
-port=$(grep -oP '^MILEWAGE_HOST_PORT=\K.*' infra/docker/.env || echo 8080)
+port=$(sed -n 's/^MILEWAGE_HOST_PORT=//p' infra/docker/.env | head -n 1); port=${port:-8080}
 curl -fsS http://127.0.0.1:$port/healthz && echo
 curl -fsS http://127.0.0.1:$port/api/v1/setup/status && echo                     # {"state":"needs_setup"}
 docker stats --no-stream | grep -i milewage                                         # memory under the limits
+infra/doctor.sh                                                                     # one line per check, then the next step
 ```
 
 ## 4. Tailscale https address
@@ -103,7 +104,7 @@ If 443 is taken (example with 8443; use the owner's choice):
 
 ```bash
 sudo tailscale serve --bg --https=8443 http://127.0.0.1:$port
-name=$(tailscale status --json --peers=false | grep -oP '"DNSName":\s*"\K[^"]+' | sed 's/\.$//')
+name=$(tailscale status --json --peers=false | sed -n 's/.*"DNSName": *"\([^"]*\)".*/\1/p' | head -n 1 | sed 's/\.$//')
 echo "MILEWAGE_PUBLIC_URL=https://$name:8443" >> infra/docker/.env
 docker compose -f infra/docker/docker-compose.yml --env-file infra/docker/.env up -d --wait api
 curl -fsS https://$name:8443/healthz && echo
@@ -179,13 +180,14 @@ offered, memory in use, and anything you stopped on.
 ## Upgrading later
 
 ```bash
-cd milewage && git pull
-docker compose -f infra/docker/docker-compose.yml --env-file infra/docker/.env up -d --build --wait
-curl -fsS http://127.0.0.1:$port/healthz && echo
+cd milewage && infra/upgrade.sh
+infra/doctor.sh
 ```
 
-Ask the owner to download a backup first (Backups page). The server makes its own pre-migration
-backup before changing the database. Replace the APK (step 6) after each upgrade so phone and server
+The script refuses with the exact fix when the checkout has local changes or has diverged, and when
+there is no backup from the last 36 hours (the owner makes one on the Backups page: **STOP: owner**).
+It copies the newest backup out of the stack, pulls, rebuilds, waits until healthy and names the
+version notes to read. The server also makes its own pre-migration backup before changing the database. Replace the APK (step 6) after each upgrade so phone and server
 match. Rollback and failure cases: [`upgrade.md`](./upgrade.md).
 
 ## Troubleshooting

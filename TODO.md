@@ -4,6 +4,17 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
 
 ## Open
 
+- [ ] **Decided against for now, from the self-host audit** (2026-11-22; `specs/001-selfhost-and-basics`).
+      CSV import of shifts from a spreadsheet or another app (large, demand unproven); username change
+      and delete-account in the app (one owner per server: `docker compose down -v` is the wipe);
+      merging and splitting shifts; a global undo (the confirm dialogs are the safety net); doctor
+      reporting Docker subnet conflicts; a skip-backup flag for `infra/upgrade.sh`. Still unverified:
+      the install, upgrade and doctor scripts on a real VM, a Raspberry Pi and a real tailnet.
+- [ ] **Deferred from the small-details research** (2026-11-22; spec Track C).
+      Add a missed shift on the web (typed times, marked manual); soft delete with a restore window
+      (delete is a hard purge today, the confirm dialogs are the net); an IANA zone stored on every
+      shift (the owner's zone at the start is used today, a migration with its own risk); merging
+      two trips; a startup warning when the server's `TZ` is odd; a DST test across a whole shift.
 - [ ] **Field test of the native Android app** (owner, on a real phone; 2026-11-10). Nothing in
       `apps/android` has run on a phone yet. Build with `scripts/phone-release-build.sh`, then in
       this order:
@@ -81,10 +92,10 @@ Small items noticed while testing. Each becomes its own PR when picked up. Newes
       6 April year everywhere (then the Tax page, exports and `expense-math.ts` change together).
 - [ ] **Run `milewage-cli recalc` once after upgrading to 0.2.0** if shifts were ever created by CSV import
       (AR4): earlier imports left `calculated_at` empty, so their trips never reached the phone.
-- [ ] **Make Node 22.22 the default on `coder`** (owner, 2026-11-08). `node --version` is v24.15.0;
-      `.nvmrc` says 22.22.0. Verify runs use Node 22 only because `~/.local/node22/bin` is put first
-      on `PATH`; a shell without it runs Node 24. Install 22.22 as the default (nvm is not
-      installed), or put `~/.local/node22/bin` first on `PATH` in the shell profile.
+- [ ] **Re-run the engine's phone cross-check on Node 24** (2026-11-22). The repo moved from Node 22.22
+      to 24.22 (DECISIONS.md). The engine's fixture tests pass on 24 on x86-64, but `sin`, `cos` and
+      `atan2` must match the phone to the last bit, so run `npm run crosscheck:engine` (JDK 17 and the
+      Android SDK) with Node 24 first on `PATH`, and on an arm64 host (Raspberry Pi).
 - [ ] **Run spikes A, B and D, or record that the field test replaces them** (owner, 2026-11-08).
       Only S0 has run; E is optional. Status table in
       plan 12 section 2, "Spike status (2026-11-08)".

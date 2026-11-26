@@ -19,7 +19,7 @@ Open Expenses and choose Add expense, or use Add expense on the dashboard.
 
 More details opens the rest: merchant, deductible share, vehicle, shift, repeats and notes. The shift list offers shifts within 7 days of the expense's date.
 
-To change an expense, open its row menu and choose Edit. Delete removes the expense and its receipt.
+To change an expense, open its row menu and choose Edit. Delete asks first, then removes the expense and its receipt.
 
 Parking and tolls added on a shift's page are expenses linked to that shift; see [Parking and tolls](shifts-and-trips.md#parking-and-tolls).
 
@@ -49,7 +49,7 @@ To deduct these costs instead, set the vehicle's deduction for the year to Actua
 
 ## Receipts
 
-Each expense can hold one receipt, a photo or a PDF. In the list, use the Receipt column to pick a file. View receipt opens it. Remove receipt, in the row menu, deletes it. To change a receipt, remove it and attach the new one.
+Each expense can hold one receipt, a photo or a PDF. In the list, use the Receipt column to pick a file. View receipt opens it. Remove receipt, in the row menu, asks first, then deletes it. To change a receipt, remove it and attach the new one.
 
 - The file can be JPEG, PNG, WebP or PDF, up to 10 MB.
 - All receipts together can take up to 2 GB.

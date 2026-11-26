@@ -5,13 +5,15 @@ Specs: plan 10 (in the git history) sections 10 and 3.1. The drill that proves t
 ## Upgrade
 
 1. Take a backup you can find: Backups page, "Back up now", then download the file to another machine.
-2. Get the new version of the repository (`git pull`) and run:
+2. In the MileWage folder on the host, run:
 
    ```bash
-   docker compose -f infra/docker/docker-compose.yml --env-file infra/docker/.env up -d --build
+   infra/upgrade.sh
    ```
 
-   The compose file pins an explicit image tag, never `:latest`. The tag follows `VERSION`; bump it with `npm run version:sync` when you release your own build.
+   It refuses, and says the fix, when the checkout has changes of its own (`git stash`) or commits the remote does not have, or when there is no backup from the last 36 hours. Otherwise it copies the newest backup to `infra/docker/backups-before-upgrade/` (still encrypted), runs `git pull --ff-only`, rebuilds with `--remove-orphans`, waits until the stack is healthy and names the "Version notes" below that you should read. Run it again any time: with nothing new it changes nothing. `infra/doctor.sh` checks the result.
+
+   By hand, the same is `git pull` and `docker compose -f infra/docker/docker-compose.yml --env-file infra/docker/.env up -d --build --remove-orphans`. The compose file pins an explicit image tag, never `:latest`; the tag follows `VERSION` (`npm run version:sync` moves it when you release your own build).
 
 3. On start the API compares its migrations with the database. If any is pending it first writes a verified **pre-migration backup** into the `backups` volume (`pre-migration/`, the last 3 are kept), then applies the migrations in one transaction. The Backups page and `GET /system/status` show the result.
 4. Before an upgrade you can see what a newer calculation would change for old shifts without changing anything:
@@ -86,4 +88,4 @@ The restore command (and the restore screen) prints what it found: shifts and th
 - The phone app is a new, native Android app. It installs over the old one but starts empty. Before installing it, open the old app and let it send everything (its banner says when everything is on the server), and end any running shift. Then install the new app, pair it again, and revoke the old entry on the Devices page. It needs Android 8.0 or later.
 - The track engine is version 4. Run `milewage-cli recalc --dry-run` to list the shifts the new rule would change; stored shifts keep their figures until they are worked out again.
 - Your own mileage rate from before becomes a rate "from the start", with the switch to use it off.
-- Phones no longer find the server on the Wi-Fi, so the `lan-discovery` service is gone. If LAN access was on, add `--remove-orphans` to the `up -d` of step 2 once, so its old container stops, and delete the `COMPOSE_PROFILES=lan` line from `infra/docker/.env` (it starts nothing now). LAN access itself and the home address are unchanged.
+- Phones no longer find the server on the Wi-Fi, so the `lan-discovery` service is gone. If LAN access was on, `infra/upgrade.sh` already removes its old container (by hand, add `--remove-orphans` to the `up -d` once). Delete the `COMPOSE_PROFILES=lan` line from `infra/docker/.env` (it starts nothing now). LAN access itself and the home address are unchanged.

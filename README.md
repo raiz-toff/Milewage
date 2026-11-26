@@ -22,7 +22,7 @@
 
 Delivery and ride-hail drivers need a mileage log their accountant will accept, and a view of what a shift really earned. The apps that do this keep the location history of every working day on someone else's servers.
 
-MileWage runs on a machine you own, a home server or a Raspberry Pi, and the phone reaches it over your Tailscale network. There is one driver per server, and nothing leaves your network.
+MileWage runs on a machine you own, a home server or a Raspberry Pi, and the phone reaches it over your home Wi-Fi, or over your Tailscale network away from home. There is one driver per server, and nothing leaves your network.
 
 ## What it does
 
@@ -47,18 +47,16 @@ Light and dark follow the phone, with Lane yellow or a colour of your choice. Th
 
 ## Get started
 
-**The server.** You need a host with Docker and a Tailscale account. Nothing is opened on your router.
+**Supported hosts:** Linux on a 64-bit CPU, or Windows with WSL2, with Docker. Nothing is opened on your router.
 
 ```bash
 git clone https://github.com/raiz-toff/Milewage.git milewage && cd milewage
 infra/install.sh
 ```
 
-Open the web app, create the owner account and **write down the recovery key** it shows. The server cannot show it again.
+Open the address it prints, create the owner account and **write down the recovery key** it shows. The server cannot show it again. Then install `milewage-<version>.apk` from the [latest release](https://github.com/raiz-toff/Milewage/releases/latest) on an Android 8.0 or later phone, tap "I have a server" and scan the QR code from the web's Devices page.
 
-**The phone.** Android 8.0 or later. Install `milewage-<version>.apk` from the [latest release](https://github.com/raiz-toff/Milewage/releases/latest), tap "I have a server" and scan the QR code from the web's Devices page.
-
-The full steps are in the [install guide](infra/docs/install.md) and [Getting started](docs/help/getting-started.md).
+Tailscale, to reach it away from home, is optional: [install guide](infra/docs/install.md). Something wrong: `infra/doctor.sh`. Newer version: `infra/upgrade.sh`.
 
 ## Documentation
 

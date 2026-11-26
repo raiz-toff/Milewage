@@ -3,6 +3,7 @@ import { IconTile } from '../ui/visuals';
 import { Badge } from '@/components/ui/badge';
 import { BlockIcon, DevicesIcon, EditIcon } from '@/ui/icons';
 import { RowMenu } from '../ui/RowMenu';
+import { useConfirm } from '../ui/ConfirmDialog';
 import { EmptyState, PageHeader, Section, TableBox, tableClass } from '../ui/layout';
 import { Button as UiButton } from '@/components/ui/button';
 import { errorText, useApiQuery, useChange } from '../api/query';
@@ -19,7 +20,7 @@ type Device = Schemas['Device'];
 function DeviceRow({ device }: { device: Device }) {
   const { timezone, time_format: tf } = useSettings();
   const [name, setName] = useState<string | null>(null); // non-null while renaming
-  const [confirming, setConfirming] = useState(false);
+  const confirm = useConfirm();
   const change = useChange();
   const { error } = change;
   const revoked = device.revoked_at !== null;
@@ -27,7 +28,6 @@ function DeviceRow({ device }: { device: Device }) {
   async function act(send: Parameters<typeof change.run>[0]) {
     if (!(await change.run(send))) return;
     setName(null);
-    setConfirming(false);
   }
 
   return (
@@ -60,43 +60,28 @@ function DeviceRow({ device }: { device: Device }) {
       </td>
       <td className="space-x-3 text-right whitespace-nowrap">
         {revoked ? null : name === null ? (
-          confirming ? (
-            <>
-              <UiButton
-                type="button"
-                variant="destructive"
-                size="sm"
-                onClick={() =>
-                  void act((api) =>
-                    api.DELETE('/devices/{id}', { params: { path: { id: device.id } } }),
-                  )
-                }
-              >
-                Confirm revoke
-              </UiButton>
-              <UiButton
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setConfirming(false)}
-              >
-                Cancel
-              </UiButton>
-            </>
-          ) : (
-            <RowMenu
-              name={device.name}
-              actions={[
-                { label: 'Rename', icon: EditIcon, onSelect: () => setName(device.name) },
-                {
-                  label: 'Revoke',
-                  icon: BlockIcon,
-                  destructive: true,
-                  onSelect: () => setConfirming(true),
-                },
-              ]}
-            />
-          )
+          <RowMenu
+            name={device.name}
+            actions={[
+              { label: 'Rename', icon: EditIcon, onSelect: () => setName(device.name) },
+              {
+                label: 'Revoke',
+                icon: BlockIcon,
+                destructive: true,
+                onSelect: () =>
+                  confirm.ask({
+                    title: `Revoke ${device.name}?`,
+                    description:
+                      'This phone stops sending shifts at once. Shifts it already sent stay. To use it again, pair it again with a new code.',
+                    confirmLabel: 'Revoke phone',
+                    action: (run) =>
+                      run((api) =>
+                        api.DELETE('/devices/{id}', { params: { path: { id: device.id } } }),
+                      ),
+                  }),
+              },
+            ]}
+          />
         ) : (
           <>
             <UiButton
@@ -121,6 +106,7 @@ function DeviceRow({ device }: { device: Device }) {
             </UiButton>
           </>
         )}
+        {confirm.dialog}
       </td>
     </tr>
   );

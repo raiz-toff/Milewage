@@ -107,6 +107,12 @@ class OutboxRunner(
                     onSent(Sent(item, true, null, false))
                     continue
                 }
+                if (e.status == 404 && item.kind == ChangeType.SHIFT_DELETE) {
+                    // Already gone on the server (deleted on the web): the delete is done.
+                    outbox.done(item)
+                    onSent(Sent(item, false, null, true))
+                    continue
+                }
                 when (onRefused(item, e)) {
                     Refusal.KEEP -> outbox.failed(item.id, e.code)
                     Refusal.PARK -> {

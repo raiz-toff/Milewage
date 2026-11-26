@@ -31,6 +31,14 @@ const create = strictObject(
   },
   ['vehicle_id', 'kind', 'reading_m', 'recorded_at'],
 );
+const change = strictObject(
+  {
+    reading_m: { type: 'integer', minimum: 0 },
+    recorded_at: { type: 'integer', minimum: 0 },
+  },
+  [],
+  { minProperties: 1 },
+);
 const LIMIT = 500;
 
 export const odometerView = (r: OdometerRow) => snakeKeys(r, 'userId');
@@ -99,6 +107,27 @@ export function odometerRoutes(
     });
     emit('odometer.updated', { odometerId: String(row.id), userId: String(userId) });
     return reply.status(201).send(odometerView(row));
+  });
+
+  app.patch('/odometer/:id', { schema: { params: idParams, body: change } }, async (req) => {
+    const { userId } = auth(req, 'S');
+    const row = readings.byId(userId, (req.params as { id: number }).id);
+    if (!row) throw new ProblemError('not_found', 'No such reading.');
+    // A finalized shift is the driver's tax record: its readings stay (08 section 4.4).
+    const shift = row.shiftId === null ? undefined : shifts.byRef(userId, String(row.shiftId));
+    if (shift?.status === 'finalized') {
+      throw new ProblemError('shift_finalized', 'This shift is finalized.');
+    }
+    const b = req.body as { reading_m?: number; recorded_at?: number };
+    if (b.recorded_at !== undefined && b.recorded_at > now() + 5 * 60 * 1000) {
+      throw new ProblemError('validation_failed', 'The request is not valid.', [
+        { path: '/recorded_at', message: 'must not be more than 5 minutes in the future' },
+      ]);
+    }
+    const saved =
+      readings.update(row.id, { readingM: b.reading_m, recordedAt: b.recorded_at }) ?? row;
+    emit('odometer.updated', { odometerId: String(row.id), userId: String(userId) });
+    return odometerView(saved);
   });
 
   app.delete('/odometer/:id', { schema: { params: idParams } }, async (req, reply) => {

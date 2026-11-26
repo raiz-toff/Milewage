@@ -155,6 +155,14 @@ class Sender(
         wake.trySend(Unit)
     }
 
+    companion object {
+        /** The loop's own retry after an offline round that named no delay: quick at first, then every minute. */
+        private val OFFLINE_RETRY_MS = longArrayOf(5_000L, 15_000L, 30_000L, 60_000L)
+
+        /** The wait after the [misses]th offline round in a row (1 for the first). */
+        fun offlineRetryMs(misses: Int): Long = OFFLINE_RETRY_MS[minOf(maxOf(misses, 1), OFFLINE_RETRY_MS.size) - 1]
+    }
+
     /**
      * Rounds while the process lives: one now, then on [kick], on the retry delay after a failure,
      * and every upload interval (60 s or the server's hint) while a shift runs. Idle otherwise:
@@ -163,10 +171,17 @@ class Sender(
     fun start(scope: CoroutineScope) {
         if (loop?.isActive == true) return
         loop = scope.launch {
+            var misses = 0
             while (true) {
                 val r = runCatching { round(false) }.getOrNull()
                 val running = store.runningShift() != null
-                val wait = r?.retryInMs ?: if (running) points.intervalMs else null
+                // A round that found no network gets a retry of its own even when it named no delay:
+                // the loop must not sleep until the next kick, or a network that is up but not ready
+                // (Wi-Fi just joined) would leave the phone saying "offline" until something wakes it.
+                val offline = r?.state == Round.State.OFFLINE
+                misses = if (offline) misses + 1 else 0
+                val retry = r?.retryInMs ?: if (offline) offlineRetryMs(misses) else null
+                val wait = retry ?: if (running) points.intervalMs else null
                 if (wait == null) wake.receive() else withTimeoutOrNull(wait) { wake.receive() }
             }
         }
@@ -197,6 +212,9 @@ class Sender(
         val counts = outbox.counts()
         val halt = device.halted()
         val state = points.lastState
+        // A round that finished with nothing left clears "offline" at once, whatever the last upload said.
+        val reached = lastRound.state == Round.State.IDLE && lastRound.done
+        val offline = !reached && (lastRound.state == Round.State.OFFLINE || state == UploadState.BACKOFF || state == UploadState.WAITING_CREATE)
         val sync = buildStatus(
             StatusInput(
                 shifts = store.unsentShifts(),
@@ -205,12 +223,15 @@ class Sender(
                 oldestQueuedAt = counts.oldestAt,
                 halt = halt,
                 restored = restore.restored || resend.waiting(),
-                offline = lastRound.state == Round.State.OFFLINE || state == UploadState.BACKOFF || state == UploadState.WAITING_CREATE,
+                offline = offline,
                 storage = storageState(freeBytes()),
+                noHomeAddress = offline && noHome(),
             ),
         )
         return SendStatus(sync, _progress.value)
     }
+
+    private suspend fun noHome(): Boolean = runCatching { session()?.credential?.addresses?.homeAndAway()?.first == null }.getOrDefault(false)
 
     /** True while anything is on the phone only: the unpair check (`pairing.unpair(waiting = ...)`). */
     suspend fun hasUnsentData(): Boolean {
@@ -414,6 +435,8 @@ class Sender(
         val id = item.shiftClientId
         if (resend.holds(id)) return false
         if (item.kind == ChangeType.SHIFT_CREATE && !mayOpen(id)) return false
+        // A delete goes only after the shift's create and end were accepted: the server refuses a running shift.
+        if (item.kind == ChangeType.SHIFT_DELETE) return !outbox.has(ChangeType.SHIFT_CREATE, id) && !outbox.has(ChangeType.SHIFT_END, id)
         return item.kind != ChangeType.SHIFT_END || store.pendingCount(id) == 0L
     }
 
@@ -453,6 +476,11 @@ class Sender(
                 } else {
                     store.shift(id)?.let { store.upsertShift(it.copy(sendState = SendState.SENT)) }
                 }
+            }
+            ChangeType.SHIFT_DELETE -> {
+                // The server has deleted it: the phone's copy goes too (the change log would bring the same).
+                outbox.dropShift(id)
+                store.deleteShift(id)
             }
             ChangeType.ODOMETER_PUT -> {
                 val kind = OdometerKind.of(sent.item.entityKey.substringAfter(':'))

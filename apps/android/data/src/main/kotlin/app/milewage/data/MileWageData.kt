@@ -3,6 +3,8 @@ package app.milewage.data
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import app.milewage.core.api.Api
 import app.milewage.core.api.ApiException
 import app.milewage.core.api.MileageRate
@@ -19,6 +21,7 @@ import app.milewage.core.pairing.Pairing
 import app.milewage.core.pairing.PairingLink
 import app.milewage.core.ports.Clock
 import app.milewage.core.shift.BatteryPort
+import app.milewage.core.shift.DiscardResult
 import app.milewage.core.shift.EditResult
 import app.milewage.core.shift.EndResult
 import app.milewage.core.shift.HomeSummary
@@ -57,6 +60,7 @@ import app.milewage.core.tracking.InterruptionLog
 import app.milewage.core.tracking.InterruptionReason
 import app.milewage.core.tracking.ShiftCommands
 import app.milewage.core.tracking.TrackingDiagnostics
+import app.milewage.data.connect.NetworkWake
 import app.milewage.data.db.MileWageDatabase
 import app.milewage.data.db.RoomLocalStore
 import app.milewage.data.net.OkHttpTransport
@@ -259,14 +263,24 @@ class MileWageData private constructor(
         scope.launch {
             runCatching { binding.settle() }
             runCatching { shifts.recover() }
+            // Something still waits (the process was killed, or the background work ran out of attempts
+            // while the phone had no way to the server): ask for the background work again.
+            if (runCatching { sender.hasUnsentData() }.getOrDefault(false)) scheduler.kick()
             runCatching { diagnostics.recordAppStart(Engine.ALGORITHM_VERSION.toString(), device.make, device.model, device.android, device.sdk) }
             sender.start(scope)
             launch { diagnosticsLoop() }
         }
     }
 
-    /** The app came to the foreground, the network came back, or the driver opened a screen that shows sending. */
-    fun kick() = sender.kick()
+    /**
+     * The app came to the foreground, a network came back, or the driver opened a screen that shows
+     * sending. The home-or-away choice made on the old network says nothing about this one, so it is
+     * dropped first: the next request picks again (with a quick retry of the home probe).
+     */
+    fun kick() {
+        pairing.networkChanged()
+        sender.kick()
+    }
 
     /** The worker's body: one round, then the reminders and the diagnostics window. */
     suspend fun runInBackground(): BackgroundResult {
@@ -404,6 +418,9 @@ class MileWageData private constructor(
     suspend fun startShift(vehicleId: Long, odometerStartM: Long? = null): StartResult = shifts.start(vehicleId, odometerStartM)
 
     suspend fun endShift(odometerEndM: Long? = null): EndResult = shifts.end(odometerEndM)
+
+    /** "Discard" on the End dialog of a very short shift (spec 001 C1): dropped, or ended and its delete queued. */
+    suspend fun discardShift(): DiscardResult = off { shifts.discard() }
 
     /** "End it at its last fix" for a running shift the tracker lost. */
     suspend fun closeUnfinished(): EndResult = off { shifts.closeUnfinished() }
@@ -658,9 +675,19 @@ class MileWageData private constructor(
             data.connection = connection
             self = data
             runCatching {
-                app.getSystemService(ConnectivityManager::class.java)?.registerDefaultNetworkCallback(
+                val wake = NetworkWake(clock, data::kick)
+                // Not the default-network callback: Wi-Fi joined while mobile data is still the default
+                // network would not show. Any network that can reach the internet, validated or not.
+                val request = NetworkRequest.Builder().addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build()
+                app.getSystemService(ConnectivityManager::class.java)?.registerNetworkCallback(
+                    request,
                     object : ConnectivityManager.NetworkCallback() {
-                        override fun onAvailable(network: Network) = data.kick()
+                        override fun onAvailable(network: Network) = wake.onAvailable(network.networkHandle)
+
+                        override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) =
+                            wake.onCapabilities(network.networkHandle, caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED))
+
+                        override fun onLost(network: Network) = wake.onLost(network.networkHandle)
                     },
                 )
             }

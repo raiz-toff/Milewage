@@ -131,12 +131,13 @@ export function PrivacyPage({
           </li>
           <li>
             MileWage needs no account with its developer or with any company, and sends nothing to
-            its developer: no analytics, no crash reports, no update checks.
+            its developer: no analytics and no crash reports. The one thing the server asks for is
+            the newest version number, from GitHub (see below).
           </li>
           <li>
             Your browser keeps no shift or money data. It keeps the sign-in cookie, a few display
-            choices (theme, hidden cards, a dismissed install offer) and the app's own files for
-            starting offline.
+            choices (theme, hidden cards, a dismissed install offer, a dismissed update notice) and
+            the app's own files for starting offline.
           </li>
         </List>
       </Section>
@@ -153,6 +154,15 @@ export function PrivacyPage({
             connection between your devices, encrypted between them. Tailscale knows which devices
             are in the network, their names and addresses. Turning on HTTPS for this server puts its
             machine name and network name in a public certificate log, where anyone can read them.
+          </li>
+          <li>
+            <strong>GitHub</strong>, once a day, unless the owner switches it off in Settings,
+            Updates. The server asks GitHub's public list of MileWage releases (api.github.com) for
+            the newest version number. It sends nothing about you, your shifts or this server;
+            GitHub sees the server's internet address, as with any request. Nothing is installed by
+            it: the owner upgrades by hand. The Check now button on the Health page makes the same
+            request when pressed. Opening What's new from the update notice opens a GitHub page in
+            your browser.
           </li>
           <li>
             <strong>Google Play</strong>, if you installed the app from there. Google knows you

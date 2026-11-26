@@ -20,6 +20,7 @@ import { levelWord, useCountries } from '../countries';
 import { addDays } from '../days';
 import { settingsPatch, useSettings } from '../session';
 import { formatDateTime } from '../format';
+import { isStale } from '../shift/checks';
 import { reviewCount } from '../shift/view';
 
 interface Item {
@@ -284,6 +285,10 @@ export function Notices({ today, now }: { today: string; now: number }) {
   const from = addDays(today, -29);
   const shifts = useApiQuery('/shifts', { params: { query: { from, to: today, limit: 200 } } });
   const review = shifts.data?.items.filter((s) => reviewCount(s) > 0).length ?? 0;
+  // A running shift with nothing recorded for 12 hours; the server never ends it itself.
+  const running = useApiQuery('/shifts', { params: { query: { status: 'active', limit: 1 } } });
+  const stale = running.data?.items.find(isStale);
+  const ending = useChange();
   const status = useApiQuery('/system/status').data;
   // The last run failed and none has succeeded since; else the newest verified backup is old.
   const failed = status?.last_backup_failure ?? null;
@@ -298,6 +303,27 @@ export function Notices({ today, now }: { today: string; now: number }) {
           <Link to="/settings/general" className={linkClass}>
             Set your {word}
           </Link>
+        </Notice>
+      ) : null}
+      {stale ? (
+        <Notice icon={<FlagIcon />}>
+          A shift is still running, with nothing recorded for over 12 hours.{' '}
+          <button
+            type="button"
+            className={linkClass}
+            disabled={ending.busy}
+            onClick={() =>
+              void ending.run((api) =>
+                api.POST('/shifts/{ref}/end', {
+                  params: { path: { ref: String(stale.id) } },
+                  body: { ended_at: Date.now() },
+                }),
+              )
+            }
+          >
+            End now
+          </button>
+          {ending.error ? <span role="alert"> {ending.error}</span> : null}
         </Notice>
       ) : null}
       {review > 0 ? (

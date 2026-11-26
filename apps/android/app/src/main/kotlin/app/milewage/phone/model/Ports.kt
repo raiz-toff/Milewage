@@ -2,6 +2,7 @@ package app.milewage.phone.model
 
 import app.milewage.core.api.TripKind
 import app.milewage.core.pairing.PairingStatus
+import app.milewage.core.shift.DiscardResult
 import app.milewage.core.shift.EditResult
 import app.milewage.core.shift.EndResult
 import app.milewage.core.shift.HomeSummary
@@ -61,6 +62,8 @@ interface ShiftData {
     suspend fun endShift(): EndResult
 
     suspend fun closeUnfinished(): EndResult
+
+    suspend fun discardShift(): DiscardResult
 
     suspend fun editTrip(tripKey: String, kind: TripKind?, purpose: String?): EditResult
 

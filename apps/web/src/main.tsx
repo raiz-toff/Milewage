@@ -7,7 +7,7 @@ import { App } from './App';
 import { publicPage } from './publicPages';
 import { createQueryClient } from './api/query';
 import { UpdatePrompt } from './pwa/UpdatePrompt';
-import { captureInstallPrompt } from './pwa/install';
+import { captureInstallPrompt } from './pwa/installPrompt';
 import { startUpdates } from './pwa/update';
 import { SessionProvider } from './session';
 import { applyTheme } from './theme';

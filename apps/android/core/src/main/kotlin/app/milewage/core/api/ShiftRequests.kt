@@ -22,6 +22,9 @@ enum class ChangeType(val wire: String) {
     TRIP_MANUAL("trip.manual"),
     SHIFT_END("shift.end"),
 
+    /** Discard of a very short shift the server already knows: sent after its end (spec 001 C1). */
+    SHIFT_DELETE("shift.delete"),
+
     /** Points go through the upload worker, not the outbox. */
     TELEMETRY_BATCH("telemetry.batch"),
     ;
@@ -94,6 +97,11 @@ sealed interface ShiftChange {
         override val type get() = ChangeType.SHIFT_END
     }
 
+    /** Deletes the shift on the server (after its end); nothing is sent for a shift the server never heard of. */
+    data class Delete(val clientId: String) : ShiftChange {
+        override val type get() = ChangeType.SHIFT_DELETE
+    }
+
     data class Points(val clientId: String, val points: List<TelemetryPoint>) : ShiftChange {
         override val type get() = ChangeType.TELEMETRY_BATCH
     }
@@ -126,6 +134,7 @@ object ShiftRequests {
         ChangeType.TRIP_OVERRIDE -> Api.putTripOverride
         ChangeType.TRIP_MANUAL -> Api.putManualTrip
         ChangeType.SHIFT_END -> Api.endShift
+        ChangeType.SHIFT_DELETE -> Api.purgeShift
         ChangeType.TELEMETRY_BATCH -> Api.uploadPoints
     }
 
@@ -140,6 +149,8 @@ object ShiftRequests {
         val path = when (kind) {
             ChangeType.SHIFT_CREATE, ChangeType.TELEMETRY_BATCH -> endpoint.pathWith()
             ChangeType.SHIFT_PATCH, ChangeType.SHIFT_END -> endpoint.pathWith(mapOf("ref" to shift))
+            // The driver's Discard is the deliberate yes the server asks for on a shift under 7 years old.
+            ChangeType.SHIFT_DELETE -> endpoint.pathWith(mapOf("ref" to shift)) + "?confirm_recent=true"
             ChangeType.ODOMETER_PUT -> endpoint.pathWith(mapOf("ref" to shift, "kind" to rest))
             ChangeType.TRIP_OVERRIDE -> endpoint.pathWith(mapOf("ref" to shift, "trip_key" to entityKey))
             ChangeType.TRIP_MANUAL -> endpoint.pathWith(mapOf("ref" to shift, "client_id" to rest))
@@ -167,6 +178,7 @@ object ShiftRequests {
             c.type, c.clientId, ShiftEnd.serializer(),
             ShiftEnd(c.endedAt, c.manifest, c.phoneResult, c.interruptions.ifEmpty { null }),
         )
+        is ShiftChange.Delete -> requestFor(c.type, c.clientId, JsonObject(emptyMap()))
         is ShiftChange.Points -> request(c.type, c.clientId, TelemetryBatch.serializer(), TelemetryBatch(c.clientId, c.points))
     }
 
